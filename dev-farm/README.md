@@ -25,32 +25,46 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
 - **Sjeme se broji i nije besplatno.** Na početku ga nema. Vrećica ispod alata pokazuje koliko kojeg imaš. Sjeme se dobiva na tri načina:
   - **Otkrivanjem:** u ladici u kući, a na imanju rastu stara rotkvica, divlja mrkva i divlji krumpir. Svako jutro nešto novo može niknuti samo od sebe.
   - **Iz plodova** na radnom stolu: neprodani plod daje 2–10 sjemenki, nasumično. Tako jedan usjev donosi puno novih.
-  - **Dostavom:** naručiš na mobitelu („Dostava“), paket od 5 sjemenki stiže sutra ujutro. Katalog se širi kako zarađuješ. Ondje se naručuje i gnojivo (12 🪙 po vreći), koje stiže u škrinju.
+  - **Dostavom:** naručiš na mobitelu („Dostava“), paket od 5 sjemenki stiže sutra ujutro. Katalog se širi kako zarađuješ. Ondje se naručuje i gnojivo (6 € po vreći), koje stiže u škrinju.
+- **Usjevi rastu po danima, ne po sekundama.** Svako jutro biljka naraste jedan dan ako je dan prije bila zalivena, a pola dana ako nije. Zemlja ostaje vlažna cijeli dan i presuši preko noći, pa je **dovoljno zaliti jednom dnevno**. Ostatak dana tab može mirno stajati sa strane. Rast se vidi ujutro.
 - **Kvaliteta: ★ loše, ★★ dobro, ★★★ odlično, ★★★★ zlatno.** Ovisi o tri stvari:
-  - koliko je vremena rasta biljka bila zalivena (suha raste i sporije)
+  - koliko je dana rasta biljka bila zalivena
   - je li pognojena
-  - koliko brzo je ubrana nakon što sazrije: prezrela gubi kvalitetu, a na kraju istrune
+  - koliko je dana prošlo otkad je sazrela: najbolja je isti dan, svaki dan čekanja joj oduzima kvalitetu, a četvrto jutro istrune
 
-  Preko noći zreli usjevi čekaju i ne propadaju.
-- **Štand ispred kuće:** stavi plodove na štand. Kupci dolaze cestom od 08 do 19 h i uvijek uzmu najbolje što vide. **Cijena ovisi o kvaliteti:** ★ 0,5×, ★★ 1×, ★★★ 1,5×, zlatno 2,2×. Loše (★) plodove kupuju samo kad na štandu nema boljih. Mogu se i pojesti za energiju, pretvoriti u gnojivo ili u sjeme.
-- **Kuća:** spavanje završava dan, vraća svu energiju i **sprema igru**. Kava (15 🪙) daje +35 energije. Tko ostane budan do 02 h, zaspi na nogama i budi se s pola energije.
+- **Usjevi i cijene** (tržišne cijene u Hrvatskoj, €/kg za ★★):
+
+  | Usjev | Raste | Urod po parceli | Cijena | Paket sjemena (5 kom) |
+  | --- | --- | --- | --- | --- |
+  | Rotkvica | 3 dana | 1 kg | 3,50 €/kg | 1,50 € |
+  | Mrkva | 3 dana | 4 kg | 0,90 €/kg | 1,50 € |
+  | Krumpir | 4 dana | 5 kg | 1,00 €/kg | 2,50 € |
+  | Kupus | 5 dana | 5 kg | 1,25 €/kg | 2,00 € |
+  | Blitva | 4 dana | 2 kg | 3,90 €/kg | 1,80 € |
+  | Rajčica | 6 dana | 4 kg | 3,00 €/kg | 2,50 € |
+  | Batat | 6 dana | 4 kg | 3,30 €/kg | 4,00 € |
+  | Bundeva | 7 dana | 9 kg | 1,60 €/kg | 2,50 € |
+
+  Skuplji usjevi pojavljuju se u katalogu dostave kako ukupno zarađuješ. Igra počinje s 30 €.
+- **Štand ispred kuće:** stavi plodove na štand. Kupci dolaze cestom od 08 do 19 h i uvijek uzmu najbolje što vide. Kupuju 1–4 kg odjednom. **Cijena ovisi o kvaliteti:** ★ pola cijene, ★★ tržišna cijena, ★★★ +30 %, zlatno +60 %. Loše (★) plodove kupuju samo kad na štandu nema boljih. Mogu se i pojesti za energiju, pretvoriti u gnojivo ili u sjeme.
+- **Kuća:** spavanje (od 18 h) završava dan, vraća svu energiju i **sprema igru**. Ranije se ne može, inače bi se spavanjem preskakali dani rasta. Kava (1,50 €) daje +35 energije. Tko ostane budan do 02 h, zaspi na nogama i budi se s pola energije.
 - **Energija:** svaki posao troši energiju (sadnja 2, zalijevanje, gnojenje i berba po 1). Hodanje je besplatno.
-- **Voda:** na početku samo **ribnjak** puni kantu (12 zalijevanja, s velikom kantom 30). **Bunara nema:** kod kuće je gradilište. Na radnom stolu se skicira plan, a onda farmer ode na gradilište i zida (nekoliko sekundi, 120 🪙 i 30 energije; plaća se tek kad je gotovo, a ako farmer ode, zidanje stane). Kad je sazidan, voda je blizu polja i postaje izvor za **navodnjavanje**: prskalice se mogu izraditi tek kad bunar postoji.
+- **Voda:** na početku samo **ribnjak** puni kantu (12 zalijevanja, s velikom kantom 30). **Bunara nema:** kod kuće je gradilište. Na radnom stolu se skicira plan, a onda farmer ode na gradilište i zida (nekoliko sekundi, 250 € i 30 energije; plaća se tek kad je gotovo, a ako farmer ode, zidanje stane). Kad je sazidan, voda je blizu polja i postaje izvor za **navodnjavanje**: prskalice se mogu izraditi tek kad bunar postoji.
 - **Škrinja** (24 mjesta) za višak. Torba ima samo 8 mjesta.
 - **Radni stol (izumi):**
 
   | Izum | Što radi |
   | --- | --- |
   | Sjeme iz plodova | 1 plod → 2–10 sjemenki |
-  | Gnojivo (kompost) | od 2 loša proizvoda (kupovno gnojivo se naručuje na mobitelu) |
+  | Gnojivo (kompost) | od 2 kg loših plodova (kupovno gnojivo se naručuje na mobitelu) |
   | Plan bunara | skica; bunar zida farmer na gradilištu |
-  | Prskalica · `water.sh` | traži bunar; postavi se na parcelu, svakih 30 s zalije parcele oko sebe |
-  | Navodnjavanje v1–v10 | 10 razina za sve prskalice: 4, 8, 12, 20, 24, 28, 36, 44, 48 pa 56 parcela po prskalici |
-  | Velika kanta | 30 zalijevanja umjesto 12 |
-  | `harvest-drone` | sam bere zrele usjeve i nosi ih u škrinju |
+  | Prskalica · `water.sh` (35 €) | traži bunar; postavi se na parcelu i svako jutro u 6 h zalije parcele oko sebe |
+  | Navodnjavanje v1–v10 (25–450 €) | 10 razina za sve prskalice: 4, 8, 12, 20, 24, 28, 36, 44, 48 pa 56 parcela po prskalici |
+  | Velika kanta (15 €) | 30 zalijevanja umjesto 12 |
+  | `harvest-drone` (600 €) | sam bere zrele usjeve i nosi ih u škrinju |
   | `replant.py` | dron nakon berbe ponovno posadi isto, ako ima sjemena |
-  | SEO ploča za štand | 60 % više kupaca |
-  | `git clone polje` | otključava drugo, zaraslo polje (još 48 parcela) |
+  | SEO ploča za štand (80 €) | 60 % više kupaca |
+  | `git clone polje` (400 €) | otključava drugo, zaraslo polje (još 48 parcela) |
 
   Strojevi pomažu, ali ne mogu zamijeniti brigu: voda iz prskalice vrijedi manje od ručnog zalijevanja, a dron bere najviše ★★★. **Zlatna kvaliteta ide samo iz farmerovih ruku.**
 - **Farmer govori u oblačiću:** kad nešto ne može (nema sjemena, kanta je prazna, nema snage) ili pronađe i ubere nešto, to kaže iznad glave.
@@ -72,8 +86,9 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
   Teren (organski rubovi staza, obala ribnjaka, trska, cvijeće) iscrta se jednom u veliki pozadinski canvas. Drveće, zgrade, ograde i likovi crtaju se po dubini, pa farmer može stati iza drveta.
 - **Atmosfera:** dim iz dimnjaka, svjetlucanje vode, prskanje prskalice, a noću zaseban sloj svjetla: prozori i lampioni bacaju toplu svjetlost, uz krijesnice.
 - Grafika se skalira samo cijelim brojevima piksela (ovisno o ekranu), pa pikseli ostaju oštri.
-- **Vrijeme:** 1 sekunda = 2 minute u igri, pa dan od 06 do 02 h traje 10 minuta. Noć je tamni sloj preko mape, a prozori kuće svijetle.
-- **Spremanje:** `localStorage`. Farme spremljene u starijoj verziji (v2) prenose se automatski: zadrže bunar i dobiju 10 sjemenki rotkvice. Spavanje sprema „službeno“, uz to se tiho sprema svakih 30 s i pri zatvaranju taba. Učitani podaci se provjeravaju polje po polje, a pokvaren ili stari zapis znači novu farmu umjesto rušenja.
+- **Vrijeme:** 1 sekunda = 2 minute u igri, pa dan od 06 do 02 h traje 10 minuta. Usjevi rastu jednom dnevno, u jutarnjem koraku simulacije (`newDay` u `src/sim.js`). Noć je tamni sloj preko mape, a prozori kuće svijetle.
+- **Novac** se u stanju igre čuva u centima (cijeli brojevi), da nema grešaka zaokruživanja. Cijene se u `src/data.js` pišu u eurima.
+- **Spremanje:** `localStorage`. Farme iz starijih verzija prenose se automatski: kovanice se pretvaraju u eure (1 kovanica = 0,40 €), a v2 farme zadrže bunar i dobiju 10 sjemenki rotkvice. Spavanje sprema „službeno“, uz to se tiho sprema svakih 30 s i pri zatvaranju taba. Učitani podaci se provjeravaju polje po polje, a pokvaren ili stari zapis znači novu farmu umjesto rušenja.
 - Žanr je inspiriran igrama poput Graveyard Keepera (farmer, poslovi, kuća, prodaja), ali grafika, likovi i svijet su originalni.
 - U konzoli browsera `devFarm.state` pokazuje cijelo stanje igre, za debugiranje.
 

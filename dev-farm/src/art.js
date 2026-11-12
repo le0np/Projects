@@ -37,6 +37,10 @@ export const RAMP = {
   tomato: ['#5c0f0d', '#851914', '#ad261c', '#d03a27', '#e85b3e', '#f58a68', '#fcc0a6'],
   pumpkin: ['#6b2c08', '#8f3f0d', '#b45512', '#d46d1a', '#ec8a2a', '#f7a84b', '#fcca7c'],
   rot: ['#241c12', '#33281a', '#443622', '#57472c', '#6c5a36'],
+  cabbage: ['#25452a', '#356138', '#4d8049', '#6d9e5f', '#93bd80', '#bfdcaa', '#e2f0d2'],
+  chard: ['#14301f', '#1d4229', '#285834', '#367041', '#4a8a52', '#66a466'],
+  chardStem: ['#6e1420', '#94202c', '#bd3440', '#da5560', '#ee8a90'],
+  sweetpotato: ['#3e1622', '#5c2232', '#7e3243', '#a04757', '#c06a74', '#da9298'],
   stripeRed: ['#6a1a1f', '#8d2428', '#b03332', '#cc4a43', '#e06a5e'],
   stripeCream: ['#9a8b70', '#b8a888', '#d3c4a2', '#e8dcbf', '#f6efdc'],
   burlap: ['#5e4a2e', '#7a6340', '#957d55', '#ae966b', '#c7b085'],
@@ -1011,6 +1015,45 @@ export function crop(id, stage) {
       }
       break;
     }
+    case 'cabbage': {
+      // broad outer leaves, a tight round head when ripe
+      const outer = big ? [[-2.9, 9], [-2.2, 8], [-0.9, 8], [-0.25, 9], [-1.57, 6]] : [[-2.7, 7], [-1.9, 6], [-1.2, 6], [-0.45, 7]];
+      for (const [a, l] of outer) leaf(p, 12, 22, a, l, 3.6, RAMP.cabbage, 0.05);
+      if (big) {
+        p.ellipse(12, 20.5, 6.8, 6, (nx, ny, x, y) => {
+          const vein = Math.abs(Math.sin((nx * 2.2 + ny) * 3.2)) < 0.12;
+          return pick(RAMP.cabbage, 0.3 + sphere(nx, ny) * 0.7 - (vein ? 0.18 : 0), x, y);
+        });
+      }
+      break;
+    }
+    case 'chard': {
+      const leaves = big ? [[-2.55, 15], [-2.05, 17], [-1.57, 18], [-1.1, 17], [-0.6, 15]] : [[-2.3, 9], [-1.6, 11], [-0.9, 9]];
+      for (const [a, l] of leaves) {
+        const sx = 12 + Math.cos(a) * l * 0.45;
+        const sy = 26 + Math.sin(a) * l * 0.45;
+        p.line(12, 26, sx, sy, (x, y, t) => pick(RAMP.chardStem, 0.65 - t * 0.2, x, y));
+        leaf(p, sx, sy, a, l * 0.6, big ? 3.4 : 2.6, RAMP.chard, 0.08);
+        p.line(sx, sy, sx + Math.cos(a) * l * 0.45, sy + Math.sin(a) * l * 0.45, RAMP.chardStem[2]);
+      }
+      break;
+    }
+    case 'sweetpotato': {
+      // trailing vine with heart-shaped leaves; tubers show at the soil when ripe
+      p.line(1, 24, 23, 21, (x, y) => pick(RAMP.leaf, 0.3, x, y));
+      const heart = (cx, cy, r) => {
+        p.ellipse(cx - r * 0.45, cy, r * 0.65, r * 0.6, (nx, ny, x, y) => pick(RAMP.leaf, 0.2 + sphere(nx, ny) * 0.7, x, y));
+        p.ellipse(cx + r * 0.45, cy, r * 0.65, r * 0.6, (nx, ny, x, y) => pick(RAMP.leaf, 0.15 + sphere(nx, ny) * 0.65, x, y));
+        p.ellipse(cx, cy + r * 0.45, r * 0.55, r * 0.55, (nx, ny, x, y) => pick(RAMP.leaf, 0.1 + sphere(nx, ny) * 0.6, x, y));
+        p.set(cx, cy - r * 0.2, RAMP.sweetpotato[2]);
+      };
+      for (const [x, y, r] of big ? [[5, 18, 4], [12, 14, 4.5], [19, 17, 4], [9, 9, 3.5], [16, 8, 3.2]] : [[7, 19, 3.2], [14, 16, 3.6], [19, 20, 3]]) heart(x, y, r);
+      if (big) {
+        p.ellipse(9, 25, 4.6, 2.3, (nx, ny, x, y) => pick(RAMP.sweetpotato, 0.15 + sphere(nx, ny) * 0.85, x, y));
+        p.ellipse(16.5, 25.5, 4, 2.1, (nx, ny, x, y) => pick(RAMP.sweetpotato, 0.15 + sphere(nx, ny) * 0.85, x, y));
+      }
+      break;
+    }
     default:
       seedling(p);
   }
@@ -1046,6 +1089,21 @@ export function icon(name) {
         return pick(RAMP.pumpkin, 0.08 + sphere(nx, ny) * 0.9 - (rib < -0.7 ? 0.28 : 0), x, y);
       });
       p.rect(7, 3, 2, 3, (x) => pick(['#3d4a1d', '#566526', '#6f8031'], x === 7 ? 0.9 : 0.4, x, 3));
+      break;
+    case 'cabbage':
+      for (const a of [-2.6, -0.5, 2.4, 0.7]) leaf(p, 8, 9, a, 6.5, 2.6, RAMP.cabbage, 0.05);
+      p.ellipse(8, 9, 5.4, 5, (nx, ny, x, y) => pick(RAMP.cabbage, 0.3 + sphere(nx, ny) * 0.7 - (Math.abs(Math.sin((nx * 2 + ny) * 3)) < 0.14 ? 0.18 : 0), x, y));
+      break;
+    case 'chard':
+      for (const [a, l] of [[-2.0, 12], [-1.45, 13], [-0.95, 12]]) {
+        p.line(8, 15, 8 + Math.cos(a) * 5, 15 + Math.sin(a) * 5, RAMP.chardStem[2]);
+        leaf(p, 8 + Math.cos(a) * 5, 15 + Math.sin(a) * 5, a, l * 0.55, 2.6, RAMP.chard, 0.1);
+      }
+      break;
+    case 'sweetpotato':
+      leaf(p, 2.5, 12.5, -0.55, 13, 3.4, RAMP.sweetpotato, 0.12);
+      p.set(6, 10, RAMP.sweetpotato[1]); p.set(10, 8, RAMP.sweetpotato[1]);
+      p.line(13, 5, 15, 3, RAMP.leaf[3]);
       break;
     case 'fertilizer':
       p.rect(6, 2, 4, 3, (x, y) => pick(RAMP.burlap, 0.7 - (x - 6) * 0.1, x, y));

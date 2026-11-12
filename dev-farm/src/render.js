@@ -193,7 +193,7 @@ export function createRenderer(canvas) {
     const px = x * TS;
     const py = y * TS;
     const growing = p.crop && !p.rotten && p.progress < 1;
-    const wet = growing && p.water > 0;
+    const wet = growing && p.wet;
     const v = (x * 7 + y * 3) % 3;
     img(art(`soil${wet ? 1 : 0}${v}`, () => A.soil(wet, v)), px, py);
     if (p.fert) img(art('fert', A.fertOverlay), px, py);
@@ -250,8 +250,8 @@ export function createRenderer(canvas) {
   function notify(events, s, now) {
     const float = (x, y, text, color) => fx.floats.push({ x: x * TS + 16, y: y * TS, text, color, t0: now });
     for (const e of events) {
-      if (e.type === 'harvest') float(e.x, e.y, '★'.repeat(e.tier), TIER_COLORS[e.tier]);
-      else if (e.type === 'sale') float(STAND.x + 1, STAND.y, `+${e.coins}`, '#ffe066');
+      if (e.type === 'harvest') float(e.x, e.y, `${'★'.repeat(e.tier)} ${e.kg} kg`, TIER_COLORS[e.tier]);
+      else if (e.type === 'sale') float(STAND.x + 1, STAND.y, `+${(e.money / 100).toFixed(2).replace('.', ',')} €`, '#ffe066');
       else if (e.type === 'water') fx.splashes.push({ x: e.x, y: e.y, t0: now });
       else if (e.type === 'sprinkle') {
         fx.sprays.push({ x: e.x, y: e.y, t0: now });

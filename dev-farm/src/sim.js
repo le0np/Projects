@@ -2,12 +2,12 @@
 // Functions mutate the state object and push what happened into an `events` array.
 
 import {
-  SAVE_VERSION, START_COINS, MAX_ENERGY, BAG_SIZE, CHEST_SIZE, STAND_SIZE, STACK_MAX,
-  GAME_MIN_PER_SEC, DAY_START, NIGHT_START, PASS_OUT, SHOP_OPEN, SHOP_CLOSE,
-  WALK_SPEED, NPC_SPEED, DRONE_SPEED, DRONE_COOLDOWN, WATER_DURATION, DRY_RATE,
-  AUTO_WATER_CREDIT, CAN_SIZES, SPRINKLER_INTERVAL, ENERGY_COST, COFFEE, EAT_ENERGY,
-  TIER_PRICE, MACHINE_MAX_TIER, CUSTOMER_INTERVAL, SEO_BONUS,
-  CROPS, RECIPES, ripeWindow, ROT_AFTER, SEEDS_FROM_FRUIT, SEED_PACK, HOUSE_SEEDS, START_FINDS,
+  SAVE_VERSION, START_MONEY, MAX_ENERGY, BAG_SIZE, CHEST_SIZE, STAND_SIZE, STACK_MAX, eur,
+  GAME_MIN_PER_SEC, DAY_START, NIGHT_START, PASS_OUT, SLEEP_FROM, SHOP_OPEN, SHOP_CLOSE,
+  WALK_SPEED, NPC_SPEED, DRONE_SPEED, DRONE_COOLDOWN, DRY_RATE,
+  AUTO_WATER_CREDIT, CAN_SIZES, ENERGY_COST, COFFEE, EAT_ENERGY,
+  TIER_PRICE, MACHINE_MAX_TIER, CUSTOMER_INTERVAL, CUSTOMER_KG, SEO_BONUS,
+  CROPS, RECIPES, RIPE_PENALTY, ROT_DAY, SEEDS_FROM_FRUIT, SEED_PACK, HOUSE_SEEDS, START_FINDS,
   DAILY_FIND_CHANCE, FERTILIZER_PRICE, WELL_BUILD, IRRIGATION_RADII, IRRIGATION_COSTS,
 } from './data.js';
 import {
@@ -23,8 +23,10 @@ const EPS = 1e-9;
 
 // ---------------------------------------------------------------- state
 
+// progress: 0..1 towards ripe; wet: watered today; wetDays/growDays: how many of the days
+// it grew it was watered (quality); ripeDays: days it has been waiting ripe.
 export function makePlot() {
-  return { crop: null, progress: 0, water: 0, wetBy: null, wetTime: 0, growTime: 0, fert: false, ripe: 0, rotten: false };
+  return { crop: null, progress: 0, wet: false, wetBy: null, wetDays: 0, growDays: 0, fert: false, ripeDays: 0, rotten: false };
 }
 
 const emptySlots = (n) => Array(n).fill(null);
@@ -36,8 +38,8 @@ export function createState(seed = 12345) {
     version: SAVE_VERSION,
     day: 1,
     clock: DAY_START,
-    coins: START_COINS,
-    totalEarned: 0,
+    money: eur(START_MONEY), // cents
+    totalEarned: 0, // cents
     energy: MAX_ENERGY,
     tool: 'hand',
     seed: CROPS[0].id,
@@ -72,7 +74,7 @@ export const canSize = (s) => CAN_SIZES[s.upgrades.bigCan ? 1 : 0];
 export const isNight = (clock) => clock >= NIGHT_START || clock < DAY_START;
 export const shopOpen = (clock) => clock >= SHOP_OPEN && clock < SHOP_CLOSE;
 // "unlocked" = available in the seed delivery catalogue
-export const isUnlocked = (s, id) => Boolean(cropById[id]) && s.totalEarned >= cropById[id].unlock;
+export const isUnlocked = (s, id) => Boolean(cropById[id]) && s.totalEarned >= eur(cropById[id].unlock);
 export const findAt = (s, x, y) => s.finds.findIndex((f) => f.x === x && f.y === y);
 export const plotUnlocked = (s, i) => inFieldA(i) || (s.upgrades.field2 && s.plots[i] !== undefined);
 export const sprinklerAt = (s, x, y) => s.sprinklers.findIndex((p) => p.x === x && p.y === y);
@@ -90,11 +92,16 @@ export function parseItem(id) {
 
 const isBad = (id) => parseItem(id)?.tier === 1;
 export const isSellable = (id) => parseItem(id)?.kind === 'crop';
-export const salePrice = (crop, tier) => Math.round(cropById[crop].price * TIER_PRICE[tier]);
+// cents per kg
+export const salePrice = (crop, tier) => Math.round(eur(cropById[crop].price) * TIER_PRICE[tier]);
 
 export function canAdd(slots, id) {
   return slots.some((it) => it === null || (it.id === id && it.n < STACK_MAX));
 }
+
+// How many units of `id` still fit.
+export const spaceFor = (slots, id) =>
+  slots.reduce((a, it) => a + (it === null ? STACK_MAX : it.id === id ? STACK_MAX - it.n : 0), 0);
 
 // Adds up to n items, returns how many fitted.
 export function addItem(slots, id, n = 1) {
@@ -135,14 +142,14 @@ function takeWhere(slots, pred, n) {
 // ---------------------------------------------------------------- quality
 
 export function qualityScore(p) {
-  const crop = cropById[p.crop];
-  const waterFrac = p.growTime > 0 ? Math.min(1, p.wetTime / p.growTime) : 0;
+  const waterFrac = p.growDays > 0 ? Math.min(1, p.wetDays / p.growDays) : 0;
   const care = 35 + 45 * waterFrac + (p.fert ? 20 : 0);
-  const win = ripeWindow(crop);
-  const late = Math.max(0, p.ripe - win);
-  const penalty = Math.min(1, late / (2 * win)) * 40;
+  const penalty = RIPE_PENALTY[Math.min(RIPE_PENALTY.length - 1, p.ripeDays)];
   return Math.max(0, Math.min(100, Math.round(care - penalty)));
 }
+
+// whole days still needed if watered every day
+export const daysLeft = (p) => Math.max(0, Math.ceil((1 - p.progress) * cropById[p.crop].days - EPS));
 
 export const tierOf = (q) => (q >= 85 ? 4 : q >= 65 ? 3 : q >= 40 ? 2 : 1);
 
@@ -162,12 +169,12 @@ function spend(s, cost, events) {
   return true;
 }
 
-function addCoins(s, amount, events) {
+function addMoney(s, cents, events) {
   const before = s.totalEarned;
-  s.coins += amount;
-  s.totalEarned += amount;
+  s.money += cents;
+  s.totalEarned += cents;
   for (const c of CROPS) {
-    if (c.unlock > before && c.unlock <= s.totalEarned) events.push({ type: 'unlock', crop: c.id });
+    if (eur(c.unlock) > before && eur(c.unlock) <= s.totalEarned) events.push({ type: 'unlock', crop: c.id });
   }
 }
 
@@ -240,7 +247,7 @@ function arrive(s, events) {
 export const totalSeeds = (s) => Object.values(s.seeds).reduce((a, n) => a + n, 0);
 
 function needsWater(p) {
-  return p.crop && !p.rotten && p.progress < 1 && p.water <= WATER_DURATION / 2;
+  return Boolean(p.crop) && !p.rotten && p.progress < 1 && !p.wet;
 }
 
 function freePlots(s) {
@@ -413,7 +420,7 @@ function pickUpFind(s, x, y, events) {
 export function objectAction(s, id, events = []) {
   if (id === 'well' && !s.upgrades.well) {
     if (!s.upgrades.wellPlan) return fail(events, 'noplan');
-    if (s.coins < WELL_BUILD.coins) return fail(events, 'coins', { need: WELL_BUILD.coins });
+    if (s.money < eur(WELL_BUILD.price)) return fail(events, 'coins', { need: eur(WELL_BUILD.price) });
     if (s.energy < WELL_BUILD.energy) return fail(events, 'tired');
     s.farmer.busy = { what: 'well', left: WELL_BUILD.seconds, total: WELL_BUILD.seconds };
     s.farmer.dir = 'up';
@@ -477,11 +484,11 @@ function plant(s, i, cropId, events, by = 'hand') {
 
 function waterPlot(s, i, events) {
   const p = s.plots[i];
-  if (p.water > WATER_DURATION / 2) return fail(events, 'wet');
+  if (p.wet) return fail(events, 'wet');
   if (s.water <= 0) return fail(events, 'canempty');
   if (!spend(s, ENERGY_COST.water, events)) return { ok: false, reason: 'tired' };
   s.water--;
-  p.water = WATER_DURATION;
+  p.wet = true;
   p.wetBy = 'hand';
   const [x, y] = xy(i);
   events.push({ type: 'water', x, y, by: 'hand' });
@@ -504,13 +511,14 @@ function harvestHand(s, i, events) {
   const p = s.plots[i];
   const tier = tierOf(qualityScore(p));
   const id = cropItem(p.crop, tier);
-  if (!canAdd(s.bag, id)) return fail(events, 'bagfull');
+  const kg = cropById[p.crop].yield;
+  if (spaceFor(s.bag, id) < kg) return fail(events, 'bagfull');
   if (!spend(s, ENERGY_COST.harvest, events)) return { ok: false, reason: 'tired' };
-  addItem(s.bag, id);
+  addItem(s.bag, id, kg);
   s.stats.harvested++;
   s.plots[i] = makePlot();
   const [x, y] = xy(i);
-  events.push({ type: 'harvest', crop: p.crop, tier, x, y, by: 'hand' });
+  events.push({ type: 'harvest', crop: p.crop, tier, kg, x, y, by: 'hand' });
   return { ok: true, tier };
 }
 
@@ -520,7 +528,7 @@ function placeSprinkler(s, x, y, events) {
     return fail(events, 'placeplot');
   }
   if (!takeWhere(s.bag, (id) => id === 'sprinkler', 1)) return fail(events, 'nosprinkler');
-  s.sprinklers.push({ x, y, t: 0 });
+  s.sprinklers.push({ x, y });
   events.push({ type: 'placed', x, y });
   return { ok: true };
 }
@@ -541,9 +549,9 @@ export function eat(s, slot, events = []) {
 }
 
 export function coffee(s, events = []) {
-  if (s.coins < COFFEE.price) return fail(events, 'coins', { need: COFFEE.price });
+  if (s.money < eur(COFFEE.price)) return fail(events, 'coins', { need: eur(COFFEE.price) });
   if (s.energy >= MAX_ENERGY) return fail(events, 'full');
-  s.coins -= COFFEE.price;
+  s.money -= eur(COFFEE.price);
   s.energy = Math.min(MAX_ENERGY, s.energy + COFFEE.energy);
   events.push({ type: 'coffee', gain: COFFEE.energy });
   return { ok: true };
@@ -568,7 +576,7 @@ export function canCraft(s, id) {
   if (!r) return 'unknown';
   if (r.once && s.upgrades[r.once]) return 'owned';
   if (r.requires && !s.upgrades[r.requires]) return 'requires';
-  if (s.coins < r.coins) return 'coins';
+  if (s.money < eur(r.price)) return 'coins';
   if (r.bad && countWhere(s.bag, isBad) < r.bad) return 'nobad';
   if (r.gives && !canAdd(s.bag, r.gives)) return 'bagfull';
   return null;
@@ -578,7 +586,7 @@ export function craft(s, id, events = []) {
   const problem = canCraft(s, id);
   if (problem) return fail(events, problem, { recipe: id });
   const r = recipeById[id];
-  s.coins -= r.coins;
+  s.money -= eur(r.price);
   if (r.bad) takeWhere(s.bag, isBad, r.bad);
   if (r.gives) addItem(s.bag, r.gives);
   if (r.once) s.upgrades[r.once] = true;
@@ -603,16 +611,16 @@ export function extractSeeds(s, slot, events = []) {
   return { ok: true, n };
 }
 
-export const packPrice = (crop) => cropById[crop].seed * SEED_PACK;
+export const packPrice = (crop) => eur(cropById[crop].pack); // cents
 
 // Order a bag of fertilizer; it is delivered to the chest the next morning.
 export function orderFertilizer(s, events = []) {
-  if (s.coins < FERTILIZER_PRICE) return fail(events, 'coins', { need: FERTILIZER_PRICE });
-  s.coins -= FERTILIZER_PRICE;
+  if (s.money < eur(FERTILIZER_PRICE)) return fail(events, 'coins', { need: eur(FERTILIZER_PRICE) });
+  s.money -= eur(FERTILIZER_PRICE);
   const o = s.orders.find((x) => x.item === 'fertilizer');
   if (o) o.n++;
   else s.orders.push({ item: 'fertilizer', n: 1 });
-  events.push({ type: 'ordered', item: 'fertilizer', n: 1, price: FERTILIZER_PRICE });
+  events.push({ type: 'ordered', item: 'fertilizer', n: 1, price: eur(FERTILIZER_PRICE) });
   return { ok: true };
 }
 
@@ -620,8 +628,8 @@ export function orderFertilizer(s, events = []) {
 export function orderSeeds(s, crop, events = []) {
   if (!isUnlocked(s, crop)) return fail(events, 'notincatalog');
   const price = packPrice(crop);
-  if (s.coins < price) return fail(events, 'coins', { need: price });
-  s.coins -= price;
+  if (s.money < price) return fail(events, 'coins', { need: price });
+  s.money -= price;
   const o = s.orders.find((x) => x.crop === crop && !x.item);
   if (o) o.n += SEED_PACK;
   else s.orders.push({ crop, n: SEED_PACK });
@@ -659,32 +667,44 @@ function morning(s, events) {
 
 // ---------------------------------------------------------------- world simulation
 
-function growPlots(s, dt, night, events) {
+// Every morning: crops grow one day (half a day if they stayed dry), ripe ones age,
+// the soil dries out, and then the sprinklers water what they reach.
+function newDay(s, events) {
   for (const key of Object.keys(s.plots)) {
     const i = Number(key);
     const p = s.plots[i];
     if (!p.crop || p.rotten || !plotUnlocked(s, i)) continue;
+    const [x, y] = xy(i);
     if (p.progress < 1) {
-      const wet = Math.min(p.water, dt);
-      p.progress += (wet + (dt - wet) * DRY_RATE) / cropById[p.crop].grow;
-      p.growTime += dt;
-      p.wetTime += wet * (p.wetBy === 'auto' ? AUTO_WATER_CREDIT : 1);
-      p.water = Math.max(0, p.water - dt);
+      p.progress = Math.min(1, p.progress + (p.wet ? 1 : DRY_RATE) / cropById[p.crop].days);
+      p.growDays += 1;
+      if (p.wet) p.wetDays += p.wetBy === 'auto' ? AUTO_WATER_CREDIT : 1;
       if (p.progress >= 1 - EPS) {
         p.progress = 1;
-        p.water = 0;
-        const [x, y] = xy(i);
         events.push({ type: 'ripe', crop: p.crop, x, y });
       }
-    } else if (!night) {
-      // ripe crops wait for you overnight, but not during the day
-      p.ripe += dt;
-      if (p.ripe > ROT_AFTER * ripeWindow(cropById[p.crop])) {
+    } else {
+      p.ripeDays += 1;
+      if (p.ripeDays >= ROT_DAY) {
         p.rotten = true;
-        const [x, y] = xy(i);
         events.push({ type: 'rot', crop: p.crop, x, y });
       }
     }
+    p.wet = false;
+    p.wetBy = null;
+  }
+  for (const sp of s.sprinklers) {
+    const tiles = [];
+    for (const [x, y] of sprinklerReach(s.irrigation, sp.x, sp.y)) {
+      const i = idx(x, y);
+      const p = s.plots[i];
+      if (p && plotUnlocked(s, i) && needsWater(p)) {
+        p.wet = true;
+        p.wetBy = 'auto';
+        tiles.push([x, y]);
+      }
+    }
+    if (tiles.length) events.push({ type: 'sprinkle', x: sp.x, y: sp.y, tiles });
   }
 }
 
@@ -699,37 +719,17 @@ export function sprinklerReach(level, x, y) {
   return out;
 }
 
-export const irrigationCost = (s) => (s.irrigation >= IRRIGATION_RADII.length ? null : IRRIGATION_COSTS[s.irrigation]);
+export const irrigationCost = (s) => (s.irrigation >= IRRIGATION_RADII.length ? null : eur(IRRIGATION_COSTS[s.irrigation])); // cents
 
 export function upgradeIrrigation(s, events = []) {
   if (!s.upgrades.well) return fail(events, 'requires');
   const cost = irrigationCost(s);
   if (cost === null) return fail(events, 'owned');
-  if (s.coins < cost) return fail(events, 'coins', { need: cost });
-  s.coins -= cost;
+  if (s.money < cost) return fail(events, 'coins', { need: cost });
+  s.money -= cost;
   s.irrigation++;
   events.push({ type: 'irrigation', level: s.irrigation, reach: sprinklerReach(s.irrigation, 0, 0).length });
   return { ok: true };
-}
-
-function runSprinklers(s, dt, events) {
-  for (const sp of s.sprinklers) {
-    sp.t += dt;
-    while (sp.t >= SPRINKLER_INTERVAL) {
-      sp.t -= SPRINKLER_INTERVAL;
-      const tiles = [];
-      for (const [x, y] of sprinklerReach(s.irrigation, sp.x, sp.y)) {
-        const i = idx(x, y);
-        const p = s.plots[i];
-        if (p && plotUnlocked(s, i) && p.crop && p.progress < 1 && p.water <= WATER_DURATION / 2) {
-          p.water = WATER_DURATION;
-          p.wetBy = 'auto';
-          tiles.push([x, y]);
-        }
-      }
-      if (tiles.length) events.push({ type: 'sprinkle', x: sp.x, y: sp.y, tiles });
-    }
-  }
 }
 
 function findDroneJob(s) {
@@ -778,17 +778,17 @@ function runDrone(s, dt, events) {
   if (!p || !p.crop || p.rotten || p.progress < 1) return; // someone was faster
   const tier = Math.min(MACHINE_MAX_TIER, tierOf(qualityScore(p)));
   const id = cropItem(p.crop, tier);
-  if (!addItem(s.chest, id)) return;
+  const kg = cropById[p.crop].yield;
+  if (spaceFor(s.chest, id) < kg) return;
+  addItem(s.chest, id, kg);
   s.stats.harvested++;
   const crop = p.crop;
   s.plots[i] = makePlot();
-  events.push({ type: 'harvest', crop, tier, x, y, by: 'drone' });
+  events.push({ type: 'harvest', crop, tier, kg, x, y, by: 'drone' });
   if (s.upgrades.replant) plant(s, i, crop, [], 'drone');
 }
 
-function worldStep(s, dt, night, events) {
-  growPlots(s, dt, night, events);
-  runSprinklers(s, dt, events);
+function worldStep(s, dt, events) {
   runDrone(s, dt, events);
 }
 
@@ -830,13 +830,14 @@ function buy(s, c, events) {
   const slot = choice[Math.floor(rand(s) * choice.length)];
   const it = s.stand[slot];
   const { crop, tier } = parseItem(it.id);
-  const qty = Math.min(it.n, 1 + Math.floor(rand(s) * 3));
-  const coins = salePrice(crop, tier) * qty;
+  const [lo, hi] = CUSTOMER_KG;
+  const qty = Math.min(it.n, lo + Math.floor(rand(s) * (hi - lo + 1)));
+  const money = salePrice(crop, tier) * qty;
   it.n -= qty;
   if (it.n === 0) s.stand[slot] = null;
   s.stats.sold += qty;
-  addCoins(s, coins, events);
-  events.push({ type: 'sale', crop, tier, qty, coins, customer: c.id });
+  addMoney(s, money, events);
+  events.push({ type: 'sale', crop, tier, qty, money, customer: c.id });
 }
 
 function runCustomers(s, dt, events) {
@@ -893,7 +894,7 @@ export function tick(s, dt, events = []) {
   }
   if (s.farmer.busy) build(s, dt, events);
   else moveFarmer(s, dt, events);
-  worldStep(s, dt, isNight(s.clock), events);
+  worldStep(s, dt, events);
   runCustomers(s, dt, events);
   return events;
 }
@@ -903,11 +904,11 @@ function build(s, dt, events) {
   b.left -= dt;
   if (b.left > 0) return;
   s.farmer.busy = null;
-  if (s.coins < WELL_BUILD.coins || s.energy < WELL_BUILD.energy) {
-    fail(events, s.coins < WELL_BUILD.coins ? 'coins' : 'tired');
+  if (s.money < eur(WELL_BUILD.price) || s.energy < WELL_BUILD.energy) {
+    fail(events, s.money < eur(WELL_BUILD.price) ? 'coins' : 'tired');
     return;
   }
-  s.coins -= WELL_BUILD.coins;
+  s.money -= eur(WELL_BUILD.price);
   s.energy -= WELL_BUILD.energy;
   s.upgrades.well = true;
   events.push({ type: 'built', what: 'well' });
@@ -924,11 +925,11 @@ export function advance(s, seconds, events = []) {
   return events;
 }
 
-// Sleep until 06:00 next morning. Crops keep growing, ripe ones wait.
+// Sleep until 06:00 next morning (allowed from SLEEP_FROM). That is when crops grow.
 export function sleep(s, events = [], passedOut = false) {
-  const seconds = (DAY_START + 24 * 60 - s.clock) / GAME_MIN_PER_SEC;
+  if (!passedOut && s.clock < SLEEP_FROM) return fail(events, 'tooearly');
   const night = [];
-  for (let left = seconds; left > EPS; left -= 1) worldStep(s, Math.min(1, left), true, night);
+  newDay(s, night);
   s.day++;
   s.clock = DAY_START;
   s.energy = passedOut ? Math.round(MAX_ENERGY / 2) : MAX_ENERGY;
@@ -939,10 +940,11 @@ export function sleep(s, events = [], passedOut = false) {
   morning(s, mornEvents);
   const summary = {
     ripened: night.filter((e) => e.type === 'ripe').length,
-    droneHarvested: night.filter((e) => e.type === 'harvest').length,
+    rotted: night.filter((e) => e.type === 'rot').length,
+    sprinkled: night.filter((e) => e.type === 'sprinkle').reduce((a, e) => a + e.tiles.length, 0),
   };
   events.push({ type: passedOut ? 'passout' : 'slept', day: s.day, summary });
-  events.push(...mornEvents);
+  events.push(...night.filter((e) => e.type === 'sprinkle'), ...mornEvents);
   return { ok: true };
 }
 

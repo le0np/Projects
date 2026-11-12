@@ -1,12 +1,12 @@
 // Turning state into a string and back. Anything unexpected falls back to safe values.
 
 import { createState, cropById, parseItem, isSellable, TOOLS, canSize } from './sim.js';
-import { SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, WATER_DURATION, IRRIGATION_RADII } from './data.js';
+import { SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, IRRIGATION_RADII } from './data.js';
 import { W, H, isWalkable, isPlotTile } from './world.js';
 
-export const OLD_KEY = 'dev-farm/save-v2';
 
-export const SAVE_KEY = 'dev-farm/save-v3';
+export const SAVE_KEY = 'dev-farm/save-v4';
+export const OLDER_KEYS = ['dev-farm/save-v3', 'dev-farm/save-v2'];
 
 export function serialize(s) {
   return JSON.stringify({
@@ -42,16 +42,18 @@ export function deserialize(raw) {
     return fresh;
   }
   if (!d || typeof d !== 'object') return fresh;
-  // v2 farms had a well from the start and bought seeds on planting: keep them playable
+  // Older farms are carried over. v2 had a well from the start and no counted seeds;
+  // v2/v3 used coins (1 coin ≈ 0,40 €) and grew crops by the second.
   const fromV2 = d.version === 2;
-  if (d.version !== SAVE_VERSION && !fromV2) return fresh;
+  const legacy = d.version === 2 || d.version === 3;
+  if (d.version !== SAVE_VERSION && !legacy) return fresh;
 
   const s = fresh.state;
   const big = Number.MAX_SAFE_INTEGER;
   s.day = int(d.day, 1, 1e6, 1);
   s.clock = num(d.clock, DAY_START, PASS_OUT - 1, DAY_START);
-  s.coins = int(d.coins, 0, big, s.coins);
-  s.totalEarned = int(d.totalEarned, 0, big, 0);
+  s.money = legacy ? int(d.coins, 0, big / 40, 0) * 40 : int(d.money, 0, big, s.money);
+  s.totalEarned = legacy ? int(d.totalEarned, 0, big / 40, 0) * 40 : int(d.totalEarned, 0, big, 0);
   s.energy = num(d.energy, 0, MAX_ENERGY, MAX_ENERGY);
   if (TOOLS.includes(d.tool)) s.tool = d.tool;
   for (const k of Object.keys(s.upgrades)) s.upgrades[k] = d.upgrades?.[k] === true;
@@ -84,15 +86,16 @@ export function deserialize(raw) {
     for (const key of Object.keys(s.plots)) {
       const p = d.plots[key];
       if (!p || !cropById[p.crop]) continue;
+      const growDays = legacy ? (num(p.progress, 0, 1, 0) > 0 ? 1 : 0) : int(p.growDays, 0, 999, 0);
       s.plots[key] = {
         crop: p.crop,
         progress: num(p.progress, 0, 1, 0),
-        water: num(p.water, 0, WATER_DURATION, 0),
+        wet: legacy ? false : p.wet === true,
         wetBy: p.wetBy === 'auto' ? 'auto' : p.wetBy === 'hand' ? 'hand' : null,
-        wetTime: num(p.wetTime, 0, 1e7, 0),
-        growTime: num(p.growTime, 0, 1e7, 0),
+        wetDays: legacy ? growDays : num(p.wetDays, 0, growDays, 0),
+        growDays,
         fert: p.fert === true,
-        ripe: num(p.ripe, 0, 1e7, 0),
+        ripeDays: legacy ? 0 : int(p.ripeDays, 0, 99, 0),
         rotten: p.rotten === true,
       };
     }
@@ -109,7 +112,7 @@ export function deserialize(raw) {
       const y = int(sp?.y, 0, H - 1, -1);
       if (x < 0 || y < 0 || !isPlotTile(x, y) || seen.has(`${x},${y}`)) continue;
       seen.add(`${x},${y}`);
-      s.sprinklers.push({ x, y, t: num(sp.t, 0, 60, 0) });
+      s.sprinklers.push({ x, y });
     }
   }
 

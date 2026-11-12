@@ -7,9 +7,9 @@ import {
   countWhere, extractSeeds, orderSeeds, startJob, upgradeIrrigation, orderFertilizer,
 } from './sim.js';
 import { TIER_NAMES } from './data.js';
-import { SAVE_KEY, OLD_KEY, serialize, deserialize } from './save.js';
+import { SAVE_KEY, OLDER_KEYS, serialize, deserialize } from './save.js';
 import { createRenderer } from './render.js';
-import { createUI, itemName, stars, formatCoins, plots } from './ui.js';
+import { createUI, itemName, stars, formatMoney, plots } from './ui.js';
 
 const ZOOM_KEY = 'dev-farm/zoom';
 const storage = {
@@ -18,7 +18,7 @@ const storage = {
   remove(k) { try { localStorage.removeItem(k); } catch { /* ignore */ } },
 };
 
-const loaded = deserialize(storage.get(SAVE_KEY) ?? storage.get(OLD_KEY));
+const loaded = deserialize([SAVE_KEY, ...OLDER_KEYS].map((k) => storage.get(k)).find((v) => v) ?? null);
 let state = loaded.state;
 let hoverTile = null;
 
@@ -63,6 +63,7 @@ function farmerSays(e) {
     case 'notfruit': return 'Iz toga nema sjemena.';
     case 'standfull': return 'Štand je pun.';
     case 'nofreeplots': return 'Nema slobodnih parcela.';
+    case 'tooearly': return 'Još je rano za spavanje. Ima posla do večeri.';
     case 'nothingdry': return 'Sve je već zaliveno.';
     case 'noplan': return 'Ovdje bi bio dobar bunar, ali treba mi plan. Skicirat ću ga na radnom stolu.';
     case 'nothingripe': return 'Još ništa nije zrelo.';
@@ -76,7 +77,7 @@ function farmerSays(e) {
 let droneBatch = 0;
 let jobTally = null; // quality counts while "harvest all" runs
 
-const tallyText = (t) => [4, 3, 2, 1].filter((k) => t[k]).map((k) => `${stars(k)}×${t[k]}`).join(', ');
+const tallyText = (t) => [4, 3, 2, 1].filter((k) => t[k]).map((k) => `${stars(k)} ${t[k]} kg`).join(', ');
 
 function report(events) {
   for (const e of events) {
@@ -123,11 +124,11 @@ function report(events) {
       }
       case 'harvest':
         if (e.by === 'drone') droneBatch++;
-        else if (jobTally) jobTally[e.tier] = (jobTally[e.tier] ?? 0) + 1;
-        else ui.say(`${cropById[e.crop].name} ${stars(e.tier)}, ${TIER_NAMES[e.tier]}!`, e.tier >= 3 ? 'happy' : e.tier === 1 ? 'sad' : '');
+        else if (jobTally) jobTally[e.tier] = (jobTally[e.tier] ?? 0) + e.kg;
+        else ui.say(`${cropById[e.crop].name} ${stars(e.tier)}, ${TIER_NAMES[e.tier]}! ${e.kg} kg.`, e.tier >= 3 ? 'happy' : e.tier === 1 ? 'sad' : '');
         break;
       case 'sale':
-        ui.notify(`🛒 Kupac je kupio ${e.qty}× ${cropById[e.crop].name} ${stars(e.tier)} · +${formatCoins(e.coins)} 🪙`, 'ok');
+        ui.notify(`🛒 Kupac je kupio ${e.qty} kg: ${cropById[e.crop].name} ${stars(e.tier)} · +${formatMoney(e.money)}`, 'ok');
         break;
       case 'nosale':
         ui.notify('🛒 Kupac je došao do praznog štanda i otišao.', 'info');
@@ -143,8 +144,8 @@ function report(events) {
         break;
       case 'ordered':
         ui.notify(e.item
-          ? `📦 Naručeno: vreća gnojiva (−${e.price} 🪙). Stiže sutra ujutro u škrinju.`
-          : `📦 Naručeno: ${e.n}× ${cropById[e.crop].name} (−${e.price} 🪙). Stiže sutra ujutro.`);
+          ? `📦 Naručeno: vreća gnojiva (−${formatMoney(e.price)}). Stiže sutra ujutro u škrinju.`
+          : `📦 Naručeno: ${e.n}× sjeme, ${cropById[e.crop].name} (−${formatMoney(e.price)}). Stiže sutra ujutro.`);
         break;
       case 'delivered':
         ui.notify(e.item ? `📦 Dostava je stigla: ${e.n}× gnojivo, u škrinji.` : `📦 Dostava je stigla: ${e.n}× sjeme (${name(e.crop)}).`, 'ok');
@@ -199,7 +200,8 @@ function nightReport(e) {
   const parts = [`🌙 Dan ${e.day}.`, saved ? 'Igra je spremljena.' : 'Spremanje nije uspjelo (browser ne dopušta).'];
   if (e.type === 'passout') parts.push('Farmer je zaspao na nogama: danas s pola energije.');
   if (e.summary.ripened) parts.push(`Preko noći sazrelo: ${e.summary.ripened}.`);
-  if (e.summary.droneHarvested) parts.push(`Dron je ubrao ${e.summary.droneHarvested}.`);
+  if (e.summary.sprinkled) parts.push(`Prskalice su zalile ${e.summary.sprinkled} ${plots(e.summary.sprinkled)}.`);
+  if (e.summary.rotted) parts.push(`Istrunulo: ${e.summary.rotted}.`);
   ui.notify(parts.join(' '), e.type === 'passout' ? 'err' : 'ok');
 }
 
@@ -212,7 +214,8 @@ function flushDrone() {
 function intro() {
   ui.notify('👋 Dobrodošlica na farmu! Klikni bilo gdje na mapi i farmer ode tamo. Klik na parcelu radi ono što drži u ruci (tipke 1–4).', 'info');
   ui.notify(`🌱 Sjeme se broji: nađi ga na imanju, izvadi iz plodova na radnom stolu ili naruči ovdje, pod "Dostava sjemena".`, 'info');
-  ui.notify('🏪 Plodove stavi na štand ispred kuće. Bolja kvaliteta, bolja cijena. Navečer spavaj u kući: tako se igra sprema.', 'info');
+  ui.notify('🌙 Usjevi rastu preko noći: svako jutro jedan dan ako su dan prije bili zaliveni, pola dana ako nisu. Dovoljno je zaliti jednom dnevno.', 'info');
+  ui.notify('🏪 Plodove stavi na štand ispred kuće. Bolja kvaliteta, bolja cijena. Od 18 h možeš spavati u kući: tako se igra sprema.', 'info');
   setTimeout(() => ui.say('Nova farma! Sjemena još nemam… Možda u kući nešto ima?'), 600);
 }
 
@@ -320,7 +323,7 @@ function onZoom(dir) {
 function onReset() {
   if (!window.confirm('Obrisati farmu i krenuti ispočetka?')) return;
   storage.remove(SAVE_KEY);
-  storage.remove(OLD_KEY);
+  OLDER_KEYS.forEach((k) => storage.remove(k));
   state = createState(Date.now() % 2147483646 + 1);
   Object.assign(ui.state, { panel: null, selected: -1, placing: false });
   ui.clear();
