@@ -11,6 +11,14 @@
   <header class="topbar">
     <div class="brand"><span class="user">dev@farma</span>:<span class="path">~/dev-farm</span>$</div>
     <div class="hud">
+      <span class="settings-wrap">
+        <button id="settings-btn" type="button" class="settings-btn" title="Postavke" aria-haspopup="true">⚙</button>
+        <div id="settings" class="settings" hidden>
+          <label><input id="set-bgtime" type="checkbox"> Vrijeme teče i kad igra nije na ekranu</label>
+          <p class="muted small">Isključeno: dok je tab skriven, farma stoji. Uključeno: dan ide dalje, kupci kupuju, usjevi rastu.</p>
+          <button id="reset" type="button" class="reset">rm -rf farma</button>
+        </div>
+      </span>
       <span class="hud-item"><strong id="hud-day">Dan 1</strong> · <span id="hud-clock">06:00</span></span>
       <span class="hud-item muted" id="hud-shop"></span>
       <span class="hud-item coins" id="hud-money"><img id="hud-gold-icon" class="coin" alt="zlatnici"><span id="hud-gold">0</span><img id="hud-silver-icon" class="coin" alt="srebrenjaci"><span id="hud-silver" class="silver">0</span></span>
@@ -62,10 +70,6 @@
     </aside>
   </main>
 
-  <footer class="footer">
-    <span class="muted">Spavanje u kući sprema igru. Dok je tab skriven, vrijeme stoji.</span>
-    <button id="reset" type="button" class="reset">rm -rf farma</button>
-  </footer>
 
   <script type="module" src="src/main.js"></script>
 </body>

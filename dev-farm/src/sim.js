@@ -9,7 +9,7 @@ import {
   TIER_PRICE, MACHINE_MAX_TIER, CUSTOMER_INTERVAL, CUSTOMER_KG, SEO_BONUS,
   CROPS, RECIPES, RIPE_PENALTY, ROT_DAY, SEEDS_FROM_FRUIT, SEED_PACK, HOUSE_SEEDS, START_FINDS,
   DAILY_FIND_CHANCE, FERTILIZER_PRICE, WELL_BUILD, IRRIGATION_R2, IRRIGATION_COSTS, HOSE_PER_SPRINKLER,
-  PUMP_INSTALL_SECONDS, SHOP_ITEMS,
+  PUMP_INSTALL_SECONDS, SHOP_ITEMS, BUILDINGS,
   GOODS, FORAGE, FORAGE_START, FORAGE_DAILY, FORAGE_MAX, COOP, GIGS, GIG_OFFERS, GIG_ENERGY_PER_HOUR,
 } from './data.js';
 import {
@@ -56,7 +56,7 @@ function baseState(seed) {
     forage: [],
     coop: { built: false, hens: 0, feed: 0, eggs: 0 },
     gigs: { offers: [], active: null, done: 0 },
-    upgrades: { wellPlan: false, well: false, pump: false, bigCan: false, drone: false, replant: false, seo: false, field2: false },
+    upgrades: { wellPlan: false, well: false, pump: false, coopPlan: false, bigCan: false, drone: false, replant: false, seo: false, field2: false },
     irrigation: 1,
     farmer: { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null, queue: [], job: null, busy: null },
     plots,
@@ -456,6 +456,19 @@ function moveFarmer(s, dt, events) {
   if (!f.path.length) arrive(s, events);
 }
 
+// Buildings (well, coop, …): needs the plan from the workbench, then the farmer builds on site.
+function startBuilding(s, id, events) {
+  const b = BUILDINGS[id];
+  if (!s.upgrades[b.plan]) return fail(events, 'noplan', { what: id });
+  if (s.money < zl(b.price)) return fail(events, 'coins', { need: zl(b.price) });
+  if (!hasMats(s, b)) return fail(events, 'nomats', { mats: b });
+  if (s.energy < b.energy) return fail(events, 'tired');
+  s.farmer.busy = { what: id, left: b.seconds, total: b.seconds };
+  s.farmer.dir = 'up';
+  events.push({ type: 'buildstart', what: id });
+  return { ok: true };
+}
+
 function pickUpFind(s, x, y, events) {
   const k = findAt(s, x, y);
   if (k < 0) return { ok: false };
@@ -467,8 +480,8 @@ function pickUpFind(s, x, y, events) {
 }
 
 export function objectAction(s, id, events = []) {
+  if ((id === 'well' && !s.upgrades.well) || (id === 'coop' && !s.coop.built)) return startBuilding(s, id, events);
   if (id === 'coop') {
-    if (!s.coop.built) return fail(events, 'coopbroken');
     if (s.coop.eggs) {
       const n = addItem(s.bag, 'crop:egg:2', s.coop.eggs);
       s.coop.eggs -= n;
@@ -476,16 +489,6 @@ export function objectAction(s, id, events = []) {
       if (s.coop.eggs) fail(events, 'bagfull');
     }
     events.push({ type: 'open', panel: 'coop' });
-    return { ok: true };
-  }
-  if (id === 'well' && !s.upgrades.well) {
-    if (!s.upgrades.wellPlan) return fail(events, 'noplan');
-    if (s.money < zl(WELL_BUILD.price)) return fail(events, 'coins', { need: zl(WELL_BUILD.price) });
-    if (!hasMats(s, WELL_BUILD)) return fail(events, 'nomats', { mats: WELL_BUILD });
-    if (s.energy < WELL_BUILD.energy) return fail(events, 'tired');
-    s.farmer.busy = { what: 'well', left: WELL_BUILD.seconds, total: WELL_BUILD.seconds };
-    s.farmer.dir = 'up';
-    events.push({ type: 'buildstart', what: 'well' });
     return { ok: true };
   }
   if (id === 'house' && !s.found.house) {
@@ -636,12 +639,12 @@ export function coffee(s, events = []) {
 }
 
 // Move a whole stack between 'bag', 'chest' and 'stand'.
-export function moveItem(s, from, slot, to, events = []) {
+export function moveItem(s, from, slot, to, events = [], amount = Infinity) {
   const src = s[from];
   const it = src?.[slot];
   if (!it || !s[to] || from === to) return fail(events, 'noitem');
   if (to === 'stand' && !isSellable(it.id)) return fail(events, 'notsellable', { id: it.id });
-  const added = addItem(s[to], it.id, it.n);
+  const added = addItem(s[to], it.id, Math.min(it.n, amount));
   if (!added) return fail(events, `${to}full`);
   it.n -= added;
   if (it.n === 0) src[slot] = null;
@@ -662,7 +665,6 @@ export function canCraft(s, id) {
   if (!r) return 'unknown';
   if (r.once && owns(s, r.once)) return 'owned';
   if (r.requires && !owns(s, r.requires)) return 'requires';
-  if (id === 'hens' && s.coop.hens >= COOP.maxHens) return 'owned';
   if (r.mats && !hasMats(s, r.mats)) return 'nomats';
   if (s.money < zl(r.price)) return 'coins';
   if (r.bad && countWhere(s.bag, isBad) < r.bad) return 'nobad';
@@ -678,9 +680,7 @@ export function craft(s, id, events = []) {
   if (r.mats) useMats(s, r.mats);
   if (r.bad) takeWhere(s.bag, isBad, r.bad);
   if (r.gives) addItem(s.bag, r.gives);
-  if (r.once === 'coop') Object.assign(s.coop, { built: true, hens: COOP.hens });
-  else if (r.once) s.upgrades[r.once] = true;
-  if (id === 'hens') s.coop.hens = Math.min(COOP.maxHens, s.coop.hens + COOP.moreHens);
+  if (r.once) s.upgrades[r.once] = true;
   if (r.once === 'bigCan') s.water = canSize(s);
   events.push({ type: 'craft', recipe: id });
   return { ok: true };
@@ -710,6 +710,11 @@ export const shopItemById = Object.fromEntries(SHOP_ITEMS.map((i) => [i.id, i]))
 export function orderItem(s, id, events = []) {
   const it = shopItemById[id];
   if (!it) return fail(events, 'notincatalog');
+  if (id === 'hen') {
+    if (!s.coop.built) return fail(events, 'coopbroken');
+    const coming = s.orders.filter((o) => o.item === 'hen').reduce((a, o) => a + o.n, 0);
+    if (s.coop.hens + coming >= COOP.maxHens) return fail(events, 'coopfull');
+  }
   if (s.money < zl(it.price)) return fail(events, 'coins', { need: zl(it.price) });
   s.money -= zl(it.price);
   const o = s.orders.find((x) => x.item === id);
@@ -747,7 +752,10 @@ function morning(s, events) {
   offerGigs(s, events);
   const waiting = [];
   for (const o of s.orders) {
-    if (o.item) {
+    if (o.item === 'hen') {
+      s.coop.hens = Math.min(COOP.maxHens, s.coop.hens + o.n);
+      events.push({ type: 'delivered', item: 'hen', n: o.n });
+    } else if (o.item) {
       const n = addItem(s.chest, o.item, o.n);
       if (n) events.push({ type: 'delivered', item: o.item, n });
       if (n < o.n) waiting.push({ item: o.item, n: o.n - n }); // chest full: the rest comes tomorrow
@@ -1032,14 +1040,14 @@ function pickForage(s, x, y, events) {
 // ---------------------------------------------------------------- the chicken coop
 
 // Put produce from the bag into the feeder (1 kg feeds one hen for a day).
-export function feedHens(s, slot, events = []) {
+export function feedHens(s, slot, events = [], amount = Infinity) {
   const it = s.bag[slot];
   const p = it && parseItem(it.id);
   if (!s.coop.built) return fail(events, 'coopbroken');
   if (!p || p.kind !== 'crop' || p.crop === 'egg') return fail(events, 'notfood');
   const room = COOP.feedCap - s.coop.feed;
   if (room <= 0) return fail(events, 'feederfull');
-  const n = takeWhere([it], () => true, room);
+  const n = takeWhere([it], () => true, Math.min(room, amount));
   if (it.n === 0) s.bag[slot] = null;
   s.coop.feed += n;
   events.push({ type: 'fed', n, crop: p.crop });
@@ -1137,21 +1145,26 @@ function build(s, dt, events) {
     finishGig(s, events);
     return;
   }
+  const bld = BUILDINGS[b.what];
+  if (bld) {
+    if (s.money < zl(bld.price) || s.energy < bld.energy || !hasMats(s, bld)) {
+      fail(events, s.money < zl(bld.price) ? 'coins' : !hasMats(s, bld) ? 'nomats' : 'tired', { mats: bld });
+      return;
+    }
+    useMats(s, bld);
+    s.money -= zl(bld.price);
+    s.energy -= bld.energy;
+    if (b.what === 'coop') s.coop.built = true;
+    else s.upgrades[b.what] = true;
+    events.push({ type: 'built', what: b.what });
+    return;
+  }
   if (b.what === 'pump') {
     if (!takeWhere(s.bag, (id) => id === 'pump', 1)) return;
     s.upgrades.pump = true;
     events.push({ type: 'built', what: 'pump' });
     return;
   }
-  if (s.money < zl(WELL_BUILD.price) || s.energy < WELL_BUILD.energy || !hasMats(s, WELL_BUILD)) {
-    fail(events, s.money < zl(WELL_BUILD.price) ? 'coins' : !hasMats(s, WELL_BUILD) ? 'nomats' : 'tired');
-    return;
-  }
-  useMats(s, WELL_BUILD);
-  s.money -= zl(WELL_BUILD.price);
-  s.energy -= WELL_BUILD.energy;
-  s.upgrades.well = true;
-  events.push({ type: 'built', what: 'well' });
 }
 
 // Advance in small steps (used by tests and to catch up after a slow frame).

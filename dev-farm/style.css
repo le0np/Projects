@@ -41,6 +41,18 @@ body {
 .brand { font-weight: 700; }
 .brand .user { color: var(--green); }
 .brand .path { color: var(--blue); }
+.settings-wrap { position: relative; }
+.settings-btn { padding: 2px 8px; background: transparent; border: 1px solid var(--line); border-radius: 6px; font-size: 16px; }
+.settings {
+  position: absolute; z-index: 20; right: 0; top: 34px; width: 300px;
+  display: grid; gap: 8px; padding: 12px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+}
+.settings label { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; cursor: pointer; }
+.settings p { margin: 0; }
+.amount { display: flex; gap: 4px; align-items: center; margin-bottom: 6px; }
+.amount .btn { padding: 2px 8px; background: transparent; border-color: var(--line); }
+.amount .btn.on { background: #3a3420; border-color: var(--yellow); color: var(--yellow); }
 .hud { display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; }
 .hud .coins { display: inline-flex; align-items: center; gap: 4px; font-size: 18px; font-weight: 700; color: var(--yellow); }
 .hud .coins .coin { width: 32px; height: 32px; margin: -6px -4px -6px 0; image-rendering: pixelated; }

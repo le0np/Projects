@@ -106,13 +106,21 @@ Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša i rad
 - postavljanje: prozirna prskalica i doseg uz miš; pumpa nacrtana uz bunar
 - format spremanja v5; starije farme s prskalicama dobiju pumpu, a prskalice prelaze na gornji lijevi kut svoje parcele
 
+### v13 – građevine po istom pravilu, kokoši pojedinačno, postavke
+
+- sve građevine idu istim putem kao bunar: plan na radnom stolu, gradnja na licu mjesta (`BUILDINGS` u `src/data.js`); kokošinjac je prvi prebačen, buduće građevine dodaju se samo zapisom
+- popravljeni kokošinjac je prazan; kokoši se naručuju na mobitelu jedna po jedna (12 zl, najviše 9), stižu ujutro ravno u kokošinjac
+- prebacivanje između torbe, škrinje, štanda i hranilice po 1, po 5 ili sve
+- ⚙ postavke u gornjoj traci: „Vrijeme teče i kad igra nije na ekranu“ (zadano isključeno; uključeno nadoknađuje do 3 sata i javlja sažetak) i brisanje farme; donja traka uklonjena
+- borovi imaju šiljaste vrhove svakog kata krošnje
+
 ## Zadnja automatizirana provjera
 
-Provedeno 12. studenog 2026. nakon v12:
+Provedeno 12. studenog 2026. nakon v13:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` u `dev-farm/` | 38/38 testova prolazi |
+| `npm test` u `dev-farm/` | 39/39 testova prolazi |
 | `npm start` + dohvat stranice i modula | server vraća 200 za `index.html` i `src/*.js` |
 | Headless Firefox (scenariji u scratchpadu) | iscrtavanje bez JS grešaka; provjereni hodanje, škrinja, skupna sadnja, zalijevanje s odlaskom po vodu, zidanje bunara, doseg prskalice, izbornik koji se zatvara, novčići u HUD-u, izbornici sva četiri alata, prekid skupnih poslova, štand uz cestu, šuma, kokošinjac s kokošima, honorarac u kući, prskalice na križanjima s pumpom i pregledom dosega, noć |
 

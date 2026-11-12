@@ -389,11 +389,11 @@ export function pineTree(seed) {
     for (let x = 19; x <= 24; x++) p.set(x, y, pick(RAMP.bark, 0.7 - (x - 19) * 0.12, x, y));
   }
   for (let tier = 0; tier < 4; tier++) {
-    const top = 2 + tier * 11;
+    const top = 1 + tier * 11;
     const hgt = 20;
     for (let y = top; y < top + hgt; y++) {
       const k = (y - top) / hgt;
-      const half = 3 + k * (8 + tier * 3.2);
+      const half = 0.6 + k * (10.5 + tier * 3.2);
       const jag = (Math.floor(y) % 3) * 0.8;
       for (let x = Math.floor(22 - half - jag); x <= 22 + half + jag; x++) {
         const side = (x - 22) / (half + 1);

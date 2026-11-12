@@ -3,7 +3,7 @@
 // everything else (customers, drone, deliveries, the stand) arrives on the phone.
 
 import {
-  createState, tick, command, sleep, coffee, eat, moveItem, craft, cropById, recipeById,
+  createState, tick, advance, command, sleep, coffee, eat, moveItem, craft, cropById, recipeById,
   countWhere, extractSeeds, orderSeeds, startJob, upgradeIrrigation, orderItem, feedHens, acceptGig, sprinklerAt,
   goWork, goodById, forageById, shopItemById,
 } from './sim.js';
@@ -13,6 +13,7 @@ import { createRenderer } from './render.js';
 import { createUI, itemName, stars, formatMoney, plots } from './ui.js';
 
 const ZOOM_KEY = 'dev-farm/zoom';
+const SETTINGS_KEY = 'dev-farm/settings';
 const storage = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } },
@@ -31,7 +32,7 @@ if (savedZoom > 0) renderer.setZoom(savedZoom);
 
 const ui = createUI({
   onTool, onSeed, onMove, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
-  onIrrigation, onOrderItem, onAcceptGig, onGoWork,
+  onIrrigation, onOrderItem, onAcceptGig, onGoWork, onSetting,
   onClosePanel: closePanel,
   onChange: refresh,
 });
@@ -70,12 +71,13 @@ function farmerSays(e) {
     case 'nofreeplots': return 'Nema slobodnih parcela.';
     case 'tooearly': return 'Još je rano za spavanje. Ima posla do večeri.';
     case 'nothingdry': return 'Sve je već zaliveno.';
-    case 'coopbroken': return 'Stari kokošinjac. Popravit ću ga na radnom stolu kad skupim drva i kamenja.';
+    case 'coopbroken': return 'Kokoši mogu doći tek kad popravim kokošinjac.';
     case 'nomats': return e.mats ? `Za ovo trebam ${e.mats.wood} drva i ${e.mats.stone} kamena u torbi. Ima ih uz rub šume.` : 'Nemam dovoljno materijala.';
     case 'notfood': return 'To kokoši ne jedu.';
     case 'feederfull': return 'Hranilica je puna.';
     case 'nothingtofert': return 'Nema ništa za pognojiti.';
-    case 'noplan': return 'Ovdje bi bio dobar bunar, ali treba mi plan. Skicirat ću ga na radnom stolu.';
+    case 'noplan': return e.what === 'coop' ? 'Stari kokošinjac. Za popravak trebam plan: skicirat ću ga na radnom stolu.' : 'Ovdje bi bio dobar bunar, ali treba mi plan. Skicirat ću ga na radnom stolu.';
+    case 'coopfull': return 'U kokošinjcu ima mjesta za najviše 9 kokoši.';
     case 'nothingripe': return 'Još ništa nije zrelo.';
     case 'chestfull': return null; // the drone's problem: goes to the phone
     default: return null;
@@ -195,16 +197,20 @@ function report(events) {
           : `📦 Naručeno: ${e.n}× sjeme, ${cropById[e.crop].name} (−${formatMoney(e.price)}). Stiže sutra ujutro.`);
         break;
       case 'delivered':
-        ui.notify(e.item ? `📦 Dostava je stigla u škrinju: ${shopItemById[e.item].name.toLowerCase()} · ${e.n} ${shopItemById[e.item].unit}.` : `📦 Dostava je stigla: ${e.n}× sjeme (${name(e.crop)}).`, 'ok');
+        if (e.item === 'hen') ui.notify(`🐔 Stigle su kokoši (${e.n}), već su u kokošinjcu.`, 'ok');
+        else ui.notify(e.item ? `📦 Dostava je stigla u škrinju: ${shopItemById[e.item].name.toLowerCase()} · ${e.n} ${shopItemById[e.item].unit}.` : `📦 Dostava je stigla: ${e.n}× sjeme (${name(e.crop)}).`, 'ok');
         break;
       case 'buildstart':
-        ui.say(e.what === 'pump' ? 'Montiram pumpu na bunar…' : 'Plan je tu. Zidam bunar…');
+        ui.say({ pump: 'Montiram pumpu na bunar…', coop: 'Popravljam kokošinjac…' }[e.what] ?? 'Plan je tu. Zidam bunar…');
         break;
       case 'buildcancel':
         ui.say('Bunar ću dovršiti drugi put.');
         break;
       case 'built':
-        if (e.what === 'pump') {
+        if (e.what === 'coop') {
+          ui.say('Kokošinjac je popravljen! Sad još trebaju kokoši.', 'happy');
+          ui.notify('🐔 Kokošinjac je popravljen. Kokoši naruči na mobitelu (Dostava), jednu po jednu.', 'ok');
+        } else if (e.what === 'pump') {
           ui.say('Pumpa je na bunaru! Sad trebam crijevo i prskalice.', 'happy');
           ui.notify('💧 Pumpa je montirana. Prskalice stavi na križanja parcela (10 m crijeva po prskalici).', 'ok');
         } else {
@@ -301,8 +307,34 @@ function onSeed(id) {
 }
 
 function onMove(from, slot, to) {
-  if (to === 'coop') act((ev) => feedHens(state, slot, ev));
-  else act((ev) => moveItem(state, from, slot, to, ev));
+  const n = ui.state.moveN;
+  if (to === 'coop') act((ev) => feedHens(state, slot, ev, n));
+  else act((ev) => moveItem(state, from, slot, to, ev, n));
+}
+
+// ---- settings, and time passing while the game is not on screen
+const settings = (() => { try { return { bgTime: false, ...JSON.parse(storage.get(SETTINGS_KEY) ?? '{}') }; } catch { return { bgTime: false }; } })();
+function onSetting(key, value) {
+  settings[key] = value;
+  storage.set(SETTINGS_KEY, JSON.stringify(settings));
+  lastReal = Date.now();
+}
+
+let lastReal = Date.now();
+function catchUp() {
+  const now = Date.now();
+  const gap = (now - lastReal) / 1000;
+  lastReal = now;
+  if (!settings.bgTime || gap < 0.5) return;
+  const events = advance(state, Math.min(gap, 3 * 3600), []);
+  const sales = events.filter((e) => e.type === 'sale');
+  const quiet = new Set(['sale', 'harvest', 'sprinkle', 'water', 'refill', 'shop', 'plant']);
+  report(events.filter((e) => !quiet.has(e.type)));
+  if (gap >= 60) {
+    const earned = sales.reduce((a, e) => a + e.money, 0);
+    ui.notify(`⏱ Dok igra nije bila na ekranu (${Math.round(gap / 60)} min): kupaca ${sales.length}, zarada ${formatMoney(earned)}.`, 'info');
+  }
+  refresh();
 }
 
 function onAcceptGig(id) {
@@ -467,6 +499,8 @@ function frame(now) {
   // time only runs while the tab is visible; long gaps (sleeping laptop) are capped
   const dt = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
   lastFrame = now;
+  if (!document.hidden && Date.now() - lastReal > 1500) catchUp();
+  lastReal = Date.now();
   if (!document.hidden && dt > 0) {
     const events = tick(state, dt, []);
     if (events.length) {
@@ -489,12 +523,15 @@ setInterval(save, 30_000);
 setInterval(flushDrone, 10_000);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) save();
+  else catchUp();
   lastFrame = performance.now();
 });
+setInterval(() => { if (document.hidden) catchUp(); }, 5000);
 window.addEventListener('pagehide', save);
 
 if (loaded.restored) ui.notify(`👋 Dan ${state.day}: farma je tu gdje je i bila.`, 'info');
 else intro();
+ui.setSettings(settings);
 refresh();
 renderer.draw(state, performance.now());
 requestAnimationFrame(frame);

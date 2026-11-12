@@ -529,32 +529,52 @@ test('forage food sells at the stand; wood and stone do not', () => {
   assert.equal(extractSeeds(s, 0).reason, 'notfruit', 'no seeds from mushrooms');
 });
 
-test('the coop: repaired with materials, hens lay eggs when fed', () => {
+test('the coop is built like the well, hens are bought one by one and lay when fed', () => {
   const s = createState();
-  assert.equal(walkTo(s, 12, 3).events.find((e) => e.type === 'fail').reason, 'coopbroken');
+  assert.equal(walkTo(s, 12, 3).events.find((e) => e.type === 'fail').reason, 'noplan');
   s.money = zl(100);
-  assert.equal(craft(s, 'coop').reason, 'nomats');
+  assert.ok(craft(s, 'coopPlan').ok);
+  assert.ok(!s.coop.built, 'the workbench only sketches the plan');
+  assert.equal(walkTo(s, 12, 3).events.find((e) => e.type === 'fail').reason, 'nomats');
   addItem(s.bag, 'wood', 10);
   addItem(s.bag, 'stone', 4);
-  assert.ok(craft(s, 'coop').ok);
-  assert.equal(s.coop.hens, 3);
+  assert.ok(walkTo(s, 12, 3).events.some((e) => e.type === 'buildstart' && e.what === 'coop'));
+  assert.ok(advance(s, 7).some((e) => e.type === 'built' && e.what === 'coop'));
+  assert.ok(s.coop.built);
+  assert.equal(s.coop.hens, 0, 'a repaired coop is empty');
   assert.equal(s.money, zl(75));
 
+  assert.ok(orderItem(s, 'hen').ok);
+  assert.ok(orderItem(s, 'hen').ok);
   nextDay(s);
-  assert.equal(s.coop.eggs, 0, 'no food, no eggs');
+  assert.equal(s.coop.hens, 2, 'hens arrive in the morning, straight into the coop');
+  for (let i = 2; i < 9; i++) s.coop.hens = i + 1;
+  assert.equal(orderItem(s, 'hen').reason, 'coopfull');
+  s.coop.hens = 3;
+
   addItem(s.bag, cropItem('radish', 1), 2);
   const slot = s.bag.findIndex((it) => it?.id === cropItem('radish', 1));
-  assert.ok(feedHens(s, slot).ok);
+  assert.ok(feedHens(s, slot, [], 1).ok, 'feed one kg at a time');
+  assert.equal(s.coop.feed, 1);
+  feedHens(s, slot);
   assert.equal(s.coop.feed, 2);
   const events = nextDay(s);
   assert.equal(s.coop.eggs, 2, 'only two hens had food');
   assert.ok(events.some((e) => e.type === 'laid' && e.hungry === 1));
-
   const ev = walkTo(s, 12, 3).events;
   assert.ok(ev.some((e) => e.type === 'eggs' && e.n === 2));
-  assert.ok(s.bag.some((it) => it?.id === cropItem('egg', 2) && it.n === 2));
-  assert.ok(craft(s, 'hens').ok);
-  assert.equal(s.coop.hens, 6);
+});
+
+test('moving part of a stack', () => {
+  const s = createState();
+  addItem(s.bag, cropItem('carrot', 3), 10);
+  assert.ok(moveItem(s, 'bag', 0, 'stand', [], 1).ok);
+  assert.ok(moveItem(s, 'bag', 0, 'stand', [], 5).ok);
+  assert.equal(s.bag[0].n, 4);
+  assert.equal(s.stand[0].n, 6);
+  assert.ok(moveItem(s, 'bag', 0, 'chest').ok, 'no amount = everything');
+  assert.equal(s.bag[0], null);
+  assert.equal(s.chest[0].n, 4);
 });
 
 test('side gigs: offered each morning, worked at home, paid when done', () => {

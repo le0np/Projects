@@ -61,7 +61,13 @@ export const DAILY_FIND_CHANCE = 0.6;
 export const FERTILIZER_PRICE = 6; // zl per bag, ordered on the phone, delivered to the chest
 
 // The well: a plan is sketched at the workbench, then the farmer builds it on site.
-export const WELL_BUILD = { price: 150, wood: 6, stone: 12, energy: 30, seconds: 6 };
+// Buildings: a plan is sketched at the workbench, then the farmer builds on site.
+// Every future building follows the same pattern: add it here and give it a plan recipe.
+export const BUILDINGS = {
+  well: { name: 'Bunar', plan: 'wellPlan', price: 150, wood: 6, stone: 12, energy: 30, seconds: 6 },
+  coop: { name: 'Kokošinjac', plan: 'coopPlan', price: 25, wood: 10, stone: 4, energy: 20, seconds: 6 },
+};
+export const WELL_BUILD = BUILDINGS.well;
 
 // Irrigation is a system built from parts: a water pump on the well, hose (10 m per
 // sprinkler) and sprinklers. Sprinklers stand on the crossing of four plots, so they take
@@ -77,6 +83,7 @@ export const SHOP_ITEMS = [
   { id: 'pump', name: 'Vodena pumpa', n: 1, unit: 'kom', price: 70 },
   { id: 'hose', name: 'Crijevo', n: 10, unit: 'm', price: 9 },
   { id: 'sprinkler', name: 'Prskalica', n: 1, unit: 'kom', price: 8 },
+  { id: 'hen', name: 'Kokoš nesilica', n: 1, unit: 'kom', price: 12 }, // goes straight into the coop
 ];
 export const IRRIGATION_COSTS = [0, 25, 40, 60, 90, 130, 180, 250, 340, 450]; // zl to reach level i + 1
 
@@ -123,7 +130,7 @@ export const FORAGE_MAX = 14;
 
 // The old chicken coop by the house: repaired at the workbench, then hens lay one egg
 // each morning if there is food (1 kg of produce feeds one hen for a day).
-export const COOP = { hens: 3, moreHens: 3, maxHens: 9, eggCap: 30, feedCap: 60 };
+export const COOP = { maxHens: 9, eggCap: 30, feedCap: 60 }; // hens are bought one by one
 
 // Side gigs on the phone: the farmer works from home on the laptop (game hours).
 export const GIGS = [
@@ -145,12 +152,8 @@ export const RECIPES = [
     desc: '2 kg loših (★) plodova → 1 gnojivo.',
   },
   {
-    id: 'coop', name: 'Popravak kokošinjca', once: 'coop', price: 25, mats: { wood: 10, stone: 4 },
-    desc: 'Popravi stari kokošinjac kod kuće: 3 kokoši nesu jaja svako jutro ako imaju hrane.',
-  },
-  {
-    id: 'hens', name: 'Još kokoši', price: 15, requires: 'coop',
-    desc: `+${COOP.moreHens} kokoši (najviše ${COOP.maxHens}).`,
+    id: 'coopPlan', name: 'Plan popravka kokošinjca', once: 'coopPlan', price: 0,
+    desc: 'Skiciraj popravak starog kokošinjca. Farmer ga zatim popravlja na licu mjesta; kokoši se naručuju na mobitelu.',
   },
   {
     id: 'wellPlan', name: 'Plan bunara', once: 'wellPlan', price: 0,

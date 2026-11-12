@@ -28,7 +28,7 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
   - **Dostavom:** naručiš na mobitelu („Dostava“), paket od 5 sjemenki stiže sutra ujutro. Katalog se širi kako zarađuješ. Ondje se naručuje i gnojivo (6 zl po vreći), koje stiže u škrinju.
 - **Šuma:** uz rub šume svako jutro nikne nekoliko stvari: gljive i kupine (prodaju se na štandu ili jedu), grane (drva), kamenje i ponekad odbačeni dijelovi (komad crijeva ili prskalica). Drva i kamenje su materijal za radni stol.
 - **Navodnjavanje se slaže iz dijelova:** vodena pumpa (montira se na bunar klikom na bunar), crijevo (10 m po prskalici) i prskalice. Dijelovi se naručuju na mobitelu (pumpa 70 zl, crijevo 10 m 9 zl, prskalica 8 zl) ili nađu u šumi. Prskalica se postavlja na **križanje četiri parcele**, pa ne zauzima nijednu, i svako jutro u 6 h zalije parcele oko tog križanja. Klik na postavljenu prskalicu vraća nju i crijevo u torbu.
-- **Kokošinjac:** stari kokošinjac kod kuće popravi se na radnom stolu (25 zl, 10 drva, 4 kamena). Kokoši (3, kasnije do 9) šeću oko njega i svako jutro snesu jaje ako je u hranilici bilo hrane: 1 kg ploda po kokoši, idealno loši (★) plodovi. Hrani se klikom na plod u torbi dok je kokošinjac otvoren, a jaja se skupe klikom na kokošinjac i prodaju na štandu (40 sr po komadu).
+- **Kokošinjac:** gradi se kao bunar: na radnom stolu se skicira plan popravka, a farmer ga popravlja na licu mjesta (25 zl, 10 drva, 4 kamena). Popravljen je prazan: kokoši se naručuju na mobitelu jedna po jedna (12 zl, najviše 9). Kokoši šeću oko njega i svako jutro snesu jaje ako je u hranilici bilo hrane: 1 kg ploda po kokoši, idealno loši (★) plodovi. Hrani se klikom na plod u torbi dok je kokošinjac otvoren, a jaja se skupe klikom na kokošinjac i prodaju na štandu (40 sr po komadu).
 - **Honorarci (mobitel → Poslovi):** svako jutro stigne 1–3 ponude poput „Susjedi Mari ne radi WiFi“ ili „Web stranica za OPG Horvat“. Prihvaćeni posao farmer radi kod kuće za laptopom (1–4 sata u igri, troši energiju) i odmah je plaćen (4–28 zl). Ako ga pozoveš van, napredak ostaje.
 - **Usjevi rastu po danima, ne po sekundama.** Svako jutro biljka naraste jedan dan ako je dan prije bila zalivena, a pola dana ako nije. Zemlja ostaje vlažna cijeli dan i presuši preko noći, pa je **dovoljno zaliti jednom dnevno**. Ostatak dana tab može mirno stajati sa strane. Rast se vidi ujutro.
 - **Kvaliteta: ★ loše, ★★ dobro, ★★★ odlično, ★★★★ zlatno.** Ovisi o tri stvari:
@@ -62,8 +62,7 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
   | --- | --- |
   | Sjeme iz plodova | 1 plod → 2–10 sjemenki |
   | Gnojivo (kompost) | od 2 kg loših plodova (kupovno gnojivo se naručuje na mobitelu) |
-  | Popravak kokošinjca (25 zl, 10 drva, 4 kamena) | kokoši nesu jaja |
-  | Još kokoši (15 zl) | +3 kokoši, najviše 9 |
+  | Plan popravka kokošinjca | skica; kokošinjac popravlja farmer na licu mjesta |
   | Plan bunara | skica; bunar zida farmer na gradilištu |
   | Navodnjavanje v1–v10 (25–450 zl) | 10 razina za sve prskalice: 4, 12, 16, 24, 32, 44, 52, 60, 68 pa 80 parcela po prskalici |
   | Velika kanta (15 zl) | 30 zalijevanja umjesto 12 |
@@ -75,6 +74,8 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
   Strojevi pomažu, ali ne mogu zamijeniti brigu: voda iz prskalice vrijedi manje od ručnog zalijevanja, a dron bere najviše ★★★. **Zlatna kvaliteta ide samo iz farmerovih ruku.**
 - **Farmer govori u oblačiću:** kad nešto ne može (nema sjemena, kanta je prazna, nema snage) ili pronađe i ubere nešto, to kaže iznad glave.
 - **Mobitel** skuplja sve što se ne tiče izravno farmera: kupce na štandu, dron, dostave, trulež na polju i jutarnji izvještaj. Ima i katalog dostave sjemena. (Ime appa još biramo.)
+- **Prebacivanje:** kad je otvorena škrinja, štand ili kokošinjac, uz torbu biraš koliko jedan klik prebacuje: po 1, po 5 ili sve.
+- **⚙ Postavke:** „Vrijeme teče i kad igra nije na ekranu“ (zadano isključeno) i brisanje farme.
 - **Uz posao:** naslov taba pokazuje koliko je usjeva zrelo (`🌾 3 za berbu`). Dok je tab skriven, vrijeme stoji, pa ništa ne istrune dok si na sastanku. Igra se tiho sprema i kad zatvoriš tab, pa ne gubiš napredak ni bez spavanja.
 
 ## Kako je napravljeno

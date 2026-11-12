@@ -3,7 +3,7 @@
 
 import {
   CROPS, RECIPES, MAX_ENERGY, COFFEE, EAT_ENERGY, TIER_NAMES, SHOP_OPEN, SHOP_CLOSE, ROT_DAY,
-  SEEDS_FROM_FRUIT, SEED_PACK, WELL_BUILD, zl, SLEEP_FROM, COOP, SHOP_ITEMS, HOSE_PER_SPRINKLER,
+  SEEDS_FROM_FRUIT, SEED_PACK, WELL_BUILD, zl, SLEEP_FROM, COOP, SHOP_ITEMS, HOSE_PER_SPRINKLER, BUILDINGS,
 } from './data.js';
 import {
   parseItem, isUnlocked, canSize, countWhere, canCraft, salePrice, isSellable, cropById,
@@ -118,7 +118,7 @@ export function createUI(cb) {
     bubble: $('bubble'), feed: $('phone-feed'), shopTab: $('phone-shop'), phoneTime: $('phone-time'),
     badge: $('phone-badge'), zoomIn: $('zoom-in'), zoomOut: $('zoom-out'), gigsTab: $('phone-gigs'), gigBadge: $('gig-badge'),
   };
-  const ui = { panel: null, selected: -1, placing: false, phoneTab: 'feed', unread: 0, clock: 360 };
+  const ui = { panel: null, selected: -1, placing: false, phoneTab: 'feed', unread: 0, clock: 360, moveN: 1 };
 
   // ---- hotbar
   const tools = [
@@ -195,6 +195,12 @@ export function createUI(cb) {
   for (const [id, coin] of [['hud-gold-icon', 'gold'], ['hud-silver-icon', 'silver']]) $(id).src = iconUrl(coin);
 
   $('reset').addEventListener('click', cb.onReset);
+  const settingsBox = $('settings');
+  $('settings-btn').addEventListener('click', () => { settingsBox.hidden = !settingsBox.hidden; });
+  document.addEventListener('click', (e) => {
+    if (!settingsBox.hidden && !e.target.closest('.settings-wrap')) settingsBox.hidden = true;
+  });
+  $('set-bgtime').addEventListener('change', (e) => cb.onSetting('bgTime', e.target.checked));
   els.zoomIn.addEventListener('click', () => cb.onZoom(1));
   els.zoomOut.addEventListener('click', () => cb.onZoom(-1));
   for (const tab of document.querySelectorAll('.phone-tabs button')) {
@@ -283,11 +289,20 @@ export function createUI(cb) {
     }));
 
     const it = s.bag[ui.selected];
-    const infoSig = JSON.stringify([it, ui.panel, s.energy >= MAX_ENERGY]);
+    const infoSig = JSON.stringify([it, ui.panel, s.energy >= MAX_ENERGY, ui.moveN]);
+    const amount = () => {
+      const row = el('div', 'amount');
+      row.append(el('span', 'small muted', 'Klik prebacuje:'));
+      for (const [n, label] of [[1, 'po 1'], [5, 'po 5'], [Infinity, 'sve']]) {
+        const b = button(label, () => { ui.moveN = n; cb.onChange(); }, { cls: `btn${ui.moveN === n ? ' on' : ''}` });
+        row.append(b);
+      }
+      return row;
+    };
     renderIfChanged(els.bagInfo, infoSig, () => {
-      if (ui.panel === 'chest') return [el('p', 'muted', 'Klik na stvar u torbi spremi je u škrinju.')];
-      if (ui.panel === 'stand') return [el('p', 'muted', 'Klik na plod u torbi stavi ga na štand.')];
-      if (ui.panel === 'coop') return [el('p', 'muted', 'Klik na plod u torbi stavi ga u hranilicu. Najbolje za to su loši (★) plodovi.')];
+      if (ui.panel === 'chest') return [amount(), el('p', 'muted', 'Klik na stvar u torbi spremi je u škrinju, klik u škrinji vrati je u torbu.')];
+      if (ui.panel === 'stand') return [amount(), el('p', 'muted', 'Klik na plod u torbi stavi ga na štand.')];
+      if (ui.panel === 'coop') return [amount(), el('p', 'muted', 'Klik na plod u torbi stavi ga u hranilicu. Najbolje za to su loši (★) plodovi.')];
       if (!it) return [el('p', 'muted', 'Klikni stvar u torbi za detalje.')];
       const p = parseItem(it.id);
       const unit = unitOf(it.id);
@@ -347,7 +362,8 @@ export function createUI(cb) {
       const c = s.coop;
       renderIfChanged(els.panel, JSON.stringify(['coop', c]), () => [
         head(),
-        el('p', '', `🐔 Kokoši: ${c.hens} · 🥚 čeka: ${c.eggs}`),
+        el('p', '', `🐔 Kokoši: ${c.hens}/${COOP.maxHens} · 🥚 čeka: ${c.eggs}`),
+        ...(c.hens ? [] : [el('p', 'small', 'Kokošinjac je prazan. Kokoši se naručuju na mobitelu (Dostava → Kokoš nesilica), jedna po jedna.')]),
         el('p', '', `Hranilica: ${c.feed} kg ${c.feed < c.hens ? '· premalo za sutra!' : `· dosta za ${Math.floor(c.feed / Math.max(1, c.hens))} ${c.feed / c.hens >= 2 ? 'dana' : 'dan'}`}`),
         el('p', 'muted small', `Svaka kokoš ujutro snese jaje ako je u hranilici bilo 1 kg hrane za nju. Jaja se skupe klikom na kokošinjac. Hranilica drži najviše ${COOP.feedCap} kg.`),
       ]);
@@ -397,9 +413,9 @@ export function createUI(cb) {
             bagfull: 'torba je puna',
             requires: { well: 'prvo sazidaj bunar', drone: 'prvo izradi harvest-drone', coop: 'prvo popravi kokošinjac' }[r.requires],
           }[problem];
-          if (r.id === 'wellPlan') top.lastChild.textContent = `zidanje ${formatMoney(zl(WELL_BUILD.price))} · ${matsText(WELL_BUILD)} · ${WELL_BUILD.energy} ⚡`;
-          if (r.id === 'hens') top.firstChild.textContent = `${r.name} (sad ${s.coop.hens})`;
-          card.append(top, el('p', 'small', r.desc), button(why ?? (r.id === 'wellPlan' ? 'Skiciraj plan' : 'Izradi'), () => cb.onCraft(r.id), { disabled: Boolean(problem) }));
+          const bld = Object.values(BUILDINGS).find((b) => b.plan === r.id);
+          if (bld) top.lastChild.textContent = `gradnja ${formatMoney(zl(bld.price))} · ${matsText(bld)} · ${bld.energy} ⚡`;
+          card.append(top, el('p', 'small', r.desc), button(why ?? (bld ? 'Skiciraj plan' : 'Izradi'), () => cb.onCraft(r.id), { disabled: Boolean(problem) }));
           list.append(card);
           if (r.id === 'sprinkler') list.append(irrigationCard(s));
         }
@@ -454,13 +470,14 @@ export function createUI(cb) {
     els.gigBadge.hidden = !offers || ui.phoneTab === 'gigs';
     els.badge.hidden = !ui.unread;
     if (ui.phoneTab !== 'shop') return;
-    const sig = JSON.stringify(['shop', s.money, s.totalEarned, s.orders]);
+    const sig = JSON.stringify(['shop', s.money, s.totalEarned, s.orders, s.coop.built]);
     renderIfChanged(els.shopTab, sig, () => {
       const out = [el('p', 'small muted', `Sve stiže sutra ujutro. Sjeme (paket od ${SEED_PACK}) ide u vrećicu, ostalo u škrinju.`)];
       SHOP_ITEMS.forEach((it, k) => {
         if (k === 1) out.push(el('p', 'small catalog-head', 'Navodnjavanje'));
         const row = el('div', 'catalog-row');
-        row.append(icon(it.id), el('span', 'grow', `${it.name} · ${it.n} ${it.unit}`), button(formatMoney(zl(it.price)), () => cb.onOrderItem(it.id), { disabled: s.money < zl(it.price) }));
+        const blocked = it.id === 'hen' && !s.coop.built;
+        row.append(icon(it.id === 'hen' ? 'egg' : it.id), el('span', 'grow', `${it.name} · ${it.n} ${it.unit}${blocked ? ' · treba kokošinjac' : ''}`), button(formatMoney(zl(it.price)), () => cb.onOrderItem(it.id), { disabled: blocked || s.money < zl(it.price) }));
         out.push(row);
       });
       out.push(el('p', 'small catalog-head', 'Sjeme'));
@@ -569,7 +586,9 @@ export function createUI(cb) {
       } else if (obj) {
         text = {
           house: s.found.house ? 'Kuća: spavanje (spremanje igre), kava i honorarci za laptopom.' : 'Kuća. Tko zna što je ostalo u ladicama?',
-          coop: s.coop.built ? `Kokošinjac: ${s.coop.hens} kokoši, ${s.coop.eggs} jaja čeka, ${s.coop.feed} kg u hranilici.` : 'Stari kokošinjac. Popravlja se na radnom stolu (drva, kamenje).',
+          coop: s.coop.built ? `Kokošinjac: ${s.coop.hens} kokoši, ${s.coop.eggs} jaja čeka, ${s.coop.feed} kg u hranilici.`
+            : s.upgrades.coopPlan ? `Stari kokošinjac. Klik: farmer ga popravlja (${formatMoney(zl(BUILDINGS.coop.price))}, ${matsText(BUILDINGS.coop)}).`
+              : 'Stari kokošinjac. Plan popravka skicira se na radnom stolu.',
           chest: 'Škrinja: spremi višak iz torbe. Ovamo dron nosi urod.',
           stand: 'Štand: stavi plodove, kupci dolaze cestom.',
           well: s.upgrades.well ? 'Bunar: napuni kantu. Izvor za navodnjavanje.'
@@ -615,5 +634,6 @@ export function createUI(cb) {
     say,
     placeBubble,
     clear() { els.feed.textContent = ''; },
+    setSettings(set) { $('set-bgtime').checked = Boolean(set.bgTime); },
   };
 }
