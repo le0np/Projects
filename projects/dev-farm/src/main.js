@@ -1,181 +1,293 @@
-// Wires simulation, rendering, UI and saving together.
+// Wires simulation, rendering, UI, input and saving together.
 
-import { OFFLINE_CAP } from './data.js';
 import {
-  createState, advance, clickTile, buyUpgrade, cropById, upgradeById, isUnlocked, summarize,
+  createState, tick, command, sleep, coffee, eat, moveItem, craft, isUnlocked, cropById, recipeById,
+  countWhere,
 } from './sim.js';
+import { TIER_NAMES } from './data.js';
 import { SAVE_KEY, serialize, deserialize } from './save.js';
 import { createRenderer } from './render.js';
-import { createUI, plural, formatDuration, formatCoins } from './ui.js';
+import { createUI, itemName, stars, formatCoins } from './ui.js';
 
 const storage = {
   get() { try { return localStorage.getItem(SAVE_KEY); } catch { return null; } },
-  set(v) { try { localStorage.setItem(SAVE_KEY, v); } catch { /* private mode: play without saving */ } },
+  set(v) { try { localStorage.setItem(SAVE_KEY, v); return true; } catch { return false; } },
   remove() { try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ } },
 };
 
-const loaded = deserialize(storage.get(), Date.now());
+const loaded = deserialize(storage.get());
 let state = loaded.state;
+let hoverTile = null;
 
-const canvas = document.getElementById('field');
+const canvas = document.getElementById('world');
 const renderer = createRenderer(canvas);
-const ui = createUI({ onSelectCrop, onBuy, onReset });
+const ui = createUI({
+  onTool, onSeed, onMove, onEat, onPlace, onSleep, onCoffee, onCraft, onReset,
+  onClosePanel: closePanel,
+  onChange: refresh,
+});
 
-const save = () => storage.set(serialize(state, Date.now()));
+const save = () => storage.set(serialize(state));
 
-const wateredText = (n) =>
-  plural(n, `${n} parcela zalivena`, `${n} parcele zalivene`, `${n} parcela zaliveno`);
+// ------------------------------------------------------------------ messages
 
-let droneBatch = { count: 0, coins: 0 };
+const FAIL_TEXT = {
+  tired: '✖ Nema energije. Popij kavu u kući, pojedi nešto iz torbe ili idi spavati.',
+  coins: '✖ Nedovoljno novčića.',
+  canempty: '✖ Kanta je prazna. Napuni je na bunaru ili ribnjaku.',
+  wet: 'Parcela je još dobro zalivena.',
+  bagfull: '✖ Torba je puna. Odloži stvari u škrinju ili na štand.',
+  chestfull: '✖ Škrinja je puna, dron je stao. Isprazni je.',
+  standfull: '✖ Štand je pun.',
+  nofert: '✖ Nemaš gnojiva. Izradi ga na radnom stolu.',
+  fertilized: 'Ova biljka je već pognojena.',
+  needseed: 'Prazna parcela. Uzmi sjeme (tipka 2) pa klikni ponovno.',
+  needtool: 'Biljka raste. Kanta (3) je zalijeva, gnojivo (4) je hrani.',
+  locked: 'Ovo polje je zaraslo. Otključaj ga na radnom stolu: git clone polje.',
+  nopath: 'Farmer ne može doći do tamo.',
+  notsellable: '✖ Kupci ne žele loše (★) proizvode. Pojedi ih ili kompostiraj.',
+  placeplot: '✖ Prskalica ide samo na praznu, otključanu parcelu.',
+  sprinklerhere: 'Tu stoji prskalica. Rukama (1) je pokupiš.',
+  full: 'Energija je već puna.',
+  cropLocked: '✖ To sjeme još nije otključano.',
+};
+
+let droneBatch = 0;
 
 function report(events) {
   for (const e of events) {
-    if (e.type === 'water' && e.by === 'cron') {
-      ui.log(`$ ./water.sh → ${wateredText(e.count)}`, 'cmd');
-    } else if (e.type === 'harvest' && e.by === 'drone') {
-      droneBatch.count++;
-      droneBatch.coins += e.coins;
-    } else if (e.type === 'unlock') {
-      ui.log(`✔ novo sjeme: ${cropById[e.crop].name}`, 'ok');
+    switch (e.type) {
+      case 'fail':
+        if (FAIL_TEXT[e.reason]) ui.log(FAIL_TEXT[e.reason], e.reason.startsWith('need') || e.reason === 'wet' ? 'info' : 'err');
+        break;
+      case 'open':
+        ui.state.panel = e.panel;
+        ui.state.selected = -1;
+        break;
+      case 'harvest':
+        if (e.by === 'drone') droneBatch++;
+        else ui.log(`Ubrano: ${cropById[e.crop].name} ${stars(e.tier)} (${TIER_NAMES[e.tier]})`, e.tier >= 2 ? 'ok' : 'info');
+        break;
+      case 'sale':
+        ui.log(`$ kupac@štand → ${e.qty}× ${cropById[e.crop].name} ${stars(e.tier)}, +${formatCoins(e.coins)} 🪙`, 'cmd');
+        break;
+      case 'nosale':
+        ui.log('Kupac je došao do praznog štanda i otišao.', 'info');
+        break;
+      case 'refill':
+        ui.log(`Kanta napunjena (${e.water}).`, 'info');
+        break;
+      case 'rot':
+        ui.log(`✖ ${cropById[e.crop].name} je istrunula na parceli. Bere se na vrijeme!`, 'err');
+        break;
+      case 'unlock':
+        ui.log(`✔ Novo sjeme: ${cropById[e.crop].name}`, 'ok');
+        break;
+      case 'craft': {
+        const r = recipeById[e.recipe];
+        ui.log(`$ make ${r.name.split(' ')[0].toLowerCase()} → gotovo: ${r.name}`, 'ok');
+        break;
+      }
+      case 'placed':
+        ui.log('$ ./water.sh --install → prskalica radi svakih 30 s', 'ok');
+        break;
+      case 'pickup':
+        ui.log('Prskalica je u torbi.', 'info');
+        break;
+      case 'coffee':
+        ui.log(`☕ Kava: +${e.gain} ⚡`, 'ok');
+        break;
+      case 'eat':
+        ui.log(`Pojedeno: ${cropById[e.crop].name} (+${e.gain} ⚡)`, 'info');
+        break;
+      case 'shop':
+        ui.log(e.open ? '$ systemctl start štand → kupci dolaze' : '$ systemctl stop štand → kupci idu kući', 'cmd');
+        break;
+      case 'slept':
+      case 'passout':
+        nightReport(e);
+        break;
+      default:
     }
   }
 }
 
-function flushDrone() {
-  if (!droneBatch.count) return;
-  ui.log(`$ harvest-drone → pobrano ${droneBatch.count}, +${formatCoins(droneBatch.coins)} 🪙`, 'cmd');
-  droneBatch = { count: 0, coins: 0 };
+function nightReport(e) {
+  closePanel();
+  if (e.type === 'passout') {
+    ui.log('✖ U 2 sata ujutro farmer je zaspao na nogama. Novi dan s pola energije.', 'err');
+  } else {
+    ui.log('$ sudo shutdown -r 06:00', 'cmd');
+  }
+  const saved = save();
+  const parts = [`Dan ${e.day}.`, saved ? 'Igra spremljena.' : 'Spremanje nije uspjelo (browser ne dopušta).'];
+  if (e.summary.ripened) parts.push(`Preko noći sazrelo: ${e.summary.ripened}.`);
+  if (e.summary.droneHarvested) parts.push(`Dron je ubrao ${e.summary.droneHarvested}.`);
+  ui.log(parts.join(' '), 'ok');
 }
 
-function welcomeBack(seconds, events) {
-  const sum = summarize(events);
-  ui.log(`$ last login: prije ${formatDuration(seconds)}`, 'cmd');
-  if (sum.harvested) {
-    ui.log(`Dok te nije bilo: pobrano ${sum.harvested}, zarađeno ${formatCoins(sum.earned)} 🪙, `
-      + `${wateredText(sum.watered)}.`, 'ok');
-  } else if (state.upgrades.drone > 0) {
-    ui.log('Dron nije imao što pobrati. Posadi nešto prije pauze.', 'info');
-  } else {
-    ui.log('Usjevi su rasli, ali ih nitko nije pobrao. Vrijeme je za harvest-drone?', 'info');
-  }
-  for (const id of sum.unlocked) ui.log(`✔ novo sjeme: ${cropById[id].name}`, 'ok');
+function flushDrone() {
+  if (!droneBatch) return;
+  ui.log(`$ harvest-drone → ${droneBatch} u škrinju`, 'cmd');
+  droneBatch = 0;
 }
 
 function intro() {
   ui.log('$ ssh farma', 'cmd');
-  ui.log('Spojeno. Klikni praznu parcelu da posadiš rotkvicu, suhu da je zaliješ, zrelu da je pobereš.', 'info');
-  ui.log('Zaradu ulaži u skripte i izume desno: oni rade umjesto tebe, i dok si na sastanku.', 'info');
+  ui.log('Spojeno. Klikni na mapu i farmer ide tamo. Klik na parcelu radi ono što drži u ruci (tipke 1–4).', 'info');
+  ui.log('Posadi (2), zalij (3), poberi kad sazrije. Što bolje paziš na biljku i što je prije ubereš, to je kvalitetnija.', 'info');
+  ui.log('Robu ★★ i bolju stavi na štand ispred kuće. Navečer idi spavati u kuću: tako se igra sprema.', 'info');
 }
 
-// --- simulation clock -------------------------------------------------------
+// ------------------------------------------------------------------ actions
 
-let last = Date.now();
-let away = null; // events collected while the tab is hidden
-
-function step() {
-  const now = Date.now();
-  const dt = Math.min(OFFLINE_CAP, Math.max(0, (now - last) / 1000));
-  last = now;
-  if (dt === 0) return;
-  const events = advance(state, dt, []);
-  if (document.hidden) {
-    away ??= { seconds: 0, events: [] };
-    away.seconds += dt;
-    for (const e of events) away.events.push(e);
-  } else if (dt >= 60) {
-    welcomeBack(dt, events); // e.g. the laptop was asleep
-  } else {
-    report(events);
-    renderer.notify(events, state, performance.now());
-  }
-  ui.update(state);
+function act(fn) {
+  const events = [];
+  fn(events);
+  report(events);
+  renderer.notify(events, state, performance.now());
+  refresh();
 }
 
-function returnToTab() {
-  step();
-  if (!away) return;
-  if (away.seconds >= 60) welcomeBack(away.seconds, away.events);
-  else report(away.events);
-  away = null;
-  ui.update(state);
+function closePanel() {
+  ui.state.panel = null;
+  refresh();
 }
 
-// --- player actions ---------------------------------------------------------
+function onTool(tool) {
+  ui.state.placing = false;
+  state.tool = tool;
+  refresh();
+}
 
-function onSelectCrop(id) {
+function onSeed(id) {
   if (!isUnlocked(state, id)) return;
-  state.selectedCrop = id;
-  ui.update(state);
+  state.seed = id;
+  state.tool = 'seed';
+  ui.state.placing = false;
+  refresh();
 }
 
-function onBuy(id) {
-  step();
-  const r = buyUpgrade(state, id);
-  const u = upgradeById[id];
-  if (r.ok) {
-    const level = state.upgrades[id];
-    ui.log(`$ ${u.cmd}`, 'cmd');
-    ui.log(`✔ ${u.name} lvl ${level}: ${u.effect(level)}`, 'ok');
-    save();
-  } else if (r.reason === 'broke') {
-    ui.log('✖ Nakon kupnje ne bi ostalo novca za sjeme. Prvo nešto posadi.', 'err');
-  }
-  ui.update(state);
+function onMove(from, slot, to) {
+  act((ev) => moveItem(state, from, slot, to, ev));
+}
+
+function onEat(slot) {
+  act((ev) => eat(state, slot, ev));
+  if (!state.bag[slot]) ui.state.selected = -1;
+}
+
+function onPlace() {
+  if (!countWhere(state.bag, (id) => id === 'sprinkler')) return;
+  ui.state.placing = true;
+  ui.state.panel = null;
+  ui.log('Klikni praznu parcelu za prskalicu (Esc za odustajanje).', 'info');
+  refresh();
+}
+
+function onSleep() {
+  act((ev) => sleep(state, ev));
+}
+
+function onCoffee() {
+  act((ev) => coffee(state, ev));
+}
+
+function onCraft(id) {
+  act((ev) => craft(state, id, ev));
 }
 
 function onReset() {
   if (!window.confirm('Obrisati farmu i krenuti ispočetka?')) return;
   storage.remove();
-  state = createState();
-  droneBatch = { count: 0, coins: 0 };
+  state = createState(Date.now() % 2147483646 + 1);
+  Object.assign(ui.state, { panel: null, selected: -1, placing: false });
   ui.clear();
   intro();
   save();
-  ui.update(state);
+  refresh();
 }
 
+// ------------------------------------------------------------------ input
+
 canvas.addEventListener('click', (e) => {
-  step();
-  const i = renderer.tileAt(e.clientX, e.clientY, state);
-  if (i < 0) return;
-  const events = [];
-  const r = clickTile(state, i, events);
-  if (!r.ok && r.reason === 'coins') {
-    ui.log(`✖ Nedovoljno novčića: ${cropById[state.selectedCrop].name} košta ${r.need} 🪙`, 'err');
-  }
-  report(events);
-  renderer.notify(events, state, performance.now());
-  ui.update(state);
+  const t = renderer.tileFromClient(e.clientX, e.clientY);
+  if (!t) return;
+  const mode = ui.state.placing ? 'place' : 'auto';
+  ui.state.placing = false;
+  ui.state.panel = null;
+  act((ev) => command(state, t[0], t[1], mode, ev));
 });
 
 canvas.addEventListener('mousemove', (e) => {
-  const i = renderer.tileAt(e.clientX, e.clientY, state);
-  renderer.setHover(i);
-  canvas.style.cursor = i >= 0 ? 'pointer' : 'default';
+  hoverTile = renderer.tileFromClient(e.clientX, e.clientY);
+  renderer.setHover(hoverTile);
 });
-canvas.addEventListener('mouseleave', () => renderer.setHover(-1));
+canvas.addEventListener('mouseleave', () => {
+  hoverTile = null;
+  renderer.setHover(null);
+});
 
-// --- start ------------------------------------------------------------------
+window.addEventListener('keydown', (e) => {
+  if (e.target instanceof HTMLInputElement || e.ctrlKey || e.metaKey || e.altKey) return;
+  const tool = { 1: 'hand', 2: 'seed', 3: 'can', 4: 'fert' }[e.key];
+  if (tool) onTool(tool);
+  else if (e.key === 'Escape') {
+    ui.state.placing = false;
+    closePanel();
+  }
+});
 
-if (loaded.restored) ui.log('$ ssh farma → spojeno, farma učitana', 'cmd');
-else intro();
+window.addEventListener('resize', () => renderer.resize());
 
-if (loaded.elapsed > 0) {
-  const events = advance(state, loaded.elapsed, []);
-  if (loaded.elapsed >= 60) welcomeBack(loaded.elapsed, events);
+// ------------------------------------------------------------------ loop
+
+let lastFrame = performance.now();
+let lastUi = 0;
+
+function refresh() {
+  ui.update(state, hoverTile);
 }
-
-ui.update(state);
-renderer.draw(state, performance.now());
-
-setInterval(step, 200);
-setInterval(flushDrone, 10_000);
-setInterval(save, 10_000);
-document.addEventListener('visibilitychange', () => (document.hidden ? save() : returnToTab()));
-window.addEventListener('pagehide', save);
 
 function frame(now) {
+  // time only runs while the tab is visible; long gaps (sleeping laptop) are capped
+  const dt = Math.min(0.1, Math.max(0, (now - lastFrame) / 1000));
+  lastFrame = now;
+  if (!document.hidden && dt > 0) {
+    const events = tick(state, dt, []);
+    if (events.length) {
+      report(events);
+      renderer.notify(events, state, now);
+    }
+  }
   renderer.draw(state, now);
+  if (now - lastUi > 120) {
+    lastUi = now;
+    refresh();
+  }
   requestAnimationFrame(frame);
 }
+
+// quiet autosave so closing the tab never loses much; sleeping is the "real" save
+setInterval(save, 30_000);
+setInterval(flushDrone, 10_000);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) save();
+  lastFrame = performance.now();
+});
+window.addEventListener('pagehide', save);
+
+if (loaded.restored) ui.log(`$ ssh farma → Dan ${state.day}, nastavljamo gdje si stao.`, 'cmd');
+else intro();
+refresh();
+renderer.draw(state, performance.now());
 requestAnimationFrame(frame);
+
+// for poking around in the browser console: devFarm.state, devFarm.redraw()
+window.devFarm = {
+  get state() { return state; },
+  ui: ui.state,
+  renderer,
+  itemName,
+  redraw() { refresh(); renderer.draw(state, performance.now()); },
+};

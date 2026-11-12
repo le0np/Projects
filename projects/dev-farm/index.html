@@ -10,40 +10,44 @@
 <body>
   <header class="topbar">
     <div class="brand"><span class="user">dev@farma</span>:<span class="path">~/dev-farm</span>$</div>
-    <div class="wallet">
-      <span class="coins"><span id="coins">0</span> 🪙</span>
-      <span class="muted">ukupno zarađeno <span id="earned">0</span></span>
+    <div class="hud">
+      <span class="hud-item"><strong id="hud-day">Dan 1</strong> · <span id="hud-clock">06:00</span></span>
+      <span class="hud-item muted" id="hud-shop"></span>
+      <span class="hud-item coins"><span id="hud-coins">0</span> 🪙</span>
+      <span class="hud-item energy" title="Energija">
+        ⚡ <span class="bar"><span id="hud-energy-bar"></span></span> <span id="hud-energy" class="muted"></span>
+      </span>
     </div>
   </header>
 
   <main class="layout">
     <div class="main-col">
-    <section class="card field-card">
-      <div class="card-title">polje.canvas <span class="muted" id="field-size">3×3</span></div>
-      <canvas id="field" aria-label="Polje s parcelama"></canvas>
-      <p class="hint">prazna → posadi · suha 💧 → zalij · zrela → poberi</p>
-    </section>
-
-    <section class="card terminal-card">
-      <div class="card-title">terminal</div>
-      <div id="terminal" class="terminal" role="log" aria-live="polite"></div>
-    </section>
+      <div class="world-wrap">
+        <canvas id="world" aria-label="Farma. Klikni gdje farmer treba otići."></canvas>
+      </div>
+      <div class="toolbar">
+        <div id="hotbar" class="hotbar" aria-label="Alati"></div>
+        <div id="seeds" class="seeds" aria-label="Sjeme"></div>
+      </div>
+      <p id="inspect" class="inspect" aria-live="polite"></p>
     </div>
 
     <aside class="side">
+      <section id="panel" class="card panel"></section>
       <section class="card">
-        <div class="card-title">sjeme/</div>
-        <div id="seeds" class="seeds"></div>
+        <div class="card-title">torba</div>
+        <div id="bag" class="slots"></div>
+        <div id="bag-info" class="bag-info"></div>
       </section>
       <section class="card">
-        <div class="card-title">skripte i izumi</div>
-        <div id="shop" class="shop"></div>
+        <div class="card-title">terminal</div>
+        <div id="terminal" class="terminal" role="log" aria-live="polite"></div>
       </section>
     </aside>
   </main>
 
   <footer class="footer">
-    <span class="muted">Igra se sama sprema u ovaj browser.</span>
+    <span class="muted">Spavanje u kući sprema igru. Dok je tab skriven, vrijeme stoji.</span>
     <button id="reset" type="button" class="reset">rm -rf farma</button>
   </footer>
 

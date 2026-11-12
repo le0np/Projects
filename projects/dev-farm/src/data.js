@@ -1,68 +1,91 @@
 // Game balance and static content. Everything tunable lives here.
+// Times are in real seconds unless the name says minutes.
 
-export const SAVE_VERSION = 1;
-export const GRID_MAX = 5; // tiles are always stored as GRID_MAX × GRID_MAX
-export const BASE_GRID = 3; // starting field is 3 × 3
-export const START_COINS = 10;
+export const SAVE_VERSION = 2;
+export const START_COINS = 40;
+export const MAX_ENERGY = 100;
 
-export const WATER_DURATION = 30; // seconds a watered tile stays wet
-export const DRY_RATE = 0.5; // dry tiles grow at half speed
-export const COMPOST_BONUS = 0.25; // +25 % growth speed per compost level
-export const WATER_INTERVAL = 10; // water.sh runs every 10 s
-export const MAX_STEP = 1; // simulation step in seconds
-export const OFFLINE_CAP = 8 * 3600; // at most 8 h of catch-up
+export const BAG_SIZE = 8;
+export const CHEST_SIZE = 24;
+export const STAND_SIZE = 6;
+export const STACK_MAX = 99;
 
-// grow = seconds to mature when watered the whole time
+// Clock: minutes since midnight of the current day. A day runs 06:00 → 02:00 (26 * 60).
+export const GAME_MIN_PER_SEC = 2; // 1 real second = 2 game minutes → a day lasts 10 real minutes
+export const DAY_START = 6 * 60;
+export const NIGHT_START = 22 * 60;
+export const PASS_OUT = 26 * 60;
+export const SHOP_OPEN = 8 * 60;
+export const SHOP_CLOSE = 19 * 60;
+
+export const WALK_SPEED = 5; // tiles per second
+export const NPC_SPEED = 3;
+export const DRONE_SPEED = 6;
+export const DRONE_COOLDOWN = 3;
+
+export const WATER_DURATION = 150; // a watered plot stays wet this long
+export const DRY_RATE = 0.5; // dry plots grow at half speed
+export const AUTO_WATER_CREDIT = 0.75; // sprinkler water counts less towards quality
+export const CAN_SIZES = [12, 30]; // watering can capacity, normal / big
+export const SPRINKLER_INTERVAL = 30;
+
+export const ENERGY_COST = { plant: 2, water: 1, fertilize: 1, harvest: 1, clear: 1 };
+export const COFFEE = { price: 15, energy: 35 };
+export const EAT_ENERGY = [0, 6, 10, 15, 20]; // by quality tier
+
+// Quality tiers: 1 loše, 2 dobro, 3 odlično, 4 zlatno. Only tier 2+ sells.
+export const TIER_NAMES = ['', 'loše', 'dobro', 'odlično', 'zlatno'];
+export const TIER_PRICE = [0, 0, 1, 1.5, 2.2];
+export const MIN_SELL_TIER = 2;
+export const MACHINE_MAX_TIER = 3;
+
+export const CUSTOMER_INTERVAL = [18, 36]; // seconds between customers
+export const SEO_BONUS = 1.6;
+
+// grow = seconds to ripen if kept watered; price = stand price at ★★
 export const CROPS = [
-  { id: 'radish', name: 'Rotkvica', seed: 2, grow: 10, sell: 5, unlock: 0 },
-  { id: 'carrot', name: 'Mrkva', seed: 8, grow: 30, sell: 22, unlock: 60 },
-  { id: 'potato', name: 'Krumpir', seed: 25, grow: 60, sell: 70, unlock: 400 },
-  { id: 'tomato', name: 'Rajčica', seed: 80, grow: 150, sell: 240, unlock: 2000 },
-  { id: 'pumpkin', name: 'Bundeva', seed: 250, grow: 300, sell: 800, unlock: 8000 },
+  { id: 'radish', name: 'Rotkvica', seed: 3, grow: 45, price: 8, unlock: 0 },
+  { id: 'carrot', name: 'Mrkva', seed: 6, grow: 90, price: 18, unlock: 80 },
+  { id: 'potato', name: 'Krumpir', seed: 12, grow: 150, price: 35, unlock: 300 },
+  { id: 'tomato', name: 'Rajčica', seed: 25, grow: 240, price: 70, unlock: 900 },
+  { id: 'pumpkin', name: 'Bundeva', seed: 60, grow: 420, price: 170, unlock: 2500 },
 ];
 
-export const WATER_PER_RUN = [3, 5, 9, 15, 25];
-export const DRONE_INTERVALS = [8, 5, 3, 2, 1];
+// A ripe crop keeps full quality for ripeWindow seconds, then loses it, then rots.
+export const ripeWindow = (crop) => Math.max(45, crop.grow * 0.5);
+export const ROT_AFTER = 4; // × ripeWindow
 
-export const UPGRADES = [
+export const RECIPES = [
   {
-    id: 'water',
-    name: 'water.sh',
-    cmd: 'crontab -e  # */10 * * * * ./water.sh',
-    blurb: 'Cron skripta koja svakih 10 s zalije suhe parcele.',
-    costs: [50, 150, 450, 1350, 4000],
-    effect: (l) => (l === 0 ? 'ne radi' : `${WATER_PER_RUN[l - 1]} parcela / 10 s`),
+    id: 'compost', name: 'Gnojivo (kompost)', gives: 'fertilizer', coins: 0, bad: 2,
+    desc: '2 loša (★) proizvoda → 1 gnojivo.',
   },
   {
-    id: 'drone',
-    name: 'harvest-drone',
-    cmd: 'docker run -d harvest-drone',
-    blurb: 'Dron koji sam bere zrele usjeve.',
-    costs: [150, 500, 1500, 4500, 12000],
-    effect: (l) => (l === 0 ? 'nema' : `1 berba / ${DRONE_INTERVALS[l - 1]} s`),
+    id: 'fertilizer', name: 'Gnojivo (kupovno)', gives: 'fertilizer', coins: 12,
+    desc: 'Vreća gnojiva. Pognojena biljka je kvalitetnija.',
   },
   {
-    id: 'replant',
-    name: 'replant.py',
-    cmd: 'pip install replant',
-    blurb: 'Nakon berbe odmah posadi isti usjev (sjeme se plaća).',
-    costs: [300],
-    effect: (l) => (l === 0 ? 'isključeno' : 'uključeno'),
+    id: 'sprinkler', name: 'Prskalica · water.sh', gives: 'sprinkler', coins: 120,
+    desc: 'Postavi je na praznu parcelu: svakih 30 s zalije 8 parcela oko sebe.',
   },
   {
-    id: 'compost',
-    name: 'compost-cache',
-    cmd: 'redis-cli SET compost-cache warm',
-    blurb: 'Kompost u cacheu: sve raste brže.',
-    costs: [100, 300, 900, 2700],
-    effect: (l) => (l === 0 ? 'nema' : `+${Math.round(l * COMPOST_BONUS * 100)} % brzine rasta`),
+    id: 'bigCan', name: 'Velika kanta', once: 'bigCan', coins: 150,
+    desc: `Kanta drži ${CAN_SIZES[1]} umjesto ${CAN_SIZES[0]} zalijevanja.`,
   },
   {
-    id: 'field',
-    name: 'git clone polje',
-    cmd: 'git clone git@farma:polje.git',
-    blurb: 'Kloniraj polje i dobij nove parcele.',
-    costs: [250, 2000],
-    effect: (l) => `${BASE_GRID + l}×${BASE_GRID + l}`,
+    id: 'drone', name: 'harvest-drone', once: 'drone', coins: 400,
+    desc: 'Bere zrele usjeve i nosi ih u škrinju. Najviše ★★★.',
+  },
+  {
+    id: 'replant', name: 'replant.py', once: 'replant', requires: 'drone', coins: 300,
+    desc: 'Dron nakon berbe posadi isto sjeme (plaća se).',
+  },
+  {
+    id: 'seo', name: 'SEO ploča za štand', once: 'seo', coins: 250,
+    desc: 'Kupci dolaze 60 % češće.',
+  },
+  {
+    id: 'field2', name: 'git clone polje', once: 'field2', coins: 600,
+    desc: 'Raščisti zaraslo polje južno od staze: još 48 parcela.',
   },
 ];
