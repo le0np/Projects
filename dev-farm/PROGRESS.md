@@ -73,15 +73,21 @@ Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša i rad
 - odvojeni gumb „Zalij ▾“ uklonjen iz alatne trake
 - dok zalijevanje traje, kanta pokazuje napredak („zalijeva 2/5“), a ▾ postaje ■ za prekid
 
+### v9 – sjeme s izbornikom
+
+- sjeme je razdvojeni gumb kao i kanta: klik na sjeme uzme ga za sadnju biljku po biljku (vrsta se bira u vrećici ispod), a ▾ uz njega posadi sve sjeme ili samo jednu vrstu (tipka P i dalje sadi sve)
+- odvojeni gumb „Posadi ▾“ uklonjen; ostao je samo „Poberi ▾“
+- dok sadnja traje, sjeme pokazuje napredak („sadi 3/9“), a ▾ postaje ■ za prekid
+
 ## Zadnja automatizirana provjera
 
-Provedeno 12. studenog 2026. nakon v8:
+Provedeno 12. studenog 2026. nakon v9:
 
 | Provjera | Rezultat |
 | --- | --- |
 | `npm test` u `dev-farm/` | 32/32 testova prolazi |
 | `npm start` + dohvat stranice i modula | server vraća 200 za `index.html` i `src/*.js` |
-| Headless Firefox (scenariji u scratchpadu) | iscrtavanje bez JS grešaka; provjereni hodanje, škrinja, skupna sadnja, zalijevanje s odlaskom po vodu, zidanje bunara, doseg prskalice, izbornik koji se zatvara, novčići u HUD-u, izbornik kante i prekid zalijevanja, noć |
+| Headless Firefox (scenariji u scratchpadu) | iscrtavanje bez JS grešaka; provjereni hodanje, škrinja, skupna sadnja, zalijevanje s odlaskom po vodu, zidanje bunara, doseg prskalice, izbornik koji se zatvara, novčići u HUD-u, izbornici sjemena i kante te prekid sadnje i zalijevanja, noć |
 
 ## Poznata ograničenja
 
