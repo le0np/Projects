@@ -1,0 +1,14 @@
+{
+  "name": "dev-farm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A small browser farming game for developers to play between tasks.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

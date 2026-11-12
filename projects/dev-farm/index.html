@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dev-farm</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="user">dev@farma</span>:<span class="path">~/dev-farm</span>$</div>
+    <div class="wallet">
+      <span class="coins"><span id="coins">0</span> 🪙</span>
+      <span class="muted">ukupno zarađeno <span id="earned">0</span></span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div class="main-col">
+    <section class="card field-card">
+      <div class="card-title">polje.canvas <span class="muted" id="field-size">3×3</span></div>
+      <canvas id="field" aria-label="Polje s parcelama"></canvas>
+      <p class="hint">prazna → posadi · suha 💧 → zalij · zrela → poberi</p>
+    </section>
+
+    <section class="card terminal-card">
+      <div class="card-title">terminal</div>
+      <div id="terminal" class="terminal" role="log" aria-live="polite"></div>
+    </section>
+    </div>
+
+    <aside class="side">
+      <section class="card">
+        <div class="card-title">sjeme/</div>
+        <div id="seeds" class="seeds"></div>
+      </section>
+      <section class="card">
+        <div class="card-title">skripte i izumi</div>
+        <div id="shop" class="shop"></div>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="footer">
+    <span class="muted">Igra se sama sprema u ovaj browser.</span>
+    <button id="reset" type="button" class="reset">rm -rf farma</button>
+  </footer>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
