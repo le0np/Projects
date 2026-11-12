@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 
 import {
   createState, command, plotAction, objectAction, advance, tick, sleep, craft, moveItem, eat,
-  coffee, addItem, qualityScore, tierOf, cropItem, makePlot, isSellable, ripeCount,
+  coffee, addItem, qualityScore, tierOf, cropItem, makePlot, isSellable, ripeCount, extractSeeds,
+  orderSeeds, packPrice, salePrice,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -11,7 +12,7 @@ import {
 } from '../src/world.js';
 import { findPath } from '../src/path.js';
 import {
-  BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZES, WATER_DURATION, CROPS,
+  BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZES, CROPS, START_FINDS, HOUSE_SEEDS,
 } from '../src/data.js';
 
 const [AX, AY] = xy(PLOTS_A[0]);
@@ -22,6 +23,11 @@ const walkTo = (s, x, y, mode) => {
   const r = command(s, x, y, mode, events);
   for (let i = 0; i < 400 && s.farmer.path.length; i++) tick(s, 0.1, events);
   return { r, events };
+};
+const withSeeds = (n = 10, crop = 'radish') => {
+  const s = createState();
+  s.seeds[crop] = n;
+  return s;
 };
 
 test('map: correct size, every place is reachable from the house door', () => {
@@ -34,22 +40,42 @@ test('map: correct size, every place is reachable from the house door', () => {
     assert.ok(findPath(HOUSE_DOOR, o.access, isWalkable), `no path to ${id}`);
   }
   for (const i of [...PLOTS_A, ...PLOTS_B]) assert.ok(findPath(HOUSE_DOOR, [xy(i)], isWalkable));
+  for (const f of START_FINDS) assert.ok(findPath(HOUSE_DOOR, [[f.x, f.y]], isWalkable), `find ${f.crop}`);
   for (const sp of SPAWNS) assert.ok(findPath(sp, [CUSTOMER_SPOT], isWalkable), 'customers reach the stand');
 });
 
-test('farmer walks to a clicked plot and plants there with the seed tool', () => {
+test('a new farm has no seeds; the house drawer and finds on the map give some', () => {
   const s = createState();
+  assert.ok(Object.values(s.seeds).every((n) => n === 0));
+  s.tool = 'seed';
+  assert.equal(plotAction(s, AX, AY).reason, 'noseeds');
+
+  const { events } = walkTo(s, 8, 5); // click the house
+  assert.ok(events.some((e) => e.type === 'found' && e.crop === HOUSE_SEEDS.crop));
+  assert.equal(s.seeds.radish, HOUSE_SEEDS.n);
+  walkTo(s, 8, 5);
+  assert.equal(s.seeds.radish, HOUSE_SEEDS.n, 'the drawer is only full once');
+
+  const carrot = START_FINDS.find((f) => f.crop === 'carrot');
+  walkTo(s, carrot.x, carrot.y);
+  assert.equal(s.seeds.carrot, carrot.n);
+  assert.ok(!s.finds.some((f) => f.crop === 'carrot'));
+});
+
+test('farmer walks to a clicked plot and plants one counted seed there', () => {
+  const s = withSeeds(5);
   s.tool = 'seed';
   const { r, events } = walkTo(s, AX, AY);
   assert.ok(r.ok);
   assert.deepEqual([s.farmer.x, s.farmer.y], [AX, AY]);
   assert.equal(plotOf(s).crop, 'radish');
-  assert.equal(s.coins, 40 - 3);
+  assert.equal(s.seeds.radish, 4);
+  assert.equal(s.coins, 40, 'planting costs a seed, not money');
   assert.equal(s.energy, MAX_ENERGY - 2);
   assert.ok(events.some((e) => e.type === 'plant'));
 });
 
-test('clicking a tree does nothing; empty plot without seeds explains why', () => {
+test('clicking a tree does nothing; empty plot without the seed tool explains why', () => {
   const s = createState();
   assert.equal(command(s, 0, 0).ok, false);
   const events = [];
@@ -57,8 +83,37 @@ test('clicking a tree does nothing; empty plot without seeds explains why', () =
   assert.equal(events[0].reason, 'needseed');
 });
 
-test('watering uses the can; well and pond refill it', () => {
+test('one fruit gives 2–10 seeds at the workbench', () => {
   const s = createState();
+  addItem(s.bag, cropItem('radish', 1), 30);
+  const counts = new Set();
+  for (let i = 0; i < 30; i++) {
+    const before = s.seeds.radish;
+    assert.ok(extractSeeds(s, 0).ok);
+    const n = s.seeds.radish - before;
+    assert.ok(n >= 2 && n <= 10, `got ${n}`);
+    counts.add(n);
+  }
+  assert.ok(counts.size > 3, 'the amount is random');
+  assert.equal(s.bag[0], null);
+  assert.equal(extractSeeds(s, 0).reason, 'notfruit');
+});
+
+test('seed delivery: only catalogue crops, paid now, delivered next morning', () => {
+  const s = createState();
+  assert.equal(orderSeeds(s, 'carrot').reason, 'notincatalog');
+  assert.ok(orderSeeds(s, 'radish').ok);
+  assert.equal(s.coins, 40 - packPrice('radish'));
+  assert.equal(s.seeds.radish, 0, 'not here yet');
+  const events = [];
+  sleep(s, events);
+  assert.equal(s.seeds.radish, 5);
+  assert.ok(events.some((e) => e.type === 'delivered'));
+  assert.equal(s.orders.length, 0);
+});
+
+test('watering uses the can; the pond refills it, the well only once it is built', () => {
+  const s = withSeeds();
   s.tool = 'seed';
   plotAction(s, AX, AY);
   s.tool = 'can';
@@ -68,10 +123,18 @@ test('watering uses the can; well and pond refill it', () => {
   s.water = 0;
   plotOf(s).water = 0;
   assert.equal(plotAction(s, AX, AY).reason, 'canempty');
-  walkTo(s, 15, 6); // click on the well
-  assert.equal(s.water, CAN_SIZES[0]);
-  s.water = 0;
+
+  const { events } = walkTo(s, 15, 6); // the well site
+  assert.ok(events.some((e) => e.reason === 'nowell'));
+  assert.equal(s.water, 0);
   objectAction(s, 'pond');
+  assert.equal(s.water, CAN_SIZES[0]);
+
+  s.water = 0;
+  s.coins = 500;
+  assert.equal(craft(s, 'sprinkler').reason, 'requires', 'irrigation needs the well');
+  assert.ok(craft(s, 'well').ok);
+  walkTo(s, 15, 6);
   assert.equal(s.water, CAN_SIZES[0]);
 });
 
@@ -87,7 +150,7 @@ test('quality: water, fertilizer and timely harvest decide the tier', () => {
 });
 
 test('growing for real: watered + fertilized radish harvested on time is gold', () => {
-  const s = createState();
+  const s = withSeeds();
   addItem(s.bag, 'fertilizer');
   s.tool = 'seed';
   plotAction(s, AX, AY);
@@ -118,7 +181,7 @@ test('ripe crops rot if left during the day, but wait overnight', () => {
 });
 
 test('no energy, no work; coffee and food help', () => {
-  const s = createState();
+  const s = withSeeds();
   s.energy = 1;
   s.tool = 'seed';
   assert.equal(plotAction(s, AX, AY).reason, 'tired');
@@ -137,23 +200,30 @@ test('full bag blocks harvesting', () => {
   assert.equal(plotAction(s, AX, AY).reason, 'bagfull');
 });
 
-test('stand only takes ★★ and better; customers buy during opening hours', () => {
+test('price follows quality; ★ sells at half price and only when nothing better is left', () => {
+  assert.equal(salePrice('carrot', 1), 9);
+  assert.equal(salePrice('carrot', 2), 18);
+  assert.equal(salePrice('carrot', 3), 27);
   const s = createState();
   addItem(s.bag, cropItem('carrot', 1), 3);
-  addItem(s.bag, cropItem('carrot', 3), 5);
-  assert.equal(moveItem(s, 'bag', 0, 'stand').reason, 'notsellable');
+  addItem(s.bag, cropItem('carrot', 3), 2);
+  assert.ok(isSellable(cropItem('carrot', 1)));
+  assert.ok(moveItem(s, 'bag', 0, 'stand').ok);
   assert.ok(moveItem(s, 'bag', 1, 'stand').ok);
-  assert.ok(isSellable(s.stand[0].id));
 
-  const events = advance(s, 60); // 06:00 → 08:00, shop still closed
-  assert.ok(!events.some((e) => e.type === 'sale'));
+  const early = advance(s, 60); // 06:00 → 08:00, still closed
+  assert.ok(!early.some((e) => e.type === 'sale'));
   assert.ok(s.clock >= SHOP_OPEN);
-  const later = advance(s, 120);
-  const sales = later.filter((e) => e.type === 'sale');
-  assert.ok(sales.length >= 1, 'someone bought something');
-  const sold = sales.reduce((a, e) => a + e.qty, 0);
-  assert.equal(s.coins, 40 + sold * 27);
-  assert.equal((s.stand[0]?.n ?? 0), 5 - sold);
+  const sales = advance(s, 400).filter((e) => e.type === 'sale');
+  assert.ok(sales.length >= 2, `only ${sales.length} sales`);
+  const firstBad = sales.findIndex((e) => e.tier === 1);
+  const goodSold = sales.filter((e) => e.tier === 3).reduce((a, e) => a + e.qty, 0);
+  if (firstBad >= 0) {
+    assert.equal(goodSold, 2, '★ only after the ★★★ ran out');
+    assert.ok(sales.slice(0, firstBad).every((e) => e.tier === 3));
+  }
+  const coins = sales.reduce((a, e) => a + e.coins, 0);
+  assert.equal(s.coins, 40 + coins);
 });
 
 test('sleeping skips to 06:00, refills energy and lets crops grow', () => {
@@ -181,8 +251,9 @@ test('staying up until 02:00 makes the farmer pass out with half energy', () => 
 });
 
 test('sprinkler (water.sh) waters its neighbours, with less quality credit', () => {
-  const s = createState();
+  const s = withSeeds();
   s.coins = 1000;
+  s.upgrades.well = true;
   assert.ok(craft(s, 'sprinkler').ok);
   const [x, y] = xy(PLOTS_A[9]); // has neighbours on all sides
   walkTo(s, x, y, 'place');
@@ -194,8 +265,8 @@ test('sprinkler (water.sh) waters its neighbours, with less quality credit', () 
   assert.equal(plotAction(s, x, y).reason, 'sprinklerhere');
 });
 
-test('harvest-drone brings crops to the chest, never above ★★★, and replants', () => {
-  const s = createState();
+test('harvest-drone brings crops to the chest, never above ★★★, and replants from seeds', () => {
+  const s = withSeeds(1);
   s.coins = 2000;
   assert.equal(craft(s, 'replant').reason, 'requires');
   assert.ok(craft(s, 'drone').ok);
@@ -208,10 +279,11 @@ test('harvest-drone brings crops to the chest, never above ★★★, and replan
   assert.equal(h.tier, 3);
   assert.equal(s.chest[0].id, cropItem('radish', 3));
   assert.equal(plotOf(s).crop, 'radish'); // replanted
+  assert.equal(s.seeds.radish, 0);
 });
 
 test('compost turns bad produce into fertilizer; git clone polje opens field B', () => {
-  const s = createState();
+  const s = withSeeds();
   assert.equal(craft(s, 'compost').reason, 'nobad');
   addItem(s.bag, cropItem('radish', 1), 2);
   assert.ok(craft(s, 'compost').ok);
@@ -231,23 +303,30 @@ test('ripeCount counts ripe crops for the tab title', () => {
   assert.equal(ripeCount(s), 1);
 });
 
-test('save round trip, and broken saves fall back safely', () => {
-  const s = createState();
+test('save round trip, v2 migration, and broken saves fall back safely', () => {
+  const s = withSeeds(7);
   s.tool = 'seed';
   walkTo(s, AX, AY);
   addItem(s.bag, cropItem('tomato', 4), 3);
-  s.stand[2] = { id: cropItem('carrot', 3), n: 4 };
+  s.stand[2] = { id: cropItem('carrot', 1), n: 4 };
   s.sprinklers.push({ x: AX + 1, y: AY, t: 3 });
+  s.orders.push({ crop: 'radish', n: 5 });
   const { state, restored } = deserialize(serialize(s));
   assert.ok(restored);
   assert.deepEqual(state, JSON.parse(serialize(s)));
 
+  const v2 = deserialize(JSON.stringify({ version: 2, coins: 300, upgrades: { drone: true } })).state;
+  assert.ok(v2.upgrades.well && v2.upgrades.drone, 'old farms keep their well');
+  assert.equal(v2.seeds.radish, 10);
+  assert.equal(v2.coins, 300);
+
   assert.equal(deserialize('{nope').restored, false);
   assert.equal(deserialize(JSON.stringify({ version: 1 })).restored, false);
   const evil = deserialize(JSON.stringify({
-    version: 2, coins: -9, energy: 1e9, tool: 'chainsaw', seed: 'pumpkin', clock: 99999,
+    version: 3, coins: -9, energy: 1e9, tool: 'chainsaw', seed: 'banana', clock: 99999,
     farmer: { x: 0, y: 0 }, bag: [{ id: 'gold', n: 5 }, { id: 'crop:radish:4', n: 1e9 }],
-    stand: [{ id: 'crop:radish:1', n: 3 }], sprinklers: [{ x: 0, y: 0 }],
+    stand: [{ id: 'fertilizer', n: 3 }], sprinklers: [{ x: 0, y: 0 }], seeds: { radish: -4, carrot: 'x' },
+    finds: [{ x: 0, y: 0, crop: 'radish', n: 5 }], orders: [{ crop: 'banana', n: 5 }],
     plots: { [PLOTS_A[0]]: { crop: 'banana' } },
   })).state;
   assert.equal(evil.coins, 0);
@@ -260,8 +339,10 @@ test('save round trip, and broken saves fall back safely', () => {
   assert.equal(evil.bag[1].n, 99);
   assert.equal(evil.stand[0], null);
   assert.equal(evil.sprinklers.length, 0);
+  assert.deepEqual([evil.seeds.radish, evil.seeds.carrot], [0, 0]);
+  assert.equal(evil.finds.length, 0);
+  assert.equal(evil.orders.length, 0);
   assert.equal(evil.plots[PLOTS_A[0]].crop, null);
-  assert.ok(CROPS.length === 5 && WATER_DURATION > 0);
 });
 
 test('all art generates: correct sizes, nothing empty', async () => {
@@ -273,6 +354,8 @@ test('all art generates: correct sizes, nothing empty', async () => {
   };
   check(A.house(), 208, 192, 'house');
   check(A.stand(), 72, 72, 'stand');
+  check(A.wellSite(), 40, 52, 'well site');
+  check(A.findMarker(), 24, 24, 'find');
   for (const dir of ['down', 'up', 'side']) {
     for (const frame of [0, 1, 2, 3]) {
       check(A.person({ dir, frame, farmer: true }), 24, 32, `farmer ${dir} ${frame}`);
@@ -283,7 +366,6 @@ test('all art generates: correct sizes, nothing empty', async () => {
     for (const stage of ['sprout', 'young', 'ripe', 'rotten']) check(A.crop(c.id, stage), 24, 28, `${c.id} ${stage}`);
     check(A.icon(c.id), 16, 16, `icon ${c.id}`);
   }
-  for (const i of ['fertilizer', 'sprinkler', 'hand', 'seeds', 'can']) check(A.icon(i), 16, 16, i);
-  // deterministic: same input, same pixels
-  assert.deepEqual(A.roundTree(5).d, A.roundTree(5).d);
+  for (const i of ['fertilizer', 'sprinkler', 'hand', 'seeds', 'can', 'phone']) check(A.icon(i), 16, 16, i);
+  assert.deepEqual(A.roundTree(5).d, A.roundTree(5).d, 'art is deterministic');
 });

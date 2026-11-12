@@ -675,6 +675,38 @@ export function well() {
   return p.outline(0.42);
 }
 
+// Where the well will be: stakes, string and a pile of stones (same frame as the well).
+export function wellSite() {
+  const p = new Pix(40, 52);
+  const string = '#d8c9a0';
+  const stakes = [[6, 34], [33, 34], [6, 49], [33, 49]];
+  p.line(7, 33, 34, 33, string);
+  p.line(7, 48, 34, 48, string);
+  p.line(7, 33, 7, 48, string);
+  p.line(34, 33, 34, 48, string);
+  for (const [x, y] of stakes) p.rect(x, y - 7, 2, 8, (px, py) => pick(RAMP.wood, px === x ? 0.75 : 0.4, px, py));
+  const r = rng(5);
+  for (let k = 0; k < 9; k++) {
+    const x = 13 + r() * 14;
+    const y = 44 - (k > 5 ? 4 : 0) - (k > 7 ? 3 : 0) + r() * 3;
+    ball(p, x, y, 3 + r() * 1.5, 2.2 + r(), RAMP.stone, 0.12);
+  }
+  p.rect(26, 38, 2, 9, (x, y) => pick(RAMP.wood, x === 26 ? 0.7 : 0.4, x, y));
+  p.rect(23, 37, 8, 3, (x, y) => pick(RAMP.metal, 0.8 - (y - 37) * 0.2, x, y));
+  return p.outline(0.42);
+}
+
+// A spot on the map where seeds can be found: a wild plant gone to seed.
+export function findMarker() {
+  const p = new Pix(24, 24);
+  for (const [a, l] of [[-2.6, 7], [-1.9, 8], [-1.2, 8], [-0.5, 7]]) leaf(p, 12, 21, a, l, 1.8, RAMP.leaf, -0.05);
+  p.line(12, 21, 12, 6, RAMP.leaf[2]);
+  p.line(12, 12, 16, 7, RAMP.leaf[2]);
+  p.line(12, 14, 7, 9, RAMP.leaf[2]);
+  for (const [x, y] of [[12, 5], [16, 6], [7, 8]]) ball(p, x, y, 2.4, 2.2, RAMP.straw, 0.25);
+  return p.outline(0.42);
+}
+
 export function workbench() {
   const p = new Pix(44, 40);
   for (const x0 of [6, 34]) p.rect(x0, 18, 4, 20, (x, y) => pick(RAMP.wood, 0.55 - (x - x0) * 0.12, x, y));
@@ -1049,6 +1081,14 @@ export function icon(name) {
       for (let a = 0; a <= Math.PI; a += 0.15) p.set(7 + Math.cos(a) * 3.5, 5 - Math.sin(a) * 3.2, RAMP.metal[3]);
       break;
     }
+    case 'phone':
+      p.rect(4, 1, 8, 14, (x, y) => (x === 4 || x === 11 || y === 1 || y === 14 ? RAMP.metal[1] : null));
+      p.rect(5, 2, 6, 12, (x, y) => pick(RAMP.glass, 0.95 - (y - 2) * 0.05 + (x + y === 12 ? 0.2 : 0), x, y));
+      p.rect(7, 13, 2, 1, RAMP.metal[3]);
+      p.rect(6, 4, 4, 1, '#e8c35a');
+      p.rect(6, 6, 3, 1, '#9fe07a');
+      p.rect(6, 8, 4, 1, '#f1ece0');
+      break;
     case 'drop':
       for (let y = 2; y < 15; y++) {
         const w = y < 8 ? (y - 2) * 0.75 : Math.sqrt(Math.max(0, 25 - (y - 9.5) ** 2));

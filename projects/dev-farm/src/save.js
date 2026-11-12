@@ -1,10 +1,12 @@
 // Turning state into a string and back. Anything unexpected falls back to safe values.
 
-import { createState, cropById, parseItem, isSellable, isUnlocked, TOOLS, canSize } from './sim.js';
+import { createState, cropById, parseItem, isSellable, TOOLS, canSize } from './sim.js';
 import { SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, WATER_DURATION } from './data.js';
 import { W, H, isWalkable, isPlotTile } from './world.js';
 
-export const SAVE_KEY = 'dev-farm/save-v2';
+export const OLD_KEY = 'dev-farm/save-v2';
+
+export const SAVE_KEY = 'dev-farm/save-v3';
 
 export function serialize(s) {
   return JSON.stringify({
@@ -39,7 +41,10 @@ export function deserialize(raw) {
   } catch {
     return fresh;
   }
-  if (!d || typeof d !== 'object' || d.version !== SAVE_VERSION) return fresh;
+  if (!d || typeof d !== 'object') return fresh;
+  // v2 farms had a well from the start and bought seeds on planting: keep them playable
+  const fromV2 = d.version === 2;
+  if (d.version !== SAVE_VERSION && !fromV2) return fresh;
 
   const s = fresh.state;
   const big = Number.MAX_SAFE_INTEGER;
@@ -50,7 +55,21 @@ export function deserialize(raw) {
   s.energy = num(d.energy, 0, MAX_ENERGY, MAX_ENERGY);
   if (TOOLS.includes(d.tool)) s.tool = d.tool;
   for (const k of Object.keys(s.upgrades)) s.upgrades[k] = d.upgrades?.[k] === true;
-  if (isUnlocked(s, d.seed)) s.seed = d.seed;
+  if (cropById[d.seed]) s.seed = d.seed;
+  for (const k of Object.keys(s.seeds)) s.seeds[k] = int(d.seeds?.[k], 0, 99999, 0);
+  s.found.house = d.found?.house === true;
+  if (Array.isArray(d.finds)) {
+    s.finds = d.finds.slice(0, 20).filter((f) => f && cropById[f.crop] && isWalkable(f.x, f.y))
+      .map((f) => ({ x: f.x, y: f.y, crop: f.crop, n: int(f.n, 1, 99, 1), what: typeof f.what === 'string' ? f.what.slice(0, 40) : 'sjeme' }));
+  }
+  if (Array.isArray(d.orders)) {
+    s.orders = d.orders.slice(0, 10).filter((o) => o && cropById[o.crop]).map((o) => ({ crop: o.crop, n: int(o.n, 1, 999, 5) }));
+  }
+  if (fromV2) {
+    s.upgrades.well = true;
+    s.found.house = true;
+    s.seeds.radish = 10;
+  }
   s.water = int(d.water, 0, canSize(s), canSize(s));
 
   const fx = int(d.farmer?.x, 0, W - 1, s.farmer.x);

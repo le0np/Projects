@@ -1,7 +1,7 @@
 // Game balance and static content. Everything tunable lives here.
 // Times are in real seconds unless the name says minutes.
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const START_COINS = 40;
 export const MAX_ENERGY = 100;
 
@@ -33,16 +33,28 @@ export const ENERGY_COST = { plant: 2, water: 1, fertilize: 1, harvest: 1, clear
 export const COFFEE = { price: 15, energy: 35 };
 export const EAT_ENERGY = [0, 6, 10, 15, 20]; // by quality tier
 
-// Quality tiers: 1 loše, 2 dobro, 3 odlično, 4 zlatno. Only tier 2+ sells.
+// Quality tiers: 1 loše, 2 dobro, 3 odlično, 4 zlatno. Price follows quality;
+// customers only take ★ produce when there is nothing better on the stand.
 export const TIER_NAMES = ['', 'loše', 'dobro', 'odlično', 'zlatno'];
-export const TIER_PRICE = [0, 0, 1, 1.5, 2.2];
-export const MIN_SELL_TIER = 2;
+export const TIER_PRICE = [0, 0.5, 1, 1.5, 2.2];
 export const MACHINE_MAX_TIER = 3;
+
+// Seeds are counted and never free: found, taken out of produce, or delivered.
+export const SEEDS_FROM_FRUIT = [2, 10]; // one fruit gives 2–10 seeds, at random
+export const SEED_PACK = 5; // a delivery pack holds 5 seeds and costs 5 × seed price
+export const HOUSE_SEEDS = { crop: 'radish', n: 6 }; // found in a drawer on the first visit
+export const START_FINDS = [
+  { x: 24, y: 7, crop: 'radish', n: 3, what: 'stara rotkvica' },
+  { x: 5, y: 14, crop: 'carrot', n: 4, what: 'divlja mrkva' },
+  { x: 39, y: 15, crop: 'potato', n: 2, what: 'divlji krumpir' },
+];
+export const DAILY_FIND_CHANCE = 0.6;
 
 export const CUSTOMER_INTERVAL = [18, 36]; // seconds between customers
 export const SEO_BONUS = 1.6;
 
-// grow = seconds to ripen if kept watered; price = stand price at ★★
+// seed = price of one seed in a delivery; grow = seconds to ripen if kept watered;
+// price = stand price at ★★; unlock = total earnings before the crop appears in the delivery catalogue
 export const CROPS = [
   { id: 'radish', name: 'Rotkvica', seed: 3, grow: 45, price: 8, unlock: 0 },
   { id: 'carrot', name: 'Mrkva', seed: 6, grow: 90, price: 18, unlock: 80 },
@@ -65,8 +77,12 @@ export const RECIPES = [
     desc: 'Vreća gnojiva. Pognojena biljka je kvalitetnija.',
   },
   {
-    id: 'sprinkler', name: 'Prskalica · water.sh', gives: 'sprinkler', coins: 120,
-    desc: 'Postavi je na praznu parcelu: svakih 30 s zalije 8 parcela oko sebe.',
+    id: 'well', name: 'Bunar', once: 'well', coins: 120,
+    desc: 'Sazidaj bunar kod kuće: voda blizu polja i izvor za navodnjavanje.',
+  },
+  {
+    id: 'sprinkler', name: 'Prskalica · water.sh', gives: 'sprinkler', coins: 120, requires: 'well',
+    desc: 'Navodnjavanje iz bunara: postavi je na praznu parcelu, svakih 30 s zalije 8 parcela oko sebe.',
   },
   {
     id: 'bigCan', name: 'Velika kanta', once: 'bigCan', coins: 150,
@@ -78,7 +94,7 @@ export const RECIPES = [
   },
   {
     id: 'replant', name: 'replant.py', once: 'replant', requires: 'drone', coins: 300,
-    desc: 'Dron nakon berbe posadi isto sjeme (plaća se).',
+    desc: 'Dron nakon berbe posadi isto sjeme, ako ga imaš.',
   },
   {
     id: 'seo', name: 'SEO ploča za štand', once: 'seo', coins: 250,

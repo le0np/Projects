@@ -24,10 +24,15 @@
     <div class="main-col">
       <div class="world-wrap">
         <canvas id="world" aria-label="Farma. Klikni gdje farmer treba otići."></canvas>
+        <div id="bubble" class="bubble" role="status" aria-live="polite" hidden></div>
+        <div class="zoom" aria-label="Zoom">
+          <button id="zoom-in" type="button" title="Približi (+)">+</button>
+          <button id="zoom-out" type="button" title="Udalji (−)">−</button>
+        </div>
       </div>
       <div class="toolbar">
         <div id="hotbar" class="hotbar" aria-label="Alati"></div>
-        <div id="seeds" class="seeds" aria-label="Sjeme"></div>
+        <div id="seeds" class="seeds" aria-label="Vrećica sa sjemenom"></div>
       </div>
       <p id="inspect" class="inspect" aria-live="polite"></p>
     </div>
@@ -39,9 +44,18 @@
         <div id="bag" class="slots"></div>
         <div id="bag-info" class="bag-info"></div>
       </section>
-      <section class="card">
-        <div class="card-title">terminal</div>
-        <div id="terminal" class="terminal" role="log" aria-live="polite"></div>
+      <section class="phone" aria-label="Mobitel">
+        <div class="phone-top">
+          <span id="phone-time">06:00</span>
+          <span class="phone-title">📱 Mobitel</span>
+          <span class="phone-battery" aria-hidden="true">▮▮▮▯</span>
+        </div>
+        <div class="phone-tabs" role="tablist">
+          <button type="button" data-tab="feed" role="tab">Obavijesti <span id="phone-badge" class="badge" hidden></span></button>
+          <button type="button" data-tab="shop" role="tab">Dostava sjemena</button>
+        </div>
+        <div id="phone-feed" class="phone-feed" role="log" aria-live="polite"></div>
+        <div id="phone-shop" class="phone-shop" hidden></div>
       </section>
     </aside>
   </main>

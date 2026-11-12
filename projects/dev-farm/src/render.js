@@ -42,7 +42,7 @@ const shadowSprite = (w) => art(`shadow:${w}`, () => {
 
 // ------------------------------------------------------------------ static props (y-sorted with people)
 
-function buildProps(field2) {
+function buildProps(field2, hasWell) {
   const list = [];
   const at = (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? MAP[y][x] : '');
   for (let ty = 0; ty < H; ty++) {
@@ -66,7 +66,9 @@ function buildProps(field2) {
   list.push({ img: art('house', A.house), x: S.x, y: S.y, base: (HOUSE.y + HOUSE.h) * TS - 1 });
   list.push({ img: art('stand', A.stand), x: A.STAND_SPRITE.x, y: A.STAND_SPRITE.y, base: (STAND.y + STAND.h) * TS - 1, stand: true });
   list.push({ img: art('chest', A.chest), x: 11 * TS, y: 8 * TS, base: 8 * TS + 30 });
-  list.push({ img: art('well', A.well), x: 15 * TS - 4, y: 6 * TS - 20, base: 6 * TS + 30 });
+  list.push(hasWell
+    ? { img: art('well', A.well), x: 15 * TS - 4, y: 6 * TS - 20, base: 6 * TS + 30 }
+    : { img: art('wellSite', A.wellSite), x: 15 * TS - 4, y: 6 * TS - 20, base: 6 * TS + 30 });
   list.push({ img: art('workbench', A.workbench), x: 3 * TS - 6, y: 8 * TS - 8, base: 8 * TS + 30 });
   if (!field2) list.push({ img: art('sign', A.sign), x: 21 * TS, y: 13 * TS - 8, base: 13 * TS + 30 });
   return list;
@@ -101,6 +103,7 @@ export function createRenderer(canvas) {
   let cssW = 0;
   let cssH = 0;
   let zoom = 2;
+  let userZoom = null; // chosen with the zoom buttons / wheel
   let ground = null;
   let props = [];
   let builtFor = null;
@@ -121,9 +124,7 @@ export function createRenderer(canvas) {
     cssW = Math.max(200, Math.floor(box.width));
     cssH = Math.max(260, Math.min(680, Math.floor(window.innerHeight - 230)));
     dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
-    const want = Math.max(32, Math.min(64, cssW / 16));
-    const options = [1, 1.5, 2, 2.5, 3].filter((z) => Math.abs(z * dpr - Math.round(z * dpr)) < 1e-6);
-    zoom = options.reduce((a, b) => (Math.abs(b * TS - want) < Math.abs(a * TS - want) ? b : a));
+    zoom = closestZoom(userZoom ?? Math.max(32, Math.min(64, cssW / 16)) / TS);
     canvas.style.width = `${cssW}px`;
     canvas.style.height = `${cssH}px`;
     canvas.width = Math.round(cssW * dpr);
@@ -133,6 +134,22 @@ export function createRenderer(canvas) {
     cam.ready = false;
   }
   resize();
+
+  // zoom levels that map world pixels onto whole device pixels, so the art stays sharp
+  function zoomLevels() {
+    return [1, 1.5, 2, 2.5, 3, 4].filter((z) => Math.abs(z * dpr - Math.round(z * dpr)) < 1e-6);
+  }
+  function closestZoom(z) {
+    return zoomLevels().reduce((a, b) => (Math.abs(b - z) < Math.abs(a - z) ? b : a));
+  }
+  function stepZoom(dir) {
+    const levels = zoomLevels();
+    const i = levels.indexOf(zoom);
+    const next = levels[Math.max(0, Math.min(levels.length - 1, i + dir))];
+    userZoom = next * TS;
+    zoom = next;
+    return next;
+  }
 
   function updateCamera(s, dt) {
     const viewW = cssW / zoom;
@@ -238,10 +255,11 @@ export function createRenderer(canvas) {
   function draw(s, now) {
     const dt = fx.last ? Math.min(0.1, (now - fx.last) / 1000) : 0;
     fx.last = now;
-    if (builtFor !== s.upgrades.field2) {
-      ground = toCanvas(A.terrain(s.upgrades.field2));
-      props = buildProps(s.upgrades.field2);
-      builtFor = s.upgrades.field2;
+    const key = `${s.upgrades.field2}|${s.upgrades.well}`;
+    if (builtFor !== key) {
+      if (!ground || !builtFor || builtFor.split('|')[0] !== String(s.upgrades.field2)) ground = toCanvas(A.terrain(s.upgrades.field2));
+      props = buildProps(s.upgrades.field2, s.upgrades.well);
+      builtFor = key;
     }
     updateCamera(s, dt);
     const u = zoom * dpr;
@@ -273,6 +291,20 @@ export function createRenderer(canvas) {
       const spraying = fx.sprays.some((f) => f.x === sp.x && f.y === sp.y);
       const frame = spraying ? Math.floor(now / 80) % 4 : 0;
       img(art(`sprinkler${frame}`, () => A.sprinkler(frame)), sp.x * TS, sp.y * TS - 4);
+    }
+
+    // places where seeds can be found
+    for (const f of s.finds) {
+      img(shadowSprite(14), f.x * TS + 9, f.y * TS + 26);
+      img(art('find', A.findMarker), f.x * TS + 4, f.y * TS + 6);
+      const ph = Math.floor(now / 160 + f.x * 3 + f.y) % 12;
+      if (ph < 3) {
+        ctx.fillStyle = '#fffbe0';
+        const sx = f.x * TS + 8 + ((f.x * 5 + ph) % 16);
+        const sy = f.y * TS + 6 + ((f.y * 3 + ph * 2) % 8);
+        ctx.fillRect(sx, sy - 1, 1, 3);
+        ctx.fillRect(sx - 1, sy, 3, 1);
+      }
     }
 
     // shadows under people and the drone
@@ -487,5 +519,18 @@ export function createRenderer(canvas) {
     notify,
     tileFromClient,
     setHover(t) { fx.hover = t; },
+    zoomIn: () => stepZoom(1),
+    zoomOut: () => stepZoom(-1),
+    setZoom(z) { userZoom = z * TS; zoom = closestZoom(z); },
+    get zoom() { return zoom; },
+    canZoom(dir) {
+      const levels = zoomLevels();
+      return dir > 0 ? zoom < levels[levels.length - 1] : zoom > levels[0];
+    },
+    // CSS position of a world pixel, relative to the canvas
+    worldToCanvas(wx, wy) {
+      const u = zoom * dpr;
+      return { x: (wx - Math.round(cam.x * u) / u) * zoom, y: (wy - Math.round(cam.y * u) / u) * zoom };
+    },
   };
 }

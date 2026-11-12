@@ -6,11 +6,12 @@ import {
   GAME_MIN_PER_SEC, DAY_START, NIGHT_START, PASS_OUT, SHOP_OPEN, SHOP_CLOSE,
   WALK_SPEED, NPC_SPEED, DRONE_SPEED, DRONE_COOLDOWN, WATER_DURATION, DRY_RATE,
   AUTO_WATER_CREDIT, CAN_SIZES, SPRINKLER_INTERVAL, ENERGY_COST, COFFEE, EAT_ENERGY,
-  TIER_PRICE, MIN_SELL_TIER, MACHINE_MAX_TIER, CUSTOMER_INTERVAL, SEO_BONUS,
-  CROPS, RECIPES, ripeWindow, ROT_AFTER,
+  TIER_PRICE, MACHINE_MAX_TIER, CUSTOMER_INTERVAL, SEO_BONUS,
+  CROPS, RECIPES, ripeWindow, ROT_AFTER, SEEDS_FROM_FRUIT, SEED_PACK, HOUSE_SEEDS, START_FINDS,
+  DAILY_FIND_CHANCE,
 } from './data.js';
 import {
-  idx, xy, isWalkable, isPlotTile, objectAt, OBJECTS, PLOTS_A, PLOTS_B, inFieldA,
+  idx, xy, charAt, isWalkable, isPlotTile, objectAt, OBJECTS, PLOTS_A, PLOTS_B, inFieldA,
   HOUSE_DOOR, DRONE_HOME, SPAWNS, CUSTOMER_SPOT, npcCost,
 } from './world.js';
 import { findPath } from './path.js';
@@ -41,7 +42,11 @@ export function createState(seed = 12345) {
     tool: 'hand',
     seed: CROPS[0].id,
     water: CAN_SIZES[0],
-    upgrades: { bigCan: false, drone: false, replant: false, seo: false, field2: false },
+    seeds: Object.fromEntries(CROPS.map((c) => [c.id, 0])),
+    found: { house: false },
+    finds: START_FINDS.map((f) => ({ ...f })),
+    orders: [],
+    upgrades: { well: false, bigCan: false, drone: false, replant: false, seo: false, field2: false },
     farmer: { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null },
     plots,
     bag: emptySlots(BAG_SIZE),
@@ -65,7 +70,9 @@ function rand(s) {
 export const canSize = (s) => CAN_SIZES[s.upgrades.bigCan ? 1 : 0];
 export const isNight = (clock) => clock >= NIGHT_START || clock < DAY_START;
 export const shopOpen = (clock) => clock >= SHOP_OPEN && clock < SHOP_CLOSE;
+// "unlocked" = available in the seed delivery catalogue
 export const isUnlocked = (s, id) => Boolean(cropById[id]) && s.totalEarned >= cropById[id].unlock;
+export const findAt = (s, x, y) => s.finds.findIndex((f) => f.x === x && f.y === y);
 export const plotUnlocked = (s, i) => inFieldA(i) || (s.upgrades.field2 && s.plots[i] !== undefined);
 export const sprinklerAt = (s, x, y) => s.sprinklers.findIndex((p) => p.x === x && p.y === y);
 
@@ -81,10 +88,7 @@ export function parseItem(id) {
 }
 
 const isBad = (id) => parseItem(id)?.tier === 1;
-export const isSellable = (id) => {
-  const p = parseItem(id);
-  return p?.kind === 'crop' && p.tier >= MIN_SELL_TIER;
-};
+export const isSellable = (id) => parseItem(id)?.kind === 'crop';
 export const salePrice = (crop, tier) => Math.round(cropById[crop].price * TIER_PRICE[tier]);
 
 export function canAdd(slots, id) {
@@ -174,7 +178,10 @@ export function command(s, x, y, mode = 'auto', events = []) {
   let task = null;
   let goals;
   const obj = objectAt(x, y);
-  if (mode === 'place') {
+  if (mode !== 'place' && findAt(s, x, y) >= 0) {
+    task = { type: 'find', x, y };
+    goals = [[x, y]];
+  } else if (mode === 'place') {
     if (!isPlotTile(x, y)) return fail(events, 'placeplot');
     task = { type: 'place', x, y };
     goals = [[x, y]];
@@ -207,6 +214,7 @@ function arrive(s, events) {
   if (t.type === 'plot') plotAction(s, t.x, t.y, events);
   else if (t.type === 'object') objectAction(s, t.id, events);
   else if (t.type === 'place') placeSprinkler(s, t.x, t.y, events);
+  else if (t.type === 'find') pickUpFind(s, t.x, t.y, events);
 }
 
 function moveFarmer(s, dt, events) {
@@ -235,7 +243,23 @@ function moveFarmer(s, dt, events) {
   if (!f.path.length) arrive(s, events);
 }
 
+function pickUpFind(s, x, y, events) {
+  const k = findAt(s, x, y);
+  if (k < 0) return { ok: false };
+  const f = s.finds[k];
+  s.finds.splice(k, 1);
+  s.seeds[f.crop] += f.n;
+  events.push({ type: 'found', crop: f.crop, n: f.n, what: f.what });
+  return { ok: true };
+}
+
 export function objectAction(s, id, events = []) {
+  if (id === 'well' && !s.upgrades.well) return fail(events, 'nowell');
+  if (id === 'house' && !s.found.house) {
+    s.found.house = true;
+    s.seeds[HOUSE_SEEDS.crop] += HOUSE_SEEDS.n;
+    events.push({ type: 'found', crop: HOUSE_SEEDS.crop, n: HOUSE_SEEDS.n, what: 'ladica u kući' });
+  }
   if (id === 'well' || id === 'pond') {
     s.water = canSize(s);
     events.push({ type: 'refill', water: s.water });
@@ -276,11 +300,10 @@ export function plotAction(s, x, y, events = []) {
 }
 
 function plant(s, i, cropId, events, by = 'hand') {
-  const crop = cropById[cropId];
-  if (!isUnlocked(s, cropId)) return fail(events, 'cropLocked');
-  if (s.coins < crop.seed) return fail(events, 'coins', { need: crop.seed });
+  if (!cropById[cropId]) return fail(events, 'noseeds');
+  if (s.seeds[cropId] <= 0) return fail(events, 'noseeds', { crop: cropId });
   if (by === 'hand' && !spend(s, ENERGY_COST.plant, events)) return { ok: false, reason: 'tired' };
-  s.coins -= crop.seed;
+  s.seeds[cropId]--;
   s.plots[i] = { ...makePlot(), crop: cropId };
   const [x, y] = xy(i);
   events.push({ type: 'plant', crop: cropId, x, y, by });
@@ -397,6 +420,58 @@ export function craft(s, id, events = []) {
   if (r.once === 'bigCan') s.water = canSize(s);
   events.push({ type: 'craft', recipe: id });
   return { ok: true };
+}
+
+// ---------------------------------------------------------------- seeds
+
+// Take one fruit from the bag and get 2–10 seeds out of it.
+export function extractSeeds(s, slot, events = []) {
+  const it = s.bag[slot];
+  const p = it && parseItem(it.id);
+  if (!p || p.kind !== 'crop') return fail(events, 'notfruit');
+  takeWhere([it], () => true, 1);
+  if (it.n === 0) s.bag[slot] = null;
+  const [lo, hi] = SEEDS_FROM_FRUIT;
+  const n = lo + Math.floor(rand(s) * (hi - lo + 1));
+  s.seeds[p.crop] += n;
+  events.push({ type: 'extracted', crop: p.crop, n });
+  return { ok: true, n };
+}
+
+export const packPrice = (crop) => cropById[crop].seed * SEED_PACK;
+
+// Order a pack of seeds through the phone; it arrives the next morning.
+export function orderSeeds(s, crop, events = []) {
+  if (!isUnlocked(s, crop)) return fail(events, 'notincatalog');
+  const price = packPrice(crop);
+  if (s.coins < price) return fail(events, 'coins', { need: price });
+  s.coins -= price;
+  const o = s.orders.find((x) => x.crop === crop);
+  if (o) o.n += SEED_PACK;
+  else s.orders.push({ crop, n: SEED_PACK });
+  events.push({ type: 'ordered', crop, n: SEED_PACK, price });
+  return { ok: true };
+}
+
+function morning(s, events) {
+  for (const o of s.orders) {
+    s.seeds[o.crop] += o.n;
+    events.push({ type: 'delivered', crop: o.crop, n: o.n });
+  }
+  s.orders = [];
+  if (s.finds.length < 6 && rand(s) < DAILY_FIND_CHANCE) {
+    for (let tries = 0; tries < 40; tries++) {
+      const x = 2 + Math.floor(rand(s) * 40);
+      const y = 2 + Math.floor(rand(s) * 27);
+      if (charAt(x, y) !== '.' || findAt(s, x, y) >= 0) continue;
+      const pool = CROPS.filter((c) => isUnlocked(s, c.id) || rand(s) < 0.25);
+      const crop = pool[Math.floor(rand(s) * pool.length)] ?? CROPS[0];
+      const f = { x, y, crop: crop.id, n: 1 + Math.floor(rand(s) * 3), what: 'samoniklo sjeme' };
+      s.finds.push(f);
+      events.push({ type: 'newfind', crop: f.crop });
+      break;
+    }
+  }
 }
 
 // ---------------------------------------------------------------- world simulation
@@ -544,7 +619,10 @@ function buy(s, c, events) {
     events.push({ type: 'nosale' });
     return;
   }
-  const slot = stocked[Math.floor(rand(s) * stocked.length)];
+  // customers take the best quality on offer; ★ only when nothing better is left
+  const best = Math.max(...stocked.map((i) => parseItem(s.stand[i].id).tier));
+  const choice = stocked.filter((i) => parseItem(s.stand[i].id).tier === best);
+  const slot = choice[Math.floor(rand(s) * choice.length)];
   const it = s.stand[slot];
   const { crop, tier } = parseItem(it.id);
   const qty = Math.min(it.n, 1 + Math.floor(rand(s) * 3));
@@ -636,11 +714,14 @@ export function sleep(s, events = [], passedOut = false) {
   s.customers = [];
   s.customerTimer = 8;
   Object.assign(s.farmer, { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null });
+  const mornEvents = [];
+  morning(s, mornEvents);
   const summary = {
     ripened: night.filter((e) => e.type === 'ripe').length,
     droneHarvested: night.filter((e) => e.type === 'harvest').length,
   };
   events.push({ type: passedOut ? 'passout' : 'slept', day: s.day, summary });
+  events.push(...mornEvents);
   return { ok: true };
 }
 

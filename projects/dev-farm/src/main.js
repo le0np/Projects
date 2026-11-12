@@ -1,107 +1,144 @@
 // Wires simulation, rendering, UI, input and saving together.
+// Messages go two ways: what the farmer thinks or can't do appears in a speech bubble,
+// everything else (customers, drone, deliveries, the stand) arrives on the phone.
 
 import {
-  createState, tick, command, sleep, coffee, eat, moveItem, craft, isUnlocked, cropById, recipeById,
-  countWhere,
+  createState, tick, command, sleep, coffee, eat, moveItem, craft, cropById, recipeById,
+  countWhere, extractSeeds, orderSeeds,
 } from './sim.js';
 import { TIER_NAMES } from './data.js';
-import { SAVE_KEY, serialize, deserialize } from './save.js';
+import { SAVE_KEY, OLD_KEY, serialize, deserialize } from './save.js';
 import { createRenderer } from './render.js';
 import { createUI, itemName, stars, formatCoins } from './ui.js';
 
+const ZOOM_KEY = 'dev-farm/zoom';
 const storage = {
-  get() { try { return localStorage.getItem(SAVE_KEY); } catch { return null; } },
-  set(v) { try { localStorage.setItem(SAVE_KEY, v); return true; } catch { return false; } },
-  remove() { try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ } },
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } },
+  remove(k) { try { localStorage.removeItem(k); } catch { /* ignore */ } },
 };
 
-const loaded = deserialize(storage.get());
+const loaded = deserialize(storage.get(SAVE_KEY) ?? storage.get(OLD_KEY));
 let state = loaded.state;
 let hoverTile = null;
 
 const canvas = document.getElementById('world');
 const renderer = createRenderer(canvas);
+const savedZoom = Number(storage.get(ZOOM_KEY));
+if (savedZoom > 0) renderer.setZoom(savedZoom);
+
 const ui = createUI({
-  onTool, onSeed, onMove, onEat, onPlace, onSleep, onCoffee, onCraft, onReset,
+  onTool, onSeed, onMove, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom,
   onClosePanel: closePanel,
   onChange: refresh,
 });
 
-const save = () => storage.set(serialize(state));
+const save = () => storage.set(SAVE_KEY, serialize(state));
 
-// ------------------------------------------------------------------ messages
+// ------------------------------------------------------------------ what the farmer says
 
-const FAIL_TEXT = {
-  tired: '✖ Nema energije. Popij kavu u kući, pojedi nešto iz torbe ili idi spavati.',
-  coins: '✖ Nedovoljno novčića.',
-  canempty: '✖ Kanta je prazna. Napuni je na bunaru ili ribnjaku.',
-  wet: 'Parcela je još dobro zalivena.',
-  bagfull: '✖ Torba je puna. Odloži stvari u škrinju ili na štand.',
-  chestfull: '✖ Škrinja je puna, dron je stao. Isprazni je.',
-  standfull: '✖ Štand je pun.',
-  nofert: '✖ Nemaš gnojiva. Izradi ga na radnom stolu.',
-  fertilized: 'Ova biljka je već pognojena.',
-  needseed: 'Prazna parcela. Uzmi sjeme (tipka 2) pa klikni ponovno.',
-  needtool: 'Biljka raste. Kanta (3) je zalijeva, gnojivo (4) je hrani.',
-  locked: 'Ovo polje je zaraslo. Otključaj ga na radnom stolu: git clone polje.',
-  nopath: 'Farmer ne može doći do tamo.',
-  notsellable: '✖ Kupci ne žele loše (★) proizvode. Pojedi ih ili kompostiraj.',
-  placeplot: '✖ Prskalica ide samo na praznu, otključanu parcelu.',
-  sprinklerhere: 'Tu stoji prskalica. Rukama (1) je pokupiš.',
-  full: 'Energija je već puna.',
-  cropLocked: '✖ To sjeme još nije otključano.',
-};
+const name = (crop) => cropById[crop].name.toLowerCase();
+
+function farmerSays(e) {
+  switch (e.reason) {
+    case 'tired': return 'Nemam više snage… Kava, nešto za pojesti ili krevet.';
+    case 'coins': return 'Nemam dovoljno novca za to.';
+    case 'canempty': return state.upgrades.well ? 'Kanta je prazna. Idem po vodu na bunar ili ribnjak.' : 'Kanta je prazna. Moram po vodu na ribnjak.';
+    case 'wet': return 'Ova je još dobro zalivena.';
+    case 'bagfull': return 'Torba je puna. Nešto moram odložiti u škrinju ili na štand.';
+    case 'nofert': return 'Nemam gnojiva. Mogu ga napraviti na radnom stolu.';
+    case 'fertilized': return 'Ova je već pognojena.';
+    case 'needseed': return 'Za sadnju moram uzeti sjeme u ruku (2).';
+    case 'noseeds':
+      if (!state.found.house) return 'Nemam sjemena… Možda u kući nešto ima?';
+      return e.crop ? `Nemam više sjemena za ${name(e.crop)}. Izvadit ću ga iz ploda ili naručiti.` : 'Nemam sjemena.';
+    case 'needtool': return 'Raste. Mogu je zaliti (3) ili pognojiti (4).';
+    case 'locked': return 'Sve je zaraslo. Za ovo treba plan: git clone polje.';
+    case 'nopath': return 'Ne mogu doći do tamo.';
+    case 'placeplot': return 'Prskalica ide samo na praznu parcelu.';
+    case 'sprinklerhere': return 'Tu stoji prskalica. Rukama (1) je mogu pokupiti.';
+    case 'full': return 'Energija mi je puna.';
+    case 'nowell': return 'Ovdje bi bio dobar bunar. Mogu ga sazidati na radnom stolu.';
+    case 'notfruit': return 'Iz toga nema sjemena.';
+    case 'standfull': return 'Štand je pun.';
+    case 'chestfull': return null; // the drone's problem: goes to the phone
+    default: return null;
+  }
+}
+
+// ------------------------------------------------------------------ routing events
 
 let droneBatch = 0;
 
 function report(events) {
   for (const e of events) {
     switch (e.type) {
-      case 'fail':
-        if (FAIL_TEXT[e.reason]) ui.log(FAIL_TEXT[e.reason], e.reason.startsWith('need') || e.reason === 'wet' ? 'info' : 'err');
+      case 'fail': {
+        const text = farmerSays(e);
+        if (text) ui.say(text, ['needseed', 'needtool', 'wet', 'nowell', 'fertilized', 'full'].includes(e.reason) ? '' : 'sad');
+        else if (e.reason === 'chestfull') ui.notify('🚁 Dron: škrinja je puna, stao sam s berbom.', 'err');
+        else if (e.reason === 'notincatalog') ui.notify('📦 Toga još nema u katalogu.', 'err');
         break;
+      }
       case 'open':
         ui.state.panel = e.panel;
         ui.state.selected = -1;
         break;
+      case 'found':
+        ui.say(e.what === 'ladica u kući'
+          ? `U ladici je vrećica sjemena: ${e.n}× ${name(e.crop)}!`
+          : `${e.what[0].toUpperCase()}${e.what.slice(1)}! ${e.n}× sjeme (${name(e.crop)}).`, 'happy');
+        break;
+      case 'newfind':
+        ui.notify('🌱 Na imanju je nešto niknulo samo od sebe. Možda sjeme?', 'info');
+        break;
+      case 'extracted':
+        ui.say(`${e.n} ${e.n < 5 ? 'sjemenke' : 'sjemenki'} (${name(e.crop)}).`, e.n >= 7 ? 'happy' : '');
+        break;
       case 'harvest':
         if (e.by === 'drone') droneBatch++;
-        else ui.log(`Ubrano: ${cropById[e.crop].name} ${stars(e.tier)} (${TIER_NAMES[e.tier]})`, e.tier >= 2 ? 'ok' : 'info');
+        else ui.say(`${cropById[e.crop].name} ${stars(e.tier)}, ${TIER_NAMES[e.tier]}!`, e.tier >= 3 ? 'happy' : e.tier === 1 ? 'sad' : '');
         break;
       case 'sale':
-        ui.log(`$ kupac@štand → ${e.qty}× ${cropById[e.crop].name} ${stars(e.tier)}, +${formatCoins(e.coins)} 🪙`, 'cmd');
+        ui.notify(`🛒 Kupac je kupio ${e.qty}× ${cropById[e.crop].name} ${stars(e.tier)} · +${formatCoins(e.coins)} 🪙`, 'ok');
         break;
       case 'nosale':
-        ui.log('Kupac je došao do praznog štanda i otišao.', 'info');
+        ui.notify('🛒 Kupac je došao do praznog štanda i otišao.', 'info');
         break;
       case 'refill':
-        ui.log(`Kanta napunjena (${e.water}).`, 'info');
+        ui.say(`Kanta je puna (${e.water}).`);
         break;
       case 'rot':
-        ui.log(`✖ ${cropById[e.crop].name} je istrunula na parceli. Bere se na vrijeme!`, 'err');
+        ui.notify(`⚠️ ${cropById[e.crop].name} je istrunula na polju.`, 'err');
         break;
       case 'unlock':
-        ui.log(`✔ Novo sjeme: ${cropById[e.crop].name}`, 'ok');
+        ui.notify(`📦 Novo u katalogu dostave: ${cropById[e.crop].name}.`, 'ok');
+        break;
+      case 'ordered':
+        ui.notify(`📦 Naručeno: ${e.n}× ${cropById[e.crop].name} (−${e.price} 🪙). Stiže sutra ujutro.`);
+        break;
+      case 'delivered':
+        ui.notify(`📦 Dostava je stigla: ${e.n}× sjeme (${name(e.crop)}).`, 'ok');
         break;
       case 'craft': {
         const r = recipeById[e.recipe];
-        ui.log(`$ make ${r.name.split(' ')[0].toLowerCase()} → gotovo: ${r.name}`, 'ok');
+        ui.say(e.recipe === 'well' ? 'Bunar je sazidan! Voda je sad blizu.' : `Gotovo: ${r.name}!`, 'happy');
         break;
       }
       case 'placed':
-        ui.log('$ ./water.sh --install → prskalica radi svakih 30 s', 'ok');
+        ui.say('Prskalica postavljena. water.sh radi svakih 30 s.', 'happy');
         break;
       case 'pickup':
-        ui.log('Prskalica je u torbi.', 'info');
+        ui.say('Prskalica je u torbi.');
         break;
       case 'coffee':
-        ui.log(`☕ Kava: +${e.gain} ⚡`, 'ok');
+        ui.say(`Ahh, kava. +${e.gain} ⚡`, 'happy');
         break;
       case 'eat':
-        ui.log(`Pojedeno: ${cropById[e.crop].name} (+${e.gain} ⚡)`, 'info');
+        ui.say(`Njam. +${e.gain} ⚡`);
         break;
       case 'shop':
-        ui.log(e.open ? '$ systemctl start štand → kupci dolaze' : '$ systemctl stop štand → kupci idu kući', 'cmd');
+        ui.notify(e.open ? '🏪 Štand je otvoren, kupci dolaze.' : '🏪 Štand je zatvoren za danas.', 'info');
         break;
       case 'slept':
       case 'passout':
@@ -114,29 +151,27 @@ function report(events) {
 
 function nightReport(e) {
   closePanel();
-  if (e.type === 'passout') {
-    ui.log('✖ U 2 sata ujutro farmer je zaspao na nogama. Novi dan s pola energije.', 'err');
-  } else {
-    ui.log('$ sudo shutdown -r 06:00', 'cmd');
-  }
   const saved = save();
-  const parts = [`Dan ${e.day}.`, saved ? 'Igra spremljena.' : 'Spremanje nije uspjelo (browser ne dopušta).'];
+  if (e.type === 'passout') ui.say('Zzz… Ovo je bio predug dan.', 'sad');
+  else ui.say('Dobro jutro! Novi dan na farmi.', 'happy');
+  const parts = [`🌙 Dan ${e.day}.`, saved ? 'Igra je spremljena.' : 'Spremanje nije uspjelo (browser ne dopušta).'];
+  if (e.type === 'passout') parts.push('Farmer je zaspao na nogama: danas s pola energije.');
   if (e.summary.ripened) parts.push(`Preko noći sazrelo: ${e.summary.ripened}.`);
   if (e.summary.droneHarvested) parts.push(`Dron je ubrao ${e.summary.droneHarvested}.`);
-  ui.log(parts.join(' '), 'ok');
+  ui.notify(parts.join(' '), e.type === 'passout' ? 'err' : 'ok');
 }
 
 function flushDrone() {
   if (!droneBatch) return;
-  ui.log(`$ harvest-drone → ${droneBatch} u škrinju`, 'cmd');
+  ui.notify(`🚁 Dron je ubrao ${droneBatch} i odnio u škrinju.`, 'info');
   droneBatch = 0;
 }
 
 function intro() {
-  ui.log('$ ssh farma', 'cmd');
-  ui.log('Spojeno. Klikni na mapu i farmer ide tamo. Klik na parcelu radi ono što drži u ruci (tipke 1–4).', 'info');
-  ui.log('Posadi (2), zalij (3), poberi kad sazrije. Što bolje paziš na biljku i što je prije ubereš, to je kvalitetnija.', 'info');
-  ui.log('Robu ★★ i bolju stavi na štand ispred kuće. Navečer idi spavati u kuću: tako se igra sprema.', 'info');
+  ui.notify('👋 Dobrodošlica na farmu! Klikni bilo gdje na mapi i farmer ode tamo. Klik na parcelu radi ono što drži u ruci (tipke 1–4).', 'info');
+  ui.notify(`🌱 Sjeme se broji: nađi ga na imanju, izvadi iz plodova na radnom stolu ili naruči ovdje, pod "Dostava sjemena".`, 'info');
+  ui.notify('🏪 Plodove stavi na štand ispred kuće. Bolja kvaliteta, bolja cijena. Navečer spavaj u kući: tako se igra sprema.', 'info');
+  setTimeout(() => ui.say('Nova farma! Sjemena još nemam… Možda u kući nešto ima?'), 600);
 }
 
 // ------------------------------------------------------------------ actions
@@ -161,7 +196,6 @@ function onTool(tool) {
 }
 
 function onSeed(id) {
-  if (!isUnlocked(state, id)) return;
   state.seed = id;
   state.tool = 'seed';
   ui.state.placing = false;
@@ -177,11 +211,20 @@ function onEat(slot) {
   if (!state.bag[slot]) ui.state.selected = -1;
 }
 
+function onExtract(slot) {
+  act((ev) => extractSeeds(state, slot, ev));
+  if (!state.bag[slot]) ui.state.selected = -1;
+}
+
+function onOrder(crop) {
+  act((ev) => orderSeeds(state, crop, ev));
+}
+
 function onPlace() {
   if (!countWhere(state.bag, (id) => id === 'sprinkler')) return;
   ui.state.placing = true;
   ui.state.panel = null;
-  ui.log('Klikni praznu parcelu za prskalicu (Esc za odustajanje).', 'info');
+  ui.say('Gdje da je stavim? Klikni praznu parcelu.');
   refresh();
 }
 
@@ -197,9 +240,16 @@ function onCraft(id) {
   act((ev) => craft(state, id, ev));
 }
 
+function onZoom(dir) {
+  const z = dir > 0 ? renderer.zoomIn() : renderer.zoomOut();
+  storage.set(ZOOM_KEY, String(z));
+  refresh();
+}
+
 function onReset() {
   if (!window.confirm('Obrisati farmu i krenuti ispočetka?')) return;
-  storage.remove();
+  storage.remove(SAVE_KEY);
+  storage.remove(OLD_KEY);
   state = createState(Date.now() % 2147483646 + 1);
   Object.assign(ui.state, { panel: null, selected: -1, placing: false });
   ui.clear();
@@ -227,11 +277,17 @@ canvas.addEventListener('mouseleave', () => {
   hoverTile = null;
   renderer.setHover(null);
 });
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  onZoom(e.deltaY < 0 ? 1 : -1);
+}, { passive: false });
 
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement || e.ctrlKey || e.metaKey || e.altKey) return;
   const tool = { 1: 'hand', 2: 'seed', 3: 'can', 4: 'fert' }[e.key];
   if (tool) onTool(tool);
+  else if (e.key === '+' || e.key === '=') onZoom(1);
+  else if (e.key === '-') onZoom(-1);
   else if (e.key === 'Escape') {
     ui.state.placing = false;
     closePanel();
@@ -246,7 +302,7 @@ let lastFrame = performance.now();
 let lastUi = 0;
 
 function refresh() {
-  ui.update(state, hoverTile);
+  ui.update(state, hoverTile, { canIn: renderer.canZoom(1), canOut: renderer.canZoom(-1) });
 }
 
 function frame(now) {
@@ -261,6 +317,8 @@ function frame(now) {
     }
   }
   renderer.draw(state, now);
+  const head = renderer.worldToCanvas(state.farmer.x * 32 + 16, state.farmer.y * 32 - 4);
+  ui.placeBubble(head.x, head.y, now);
   if (now - lastUi > 120) {
     lastUi = now;
     refresh();
@@ -277,7 +335,7 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', save);
 
-if (loaded.restored) ui.log(`$ ssh farma → Dan ${state.day}, nastavljamo gdje si stao.`, 'cmd');
+if (loaded.restored) ui.notify(`👋 Dan ${state.day}: farma je tu gdje je i bila.`, 'info');
 else intro();
 refresh();
 renderer.draw(state, performance.now());
@@ -289,5 +347,6 @@ window.devFarm = {
   ui: ui.state,
   renderer,
   itemName,
+  say: (t) => ui.say(t),
   redraw() { refresh(); renderer.draw(state, performance.now()); },
 };
