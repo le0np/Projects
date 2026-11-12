@@ -212,7 +212,7 @@ function flushDrone() {
 }
 
 function intro() {
-  ui.notify('👋 Dobrodošlica na farmu! Klikni bilo gdje na mapi i farmer ode tamo. Klik na parcelu radi ono što farmer drži u ruci (tipke 1–4): sjeme sadi, kanta zalijeva jednu biljku, gnojivo gnoji. Zalij ▾ zalije sve odjednom.', 'info');
+  ui.notify('👋 Dobrodošlica na farmu! Klikni bilo gdje na mapi i farmer ode tamo. Klik na parcelu radi ono što farmer drži u ruci (tipke 1–4): sjeme sadi, kanta zalijeva jednu biljku, gnojivo gnoji. ▾ uz kantu zalije sve posađeno ili samo jednu vrstu (tipka Z).', 'info');
   ui.notify(`🌱 Sjeme se broji: nađi ga na imanju, izvadi iz plodova na radnom stolu ili naruči ovdje, pod "Dostava sjemena".`, 'info');
   ui.notify('🌙 Usjevi rastu preko noći: svako jutro jedan dan ako su dan prije bili zaliveni, pola dana ako nisu. Dovoljno je zaliti jednom dnevno.', 'info');
   ui.notify('🏪 Plodove stavi na štand ispred kuće. Bolja kvaliteta, bolja cijena. Od 18 h možeš spavati u kući: tako se igra sprema.', 'info');

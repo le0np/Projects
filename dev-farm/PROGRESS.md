@@ -63,15 +63,25 @@ Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša i rad
 - novac u zlatnicima i srebrenjacima (1 zl = 100 sr) s pixel novčićima u HUD-u
 - kanta vraćena kao alat za zalijevanje pojedinačnih biljaka (tipka 3), gnojivo na tipki 4
 
+### Dokumentacija napretka (`ff5e1e6`)
+
+- dodan ovaj `PROGRESS.md`, pravilo o njemu u korijenskom `CLAUDE.md` i predložak `_template/PROGRESS.md`
+
+### v8 – kanta s izbornikom
+
+- kanta je razdvojeni gumb: klik na kantu uzme je za pojedinačno zalijevanje, a ▾ uz nju otvara izbornik „sve posađeno“ ili jedna vrsta (tipka Z i dalje zalije sve)
+- odvojeni gumb „Zalij ▾“ uklonjen iz alatne trake
+- dok zalijevanje traje, kanta pokazuje napredak („zalijeva 2/5“), a ▾ postaje ■ za prekid
+
 ## Zadnja automatizirana provjera
 
-Provedeno 12. studenog 2026. nakon v7:
+Provedeno 12. studenog 2026. nakon v8:
 
 | Provjera | Rezultat |
 | --- | --- |
 | `npm test` u `dev-farm/` | 32/32 testova prolazi |
 | `npm start` + dohvat stranice i modula | server vraća 200 za `index.html` i `src/*.js` |
-| Headless Firefox (scenariji u scratchpadu) | iscrtavanje bez JS grešaka; provjereni hodanje, škrinja, skupna sadnja, zalijevanje s odlaskom po vodu, zidanje bunara, doseg prskalice, izbornik koji se zatvara, novčići u HUD-u, noć |
+| Headless Firefox (scenariji u scratchpadu) | iscrtavanje bez JS grešaka; provjereni hodanje, škrinja, skupna sadnja, zalijevanje s odlaskom po vodu, zidanje bunara, doseg prskalice, izbornik koji se zatvara, novčići u HUD-u, izbornik kante i prekid zalijevanja, noć |
 
 ## Poznata ograničenja
 

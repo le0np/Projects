@@ -114,6 +114,21 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .tool-sub { color: var(--muted); font-size: 11px; }
 .tool.selected { border-color: var(--green); background: #2f3b30; }
 .tool.bulk { border-style: dashed; }
+.tool-split { display: flex; }
+.tool-split > .tool { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.tool-more {
+  width: 30px;
+  padding: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 1px dashed var(--line);
+  border-radius: 0 6px 6px 0;
+  font-size: 14px;
+}
+.tool-more:hover:not(:disabled) { background: #2f3b30; }
+.tool-more:disabled { opacity: .45; }
+.tool-split.running > * { border-color: var(--yellow); }
+.tool-split.running .tool-more { background: #3a3420; }
 .tool.bulk.running { border-style: solid; border-color: var(--yellow); background: #3a3420; }
 .tool:disabled { opacity: .45; }
 
