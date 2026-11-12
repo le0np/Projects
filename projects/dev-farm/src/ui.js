@@ -7,7 +7,8 @@ import {
 } from './data.js';
 import {
   parseItem, isUnlocked, canSize, countWhere, canCraft, salePrice, isSellable, cropById,
-  plotUnlocked, sprinklerAt, qualityScore, tierOf, ripeCount, shopOpen, packPrice, findAt,
+  plotUnlocked, sprinklerAt, qualityScore, tierOf, ripeCount, shopOpen, packPrice, findAt, jobTargets,
+  totalSeeds,
 } from './sim.js';
 import { idx, objectAt, isPlotTile, OBJECTS } from './world.js';
 import { iconUrl } from './render.js';
@@ -15,6 +16,13 @@ import { iconUrl } from './render.js';
 const numberFormat = new Intl.NumberFormat('hr-HR');
 export const formatCoins = (n) => numberFormat.format(Math.floor(n));
 export const stars = (tier) => '★'.repeat(tier);
+
+// Croatian plural: 1 parcela, 2–4 parcele, 5+ parcela (11–14 count as many)
+export function plots(n) {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  return m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'parcele' : 'parcela';
+}
 
 export function formatClock(clock) {
   const m = Math.floor(clock) % (24 * 60);
@@ -109,6 +117,19 @@ export function createUI(cb) {
     toolEls.set(t.id, { b, sub: b.querySelector('.tool-sub') });
   }
 
+  // bulk jobs: plant every seed / harvest everything ripe
+  const jobs = [
+    { kind: 'plant', key: 'P', icon: 'seeds', name: 'Posadi sve' },
+    { kind: 'harvest', key: 'B', icon: 'hand', name: 'Poberi sve' },
+  ];
+  const jobEls = new Map();
+  for (const j of jobs) {
+    const b = button('', () => cb.onJob(j.kind), { cls: 'tool bulk' });
+    b.append(el('kbd', '', j.key), icon(j.icon, 'tool-icon'), el('span', 'tool-name', j.name), el('span', 'tool-sub'));
+    els.hotbar.append(b);
+    jobEls.set(j.kind, { b, name: b.querySelector('.tool-name'), sub: b.querySelector('.tool-sub') });
+  }
+
   $('reset').addEventListener('click', cb.onReset);
   els.zoomIn.addEventListener('click', () => cb.onZoom(1));
   els.zoomOut.addEventListener('click', () => cb.onZoom(-1));
@@ -138,6 +159,18 @@ export function createUI(cb) {
         : t.id === 'can' ? `${s.water}/${canSize(s)}`
           : t.id === 'fert' ? `× ${countWhere(s.bag, (id) => id === 'fertilizer')}` : 'bere, uzima';
       setText(sub, text);
+    }
+
+    const running = s.farmer.job;
+    for (const [kind, { b, name, sub }] of jobEls) {
+      const mine = running?.kind === kind;
+      const targets = jobTargets(s, kind).length;
+      const n = kind === 'plant' ? Math.min(targets, totalSeeds(s)) : targets;
+      b.classList.toggle('running', mine);
+      b.disabled = !mine && (Boolean(running) || n === 0);
+      setText(name, mine ? 'Prekini' : kind === 'plant' ? 'Posadi sve' : 'Poberi sve');
+      setText(sub, mine ? `${running.done}/${running.total} · Esc`
+        : kind === 'plant' ? (totalSeeds(s) ? `${n} ${plots(n)}` : 'nema sjemena') : `zrelih: ${n}`);
     }
   }
 

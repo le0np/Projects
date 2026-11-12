@@ -110,6 +110,9 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .tool-name { font-weight: 700; }
 .tool-sub { color: var(--muted); font-size: 11px; }
 .tool.selected { border-color: var(--green); background: #2f3b30; }
+.tool.bulk { border-style: dashed; }
+.tool.bulk.running { border-style: solid; border-color: var(--yellow); background: #3a3420; }
+.tool:disabled { opacity: .45; }
 
 .seed {
   display: inline-flex;

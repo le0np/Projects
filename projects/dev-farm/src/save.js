@@ -12,7 +12,7 @@ export function serialize(s) {
   return JSON.stringify({
     ...s,
     customers: [],
-    farmer: { ...s.farmer, x: Math.round(s.farmer.x), y: Math.round(s.farmer.y), path: [], task: null },
+    farmer: { ...s.farmer, x: Math.round(s.farmer.x), y: Math.round(s.farmer.y), path: [], task: null, queue: [], job: null },
   });
 }
 

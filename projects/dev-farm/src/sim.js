@@ -47,7 +47,7 @@ export function createState(seed = 12345) {
     finds: START_FINDS.map((f) => ({ ...f })),
     orders: [],
     upgrades: { well: false, bigCan: false, drone: false, replant: false, seo: false, field2: false },
-    farmer: { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null },
+    farmer: { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null, queue: [], job: null },
     plots,
     bag: emptySlots(BAG_SIZE),
     chest: emptySlots(CHEST_SIZE),
@@ -175,6 +175,11 @@ function addCoins(s, amount, events) {
 // Player clicked tile (x, y). mode 'place' = placing a sprinkler.
 export function command(s, x, y, mode = 'auto', events = []) {
   const f = s.farmer;
+  if (f.job) {
+    events.push({ type: 'jobcancel', kind: f.job.kind, done: f.job.done });
+    f.job = null;
+    f.queue = [];
+  }
   let task = null;
   let goals;
   const obj = objectAt(x, y);
@@ -215,6 +220,107 @@ function arrive(s, events) {
   else if (t.type === 'object') objectAction(s, t.id, events);
   else if (t.type === 'place') placeSprinkler(s, t.x, t.y, events);
   else if (t.type === 'find') pickUpFind(s, t.x, t.y, events);
+  else if (t.type === 'jobplant') continueJob(s, jobPlant(s, t.x, t.y, events), events);
+  else if (t.type === 'jobharvest') continueJob(s, jobHarvest(s, t.x, t.y, events), events);
+}
+
+// ---------------------------------------------------------------- "plant all" / "harvest all"
+
+export const totalSeeds = (s) => Object.values(s.seeds).reduce((a, n) => a + n, 0);
+
+function freePlots(s) {
+  return Object.keys(s.plots).map(Number)
+    .filter((i) => plotUnlocked(s, i) && !s.plots[i].crop && sprinklerAt(s, ...xy(i)) < 0 && findAt(s, ...xy(i)) < 0)
+    .map(xy);
+}
+
+function ripePlots(s) {
+  return Object.keys(s.plots).map(Number)
+    .filter((i) => plotUnlocked(s, i) && s.plots[i].crop && !s.plots[i].rotten && s.plots[i].progress >= 1)
+    .map(xy);
+}
+
+export const jobTargets = (s, kind) => (kind === 'plant' ? freePlots(s) : ripePlots(s));
+
+// Visit tiles nearest-first from the farmer, which walks the field in tidy rows.
+function route(s, tiles) {
+  const left = [...tiles];
+  const out = [];
+  let cx = Math.round(s.farmer.x);
+  let cy = Math.round(s.farmer.y);
+  while (left.length) {
+    let best = 0;
+    let bestD = Infinity;
+    left.forEach(([x, y], k) => {
+      const d = Math.abs(x - cx) + Math.abs(y - cy) * 1.01;
+      if (d < bestD) { bestD = d; best = k; }
+    });
+    const [t] = left.splice(best, 1);
+    out.push(t);
+    [cx, cy] = t;
+  }
+  return out;
+}
+
+const JOB_STOP = new Set(['tired', 'bagfull', 'noseeds']);
+
+export function startJob(s, kind, events = []) {
+  const f = s.farmer;
+  let targets = jobTargets(s, kind);
+  if (kind === 'plant') {
+    const seeds = totalSeeds(s);
+    if (!seeds) return fail(events, 'noseeds');
+    if (!targets.length) return fail(events, 'nofreeplots');
+    targets = route(s, targets).slice(0, seeds);
+  } else {
+    if (!targets.length) return fail(events, 'nothingripe');
+    targets = route(s, targets);
+  }
+  f.queue = targets.map(([x, y]) => ({ type: kind === 'plant' ? 'jobplant' : 'jobharvest', x, y }));
+  f.job = { kind, done: 0, total: targets.length };
+  f.task = null;
+  events.push({ type: 'jobstart', kind, total: targets.length });
+  continueJob(s, null, events);
+  return { ok: true, total: targets.length };
+}
+
+function jobPlant(s, x, y, events) {
+  const i = idx(x, y);
+  if (!s.plots[i] || s.plots[i].crop || sprinklerAt(s, x, y) >= 0) return { ok: false, reason: 'skip' };
+  const crop = s.seeds[s.seed] > 0 ? s.seed : CROPS.find((c) => s.seeds[c.id] > 0)?.id;
+  if (!crop) return fail(events, 'noseeds');
+  return plant(s, i, crop, events);
+}
+
+function jobHarvest(s, x, y, events) {
+  const p = s.plots[idx(x, y)];
+  if (!p || !p.crop || p.rotten || p.progress < 1) return { ok: false, reason: 'skip' };
+  return harvestHand(s, idx(x, y), events);
+}
+
+function continueJob(s, result, events) {
+  const f = s.farmer;
+  const job = f.job;
+  if (!job) return;
+  if (result?.ok) job.done++;
+  if ((result && JOB_STOP.has(result.reason)) || (job.kind === 'plant' && !totalSeeds(s) && f.queue.length)) {
+    events.push({ type: 'jobend', kind: job.kind, done: job.done, total: job.total, reason: result?.reason ?? 'noseeds' });
+    f.job = null;
+    f.queue = [];
+    return;
+  }
+  while (f.queue.length) {
+    const next = f.queue.shift();
+    const path = findPath([Math.round(f.x), Math.round(f.y)], [[next.x, next.y]], isWalkable);
+    if (!path) continue;
+    if (f.x !== Math.round(f.x) || f.y !== Math.round(f.y)) path.unshift([Math.round(f.x), Math.round(f.y)]);
+    f.path = path;
+    f.task = next;
+    if (!path.length) arrive(s, events);
+    return;
+  }
+  events.push({ type: 'jobend', kind: job.kind, done: job.done, total: job.total });
+  f.job = null;
 }
 
 function moveFarmer(s, dt, events) {
@@ -713,7 +819,7 @@ export function sleep(s, events = [], passedOut = false) {
   s.energy = passedOut ? Math.round(MAX_ENERGY / 2) : MAX_ENERGY;
   s.customers = [];
   s.customerTimer = 8;
-  Object.assign(s.farmer, { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null });
+  Object.assign(s.farmer, { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null, queue: [], job: null });
   const mornEvents = [];
   morning(s, mornEvents);
   const summary = {

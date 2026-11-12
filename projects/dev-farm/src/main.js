@@ -4,12 +4,12 @@
 
 import {
   createState, tick, command, sleep, coffee, eat, moveItem, craft, cropById, recipeById,
-  countWhere, extractSeeds, orderSeeds,
+  countWhere, extractSeeds, orderSeeds, startJob,
 } from './sim.js';
 import { TIER_NAMES } from './data.js';
 import { SAVE_KEY, OLD_KEY, serialize, deserialize } from './save.js';
 import { createRenderer } from './render.js';
-import { createUI, itemName, stars, formatCoins } from './ui.js';
+import { createUI, itemName, stars, formatCoins, plots } from './ui.js';
 
 const ZOOM_KEY = 'dev-farm/zoom';
 const storage = {
@@ -28,7 +28,7 @@ const savedZoom = Number(storage.get(ZOOM_KEY));
 if (savedZoom > 0) renderer.setZoom(savedZoom);
 
 const ui = createUI({
-  onTool, onSeed, onMove, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom,
+  onTool, onSeed, onMove, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
   onClosePanel: closePanel,
   onChange: refresh,
 });
@@ -61,6 +61,8 @@ function farmerSays(e) {
     case 'nowell': return 'Ovdje bi bio dobar bunar. Mogu ga sazidati na radnom stolu.';
     case 'notfruit': return 'Iz toga nema sjemena.';
     case 'standfull': return 'Štand je pun.';
+    case 'nofreeplots': return 'Nema slobodnih parcela.';
+    case 'nothingripe': return 'Još ništa nije zrelo.';
     case 'chestfull': return null; // the drone's problem: goes to the phone
     default: return null;
   }
@@ -69,11 +71,15 @@ function farmerSays(e) {
 // ------------------------------------------------------------------ routing events
 
 let droneBatch = 0;
+let jobTally = null; // quality counts while "harvest all" runs
+
+const tallyText = (t) => [4, 3, 2, 1].filter((k) => t[k]).map((k) => `${stars(k)}×${t[k]}`).join(', ');
 
 function report(events) {
   for (const e of events) {
     switch (e.type) {
       case 'fail': {
+        if (state.farmer.job || events.some((x) => x.type === 'jobend')) break; // the job summary says it
         const text = farmerSays(e);
         if (text) ui.say(text, ['needseed', 'needtool', 'wet', 'nowell', 'fertilized', 'full'].includes(e.reason) ? '' : 'sad');
         else if (e.reason === 'chestfull') ui.notify('🚁 Dron: škrinja je puna, stao sam s berbom.', 'err');
@@ -95,8 +101,25 @@ function report(events) {
       case 'extracted':
         ui.say(`${e.n} ${e.n < 5 ? 'sjemenke' : 'sjemenki'} (${name(e.crop)}).`, e.n >= 7 ? 'happy' : '');
         break;
+      case 'jobstart':
+        jobTally = e.kind === 'harvest' ? {} : null;
+        ui.say(e.kind === 'plant' ? `Idem sijati: ${e.total} ${plots(e.total)}.` : `Idem brati, zrelih: ${e.total}.`);
+        break;
+      case 'jobcancel':
+        jobTally = null;
+        ui.say(`Dobro, prekidam ${e.kind === 'plant' ? 'sadnju' : 'berbu'}.`);
+        break;
+      case 'jobend': {
+        const what = e.kind === 'plant' ? `Posađeno ${e.done}` : `Ubrano ${e.done}`;
+        const detail = jobTally && e.done ? ` (${tallyText(jobTally)})` : '';
+        jobTally = null;
+        if (e.reason) ui.say(`${farmerSays(e)} ${what} od ${e.total}${detail}.`, 'sad');
+        else ui.say(`Gotovo! ${what}${detail}.`, 'happy');
+        break;
+      }
       case 'harvest':
         if (e.by === 'drone') droneBatch++;
+        else if (jobTally) jobTally[e.tier] = (jobTally[e.tier] ?? 0) + 1;
         else ui.say(`${cropById[e.crop].name} ${stars(e.tier)}, ${TIER_NAMES[e.tier]}!`, e.tier >= 3 ? 'happy' : e.tier === 1 ? 'sad' : '');
         break;
       case 'sale':
@@ -240,6 +263,27 @@ function onCraft(id) {
   act((ev) => craft(state, id, ev));
 }
 
+function onJob(kind) {
+  if (state.farmer.job) {
+    cancelJob();
+    return;
+  }
+  ui.state.panel = null;
+  ui.state.placing = false;
+  act((ev) => startJob(state, kind, ev));
+}
+
+function cancelJob() {
+  const f = state.farmer;
+  if (!f.job) return;
+  report([{ type: 'jobcancel', kind: f.job.kind, done: f.job.done }]);
+  f.job = null;
+  f.queue = [];
+  f.path = f.path.slice(0, 1); // finish the step in progress
+  f.task = null;
+  refresh();
+}
+
 function onZoom(dir) {
   const z = dir > 0 ? renderer.zoomIn() : renderer.zoomOut();
   storage.set(ZOOM_KEY, String(z));
@@ -286,9 +330,12 @@ window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement || e.ctrlKey || e.metaKey || e.altKey) return;
   const tool = { 1: 'hand', 2: 'seed', 3: 'can', 4: 'fert' }[e.key];
   if (tool) onTool(tool);
+  else if (e.key === 'p' || e.key === 'P') onJob('plant');
+  else if (e.key === 'b' || e.key === 'B') onJob('harvest');
   else if (e.key === '+' || e.key === '=') onZoom(1);
   else if (e.key === '-') onZoom(-1);
   else if (e.key === 'Escape') {
+    cancelJob();
     ui.state.placing = false;
     closePanel();
   }

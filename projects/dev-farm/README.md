@@ -20,6 +20,7 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
 
 - **Kretanje:** klikni bilo gdje na mapi i farmer ode tamo najkraćim putem. Klik na zgradu ili parcelu znači „idi tamo i napravi nešto“.
 - **Zoom:** gumbi + / − u kutu mape, kotačić miša ili tipke + i −. Odabrani zoom se pamti.
+- **Posadi sve (P) i Poberi sve (B):** farmer sam obiđe polje, red po red. Sadnja troši svo sjeme koje imaš: prvo odabranu vrstu, pa ostale. Berba obere sve zrelo i na kraju kaže koliko je čega po kvaliteti. Staje sam kad ponestane sjemena, energije ili mjesta u torbi. Klik na mapu ili Esc prekida posao.
 - **Alati (tipke 1–4):** ✋ ruke (berba, uzimanje), 🌱 sjeme, 🪣 kanta, 🧪 gnojivo. Klik na parcelu radi ono što farmer drži u ruci. Zrelu biljku bere bilo kojim alatom.
 - **Sjeme se broji i nije besplatno.** Na početku ga nema. Vrećica ispod alata pokazuje koliko kojeg imaš. Sjeme se dobiva na tri načina:
   - **Otkrivanjem:** u ladici u kući, a na imanju rastu stara rotkvica, divlja mrkva i divlji krumpir. Svako jutro nešto novo može niknuti samo od sebe.

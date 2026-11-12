@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   createState, command, plotAction, objectAction, advance, tick, sleep, craft, moveItem, eat,
   coffee, addItem, qualityScore, tierOf, cropItem, makePlot, isSellable, ripeCount, extractSeeds,
-  orderSeeds, packPrice, salePrice,
+  orderSeeds, packPrice, salePrice, startJob,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -295,6 +295,54 @@ test('compost turns bad produce into fertilizer; git clone polje opens field B',
   s.coins = 1000;
   assert.ok(craft(s, 'field2').ok);
   assert.ok(plotAction(s, bx, by).ok);
+});
+
+test('plant all: the farmer walks the field and plants every seed he has', () => {
+  const s = withSeeds(4);
+  s.seeds.carrot = 2;
+  s.seed = 'carrot';
+  const events = [];
+  assert.ok(startJob(s, 'plant', events).ok);
+  for (let i = 0; i < 400 && s.farmer.job; i++) tick(s, 0.1, events);
+  const planted = Object.values(s.plots).filter((p) => p.crop);
+  assert.equal(planted.length, 6);
+  assert.equal(planted.filter((p) => p.crop === 'carrot').length, 2, 'the chosen seed goes first');
+  assert.equal(s.seeds.radish + s.seeds.carrot, 0);
+  const end = events.find((e) => e.type === 'jobend');
+  assert.equal(end.done, 6);
+  assert.equal(startJob(s, 'plant').reason, 'noseeds');
+  const find = START_FINDS.find((f) => f.crop === 'radish');
+  assert.equal(s.plots[idx(find.x, find.y)].crop, null, 'the wild radish spot is left alone');
+});
+
+test('harvest all picks every ripe crop and stops when the bag is full', () => {
+  const s = createState();
+  for (const i of PLOTS_A.slice(0, 5)) s.plots[i] = ripePlot('radish', { wetTime: 45 });
+  const events = [];
+  startJob(s, 'harvest', events);
+  for (let i = 0; i < 400 && s.farmer.job; i++) tick(s, 0.1, events);
+  assert.equal(ripeCount(s), 0);
+  assert.equal(s.bag[0].n, 5);
+
+  const full = createState();
+  for (let i = 0; i < BAG_SIZE; i++) full.bag[i] = { id: 'sprinkler', n: 99 };
+  for (const i of PLOTS_A.slice(0, 3)) full.plots[i] = ripePlot('radish');
+  const ev = [];
+  startJob(full, 'harvest', ev);
+  for (let i = 0; i < 400 && full.farmer.job; i++) tick(full, 0.1, ev);
+  assert.equal(ev.find((e) => e.type === 'jobend').reason, 'bagfull');
+  assert.equal(ripeCount(full), 3);
+  assert.equal(startJob(createState(), 'harvest').reason, 'nothingripe');
+});
+
+test('clicking somewhere else cancels a running job', () => {
+  const s = withSeeds(20);
+  startJob(s, 'plant');
+  tick(s, 0.5);
+  const events = [];
+  command(s, 8, 12, 'auto', events);
+  assert.equal(s.farmer.job, null);
+  assert.ok(events.some((e) => e.type === 'jobcancel'));
 });
 
 test('ripeCount counts ripe crops for the tab title', () => {
