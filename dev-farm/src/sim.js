@@ -235,6 +235,7 @@ function arrive(s, events) {
   else if (t.type === 'jobplant') continueJob(s, jobPlant(s, t.x, t.y, events), events);
   else if (t.type === 'jobharvest') continueJob(s, jobHarvest(s, t.x, t.y, events), events);
   else if (t.type === 'jobwater') continueJob(s, jobWater(s, t.x, t.y, events), events);
+  else if (t.type === 'jobfert') continueJob(s, jobFert(s, t.x, t.y, events), events);
   else if (t.type === 'jobrefill') {
     s.water = canSize(s);
     events.push({ type: 'refill', water: s.water });
@@ -245,6 +246,8 @@ function arrive(s, events) {
 // ---------------------------------------------------------------- "plant all" / "harvest all"
 
 export const totalSeeds = (s) => Object.values(s.seeds).reduce((a, n) => a + n, 0);
+
+const unfertilized = (p) => Boolean(p.crop) && !p.rotten && p.progress < 1 && !p.fert;
 
 function needsWater(p) {
   return Boolean(p.crop) && !p.rotten && p.progress < 1 && !p.wet;
@@ -270,6 +273,12 @@ function thirstyPlots(s, crop) {
 
 // Plots a bulk job would visit; `crop` narrows it to one kind (null = everything).
 export function jobTargets(s, kind, crop = null) {
+  if (kind === 'fertilize') {
+    const bags = countWhere(s.bag, (id) => id === 'fertilizer');
+    return Object.keys(s.plots).map(Number)
+      .filter((i) => plotUnlocked(s, i) && unfertilized(s.plots[i]) && (!crop || s.plots[i].crop === crop))
+      .map(xy).slice(0, bags);
+  }
   if (kind === 'plant') {
     const free = freePlots(s).length;
     return free ? freePlots(s).slice(0, crop ? s.seeds[crop] : totalSeeds(s)) : [];
@@ -298,8 +307,8 @@ function route(s, tiles) {
   return out;
 }
 
-const JOB_STOP = new Set(['tired', 'bagfull', 'noseeds']);
-const JOB_TASK = { plant: 'jobplant', harvest: 'jobharvest', water: 'jobwater' };
+const JOB_STOP = new Set(['tired', 'bagfull', 'noseeds', 'nofert']);
+const JOB_TASK = { plant: 'jobplant', harvest: 'jobharvest', water: 'jobwater', fertilize: 'jobfert' };
 
 export function startJob(s, kind, crop = null, events = []) {
   const f = s.farmer;
@@ -311,8 +320,9 @@ export function startJob(s, kind, crop = null, events = []) {
     if (!targets.length) return fail(events, 'nofreeplots');
     targets = route(s, targets).slice(0, seeds);
   } else {
+    if (kind === 'fertilize' && !countWhere(s.bag, (id) => id === 'fertilizer')) return fail(events, 'nofert');
     targets = jobTargets(s, kind, crop);
-    if (!targets.length) return fail(events, kind === 'water' ? 'nothingdry' : 'nothingripe');
+    if (!targets.length) return fail(events, { water: 'nothingdry', fertilize: 'nothingtofert' }[kind] ?? 'nothingripe');
     targets = route(s, targets);
   }
   f.busy = null;
@@ -332,6 +342,12 @@ function jobPlant(s, x, y, events) {
     : s.seeds[s.seed] > 0 ? s.seed : CROPS.find((c) => s.seeds[c.id] > 0)?.id;
   if (!crop) return fail(events, 'noseeds');
   return plant(s, i, crop, events);
+}
+
+function jobFert(s, x, y, events) {
+  const i = idx(x, y);
+  if (!s.plots[i] || !unfertilized(s.plots[i])) return { ok: false, reason: 'skip' };
+  return fertilize(s, i, events);
 }
 
 function jobHarvest(s, x, y, events) {

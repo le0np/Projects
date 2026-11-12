@@ -467,6 +467,27 @@ test('water all: waters every dry plant and refills the can when it runs dry', (
   assert.equal(startJob(s, 'water').reason, 'nothingdry');
 });
 
+test('fertilize all uses the bags in the bag and stops when they run out', () => {
+  const s = createState();
+  assert.equal(startJob(s, 'fertilize').reason, 'nofert');
+  addItem(s.bag, 'fertilizer', 3);
+  for (const i of PLOTS_A.slice(0, 5)) s.plots[i] = { ...makePlot(), crop: 'carrot', progress: 0.2 };
+  s.plots[PLOTS_A[5]] = { ...makePlot(), crop: 'carrot', progress: 0.2, fert: true };
+  const events = [];
+  assert.equal(startJob(s, 'fertilize', null, events).total, 3, 'only as many as there are bags');
+  for (let i = 0; i < 400 && s.farmer.job; i++) tick(s, 0.1, events);
+  assert.equal(PLOTS_A.slice(0, 6).filter((i) => s.plots[i].fert).length, 4);
+  assert.equal(events.find((e) => e.type === 'jobend').done, 3);
+  assert.equal(startJob(s, 'fertilize').reason, 'nofert');
+});
+
+test('the stand is by the road', () => {
+  assert.ok(OBJECTS.stand.access.every(([x]) => x >= 38), 'next to the road on the east side');
+  const fromRoad = findPath(SPAWNS[0], [CUSTOMER_SPOT], isWalkable);
+  const fromDoor = findPath(HOUSE_DOOR, [CUSTOMER_SPOT], isWalkable);
+  assert.ok(fromRoad.length < fromDoor.length, 'closer to the road than to the house');
+});
+
 test('clicking somewhere else cancels a running job', () => {
   const s = withSeeds(20);
   startJob(s, 'plant');

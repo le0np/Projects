@@ -1,6 +1,6 @@
 # dev-farm
 
-2D farma za browser za ITjevce koji sanjaju o selu. Vodiš farmera po imanju klikovima miša: sadiš, zalijevaš, gnojiš i bereš, a kvalitetnu robu prodaješ na štandu ispred kuće. Navečer ideš spavati, čime se igra sprema. Kako farma raste, developer u tebi gradi izume koji preuzimaju dio posla: prskalice, dron, skripte.
+2D farma za browser za ITjevce koji sanjaju o selu. Vodiš farmera po imanju klikovima miša: sadiš, zalijevaš, gnojiš i bereš, a kvalitetnu robu prodaješ na štandu uz cestu. Navečer ideš spavati, čime se igra sprema. Kako farma raste, developer u tebi gradi izume koji preuzimaju dio posla: prskalice, dron, skripte.
 
 **Status:** 🚧 u izradi (v4 igriva)
 
@@ -20,8 +20,8 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
 
 - **Kretanje:** klikni bilo gdje na mapi i farmer ode tamo najkraćim putem. Klik na zgradu ili parcelu znači „idi tamo i napravi nešto“.
 - **Zoom:** gumbi + / − u kutu mape, kotačić miša ili tipke + i −. Zoom je gladak i uvijek oko farmera. Odabrani zoom se pamti.
-- **▾ uz sjeme, ▾ uz kantu i Poberi ▾:** svaki otvara izbornik: „sve“ ili samo jedna vrsta, s brojem parcela uz svaku stavku. Farmer zatim sam obiđe polje, red po red. Sadnja troši sjeme, berba na kraju kaže koliko je čega po kvaliteti, a zalijevanje kad se kanta isprazni samo ode po vodu (bunar ili ribnjak) i nastavi. Staje kad ponestane sjemena, energije ili mjesta u torbi. Klik na mapu ili Esc prekida posao. Tipke P, B i Z odmah pokreću „sve“.
-- **Alati (tipke 1–4):** ✋ ruke (berba, uzimanje), 🌱 sjeme, 🪣 kanta, 🧪 gnojivo. Klik na parcelu radi ono što farmer drži u ruci, a zrelu biljku bere bilo kojim alatom. Sjeme i kanta imaju po dva dijela: klik na sam alat sadi ili zalijeva biljku po biljku (vrsta sjemena bira se u vrećici ispod, a na kanti piše koliko je vode u njoj), a ▾ uz alat posadi ili zalije sve, ili samo jednu vrstu.
+- **Skupni poslovi (▾ uz alat, ili tipke B, P, Z, G):** farmer sam obiđe polje, red po red. Sadnja troši sjeme, berba na kraju kaže koliko je čega po kvaliteti, zalijevanje kad se kanta isprazni samo ode po vodu (bunar ili ribnjak) i nastavi, a gnojenje pognoji onoliko biljaka koliko ima vreća gnojiva. Posao staje kad ponestane sjemena, gnojiva, energije ili mjesta u torbi. Klik na mapu ili Esc ga prekida.
+- **Alati (tipke 1–4): ✋ ruke, 🌱 sjeme, 🪣 kanta, 🧪 gnojivo.** Svaki alat ima dva dijela. Klik na sam alat radi jednu po jednu biljku: ruke beru, sjeme sadi (vrsta se bira u vrećici uz alate), kanta zalijeva (piše koliko je vode u njoj), gnojivo gnoji. ▾ uz alat radi isto na svim parcelama ili samo za jednu vrstu, a dok posao traje ▾ postaje ■ za prekid. Zrelu biljku ruke beru, a i bilo koji alat je bere klikom.
 - **Sjeme se broji i nije besplatno.** Na početku ga nema. Vrećica ispod alata pokazuje koliko kojeg imaš. Sjeme se dobiva na tri načina:
   - **Otkrivanjem:** u ladici u kući, a na imanju rastu stara rotkvica, divlja mrkva i divlji krumpir. Svako jutro nešto novo može niknuti samo od sebe.
   - **Iz plodova** na radnom stolu: neprodani plod daje 2–10 sjemenki, nasumično. Tako jedan usjev donosi puno novih.
@@ -47,7 +47,7 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
   | Bundeva | 7 dana | 9 kg | 1 zl 60 sr | 2 zl 50 sr |
 
   Skuplji usjevi pojavljuju se u katalogu dostave kako ukupno zarađuješ. Igra počinje s 30 zlatnika.
-- **Štand ispred kuće:** stavi plodove na štand. Kupci dolaze cestom od 08 do 19 h i uvijek uzmu najbolje što vide. Kupuju 1–4 kg odjednom. **Cijena ovisi o kvaliteti:** ★ pola cijene, ★★ tržišna cijena, ★★★ +30 %, zlatno +60 %. Loše (★) plodove kupuju samo kad na štandu nema boljih. Mogu se i pojesti za energiju, pretvoriti u gnojivo ili u sjeme.
+- **Štand uz cestu:** stavi plodove na štand. Kupci dolaze cestom od 08 do 19 h i uvijek uzmu najbolje što vide. Kupuju 1–4 kg odjednom. **Cijena ovisi o kvaliteti:** ★ pola cijene, ★★ tržišna cijena, ★★★ +30 %, zlatno +60 %. Loše (★) plodove kupuju samo kad na štandu nema boljih. Mogu se i pojesti za energiju, pretvoriti u gnojivo ili u sjeme.
 - **Kuća:** spavanje (od 18 h) završava dan, vraća svu energiju i **sprema igru**. Ranije se ne može, inače bi se spavanjem preskakali dani rasta. Kava (1 zl 50 sr) daje +35 energije. Tko ostane budan do 02 h, zaspi na nogama i budi se s pola energije.
 - **Energija:** svaki posao troši energiju (sadnja 2, zalijevanje, gnojenje i berba po 1). Hodanje je besplatno.
 - **Voda:** na početku samo **ribnjak** puni kantu (12 zalijevanja, s velikom kantom 30). **Bunara nema:** kod kuće je gradilište. Na radnom stolu se skicira plan, a onda farmer ode na gradilište i zida (nekoliko sekundi, 250 zl i 30 energije; plaća se tek kad je gotovo, a ako farmer ode, zidanje stane). Kad je sazidan, voda je blizu polja i postaje izvor za **navodnjavanje**: prskalice se mogu izraditi tek kad bunar postoji.

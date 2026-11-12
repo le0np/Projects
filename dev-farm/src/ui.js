@@ -118,7 +118,7 @@ export function createUI(cb) {
   ];
   // Seeds and the can are split buttons: the tool itself works plant by plant,
   // the ▾ next to it runs the bulk job (everything, or one kind of crop).
-  const SPLIT = { seed: 'plant', can: 'water' };
+  const SPLIT = { hand: 'harvest', seed: 'plant', can: 'water', fert: 'fertilize' };
   const toolEls = new Map();
   const moreBtns = new Map();
   for (const t of tools) {
@@ -139,9 +139,10 @@ export function createUI(cb) {
 
   // bulk jobs: each button opens a menu — everything, or one kind of crop
   const jobs = [
-    { kind: 'plant', key: 'P', icon: 'seeds', name: 'Posadi', all: 'Sve sjeme', attached: true },
+    { kind: 'plant', key: 'P', icon: 'seeds', name: 'Posadi', all: 'Sve sjeme' },
     { kind: 'harvest', key: 'B', icon: 'hand', name: 'Poberi', all: 'Sve zrelo' },
-    { kind: 'water', key: 'Z', icon: 'can', name: 'Zalij', all: 'Sve posađeno', attached: true },
+    { kind: 'fertilize', key: 'G', icon: 'fertilizer', name: 'Pognoji', all: 'Sve posađeno' },
+    { kind: 'water', key: 'Z', icon: 'can', name: 'Zalij', all: 'Sve posađeno' },
   ];
   const jobEls = new Map();
   let lastState = null;
@@ -161,7 +162,7 @@ export function createUI(cb) {
       const n = count(c.id);
       if (n > 0 || (kind === 'plant' && s.seeds[c.id] > 0)) options.push({ crop: c.id, label: c.name, n });
     }
-    const unit = kind === 'harvest' ? 'zrelih' : kind === 'water' ? 'suhih' : 'parcela';
+    const unit = { harvest: 'zrelih', water: 'suhih', fertilize: 'za gnojivo', plant: 'parcela' }[kind];
     menu.replaceChildren(el('div', 'job-menu-title', `${j.name} sve…`), ...options.map((o) => {
       const b = button('', () => { closeMenu(); cb.onJob(kind, o.crop); }, { cls: 'job-option', disabled: o.n === 0 });
       if (o.crop) b.append(icon(o.crop, 'px-icon small-icon'));
@@ -178,13 +179,7 @@ export function createUI(cb) {
   document.addEventListener('click', (e) => {
     if (!menu.hidden && !menu.contains(e.target) && !e.target.closest('.bulk')) closeMenu();
   });
-  for (const j of jobs.filter((x) => x.attached)) jobEls.set(j.kind, { b: moreBtns.get(j.kind).more, j, tool: moreBtns.get(j.kind).tool });
-  for (const j of jobs.filter((x) => !x.attached)) {
-    const b = button('', () => (lastState?.farmer.job ? cb.onJob(j.kind) : openMenu(j.kind, b)), { cls: 'tool bulk' });
-    b.append(el('kbd', '', j.key), icon(j.icon, 'tool-icon'), el('span', 'tool-name', `${j.name} ▾`), el('span', 'tool-sub'));
-    els.hotbar.append(b);
-    jobEls.set(j.kind, { b, name: b.querySelector('.tool-name'), sub: b.querySelector('.tool-sub'), j });
-  }
+  for (const j of jobs) jobEls.set(j.kind, { b: moreBtns.get(j.kind).more, j, tool: moreBtns.get(j.kind).tool });
 
   for (const [id, coin] of [['hud-gold-icon', 'gold'], ['hud-silver-icon', 'silver']]) $(id).src = iconUrl(coin);
 
@@ -203,7 +198,8 @@ export function createUI(cb) {
   function hud(s) {
     setText(els.day, `Dan ${s.day}`);
     setText(els.clock, `${formatClock(s.clock)} ${s.clock >= 20 * 60 || s.clock < 6 * 60 ? '🌙' : '☀️'}`);
-    setText(els.shop, shopOpen(s.clock) ? 'štand otvoren' : `štand zatvoren (${formatClock(SHOP_OPEN)}–${formatClock(SHOP_CLOSE)})`);
+    setText(els.shop, shopOpen(s.clock) ? '🏪 otvoreno' : `🏪 ${formatClock(SHOP_OPEN).slice(0, 2)}–${formatClock(SHOP_CLOSE).slice(0, 2)} h`);
+    els.shop.title = shopOpen(s.clock) ? 'Štand je otvoren' : `Štand radi od ${formatClock(SHOP_OPEN)} do ${formatClock(SHOP_CLOSE)}`;
     setText(els.gold, numberFormat.format(Math.floor(s.money / 100)));
     setText(els.silver, String(Math.round(s.money % 100)));
     els.money.title = formatMoney(s.money);
@@ -217,31 +213,30 @@ export function createUI(cb) {
       b.classList.toggle('selected', s.tool === t.id && !ui.placing);
       const text = t.id === 'seed' ? `${cropById[s.seed].name} × ${s.seeds[s.seed]}`
         : t.id === 'can' ? `💧 ${s.water}/${canSize(s)}`
-          : t.id === 'fert' ? `× ${countWhere(s.bag, (id) => id === 'fertilizer')}` : 'bere, uzima';
+          : t.id === 'fert' ? `× ${countWhere(s.bag, (id) => id === 'fertilizer')}` : `zrelih: ${jobTargets(s, 'harvest').length}`;
       setText(sub, text);
     }
 
     lastState = s;
     const running = s.farmer.job;
-    for (const [kind, { b, name, sub, j, tool }] of jobEls) {
+    for (const [kind, { b, j, tool }] of jobEls) {
       const mine = running?.kind === kind;
       const n = jobTargets(s, kind).length;
       b.classList.toggle('running', mine);
       b.disabled = !mine && (Boolean(running) || n === 0);
-      if (j.attached) {
-        // the ▾ on seeds / can: ■ stops the running bulk job
-        const verb = kind === 'plant' ? { stop: 'sadnju', do: 'Posadi', what: `parcela za sadnju: ${n}`, none: 'Nema sjemena ili slobodnih parcela', ing: 'sadi' }
-          : { stop: 'zalijevanje', do: 'Zalij', what: `suhih: ${n}`, none: 'Ništa nije suho', ing: 'zalijeva' };
+      {
+        // the ▾ next to each tool: ■ stops the running bulk job
+        const verb = {
+          plant: { stop: 'sadnju', do: 'Posadi', what: `parcela za sadnju: ${n}`, none: 'Nema sjemena ili slobodnih parcela', ing: 'sadi' },
+          water: { stop: 'zalijevanje', do: 'Zalij', what: `suhih: ${n}`, none: 'Ništa nije suho', ing: 'zalijeva' },
+          harvest: { stop: 'berbu', do: 'Poberi', what: `zrelih: ${n}`, none: 'Ništa nije zrelo', ing: 'bere' },
+          fertilize: { stop: 'gnojenje', do: 'Pognoji', what: `za gnojivo: ${n}`, none: 'Nema gnojiva ili nepognojenih biljaka', ing: 'gnoji' },
+        }[kind];
         setText(b, mine ? '■' : '▾');
         b.title = mine ? `Prekini ${verb.stop} (Esc)` : n ? `${verb.do} sve ili jednu vrstu · ${verb.what} (${j.key})` : verb.none;
         b.parentElement.classList.toggle('running', mine);
         if (mine) setText(toolEls.get(tool).sub, `${verb.ing} ${running.done}/${running.total}`);
-        continue;
       }
-      setText(name, mine ? 'Prekini' : `${j.name} ▾`);
-      setText(sub, mine ? `${running.done}/${running.total} · Esc`
-        : kind === 'plant' ? (totalSeeds(s) ? `${n} ${plots(n)}` : 'nema sjemena')
-          : kind === 'water' ? `suhih: ${n}` : `zrelih: ${n}`);
     }
     if (running && !menu.hidden) closeMenu();
   }
@@ -306,17 +301,8 @@ export function createUI(cb) {
 
   // ---- building panels
   function panel(s) {
-    if (!ui.panel) {
-      renderIfChanged(els.panel, 'none', () => {
-        const box = el('div', 'panel-empty');
-        box.append(
-          el('p', '', 'Klikni na mapu da farmer ode tamo.'),
-          el('p', 'muted', 'Kuća, škrinja, štand, ribnjak i radni stol otvaraju se kad farmer dođe do njih. Kotačić miša ili + / − mijenjaju zoom.'),
-        );
-        return [box];
-      });
-      return;
-    }
+    els.panel.hidden = !ui.panel; // only shown when a building is open
+    if (!ui.panel) return;
     const head = () => {
       const h = el('div', 'panel-head');
       h.append(el('h2', '', OBJECTS[ui.panel].name), button('✕', cb.onClosePanel, { cls: 'close', title: 'Zatvori (Esc)' }));

@@ -10,10 +10,10 @@ export const W = 48;
 export const H = 32;
 
 export const HOUSE = { x: 5, y: 4, w: 6, h: 5 };
-export const STAND = { x: 12, y: 10, w: 2, h: 2 };
+export const STAND = { x: 40, y: 10, w: 2, h: 2 }; // by the road, where customers come from
 export const HOUSE_DOOR = [8, 9]; // tile in front of the door
 export const DRONE_HOME = [8, 5]; // on the roof
-export const CUSTOMER_SPOT = [12, 12];
+export const CUSTOMER_SPOT = [40, 12];
 export const SPAWNS = [[43, 0], [44, 31]];
 export const FIELD_A = { x: 18, y: 4, w: 10, h: 8 }; // including the fence
 export const FIELD_B = { x: 18, y: 15, w: 10, h: 8 };
@@ -118,7 +118,7 @@ const pondAccess = () => {
 export const OBJECTS = {
   house: { name: 'Kuća', access: [HOUSE_DOOR] },
   chest: { name: 'Škrinja', access: [[11, 9]] },
-  stand: { name: 'Štand', access: [[13, 12], [14, 11]] },
+  stand: { name: 'Štand', access: [[41, 12], [39, 11]] },
   well: { name: 'Bunar', access: [[15, 7]] },
   workbench: { name: 'Radni stol', access: [[3, 9]] },
   pond: { name: 'Ribnjak', access: pondAccess() },

@@ -65,6 +65,7 @@ function farmerSays(e) {
     case 'nofreeplots': return 'Nema slobodnih parcela.';
     case 'tooearly': return 'Još je rano za spavanje. Ima posla do večeri.';
     case 'nothingdry': return 'Sve je već zaliveno.';
+    case 'nothingtofert': return 'Nema ništa za pognojiti.';
     case 'noplan': return 'Ovdje bi bio dobar bunar, ali treba mi plan. Skicirat ću ga na radnom stolu.';
     case 'nothingripe': return 'Još ništa nije zrelo.';
     case 'chestfull': return null; // the drone's problem: goes to the phone
@@ -108,14 +109,15 @@ function report(events) {
       case 'jobstart':
         jobTally = e.kind === 'harvest' ? {} : null;
         ui.say(e.kind === 'plant' ? `Idem sijati: ${e.total} ${plots(e.total)}.`
-          : e.kind === 'water' ? `Idem zalijevati: ${e.total} ${plots(e.total)}.` : `Idem brati, zrelih: ${e.total}.`);
+          : e.kind === 'water' ? `Idem zalijevati: ${e.total} ${plots(e.total)}.`
+            : e.kind === 'fertilize' ? `Idem gnojiti: ${e.total} ${plots(e.total)}.` : `Idem brati, zrelih: ${e.total}.`);
         break;
       case 'jobcancel':
         jobTally = null;
-        ui.say(`Dobro, prekidam ${{ plant: 'sadnju', harvest: 'berbu', water: 'zalijevanje' }[e.kind]}.`);
+        ui.say(`Dobro, prekidam ${{ plant: 'sadnju', harvest: 'berbu', water: 'zalijevanje', fertilize: 'gnojenje' }[e.kind]}.`);
         break;
       case 'jobend': {
-        const what = `${{ plant: 'Posađeno', harvest: 'Ubrano', water: 'Zaliveno' }[e.kind]} ${e.done}`;
+        const what = `${{ plant: 'Posađeno', harvest: 'Ubrano', water: 'Zaliveno', fertilize: 'Pognojeno' }[e.kind]} ${e.done}`;
         const detail = jobTally && e.done ? ` (${tallyText(jobTally)})` : '';
         jobTally = null;
         if (e.reason) ui.say(`${farmerSays(e)} ${what} od ${e.total}${detail}.`, 'sad');
@@ -212,10 +214,10 @@ function flushDrone() {
 }
 
 function intro() {
-  ui.notify('👋 Dobrodošlica na farmu! Klikni bilo gdje na mapi i farmer ode tamo. Klik na parcelu radi ono što farmer drži u ruci (tipke 1–4): sjeme sadi, kanta zalijeva jednu biljku, gnojivo gnoji. ▾ uz sjeme posadi sve (tipka P), a ▾ uz kantu zalije sve (tipka Z), ili samo jednu vrstu.', 'info');
-  ui.notify(`🌱 Sjeme se broji: nađi ga na imanju, izvadi iz plodova na radnom stolu ili naruči ovdje, pod "Dostava sjemena".`, 'info');
+  ui.notify('👋 Dobrodošlica na farmu! Klikni bilo gdje na mapi i farmer ode tamo. Klik na parcelu radi ono što farmer drži u ruci (tipke 1–4): ruke beru, sjeme sadi, kanta zalijeva, gnojivo gnoji. ▾ uz svaki alat radi to na svim parcelama ili samo za jednu vrstu. Kotačić miša mijenja zoom.', 'info');
+  ui.notify(`🌱 Sjeme se broji: nađi ga na imanju, izvadi iz plodova na radnom stolu ili naruči ovdje, pod "Dostava".`, 'info');
   ui.notify('🌙 Usjevi rastu preko noći: svako jutro jedan dan ako su dan prije bili zaliveni, pola dana ako nisu. Dovoljno je zaliti jednom dnevno.', 'info');
-  ui.notify('🏪 Plodove stavi na štand ispred kuće. Bolja kvaliteta, bolja cijena. Od 18 h možeš spavati u kući: tako se igra sprema.', 'info');
+  ui.notify('🏪 Plodove stavi na štand uz cestu. Bolja kvaliteta, bolja cijena. Od 18 h možeš spavati u kući: tako se igra sprema.', 'info');
   setTimeout(() => ui.say('Nova farma! Sjemena još nemam… Možda u kući nešto ima?'), 600);
 }
 
@@ -363,6 +365,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'p' || e.key === 'P') onJob('plant');
   else if (e.key === 'b' || e.key === 'B') onJob('harvest');
   else if (e.key === 'z' || e.key === 'Z') onJob('water');
+  else if (e.key === 'g' || e.key === 'G') onJob('fertilize');
   else if (e.key === '+' || e.key === '=') onZoom(1);
   else if (e.key === '-') onZoom(-1);
   else if (e.key === 'Escape') {

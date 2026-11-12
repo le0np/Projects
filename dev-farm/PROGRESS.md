@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša i radi s alatima (ruke, sjeme, kanta, gnojivo). Može otkrivati sjeme, saditi, zalijevati, gnojiti i brati, a plodove prodaje na štandu kupcima koji dolaze cestom. Usjevi rastu po danima: dan traje 10 minuta, a rast se događa svako jutro. Kvaliteta ploda (★ do ★★★★) ovisi o zalijevanju, gnojivu i pravodobnoj berbi, a cijena o kvaliteti. Novac su zlatnici i srebrenjaci s omjerima prema stvarnim tržišnim cijenama u Hrvatskoj. Na radnom stolu se izrađuju izumi: plan bunara, prskalice s 10 razina navodnjavanja, dron, replant.py, SEO ploča i drugo polje. Mobitel služi za obavijesti i dostavu sjemena i gnojiva, a farmer u oblačiću govori što radi i što ne može. Sva grafika je pixel art generiran u kodu.
+Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša i radi s četiri alata (ruke, sjeme, kanta, gnojivo); svaki radi biljku po biljku ili, preko ▾, na cijelom polju. Može otkrivati sjeme, saditi, zalijevati, gnojiti i brati, a plodove prodaje na štandu uz cestu. Usjevi rastu po danima: dan traje 10 minuta, a rast se događa svako jutro. Kvaliteta ploda (★ do ★★★★) ovisi o zalijevanju, gnojivu i pravodobnoj berbi, a cijena o kvaliteti. Novac su zlatnici i srebrenjaci s omjerima prema stvarnim tržišnim cijenama u Hrvatskoj. Na radnom stolu se izrađuju izumi: plan bunara, prskalice s 10 razina navodnjavanja, dron, replant.py, SEO ploča i drugo polje. Mobitel služi za obavijesti i dostavu sjemena i gnojiva, a farmer u oblačiću govori što radi i što ne može. Sva grafika je pixel art generiran u kodu.
 
 ## Napravljeno 12. studenog 2026.
 
@@ -79,15 +79,23 @@ Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša i rad
 - odvojeni gumb „Posadi ▾“ uklonjen; ostao je samo „Poberi ▾“
 - dok sadnja traje, sjeme pokazuje napredak („sadi 3/9“), a ▾ postaje ■ za prekid
 
+### v10 – jednostavnija alatna traka, štand uz cestu
+
+- svi alati su razdvojeni gumbi: Ruke ▾ (berba jedne / svih ili jedne vrste), Sjeme ▾, Kanta ▾, Gnojivo ▾ (gnoji koliko ima vreća); gumb „Poberi ▾“ uklonjen, tipke B, P, Z, G pokreću „sve“
+- alatna traka sada su samo četiri alata i vrećica sa sjemenom
+- prazni panel desno se skriva; pojavljuje se samo kad je otvorena zgrada
+- kraći natpis štanda u HUD-u (🏪 otvoreno / 🏪 08–19 h)
+- štand premješten uz cestu (kraj glavne staze), kupci dolaze ravno s ceste
+
 ## Zadnja automatizirana provjera
 
-Provedeno 12. studenog 2026. nakon v9:
+Provedeno 12. studenog 2026. nakon v10:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` u `dev-farm/` | 32/32 testova prolazi |
+| `npm test` u `dev-farm/` | 34/34 testova prolazi |
 | `npm start` + dohvat stranice i modula | server vraća 200 za `index.html` i `src/*.js` |
-| Headless Firefox (scenariji u scratchpadu) | iscrtavanje bez JS grešaka; provjereni hodanje, škrinja, skupna sadnja, zalijevanje s odlaskom po vodu, zidanje bunara, doseg prskalice, izbornik koji se zatvara, novčići u HUD-u, izbornici sjemena i kante te prekid sadnje i zalijevanja, noć |
+| Headless Firefox (scenariji u scratchpadu) | iscrtavanje bez JS grešaka; provjereni hodanje, škrinja, skupna sadnja, zalijevanje s odlaskom po vodu, zidanje bunara, doseg prskalice, izbornik koji se zatvara, novčići u HUD-u, izbornici sva četiri alata, prekid skupnih poslova, štand uz cestu, noć |
 
 ## Poznata ograničenja
 
