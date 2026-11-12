@@ -14,7 +14,7 @@ import {
 import { findPath } from '../src/path.js';
 import {
   BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZES, CROPS, START_FINDS, HOUSE_SEEDS,
-  RECIPES, eur, ROT_DAY,
+  RECIPES, zl, ROT_DAY,
 } from '../src/data.js';
 
 const [AX, AY] = xy(PLOTS_A[0]);
@@ -37,7 +37,7 @@ const nextDay = (s, events = []) => {
   assert.ok(sleep(s, events).ok);
   return events;
 };
-const START = eur(30);
+const START = zl(30);
 
 test('map: correct size, every place is reachable from the house door', () => {
   assert.equal(MAP.length, H);
@@ -53,7 +53,7 @@ test('map: correct size, every place is reachable from the house door', () => {
   for (const sp of SPAWNS) assert.ok(findPath(sp, [CUSTOMER_SPOT], isWalkable), 'customers reach the stand');
 });
 
-test('money is kept in cents; prices follow the market (€/kg)', () => {
+test('money is kept in srebrenjaci (1 zl = 100 sr); prices follow the market per kg', () => {
   const s = createState();
   assert.equal(s.money, 3000);
   assert.equal(salePrice('potato', 2), 100);
@@ -117,7 +117,7 @@ test('crops grow per day: a watered radish is ripe on the third morning', () => 
   assert.equal(daysLeft(plotOf(s)), 3);
   for (let d = 0; d < 3; d++) {
     assert.equal(plotOf(s).progress < 1, true);
-    s.tool = 'can';
+    s.tool = 'hand';
     assert.ok(plotAction(s, AX, AY).ok, `watering on day ${d + 1}`);
     advance(s, 60); // the day goes by: nothing grows during the day
     nextDay(s);
@@ -146,7 +146,7 @@ test('the soil dries overnight, so watering is once a day', () => {
   const s = withSeeds();
   s.tool = 'seed';
   plotAction(s, AX, AY);
-  s.tool = 'can';
+  s.tool = 'hand';
   assert.ok(plotAction(s, AX, AY).ok);
   assert.equal(plotAction(s, AX, AY).reason, 'wet');
   nextDay(s);
@@ -235,7 +235,7 @@ test('fertilizer is ordered on the phone and arrives in the chest', () => {
   assert.ok(!RECIPES.some((r) => r.id === 'fertilizer'), 'not sold at the workbench');
   assert.ok(orderFertilizer(s).ok);
   assert.ok(orderFertilizer(s).ok);
-  assert.equal(s.money, START - 2 * eur(6));
+  assert.equal(s.money, START - 2 * zl(6));
   nextDay(s);
   assert.deepEqual(s.chest[0], { id: 'fertilizer', n: 2 });
 });
@@ -244,7 +244,7 @@ test('watering uses the can; the pond refills it, the well only once it is built
   const s = withSeeds();
   s.tool = 'seed';
   plotAction(s, AX, AY);
-  s.tool = 'can';
+  s.tool = 'hand';
   assert.ok(plotAction(s, AX, AY).ok);
   assert.equal(s.water, CAN_SIZES[0] - 1);
   s.water = 0;
@@ -258,14 +258,14 @@ test('watering uses the can; the pond refills it, the well only once it is built
   assert.equal(s.water, CAN_SIZES[0]);
 
   s.water = 0;
-  s.money = eur(500);
+  s.money = zl(500);
   assert.equal(craft(s, 'sprinkler').reason, 'requires', 'irrigation needs the well');
   assert.ok(craft(s, 'wellPlan').ok);
   assert.ok(!s.upgrades.well, 'the workbench only sketches the plan');
   assert.ok(walkTo(s, 15, 6).events.some((e) => e.type === 'buildstart'));
   assert.ok(advance(s, 7).some((e) => e.type === 'built'));
   assert.ok(s.upgrades.well);
-  assert.equal(s.money, eur(250));
+  assert.equal(s.money, zl(250));
   walkTo(s, 15, 6);
   assert.equal(s.water, CAN_SIZES[0]);
   assert.ok(craft(s, 'sprinkler').ok);
@@ -273,7 +273,7 @@ test('watering uses the can; the pond refills it, the well only once it is built
 
 test('walking away stops the building, nothing is paid', () => {
   const s = createState();
-  s.money = eur(500);
+  s.money = zl(500);
   craft(s, 'wellPlan');
   walkTo(s, 15, 6);
   advance(s, 2);
@@ -282,14 +282,14 @@ test('walking away stops the building, nothing is paid', () => {
   assert.ok(events.some((e) => e.type === 'buildcancel'));
   advance(s, 10);
   assert.ok(!s.upgrades.well);
-  assert.equal(s.money, eur(500));
+  assert.equal(s.money, zl(500));
 });
 
 test('irrigation has 10 levels, each reaching more plots', () => {
   const reach = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((l) => sprinklerReach(l, 0, 0).length);
   assert.deepEqual(reach, [4, 8, 12, 20, 24, 28, 36, 44, 48, 56]);
   const s = createState();
-  s.money = eur(1e5);
+  s.money = zl(1e5);
   assert.equal(upgradeIrrigation(s).reason, 'requires');
   s.upgrades.well = true;
   for (let l = 2; l <= 10; l++) assert.ok(upgradeIrrigation(s).ok);
@@ -299,7 +299,7 @@ test('irrigation has 10 levels, each reaching more plots', () => {
 
 test('sprinklers water their reach every morning, with less quality credit', () => {
   const s = withSeeds();
-  s.money = eur(1000);
+  s.money = zl(1000);
   s.upgrades.well = true;
   s.irrigation = 2; // 3 × 3
   assert.ok(craft(s, 'sprinkler').ok);
@@ -365,7 +365,7 @@ test('customers take the best on the stand; ★ only when nothing better is left
 
 test('harvest-drone brings crops to the chest, never above ★★★, and replants from seeds', () => {
   const s = withSeeds(1);
-  s.money = eur(2000);
+  s.money = zl(2000);
   assert.equal(craft(s, 'replant').reason, 'requires');
   assert.ok(craft(s, 'drone').ok);
   assert.ok(craft(s, 'replant').ok);
@@ -393,7 +393,7 @@ test('compost turns bad produce into fertilizer; git clone polje opens field B',
   const [bx, by] = xy(PLOTS_B[0]);
   s.tool = 'seed';
   assert.equal(plotAction(s, bx, by).reason, 'locked');
-  s.money = eur(1000);
+  s.money = zl(1000);
   assert.ok(craft(s, 'field2').ok);
   assert.ok(plotAction(s, bx, by).ok);
 });
@@ -554,6 +554,6 @@ test('all art generates: correct sizes, nothing empty', async () => {
     for (const stage of ['sprout', 'young', 'ripe', 'rotten']) check(A.crop(c.id, stage), 24, 28, `${c.id} ${stage}`);
     check(A.icon(c.id), 16, 16, `icon ${c.id}`);
   }
-  for (const i of ['fertilizer', 'sprinkler', 'hand', 'seeds', 'can', 'phone']) check(A.icon(i), 16, 16, i);
+  for (const i of ['fertilizer', 'sprinkler', 'hand', 'seeds', 'can', 'phone', 'gold', 'silver']) check(A.icon(i), 16, 16, i);
   assert.deepEqual(A.roundTree(5).d, A.roundTree(5).d, 'art is deterministic');
 });

@@ -43,7 +43,7 @@ export function deserialize(raw) {
   }
   if (!d || typeof d !== 'object') return fresh;
   // Older farms are carried over. v2 had a well from the start and no counted seeds;
-  // v2/v3 used coins (1 coin ≈ 0,40 €) and grew crops by the second.
+  // v2/v3 used plain coins (1 coin = 40 sr) and grew crops by the second.
   const fromV2 = d.version === 2;
   const legacy = d.version === 2 || d.version === 3;
   if (d.version !== SAVE_VERSION && !legacy) return fresh;

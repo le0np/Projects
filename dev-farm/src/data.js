@@ -1,11 +1,13 @@
 // Game balance and static content. Everything tunable lives here.
-// Money is written in euros here and kept as whole cents in the game state (see eur()).
+// Money: zlatnici (zl) and srebrenjaci (sr), 1 zl = 100 sr. Prices are written in zlatnici
+// here and kept as whole srebrenjaci in the game state (see zl()). The ratios follow real
+// Croatian market prices, so 1 zl is roughly what 1 € buys at the market.
 
 export const SAVE_VERSION = 4;
-export const START_MONEY = 30; // €
+export const START_MONEY = 30; // zl
 export const MAX_ENERGY = 100;
 
-export const eur = (euros) => Math.round(euros * 100); // € → cents
+export const zl = (zlatnici) => Math.round(zlatnici * 100); // zl → sr
 
 export const BAG_SIZE = 8;
 export const CHEST_SIZE = 24;
@@ -56,7 +58,7 @@ export const START_FINDS = [
   { x: 39, y: 15, crop: 'potato', n: 2, what: 'divlji krumpir' },
 ];
 export const DAILY_FIND_CHANCE = 0.6;
-export const FERTILIZER_PRICE = 6; // € per bag, ordered on the phone, delivered to the chest
+export const FERTILIZER_PRICE = 6; // zl per bag, ordered on the phone, delivered to the chest
 
 // The well: a plan is sketched at the workbench, then the farmer builds it on site.
 export const WELL_BUILD = { price: 250, energy: 30, seconds: 6 };
@@ -64,18 +66,18 @@ export const WELL_BUILD = { price: 250, energy: 30, seconds: 6 };
 // Irrigation: every sprinkler waters the plots within this radius (in tiles), each morning.
 // Levels 1–10 cover 4, 8, 12, 20, 24, 28, 36, 44, 48 and 56 plots.
 export const IRRIGATION_RADII = [1, 1.42, 2, 2.24, 2.83, 3, 3.17, 3.61, 4, 4.13];
-export const IRRIGATION_COSTS = [0, 25, 40, 60, 90, 130, 180, 250, 340, 450]; // € to reach level i + 1
+export const IRRIGATION_COSTS = [0, 25, 40, 60, 90, 130, 180, 250, 340, 450]; // zl to reach level i + 1
 
 export const CUSTOMER_INTERVAL = [18, 36]; // seconds between customers
 export const CUSTOMER_KG = [1, 4]; // a customer buys 1–4 kg
 export const SEO_BONUS = 1.6;
 
-// Prices follow Croatian market prices (€/kg, autumn 2026).
+// Prices follow Croatian market prices per kg (in €, autumn 2026), written as zlatnici.
 // days  = days to ripen if watered every day
 // yield = kg one plot gives
-// price = € per kg at ★★
-// pack  = € for a delivery pack of 5 seeds / seedlings
-// unlock = € earned in total before the crop shows up in the delivery catalogue
+// price = zl per kg at ★★
+// pack  = zl for a delivery pack of 5 seeds / seedlings
+// unlock = zl earned in total before the crop shows up in the delivery catalogue
 export const CROPS = [
   { id: 'radish', name: 'Rotkvica', days: 3, yield: 1, price: 3.5, pack: 1.5, unlock: 0 },
   { id: 'carrot', name: 'Mrkva', days: 3, yield: 4, price: 0.9, pack: 1.5, unlock: 0 },

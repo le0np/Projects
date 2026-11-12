@@ -1139,6 +1139,16 @@ export function icon(name) {
       for (let a = 0; a <= Math.PI; a += 0.15) p.set(7 + Math.cos(a) * 3.5, 5 - Math.sin(a) * 3.2, RAMP.metal[3]);
       break;
     }
+    case 'gold':
+    case 'silver': {
+      const ramp = name === 'gold' ? RAMP.gold : RAMP.metal;
+      p.ellipse(8, 8.5, 6.5, 6.5, (nx, ny, x, y) => pick(ramp, 0.2 + sphere(nx, ny) * 0.8, x, y));
+      p.ellipse(8, 8.5, 4.4, 4.4, (nx, ny, x, y) => pick(ramp, 0.65 - sphere(nx, ny) * 0.35, x, y));
+      for (const [x, y] of [[8, 6], [7, 7], [8, 7], [9, 7], [8, 8], [8, 9], [7, 10], [8, 10], [9, 10], [8, 11]]) p.set(x, y, ramp[1]);
+      p.set(5, 5, ramp[5]);
+      p.set(6, 4, ramp[5]);
+      break;
+    }
     case 'phone':
       p.rect(4, 1, 8, 14, (x, y) => (x === 4 || x === 11 || y === 1 || y === 14 ? RAMP.metal[1] : null));
       p.rect(5, 2, 6, 12, (x, y) => pick(RAMP.glass, 0.95 - (y - 2) * 0.05 + (x + y === 12 ? 0.2 : 0), x, y));

@@ -2,7 +2,7 @@
 // Functions mutate the state object and push what happened into an `events` array.
 
 import {
-  SAVE_VERSION, START_MONEY, MAX_ENERGY, BAG_SIZE, CHEST_SIZE, STAND_SIZE, STACK_MAX, eur,
+  SAVE_VERSION, START_MONEY, MAX_ENERGY, BAG_SIZE, CHEST_SIZE, STAND_SIZE, STACK_MAX, zl,
   GAME_MIN_PER_SEC, DAY_START, NIGHT_START, PASS_OUT, SLEEP_FROM, SHOP_OPEN, SHOP_CLOSE,
   WALK_SPEED, NPC_SPEED, DRONE_SPEED, DRONE_COOLDOWN, DRY_RATE,
   AUTO_WATER_CREDIT, CAN_SIZES, ENERGY_COST, COFFEE, EAT_ENERGY,
@@ -18,7 +18,7 @@ import { findPath } from './path.js';
 
 export const cropById = Object.fromEntries(CROPS.map((c) => [c.id, c]));
 export const recipeById = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
-export const TOOLS = ['hand', 'seed', 'can', 'fert'];
+export const TOOLS = ['hand', 'seed', 'fert'];
 const EPS = 1e-9;
 
 // ---------------------------------------------------------------- state
@@ -38,8 +38,8 @@ export function createState(seed = 12345) {
     version: SAVE_VERSION,
     day: 1,
     clock: DAY_START,
-    money: eur(START_MONEY), // cents
-    totalEarned: 0, // cents
+    money: zl(START_MONEY), // srebrenjaci
+    totalEarned: 0, // srebrenjaci
     energy: MAX_ENERGY,
     tool: 'hand',
     seed: CROPS[0].id,
@@ -74,7 +74,7 @@ export const canSize = (s) => CAN_SIZES[s.upgrades.bigCan ? 1 : 0];
 export const isNight = (clock) => clock >= NIGHT_START || clock < DAY_START;
 export const shopOpen = (clock) => clock >= SHOP_OPEN && clock < SHOP_CLOSE;
 // "unlocked" = available in the seed delivery catalogue
-export const isUnlocked = (s, id) => Boolean(cropById[id]) && s.totalEarned >= eur(cropById[id].unlock);
+export const isUnlocked = (s, id) => Boolean(cropById[id]) && s.totalEarned >= zl(cropById[id].unlock);
 export const findAt = (s, x, y) => s.finds.findIndex((f) => f.x === x && f.y === y);
 export const plotUnlocked = (s, i) => inFieldA(i) || (s.upgrades.field2 && s.plots[i] !== undefined);
 export const sprinklerAt = (s, x, y) => s.sprinklers.findIndex((p) => p.x === x && p.y === y);
@@ -92,8 +92,8 @@ export function parseItem(id) {
 
 const isBad = (id) => parseItem(id)?.tier === 1;
 export const isSellable = (id) => parseItem(id)?.kind === 'crop';
-// cents per kg
-export const salePrice = (crop, tier) => Math.round(eur(cropById[crop].price) * TIER_PRICE[tier]);
+// srebrenjaci per kg
+export const salePrice = (crop, tier) => Math.round(zl(cropById[crop].price) * TIER_PRICE[tier]);
 
 export function canAdd(slots, id) {
   return slots.some((it) => it === null || (it.id === id && it.n < STACK_MAX));
@@ -169,12 +169,12 @@ function spend(s, cost, events) {
   return true;
 }
 
-function addMoney(s, cents, events) {
+function addMoney(s, sr, events) {
   const before = s.totalEarned;
-  s.money += cents;
-  s.totalEarned += cents;
+  s.money += sr;
+  s.totalEarned += sr;
   for (const c of CROPS) {
-    if (eur(c.unlock) > before && eur(c.unlock) <= s.totalEarned) events.push({ type: 'unlock', crop: c.id });
+    if (zl(c.unlock) > before && zl(c.unlock) <= s.totalEarned) events.push({ type: 'unlock', crop: c.id });
   }
 }
 
@@ -420,7 +420,7 @@ function pickUpFind(s, x, y, events) {
 export function objectAction(s, id, events = []) {
   if (id === 'well' && !s.upgrades.well) {
     if (!s.upgrades.wellPlan) return fail(events, 'noplan');
-    if (s.money < eur(WELL_BUILD.price)) return fail(events, 'coins', { need: eur(WELL_BUILD.price) });
+    if (s.money < zl(WELL_BUILD.price)) return fail(events, 'coins', { need: zl(WELL_BUILD.price) });
     if (s.energy < WELL_BUILD.energy) return fail(events, 'tired');
     s.farmer.busy = { what: 'well', left: WELL_BUILD.seconds, total: WELL_BUILD.seconds };
     s.farmer.dir = 'up';
@@ -466,9 +466,8 @@ export function plotAction(s, x, y, events = []) {
     if (s.tool !== 'seed') return fail(events, 'needseed');
     return plant(s, i, s.seed, events);
   }
-  if (s.tool === 'can') return waterPlot(s, i, events);
   if (s.tool === 'fert') return fertilize(s, i, events);
-  return fail(events, 'needtool');
+  return waterPlot(s, i, events); // the can is always at hand
 }
 
 function plant(s, i, cropId, events, by = 'hand') {
@@ -549,9 +548,9 @@ export function eat(s, slot, events = []) {
 }
 
 export function coffee(s, events = []) {
-  if (s.money < eur(COFFEE.price)) return fail(events, 'coins', { need: eur(COFFEE.price) });
+  if (s.money < zl(COFFEE.price)) return fail(events, 'coins', { need: zl(COFFEE.price) });
   if (s.energy >= MAX_ENERGY) return fail(events, 'full');
-  s.money -= eur(COFFEE.price);
+  s.money -= zl(COFFEE.price);
   s.energy = Math.min(MAX_ENERGY, s.energy + COFFEE.energy);
   events.push({ type: 'coffee', gain: COFFEE.energy });
   return { ok: true };
@@ -576,7 +575,7 @@ export function canCraft(s, id) {
   if (!r) return 'unknown';
   if (r.once && s.upgrades[r.once]) return 'owned';
   if (r.requires && !s.upgrades[r.requires]) return 'requires';
-  if (s.money < eur(r.price)) return 'coins';
+  if (s.money < zl(r.price)) return 'coins';
   if (r.bad && countWhere(s.bag, isBad) < r.bad) return 'nobad';
   if (r.gives && !canAdd(s.bag, r.gives)) return 'bagfull';
   return null;
@@ -586,7 +585,7 @@ export function craft(s, id, events = []) {
   const problem = canCraft(s, id);
   if (problem) return fail(events, problem, { recipe: id });
   const r = recipeById[id];
-  s.money -= eur(r.price);
+  s.money -= zl(r.price);
   if (r.bad) takeWhere(s.bag, isBad, r.bad);
   if (r.gives) addItem(s.bag, r.gives);
   if (r.once) s.upgrades[r.once] = true;
@@ -611,16 +610,16 @@ export function extractSeeds(s, slot, events = []) {
   return { ok: true, n };
 }
 
-export const packPrice = (crop) => eur(cropById[crop].pack); // cents
+export const packPrice = (crop) => zl(cropById[crop].pack); // srebrenjaci
 
 // Order a bag of fertilizer; it is delivered to the chest the next morning.
 export function orderFertilizer(s, events = []) {
-  if (s.money < eur(FERTILIZER_PRICE)) return fail(events, 'coins', { need: eur(FERTILIZER_PRICE) });
-  s.money -= eur(FERTILIZER_PRICE);
+  if (s.money < zl(FERTILIZER_PRICE)) return fail(events, 'coins', { need: zl(FERTILIZER_PRICE) });
+  s.money -= zl(FERTILIZER_PRICE);
   const o = s.orders.find((x) => x.item === 'fertilizer');
   if (o) o.n++;
   else s.orders.push({ item: 'fertilizer', n: 1 });
-  events.push({ type: 'ordered', item: 'fertilizer', n: 1, price: eur(FERTILIZER_PRICE) });
+  events.push({ type: 'ordered', item: 'fertilizer', n: 1, price: zl(FERTILIZER_PRICE) });
   return { ok: true };
 }
 
@@ -719,7 +718,7 @@ export function sprinklerReach(level, x, y) {
   return out;
 }
 
-export const irrigationCost = (s) => (s.irrigation >= IRRIGATION_RADII.length ? null : eur(IRRIGATION_COSTS[s.irrigation])); // cents
+export const irrigationCost = (s) => (s.irrigation >= IRRIGATION_RADII.length ? null : zl(IRRIGATION_COSTS[s.irrigation])); // srebrenjaci
 
 export function upgradeIrrigation(s, events = []) {
   if (!s.upgrades.well) return fail(events, 'requires');
@@ -904,11 +903,11 @@ function build(s, dt, events) {
   b.left -= dt;
   if (b.left > 0) return;
   s.farmer.busy = null;
-  if (s.money < eur(WELL_BUILD.price) || s.energy < WELL_BUILD.energy) {
-    fail(events, s.money < eur(WELL_BUILD.price) ? 'coins' : 'tired');
+  if (s.money < zl(WELL_BUILD.price) || s.energy < WELL_BUILD.energy) {
+    fail(events, s.money < zl(WELL_BUILD.price) ? 'coins' : 'tired');
     return;
   }
-  s.money -= eur(WELL_BUILD.price);
+  s.money -= zl(WELL_BUILD.price);
   s.energy -= WELL_BUILD.energy;
   s.upgrades.well = true;
   events.push({ type: 'built', what: 'well' });

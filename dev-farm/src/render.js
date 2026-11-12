@@ -6,6 +6,13 @@ import { plotUnlocked, parseItem, sprinklerReach, sprinklerAt } from './sim.js';
 import { Pix, hash01, withAlpha } from './pixel.js';
 import * as A from './art.js';
 
+// srebrenjaci → "3 zl 50 sr" (1 zlatnik = 100 srebrenjaka)
+const formatMoney = (sr) => {
+  const g = Math.floor(sr / 100);
+  const s = Math.round(sr % 100);
+  return g ? (s ? `${g} zl ${s} sr` : `${g} zl`) : `${s} sr`;
+};
+
 const TS = A.TS;
 
 // ------------------------------------------------------------------ art cache
@@ -251,7 +258,7 @@ export function createRenderer(canvas) {
     const float = (x, y, text, color) => fx.floats.push({ x: x * TS + 16, y: y * TS, text, color, t0: now });
     for (const e of events) {
       if (e.type === 'harvest') float(e.x, e.y, `${'★'.repeat(e.tier)} ${e.kg} kg`, TIER_COLORS[e.tier]);
-      else if (e.type === 'sale') float(STAND.x + 1, STAND.y, `+${(e.money / 100).toFixed(2).replace('.', ',')} €`, '#ffe066');
+      else if (e.type === 'sale') float(STAND.x + 1, STAND.y, `+${formatMoney(e.money)}`, '#ffe066');
       else if (e.type === 'water') fx.splashes.push({ x: e.x, y: e.y, t0: now });
       else if (e.type === 'sprinkle') {
         fx.sprays.push({ x: e.x, y: e.y, t0: now });

@@ -15,6 +15,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
@@ -41,7 +42,9 @@ body {
 .brand .user { color: var(--green); }
 .brand .path { color: var(--blue); }
 .hud { display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; }
-.hud .coins { font-size: 18px; font-weight: 700; color: var(--yellow); }
+.hud .coins { display: inline-flex; align-items: center; gap: 4px; font-size: 18px; font-weight: 700; color: var(--yellow); }
+.hud .coins .coin { width: 32px; height: 32px; margin: -6px -4px -6px 0; image-rendering: pixelated; }
+.hud .coins .silver { color: #d6dbe0; }
 .energy { display: inline-flex; gap: 6px; align-items: center; }
 .bar { display: inline-block; width: 110px; height: 10px; background: #16171a; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--yellow); transition: width .2s; }
