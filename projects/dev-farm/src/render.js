@@ -2,7 +2,7 @@
 // Art comes from art.js (generated once and cached as canvases); game state from sim.js.
 
 import { W, H, MAP, HOUSE, STAND, xy } from './world.js';
-import { plotUnlocked, parseItem } from './sim.js';
+import { plotUnlocked, parseItem, sprinklerReach, sprinklerAt } from './sim.js';
 import { Pix, hash01, withAlpha } from './pixel.js';
 import * as A from './art.js';
 
@@ -102,7 +102,8 @@ export function createRenderer(canvas) {
   let dpr = 1;
   let cssW = 0;
   let cssH = 0;
-  let zoom = 2;
+  let zoom = 2; // target zoom: always a level that keeps pixels sharp
+  let view = 2; // zoom actually drawn: glides towards the target
   let userZoom = null; // chosen with the zoom buttons / wheel
   let ground = null;
   let props = [];
@@ -151,28 +152,36 @@ export function createRenderer(canvas) {
     return next;
   }
 
+  // The camera keeps a centre point (normally the farmer), so zooming grows and shrinks
+  // the view around him instead of around the top left corner.
   function updateCamera(s, dt) {
-    const viewW = cssW / zoom;
-    const viewH = cssH / zoom;
-    const fit = (center, view, size) =>
-      (view >= size ? (size - view) / 2 : Math.min(size - view, Math.max(0, center - view / 2)));
-    const tx = fit(s.farmer.x * TS + TS / 2, viewW, W * TS);
-    const ty = fit(s.farmer.y * TS + TS / 2, viewH, H * TS);
+    if (!cam.ready) view = zoom;
+    else {
+      view += (zoom - view) * (1 - Math.exp(-dt * 9));
+      if (Math.abs(zoom - view) < 0.004) view = zoom;
+    }
+    const viewW = cssW / view;
+    const viewH = cssH / view;
+    const clamp = (c, v, size) => (v >= size ? size / 2 : Math.min(size - v / 2, Math.max(v / 2, c)));
+    const tx = clamp(s.farmer.x * TS + TS / 2, viewW, W * TS);
+    const ty = clamp(s.farmer.y * TS + TS / 2, viewH, H * TS);
     if (!cam.ready) {
-      cam.x = tx;
-      cam.y = ty;
+      cam.cx = tx;
+      cam.cy = ty;
       cam.ready = true;
     } else {
-      const k = 1 - Math.exp(-dt * 7);
-      cam.x += (tx - cam.x) * k;
-      cam.y += (ty - cam.y) * k;
+      const k = 1 - Math.exp(-dt * (view === zoom ? 7 : 14));
+      cam.cx += (tx - cam.cx) * k;
+      cam.cy += (ty - cam.cy) * k;
     }
+    cam.x = cam.cx - viewW / 2;
+    cam.y = cam.cy - viewH / 2;
   }
 
   function tileFromClient(clientX, clientY) {
     const r = canvas.getBoundingClientRect();
-    const x = Math.floor(((clientX - r.left) / zoom + cam.x) / TS);
-    const y = Math.floor(((clientY - r.top) / zoom + cam.y) / TS);
+    const x = Math.floor(((clientX - r.left) / view + cam.x) / TS);
+    const y = Math.floor(((clientY - r.top) / view + cam.y) / TS);
     return x >= 0 && y >= 0 && x < W && y < H ? [x, y] : null;
   }
 
@@ -222,7 +231,7 @@ export function createRenderer(canvas) {
   }
 
   function drawPerson(e, now, kind, look) {
-    const moving = e.path?.length > 0;
+    const moving = e.path?.length > 0 || Boolean(e.busy);
     const frame = moving ? Math.floor(now / 120) % 4 : 0;
     const pic = personImage(kind, look, e.dir, frame);
     const px = Math.round(e.x * TS + 4);
@@ -252,7 +261,7 @@ export function createRenderer(canvas) {
     }
   }
 
-  function draw(s, now) {
+  function draw(s, now, opts = {}) {
     const dt = fx.last ? Math.min(0.1, (now - fx.last) / 1000) : 0;
     fx.last = now;
     const key = `${s.upgrades.field2}|${s.upgrades.well}`;
@@ -262,11 +271,11 @@ export function createRenderer(canvas) {
       builtFor = key;
     }
     updateCamera(s, dt);
-    const u = zoom * dpr;
+    const u = view * dpr;
     const cx = Math.round(cam.x * u) / u;
     const cy = Math.round(cam.y * u) / u;
-    const viewW = cssW / zoom;
-    const viewH = cssH / zoom;
+    const viewW = cssW / view;
+    const viewH = cssH / view;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#16171a';
@@ -291,6 +300,15 @@ export function createRenderer(canvas) {
       const spraying = fx.sprays.some((f) => f.x === sp.x && f.y === sp.y);
       const frame = spraying ? Math.floor(now / 80) % 4 : 0;
       img(art(`sprinkler${frame}`, () => A.sprinkler(frame)), sp.x * TS, sp.y * TS - 4);
+    }
+
+    // which plots a sprinkler reaches (hovering one, or choosing where to put one)
+    const h = fx.hover;
+    if (h && (opts.placing || sprinklerAt(s, h[0], h[1]) >= 0)) {
+      ctx.fillStyle = 'rgba(90,175,255,.22)';
+      for (const [x, y] of sprinklerReach(s.irrigation, h[0], h[1])) {
+        if (s.plots[y * W + x] && plotUnlocked(s, y * W + x)) ctx.fillRect(x * TS + 1, y * TS + 1, TS - 2, TS - 2);
+      }
     }
 
     // places where seeds can be found
@@ -335,6 +353,23 @@ export function createRenderer(canvas) {
       if (Math.floor(now / 380) % 2) {
         ctx.fillStyle = '#7dff8a';
         ctx.fillRect(dx + 14, dy + 7, 2, 1);
+      }
+    }
+
+    if (s.farmer.busy) {
+      const b = s.farmer.busy;
+      const fxp = Math.round(s.farmer.x * TS + 2);
+      const fyp = Math.round(s.farmer.y * TS - 16);
+      ctx.fillStyle = '#1a140f';
+      ctx.fillRect(fxp - 1, fyp - 1, 30, 7);
+      ctx.fillStyle = '#3a3226';
+      ctx.fillRect(fxp, fyp, 28, 5);
+      ctx.fillStyle = '#f2cf63';
+      ctx.fillRect(fxp + 1, fyp + 1, Math.round(26 * (1 - b.left / b.total)), 3);
+      for (let k = 0; k < 6; k++) {
+        const t = ((now / 700 + k / 6) % 1);
+        ctx.fillStyle = `rgba(214,200,170,${0.7 * (1 - t)})`;
+        ctx.fillRect(Math.round(15 * TS + 6 + ((k * 37) % 28) + t * (k % 2 ? 6 : -6)), Math.round(6 * TS + 22 - t * 14), 2, 2);
       }
     }
 
@@ -529,8 +564,8 @@ export function createRenderer(canvas) {
     },
     // CSS position of a world pixel, relative to the canvas
     worldToCanvas(wx, wy) {
-      const u = zoom * dpr;
-      return { x: (wx - Math.round(cam.x * u) / u) * zoom, y: (wy - Math.round(cam.y * u) / u) * zoom };
+      const u = view * dpr;
+      return { x: (wx - Math.round(cam.x * u) / u) * view, y: (wy - Math.round(cam.y * u) / u) * view };
     },
   };
 }

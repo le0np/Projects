@@ -1,7 +1,7 @@
 // Turning state into a string and back. Anything unexpected falls back to safe values.
 
 import { createState, cropById, parseItem, isSellable, TOOLS, canSize } from './sim.js';
-import { SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, WATER_DURATION } from './data.js';
+import { SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, WATER_DURATION, IRRIGATION_RADII } from './data.js';
 import { W, H, isWalkable, isPlotTile } from './world.js';
 
 export const OLD_KEY = 'dev-farm/save-v2';
@@ -12,7 +12,7 @@ export function serialize(s) {
   return JSON.stringify({
     ...s,
     customers: [],
-    farmer: { ...s.farmer, x: Math.round(s.farmer.x), y: Math.round(s.farmer.y), path: [], task: null, queue: [], job: null },
+    farmer: { ...s.farmer, x: Math.round(s.farmer.x), y: Math.round(s.farmer.y), path: [], task: null, queue: [], job: null, busy: null },
   });
 }
 
@@ -63,10 +63,13 @@ export function deserialize(raw) {
       .map((f) => ({ x: f.x, y: f.y, crop: f.crop, n: int(f.n, 1, 99, 1), what: typeof f.what === 'string' ? f.what.slice(0, 40) : 'sjeme' }));
   }
   if (Array.isArray(d.orders)) {
-    s.orders = d.orders.slice(0, 10).filter((o) => o && cropById[o.crop]).map((o) => ({ crop: o.crop, n: int(o.n, 1, 999, 5) }));
+    s.orders = d.orders.slice(0, 10).filter((o) => o && (cropById[o.crop] || o.item === 'fertilizer'))
+      .map((o) => (o.item ? { item: o.item, n: int(o.n, 1, 999, 1) } : { crop: o.crop, n: int(o.n, 1, 999, 5) }));
   }
+  s.irrigation = int(d.irrigation, 1, IRRIGATION_RADII.length, 1);
   if (fromV2) {
     s.upgrades.well = true;
+    s.upgrades.wellPlan = true;
     s.found.house = true;
     s.seeds.radish = 10;
   }

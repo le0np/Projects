@@ -4,13 +4,17 @@ import assert from 'node:assert/strict';
 import {
   createState, command, plotAction, objectAction, advance, tick, sleep, craft, moveItem, eat,
   coffee, addItem, qualityScore, tierOf, cropItem, makePlot, isSellable, ripeCount, extractSeeds,
-  orderSeeds, packPrice, salePrice, startJob,
+  orderSeeds, packPrice, salePrice, startJob, sprinklerReach, upgradeIrrigation, orderFertilizer,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
   W, H, MAP, idx, isWalkable, OBJECTS, PLOTS_A, PLOTS_B, HOUSE_DOOR, SPAWNS, CUSTOMER_SPOT, xy,
 } from '../src/world.js';
 import { findPath } from '../src/path.js';
+import { RECIPES } from '../src/data.js';
+
+const RECIPES_HAVE_BOUGHT_FERTILIZER = RECIPES.some((r) => r.id === 'fertilizer');
+
 import {
   BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZES, CROPS, START_FINDS, HOUSE_SEEDS,
 } from '../src/data.js';
@@ -125,7 +129,7 @@ test('watering uses the can; the pond refills it, the well only once it is built
   assert.equal(plotAction(s, AX, AY).reason, 'canempty');
 
   const { events } = walkTo(s, 15, 6); // the well site
-  assert.ok(events.some((e) => e.reason === 'nowell'));
+  assert.ok(events.some((e) => e.reason === 'noplan'), 'no well yet, and no plan');
   assert.equal(s.water, 0);
   objectAction(s, 'pond');
   assert.equal(s.water, CAN_SIZES[0]);
@@ -133,9 +137,55 @@ test('watering uses the can; the pond refills it, the well only once it is built
   s.water = 0;
   s.coins = 500;
   assert.equal(craft(s, 'sprinkler').reason, 'requires', 'irrigation needs the well');
-  assert.ok(craft(s, 'well').ok);
+  const noPlan = walkTo(s, 15, 6).events;
+  assert.ok(noPlan.some((e) => e.reason === 'noplan'), 'no building without a plan');
+  assert.ok(craft(s, 'wellPlan').ok);
+  assert.ok(!s.upgrades.well, 'the workbench only sketches the plan');
+  const site = walkTo(s, 15, 6).events;
+  assert.ok(site.some((e) => e.type === 'buildstart'));
+  const done = advance(s, 7);
+  assert.ok(done.some((e) => e.type === 'built'));
+  assert.ok(s.upgrades.well);
+  assert.equal(s.coins, 500 - 120);
   walkTo(s, 15, 6);
   assert.equal(s.water, CAN_SIZES[0]);
+  assert.ok(craft(s, 'sprinkler').ok);
+});
+
+test('walking away stops the building, nothing is paid', () => {
+  const s = createState();
+  s.coins = 500;
+  craft(s, 'wellPlan');
+  walkTo(s, 15, 6);
+  advance(s, 2);
+  const events = [];
+  command(s, 8, 12, 'auto', events);
+  assert.ok(events.some((e) => e.type === 'buildcancel'));
+  advance(s, 10);
+  assert.ok(!s.upgrades.well);
+  assert.equal(s.coins, 500);
+});
+
+test('fertilizer is ordered on the phone and arrives in the chest', () => {
+  const s = createState();
+  assert.ok(!RECIPES_HAVE_BOUGHT_FERTILIZER, 'not sold at the workbench any more');
+  assert.ok(orderFertilizer(s).ok);
+  assert.ok(orderFertilizer(s).ok);
+  assert.equal(s.coins, 40 - 24);
+  sleep(s);
+  assert.deepEqual(s.chest[0], { id: 'fertilizer', n: 2 });
+});
+
+test('irrigation has 10 levels, each reaching more plots', () => {
+  const reach = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((l) => sprinklerReach(l, 0, 0).length);
+  assert.deepEqual(reach, [4, 8, 12, 20, 24, 28, 36, 44, 48, 56]);
+  const s = createState();
+  s.coins = 1e6;
+  assert.equal(upgradeIrrigation(s).reason, 'requires');
+  s.upgrades.well = true;
+  for (let l = 2; l <= 10; l++) assert.ok(upgradeIrrigation(s).ok);
+  assert.equal(s.irrigation, 10);
+  assert.equal(upgradeIrrigation(s).reason, 'owned');
 });
 
 test('quality: water, fertilizer and timely harvest decide the tier', () => {
@@ -250,10 +300,11 @@ test('staying up until 02:00 makes the farmer pass out with half energy', () => 
   assert.deepEqual([s.farmer.x, s.farmer.y], HOUSE_DOOR);
 });
 
-test('sprinkler (water.sh) waters its neighbours, with less quality credit', () => {
+test('sprinkler (water.sh) waters the plots in reach, with less quality credit', () => {
   const s = withSeeds();
   s.coins = 1000;
   s.upgrades.well = true;
+  s.irrigation = 2; // 3 × 3
   assert.ok(craft(s, 'sprinkler').ok);
   const [x, y] = xy(PLOTS_A[9]); // has neighbours on all sides
   walkTo(s, x, y, 'place');
@@ -302,7 +353,7 @@ test('plant all: the farmer walks the field and plants every seed he has', () =>
   s.seeds.carrot = 2;
   s.seed = 'carrot';
   const events = [];
-  assert.ok(startJob(s, 'plant', events).ok);
+  assert.ok(startJob(s, 'plant', null, events).ok);
   for (let i = 0; i < 400 && s.farmer.job; i++) tick(s, 0.1, events);
   const planted = Object.values(s.plots).filter((p) => p.crop);
   assert.equal(planted.length, 6);
@@ -319,7 +370,7 @@ test('harvest all picks every ripe crop and stops when the bag is full', () => {
   const s = createState();
   for (const i of PLOTS_A.slice(0, 5)) s.plots[i] = ripePlot('radish', { wetTime: 45 });
   const events = [];
-  startJob(s, 'harvest', events);
+  startJob(s, 'harvest', null, events);
   for (let i = 0; i < 400 && s.farmer.job; i++) tick(s, 0.1, events);
   assert.equal(ripeCount(s), 0);
   assert.equal(s.bag[0].n, 5);
@@ -328,11 +379,42 @@ test('harvest all picks every ripe crop and stops when the bag is full', () => {
   for (let i = 0; i < BAG_SIZE; i++) full.bag[i] = { id: 'sprinkler', n: 99 };
   for (const i of PLOTS_A.slice(0, 3)) full.plots[i] = ripePlot('radish');
   const ev = [];
-  startJob(full, 'harvest', ev);
+  startJob(full, 'harvest', null, ev);
   for (let i = 0; i < 400 && full.farmer.job; i++) tick(full, 0.1, ev);
   assert.equal(ev.find((e) => e.type === 'jobend').reason, 'bagfull');
   assert.equal(ripeCount(full), 3);
   assert.equal(startJob(createState(), 'harvest').reason, 'nothingripe');
+});
+
+test('bulk jobs can be narrowed to one crop', () => {
+  const s = withSeeds(5);
+  s.seeds.carrot = 3;
+  startJob(s, 'plant', 'carrot');
+  for (let i = 0; i < 400 && s.farmer.job; i++) tick(s, 0.1);
+  const crops = Object.values(s.plots).filter((p) => p.crop).map((p) => p.crop);
+  assert.deepEqual([...new Set(crops)], ['carrot']);
+  assert.equal(crops.length, 3);
+  assert.equal(s.seeds.radish, 5);
+
+  s.plots[PLOTS_A[20]] = ripePlot('radish');
+  s.plots[PLOTS_A[21]] = ripePlot('carrot');
+  startJob(s, 'harvest', 'radish');
+  for (let i = 0; i < 400 && s.farmer.job; i++) tick(s, 0.1);
+  assert.equal(ripeCount(s), 1);
+  assert.equal(s.plots[PLOTS_A[21]].crop, 'carrot');
+});
+
+test('water all: waters every dry plant and refills the can when it runs dry', () => {
+  const s = createState();
+  s.water = 2;
+  for (const i of PLOTS_A.slice(0, 5)) s.plots[i] = { ...makePlot(), crop: 'radish' };
+  const events = [];
+  assert.ok(startJob(s, 'water', null, events).ok);
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1, events);
+  assert.ok(PLOTS_A.slice(0, 5).every((i) => s.plots[i].water > 0), 'all watered');
+  assert.ok(events.some((e) => e.type === 'refill'), 'went to fetch water');
+  assert.equal(events.find((e) => e.type === 'jobend').done, 5);
+  assert.equal(startJob(s, 'water').reason, 'nothingdry');
 });
 
 test('clicking somewhere else cancels a running job', () => {

@@ -281,3 +281,31 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
   .layout { grid-template-columns: minmax(0, 1fr); }
   .topbar { padding: 10px 16px; }
 }
+
+/* ---------- bulk job menu */
+.job-menu {
+  position: absolute;
+  z-index: 10;
+  min-width: 230px;
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+}
+.job-menu-title { padding: 2px 6px 6px; color: var(--muted); font-size: 12px; }
+.job-option {
+  display: flex; gap: 8px; align-items: center;
+  padding: 6px 8px; text-align: left; font-size: 13px;
+  background: transparent; border: 1px solid transparent; border-radius: 6px;
+}
+.job-option:hover:not(:disabled) { background: #2f3b30; border-color: #4b6b4f; }
+.job-option:disabled { opacity: .4; }
+.job-option .grow { flex: 1; }
+.small-icon { width: 32px; height: 32px; margin: -6px 0; }
+
+.meter { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+.meter span { height: 6px; border-radius: 2px; background: #1d1f23; border: 1px solid var(--line); }
+.meter span.on { background: #4fa3e0; border-color: #6fb3ff; }

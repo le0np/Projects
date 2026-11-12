@@ -4,7 +4,7 @@
 
 import {
   createState, tick, command, sleep, coffee, eat, moveItem, craft, cropById, recipeById,
-  countWhere, extractSeeds, orderSeeds, startJob,
+  countWhere, extractSeeds, orderSeeds, startJob, upgradeIrrigation, orderFertilizer,
 } from './sim.js';
 import { TIER_NAMES } from './data.js';
 import { SAVE_KEY, OLD_KEY, serialize, deserialize } from './save.js';
@@ -29,6 +29,7 @@ if (savedZoom > 0) renderer.setZoom(savedZoom);
 
 const ui = createUI({
   onTool, onSeed, onMove, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
+  onIrrigation, onOrderFertilizer,
   onClosePanel: closePanel,
   onChange: refresh,
 });
@@ -62,6 +63,8 @@ function farmerSays(e) {
     case 'notfruit': return 'Iz toga nema sjemena.';
     case 'standfull': return 'Štand je pun.';
     case 'nofreeplots': return 'Nema slobodnih parcela.';
+    case 'nothingdry': return 'Sve je već zaliveno.';
+    case 'noplan': return 'Ovdje bi bio dobar bunar, ali treba mi plan. Skicirat ću ga na radnom stolu.';
     case 'nothingripe': return 'Još ništa nije zrelo.';
     case 'chestfull': return null; // the drone's problem: goes to the phone
     default: return null;
@@ -103,14 +106,15 @@ function report(events) {
         break;
       case 'jobstart':
         jobTally = e.kind === 'harvest' ? {} : null;
-        ui.say(e.kind === 'plant' ? `Idem sijati: ${e.total} ${plots(e.total)}.` : `Idem brati, zrelih: ${e.total}.`);
+        ui.say(e.kind === 'plant' ? `Idem sijati: ${e.total} ${plots(e.total)}.`
+          : e.kind === 'water' ? `Idem zalijevati: ${e.total} ${plots(e.total)}.` : `Idem brati, zrelih: ${e.total}.`);
         break;
       case 'jobcancel':
         jobTally = null;
-        ui.say(`Dobro, prekidam ${e.kind === 'plant' ? 'sadnju' : 'berbu'}.`);
+        ui.say(`Dobro, prekidam ${{ plant: 'sadnju', harvest: 'berbu', water: 'zalijevanje' }[e.kind]}.`);
         break;
       case 'jobend': {
-        const what = e.kind === 'plant' ? `Posađeno ${e.done}` : `Ubrano ${e.done}`;
+        const what = `${{ plant: 'Posađeno', harvest: 'Ubrano', water: 'Zaliveno' }[e.kind]} ${e.done}`;
         const detail = jobTally && e.done ? ` (${tallyText(jobTally)})` : '';
         jobTally = null;
         if (e.reason) ui.say(`${farmerSays(e)} ${what} od ${e.total}${detail}.`, 'sad');
@@ -138,14 +142,29 @@ function report(events) {
         ui.notify(`📦 Novo u katalogu dostave: ${cropById[e.crop].name}.`, 'ok');
         break;
       case 'ordered':
-        ui.notify(`📦 Naručeno: ${e.n}× ${cropById[e.crop].name} (−${e.price} 🪙). Stiže sutra ujutro.`);
+        ui.notify(e.item
+          ? `📦 Naručeno: vreća gnojiva (−${e.price} 🪙). Stiže sutra ujutro u škrinju.`
+          : `📦 Naručeno: ${e.n}× ${cropById[e.crop].name} (−${e.price} 🪙). Stiže sutra ujutro.`);
         break;
       case 'delivered':
-        ui.notify(`📦 Dostava je stigla: ${e.n}× sjeme (${name(e.crop)}).`, 'ok');
+        ui.notify(e.item ? `📦 Dostava je stigla: ${e.n}× gnojivo, u škrinji.` : `📦 Dostava je stigla: ${e.n}× sjeme (${name(e.crop)}).`, 'ok');
+        break;
+      case 'buildstart':
+        ui.say('Plan je tu. Zidam bunar…');
+        break;
+      case 'buildcancel':
+        ui.say('Bunar ću dovršiti drugi put.');
+        break;
+      case 'built':
+        ui.say('Bunar je sazidan! Voda je sad blizu, a može i navodnjavanje.', 'happy');
+        ui.notify('🪣 Bunar je sazidan. Na radnom stolu sad možeš izraditi prskalice.', 'ok');
+        break;
+      case 'irrigation':
+        ui.say(`water.sh v${e.level}: svaka prskalica sad zalijeva ${e.reach} parcela.`, 'happy');
         break;
       case 'craft': {
         const r = recipeById[e.recipe];
-        ui.say(e.recipe === 'well' ? 'Bunar je sazidan! Voda je sad blizu.' : `Gotovo: ${r.name}!`, 'happy');
+        ui.say(e.recipe === 'wellPlan' ? 'Plan bunara je skiciran. Sad idem zidati na gradilište kod kuće.' : `Gotovo: ${r.name}!`, 'happy');
         break;
       }
       case 'placed':
@@ -263,14 +282,22 @@ function onCraft(id) {
   act((ev) => craft(state, id, ev));
 }
 
-function onJob(kind) {
+function onJob(kind, crop = null) {
   if (state.farmer.job) {
     cancelJob();
     return;
   }
   ui.state.panel = null;
   ui.state.placing = false;
-  act((ev) => startJob(state, kind, ev));
+  act((ev) => startJob(state, kind, crop, ev));
+}
+
+function onIrrigation() {
+  act((ev) => upgradeIrrigation(state, ev));
+}
+
+function onOrderFertilizer() {
+  act((ev) => orderFertilizer(state, ev));
 }
 
 function cancelJob() {
@@ -332,6 +359,7 @@ window.addEventListener('keydown', (e) => {
   if (tool) onTool(tool);
   else if (e.key === 'p' || e.key === 'P') onJob('plant');
   else if (e.key === 'b' || e.key === 'B') onJob('harvest');
+  else if (e.key === 'z' || e.key === 'Z') onJob('water');
   else if (e.key === '+' || e.key === '=') onZoom(1);
   else if (e.key === '-') onZoom(-1);
   else if (e.key === 'Escape') {
@@ -363,7 +391,7 @@ function frame(now) {
       renderer.notify(events, state, now);
     }
   }
-  renderer.draw(state, now);
+  renderer.draw(state, now, { placing: ui.state.placing });
   const head = renderer.worldToCanvas(state.farmer.x * 32 + 16, state.farmer.y * 32 - 4);
   ui.placeBubble(head.x, head.y, now);
   if (now - lastUi > 120) {

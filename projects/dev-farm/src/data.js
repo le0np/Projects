@@ -49,6 +49,15 @@ export const START_FINDS = [
   { x: 39, y: 15, crop: 'potato', n: 2, what: 'divlji krumpir' },
 ];
 export const DAILY_FIND_CHANCE = 0.6;
+export const FERTILIZER_PRICE = 12; // per bag, ordered on the phone, delivered to the chest
+
+// The well: a plan is sketched at the workbench, then the farmer builds it on site.
+export const WELL_BUILD = { coins: 120, energy: 30, seconds: 6 };
+
+// Irrigation: every sprinkler waters the plots within this radius (in tiles).
+// Levels 1–10 cover 4, 8, 12, 20, 24, 28, 36, 44, 48 and 56 plots.
+export const IRRIGATION_RADII = [1, 1.42, 2, 2.24, 2.83, 3, 3.17, 3.61, 4, 4.13];
+export const IRRIGATION_COSTS = [0, 80, 120, 180, 260, 360, 500, 700, 950, 1300]; // to reach level i + 1
 
 export const CUSTOMER_INTERVAL = [18, 36]; // seconds between customers
 export const SEO_BONUS = 1.6;
@@ -73,16 +82,12 @@ export const RECIPES = [
     desc: '2 loša (★) proizvoda → 1 gnojivo.',
   },
   {
-    id: 'fertilizer', name: 'Gnojivo (kupovno)', gives: 'fertilizer', coins: 12,
-    desc: 'Vreća gnojiva. Pognojena biljka je kvalitetnija.',
-  },
-  {
-    id: 'well', name: 'Bunar', once: 'well', coins: 120,
-    desc: 'Sazidaj bunar kod kuće: voda blizu polja i izvor za navodnjavanje.',
+    id: 'wellPlan', name: 'Plan bunara', once: 'wellPlan', coins: 0,
+    desc: 'Skiciraj bunar. Zida se na gradilištu kod kuće: farmer ode tamo i zida.',
   },
   {
     id: 'sprinkler', name: 'Prskalica · water.sh', gives: 'sprinkler', coins: 120, requires: 'well',
-    desc: 'Navodnjavanje iz bunara: postavi je na praznu parcelu, svakih 30 s zalije 8 parcela oko sebe.',
+    desc: 'Navodnjavanje iz bunara: postavi je na praznu parcelu, svakih 30 s zalije parcele oko sebe.',
   },
   {
     id: 'bigCan', name: 'Velika kanta', once: 'bigCan', coins: 150,

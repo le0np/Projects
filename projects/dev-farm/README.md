@@ -19,13 +19,13 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
 ## Kako se igra
 
 - **Kretanje:** klikni bilo gdje na mapi i farmer ode tamo najkraćim putem. Klik na zgradu ili parcelu znači „idi tamo i napravi nešto“.
-- **Zoom:** gumbi + / − u kutu mape, kotačić miša ili tipke + i −. Odabrani zoom se pamti.
-- **Posadi sve (P) i Poberi sve (B):** farmer sam obiđe polje, red po red. Sadnja troši svo sjeme koje imaš: prvo odabranu vrstu, pa ostale. Berba obere sve zrelo i na kraju kaže koliko je čega po kvaliteti. Staje sam kad ponestane sjemena, energije ili mjesta u torbi. Klik na mapu ili Esc prekida posao.
+- **Zoom:** gumbi + / − u kutu mape, kotačić miša ili tipke + i −. Zoom je gladak i uvijek oko farmera. Odabrani zoom se pamti.
+- **Posadi ▾, Poberi ▾ i Zalij ▾:** svaki gumb otvara izbornik: „sve“ ili samo jedna vrsta, s brojem parcela uz svaku stavku. Farmer zatim sam obiđe polje, red po red. Sadnja troši sjeme, berba na kraju kaže koliko je čega po kvaliteti, a zalijevanje kad se kanta isprazni samo ode po vodu (bunar ili ribnjak) i nastavi. Staje kad ponestane sjemena, energije ili mjesta u torbi. Klik na mapu ili Esc prekida posao. Tipke P, B i Z odmah pokreću „sve“.
 - **Alati (tipke 1–4):** ✋ ruke (berba, uzimanje), 🌱 sjeme, 🪣 kanta, 🧪 gnojivo. Klik na parcelu radi ono što farmer drži u ruci. Zrelu biljku bere bilo kojim alatom.
 - **Sjeme se broji i nije besplatno.** Na početku ga nema. Vrećica ispod alata pokazuje koliko kojeg imaš. Sjeme se dobiva na tri načina:
   - **Otkrivanjem:** u ladici u kući, a na imanju rastu stara rotkvica, divlja mrkva i divlji krumpir. Svako jutro nešto novo može niknuti samo od sebe.
   - **Iz plodova** na radnom stolu: neprodani plod daje 2–10 sjemenki, nasumično. Tako jedan usjev donosi puno novih.
-  - **Dostavom:** naručiš na mobitelu („Dostava sjemena“), paket od 5 sjemenki stiže sutra ujutro. Katalog se širi kako zarađuješ.
+  - **Dostavom:** naručiš na mobitelu („Dostava“), paket od 5 sjemenki stiže sutra ujutro. Katalog se širi kako zarađuješ. Ondje se naručuje i gnojivo (12 🪙 po vreći), koje stiže u škrinju.
 - **Kvaliteta: ★ loše, ★★ dobro, ★★★ odlično, ★★★★ zlatno.** Ovisi o tri stvari:
   - koliko je vremena rasta biljka bila zalivena (suha raste i sporije)
   - je li pognojena
@@ -35,16 +35,17 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
 - **Štand ispred kuće:** stavi plodove na štand. Kupci dolaze cestom od 08 do 19 h i uvijek uzmu najbolje što vide. **Cijena ovisi o kvaliteti:** ★ 0,5×, ★★ 1×, ★★★ 1,5×, zlatno 2,2×. Loše (★) plodove kupuju samo kad na štandu nema boljih. Mogu se i pojesti za energiju, pretvoriti u gnojivo ili u sjeme.
 - **Kuća:** spavanje završava dan, vraća svu energiju i **sprema igru**. Kava (15 🪙) daje +35 energije. Tko ostane budan do 02 h, zaspi na nogama i budi se s pola energije.
 - **Energija:** svaki posao troši energiju (sadnja 2, zalijevanje, gnojenje i berba po 1). Hodanje je besplatno.
-- **Voda:** na početku samo **ribnjak** puni kantu (12 zalijevanja, s velikom kantom 30). **Bunara nema:** kod kuće je gradilište, a bunar se zida na radnom stolu. Kad je sazidan, voda je blizu polja i postaje izvor za **navodnjavanje**: prskalice se mogu izraditi tek kad bunar postoji.
+- **Voda:** na početku samo **ribnjak** puni kantu (12 zalijevanja, s velikom kantom 30). **Bunara nema:** kod kuće je gradilište. Na radnom stolu se skicira plan, a onda farmer ode na gradilište i zida (nekoliko sekundi, 120 🪙 i 30 energije; plaća se tek kad je gotovo, a ako farmer ode, zidanje stane). Kad je sazidan, voda je blizu polja i postaje izvor za **navodnjavanje**: prskalice se mogu izraditi tek kad bunar postoji.
 - **Škrinja** (24 mjesta) za višak. Torba ima samo 8 mjesta.
 - **Radni stol (izumi):**
 
   | Izum | Što radi |
   | --- | --- |
   | Sjeme iz plodova | 1 plod → 2–10 sjemenki |
-  | Gnojivo (kompost / kupovno) | od 2 loša proizvoda, ili za 12 🪙 |
-  | Bunar | voda kod kuće, izvor za navodnjavanje |
-  | Prskalica · `water.sh` | traži bunar; postavi se na parcelu, svakih 30 s zalije 8 parcela oko sebe |
+  | Gnojivo (kompost) | od 2 loša proizvoda (kupovno gnojivo se naručuje na mobitelu) |
+  | Plan bunara | skica; bunar zida farmer na gradilištu |
+  | Prskalica · `water.sh` | traži bunar; postavi se na parcelu, svakih 30 s zalije parcele oko sebe |
+  | Navodnjavanje v1–v10 | 10 razina za sve prskalice: 4, 8, 12, 20, 24, 28, 36, 44, 48 pa 56 parcela po prskalici |
   | Velika kanta | 30 zalijevanja umjesto 12 |
   | `harvest-drone` | sam bere zrele usjeve i nosi ih u škrinju |
   | `replant.py` | dron nakon berbe ponovno posadi isto, ako ima sjemena |

@@ -3,12 +3,12 @@
 
 import {
   CROPS, RECIPES, MAX_ENERGY, COFFEE, EAT_ENERGY, TIER_NAMES, SHOP_OPEN, SHOP_CLOSE, ripeWindow,
-  SEEDS_FROM_FRUIT, SEED_PACK,
+  SEEDS_FROM_FRUIT, SEED_PACK, FERTILIZER_PRICE, WELL_BUILD, IRRIGATION_RADII,
 } from './data.js';
 import {
   parseItem, isUnlocked, canSize, countWhere, canCraft, salePrice, isSellable, cropById,
   plotUnlocked, sprinklerAt, qualityScore, tierOf, ripeCount, shopOpen, packPrice, findAt, jobTargets,
-  totalSeeds,
+  totalSeeds, sprinklerReach, irrigationCost,
 } from './sim.js';
 import { idx, objectAt, isPlotTile, OBJECTS } from './world.js';
 import { iconUrl } from './render.js';
@@ -117,17 +117,52 @@ export function createUI(cb) {
     toolEls.set(t.id, { b, sub: b.querySelector('.tool-sub') });
   }
 
-  // bulk jobs: plant every seed / harvest everything ripe
+  // bulk jobs: each button opens a menu — everything, or one kind of crop
   const jobs = [
-    { kind: 'plant', key: 'P', icon: 'seeds', name: 'Posadi sve' },
-    { kind: 'harvest', key: 'B', icon: 'hand', name: 'Poberi sve' },
+    { kind: 'plant', key: 'P', icon: 'seeds', name: 'Posadi', all: 'Sve sjeme' },
+    { kind: 'harvest', key: 'B', icon: 'hand', name: 'Poberi', all: 'Sve zrelo' },
+    { kind: 'water', key: 'Z', icon: 'can', name: 'Zalij', all: 'Sve posađeno' },
   ];
   const jobEls = new Map();
+  let lastState = null;
+  const menu = el('div', 'job-menu');
+  menu.hidden = true;
+  menu.setAttribute('role', 'menu');
+  document.body.append(menu);
+  const closeMenu = () => { menu.hidden = true; menu.dataset.kind = ''; };
+  function openMenu(kind, anchor) {
+    const s = lastState;
+    if (!s) return;
+    if (menu.dataset.kind === kind && !menu.hidden) { closeMenu(); return; }
+    const j = jobs.find((x) => x.kind === kind);
+    const count = (crop) => jobTargets(s, kind, crop).length;
+    const options = [{ crop: null, label: j.all, n: count(null) }];
+    for (const c of CROPS) {
+      const n = count(c.id);
+      if (n > 0 || (kind === 'plant' && s.seeds[c.id] > 0)) options.push({ crop: c.id, label: c.name, n });
+    }
+    const unit = kind === 'harvest' ? 'zrelih' : kind === 'water' ? 'suhih' : 'parcela';
+    menu.replaceChildren(el('div', 'job-menu-title', `${j.name} sve…`), ...options.map((o) => {
+      const b = button('', () => { closeMenu(); cb.onJob(kind, o.crop); }, { cls: 'job-option', disabled: o.n === 0 });
+      if (o.crop) b.append(icon(o.crop, 'px-icon small-icon'));
+      b.append(el('span', 'grow', o.label), el('span', 'muted', `${o.n} ${unit}`));
+      b.setAttribute('role', 'menuitem');
+      return b;
+    }));
+    menu.dataset.kind = kind;
+    menu.hidden = false;
+    const r = anchor.getBoundingClientRect();
+    menu.style.left = `${r.left + window.scrollX}px`;
+    menu.style.top = `${r.top + window.scrollY - menu.offsetHeight - 6}px`;
+  }
+  document.addEventListener('click', (e) => {
+    if (!menu.hidden && !menu.contains(e.target) && !e.target.closest('.bulk')) closeMenu();
+  });
   for (const j of jobs) {
-    const b = button('', () => cb.onJob(j.kind), { cls: 'tool bulk' });
-    b.append(el('kbd', '', j.key), icon(j.icon, 'tool-icon'), el('span', 'tool-name', j.name), el('span', 'tool-sub'));
+    const b = button('', () => (lastState?.farmer.job ? cb.onJob(j.kind) : openMenu(j.kind, b)), { cls: 'tool bulk' });
+    b.append(el('kbd', '', j.key), icon(j.icon, 'tool-icon'), el('span', 'tool-name', `${j.name} ▾`), el('span', 'tool-sub'));
     els.hotbar.append(b);
-    jobEls.set(j.kind, { b, name: b.querySelector('.tool-name'), sub: b.querySelector('.tool-sub') });
+    jobEls.set(j.kind, { b, name: b.querySelector('.tool-name'), sub: b.querySelector('.tool-sub'), j });
   }
 
   $('reset').addEventListener('click', cb.onReset);
@@ -161,17 +196,19 @@ export function createUI(cb) {
       setText(sub, text);
     }
 
+    lastState = s;
     const running = s.farmer.job;
-    for (const [kind, { b, name, sub }] of jobEls) {
+    for (const [kind, { b, name, sub, j }] of jobEls) {
       const mine = running?.kind === kind;
-      const targets = jobTargets(s, kind).length;
-      const n = kind === 'plant' ? Math.min(targets, totalSeeds(s)) : targets;
+      const n = jobTargets(s, kind).length;
       b.classList.toggle('running', mine);
       b.disabled = !mine && (Boolean(running) || n === 0);
-      setText(name, mine ? 'Prekini' : kind === 'plant' ? 'Posadi sve' : 'Poberi sve');
+      setText(name, mine ? 'Prekini' : `${j.name} ▾`);
       setText(sub, mine ? `${running.done}/${running.total} · Esc`
-        : kind === 'plant' ? (totalSeeds(s) ? `${n} ${plots(n)}` : 'nema sjemena') : `zrelih: ${n}`);
+        : kind === 'plant' ? (totalSeeds(s) ? `${n} ${plots(n)}` : 'nema sjemena')
+          : kind === 'water' ? `suhih: ${n}` : `zrelih: ${n}`);
     }
+    if (running && !menu.hidden) closeMenu();
   }
 
   // ---- seed pouch: only what you actually have, with counts
@@ -306,15 +343,36 @@ export function createUI(cb) {
             coins: 'nedovoljno novčića', nobad: `treba ${r.bad} loša (★) ploda u torbi`,
             bagfull: 'torba je puna', requires: r.requires === 'well' ? 'prvo sazidaj bunar' : 'prvo izradi harvest-drone',
           }[problem];
-          card.append(top, el('p', 'small', r.desc), button(why ?? (r.id === 'well' ? 'Sazidaj' : 'Izradi'), () => cb.onCraft(r.id), { disabled: Boolean(problem) }));
+          if (r.id === 'wellPlan') top.lastChild.textContent = `zidanje ${WELL_BUILD.coins} 🪙 · ${WELL_BUILD.energy} ⚡`;
+          card.append(top, el('p', 'small', r.desc), button(why ?? (r.id === 'wellPlan' ? 'Skiciraj plan' : 'Izradi'), () => cb.onCraft(r.id), { disabled: Boolean(problem) }));
           list.append(card);
+          if (r.id === 'sprinkler') list.append(irrigationCard(s));
         }
         return [head(), list];
       });
     }
   }
 
-  // ---- phone: notifications and seed delivery
+  function irrigationCard(s) {
+    const card = el('div', 'recipe');
+    const top = el('div', 'recipe-head');
+    const level = s.irrigation;
+    const cost = irrigationCost(s);
+    const max = IRRIGATION_RADII.length;
+    const now = sprinklerReach(level, 0, 0).length;
+    top.append(el('code', '', `Navodnjavanje · water.sh v${level}`), el('span', 'muted', cost === null ? 'max' : `${cost} 🪙`));
+    const meter = el('div', 'meter');
+    for (let l = 1; l <= max; l++) meter.append(el('span', l <= level ? 'on' : ''));
+    const next = cost === null ? 'Najviša razina.' : `Sljedeća razina: ${sprinklerReach(level + 1, 0, 0).length} parcela po prskalici.`;
+    card.append(top, meter, el('p', 'small', `Svaka prskalica sada zalijeva ${now} parcela oko sebe. ${next}`));
+    if (cost !== null) {
+      const why = !s.upgrades.well ? 'prvo sazidaj bunar' : s.coins < cost ? 'nedovoljno novčića' : null;
+      card.append(button(why ?? `Nadogradi na v${level + 1}`, () => cb.onIrrigation(), { disabled: Boolean(why) }));
+    }
+    return card;
+  }
+
+  // ---- phone: notifications and deliveries
   function phone(s) {
     ui.clock = s.clock;
     setText(els.phoneTime, formatClock(s.clock));
@@ -327,7 +385,10 @@ export function createUI(cb) {
     if (ui.phoneTab !== 'shop') return;
     const sig = JSON.stringify(['shop', s.coins, s.totalEarned, s.orders]);
     renderIfChanged(els.shopTab, sig, () => {
-      const out = [el('p', 'small muted', `Paket od ${SEED_PACK} sjemenki stiže sutra ujutro, ravno u vrećicu.`)];
+      const out = [el('p', 'small muted', `Sve stiže sutra ujutro. Sjeme (paket od ${SEED_PACK}) ide u vrećicu, gnojivo u škrinju.`)];
+      const fert = el('div', 'catalog-row');
+      fert.append(icon('fertilizer'), el('span', 'grow', 'Gnojivo · 1 vreća'), button(`${FERTILIZER_PRICE} 🪙`, () => cb.onOrderFertilizer(), { disabled: s.coins < FERTILIZER_PRICE }));
+      out.push(fert);
       for (const c of CROPS) {
         const row = el('div', 'catalog-row');
         row.append(icon(c.id));
@@ -341,7 +402,7 @@ export function createUI(cb) {
         out.push(row);
       }
       if (s.orders.length) {
-        out.push(el('p', 'small', `Stiže sutra: ${s.orders.map((o) => `${o.n}× ${cropById[o.crop].name}`).join(', ')}`));
+        out.push(el('p', 'small', `Stiže sutra: ${s.orders.map((o) => (o.item ? `${o.n}× gnojivo` : `${o.n}× ${cropById[o.crop].name}`)).join(', ')}`));
       }
       return out;
     });
@@ -402,14 +463,16 @@ export function createUI(cb) {
           house: s.found.house ? 'Kuća: spavanje (spremanje igre) i kava.' : 'Kuća. Tko zna što je ostalo u ladicama?',
           chest: 'Škrinja: spremi višak iz torbe. Ovamo dron nosi urod.',
           stand: 'Štand: stavi plodove, kupci dolaze cestom.',
-          well: s.upgrades.well ? 'Bunar: napuni kantu. Izvor za navodnjavanje.' : 'Ovdje će biti bunar. Zida se na radnom stolu.',
+          well: s.upgrades.well ? 'Bunar: napuni kantu. Izvor za navodnjavanje.'
+            : s.upgrades.wellPlan ? `Gradilište bunara. Klik: farmer ga zida (${WELL_BUILD.coins} 🪙, ${WELL_BUILD.energy} ⚡).`
+              : 'Ovdje će biti bunar. Prvo treba skicirati plan na radnom stolu.',
           workbench: 'Radni stol: sjeme iz plodova, gnojivo, bunar, prskalice i ostali izumi.',
           pond: 'Ribnjak: ovdje se puni kanta.',
         }[obj];
       } else if (isPlotTile(x, y) && !plotUnlocked(s, i)) {
         text = 'Zaraslo polje. Otključava se na radnom stolu: git clone polje.';
       } else if (p && sprinklerAt(s, x, y) >= 0) {
-        text = 'Prskalica (water.sh). Rukama (1) je pokupiš natrag u torbu.';
+        text = `Prskalica (water.sh v${s.irrigation}): zalijeva ${sprinklerReach(s.irrigation, 0, 0).length} parcela oko sebe. Rukama (1) je pokupiš.`;
       } else if (p && !p.crop) {
         text = s.tool === 'seed' ? `Prazna parcela: klik posadi ${cropById[s.seed].name} (imaš ${s.seeds[s.seed]}).`
           : 'Prazna parcela. Uzmi sjeme (2) za sadnju.';

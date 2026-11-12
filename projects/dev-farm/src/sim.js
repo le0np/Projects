@@ -8,7 +8,7 @@ import {
   AUTO_WATER_CREDIT, CAN_SIZES, SPRINKLER_INTERVAL, ENERGY_COST, COFFEE, EAT_ENERGY,
   TIER_PRICE, MACHINE_MAX_TIER, CUSTOMER_INTERVAL, SEO_BONUS,
   CROPS, RECIPES, ripeWindow, ROT_AFTER, SEEDS_FROM_FRUIT, SEED_PACK, HOUSE_SEEDS, START_FINDS,
-  DAILY_FIND_CHANCE,
+  DAILY_FIND_CHANCE, FERTILIZER_PRICE, WELL_BUILD, IRRIGATION_RADII, IRRIGATION_COSTS,
 } from './data.js';
 import {
   idx, xy, charAt, isWalkable, isPlotTile, objectAt, OBJECTS, PLOTS_A, PLOTS_B, inFieldA,
@@ -46,8 +46,9 @@ export function createState(seed = 12345) {
     found: { house: false },
     finds: START_FINDS.map((f) => ({ ...f })),
     orders: [],
-    upgrades: { well: false, bigCan: false, drone: false, replant: false, seo: false, field2: false },
-    farmer: { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null, queue: [], job: null },
+    upgrades: { wellPlan: false, well: false, bigCan: false, drone: false, replant: false, seo: false, field2: false },
+    irrigation: 1,
+    farmer: { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null, queue: [], job: null, busy: null },
     plots,
     bag: emptySlots(BAG_SIZE),
     chest: emptySlots(CHEST_SIZE),
@@ -180,6 +181,10 @@ export function command(s, x, y, mode = 'auto', events = []) {
     f.job = null;
     f.queue = [];
   }
+  if (f.busy) {
+    events.push({ type: 'buildcancel', what: f.busy.what });
+    f.busy = null;
+  }
   let task = null;
   let goals;
   const obj = objectAt(x, y);
@@ -222,11 +227,21 @@ function arrive(s, events) {
   else if (t.type === 'find') pickUpFind(s, t.x, t.y, events);
   else if (t.type === 'jobplant') continueJob(s, jobPlant(s, t.x, t.y, events), events);
   else if (t.type === 'jobharvest') continueJob(s, jobHarvest(s, t.x, t.y, events), events);
+  else if (t.type === 'jobwater') continueJob(s, jobWater(s, t.x, t.y, events), events);
+  else if (t.type === 'jobrefill') {
+    s.water = canSize(s);
+    events.push({ type: 'refill', water: s.water });
+    continueJob(s, null, events);
+  }
 }
 
 // ---------------------------------------------------------------- "plant all" / "harvest all"
 
 export const totalSeeds = (s) => Object.values(s.seeds).reduce((a, n) => a + n, 0);
+
+function needsWater(p) {
+  return p.crop && !p.rotten && p.progress < 1 && p.water <= WATER_DURATION / 2;
+}
 
 function freePlots(s) {
   return Object.keys(s.plots).map(Number)
@@ -240,7 +255,21 @@ function ripePlots(s) {
     .map(xy);
 }
 
-export const jobTargets = (s, kind) => (kind === 'plant' ? freePlots(s) : ripePlots(s));
+function thirstyPlots(s, crop) {
+  return Object.keys(s.plots).map(Number)
+    .filter((i) => plotUnlocked(s, i) && needsWater(s.plots[i]) && (!crop || s.plots[i].crop === crop))
+    .map(xy);
+}
+
+// Plots a bulk job would visit; `crop` narrows it to one kind (null = everything).
+export function jobTargets(s, kind, crop = null) {
+  if (kind === 'plant') {
+    const free = freePlots(s).length;
+    return free ? freePlots(s).slice(0, crop ? s.seeds[crop] : totalSeeds(s)) : [];
+  }
+  if (kind === 'water') return thirstyPlots(s, crop);
+  return ripePlots(s).filter(([x, y]) => !crop || s.plots[idx(x, y)].crop === crop);
+}
 
 // Visit tiles nearest-first from the farmer, which walks the field in tidy rows.
 function route(s, tiles) {
@@ -263,21 +292,25 @@ function route(s, tiles) {
 }
 
 const JOB_STOP = new Set(['tired', 'bagfull', 'noseeds']);
+const JOB_TASK = { plant: 'jobplant', harvest: 'jobharvest', water: 'jobwater' };
 
-export function startJob(s, kind, events = []) {
+export function startJob(s, kind, crop = null, events = []) {
   const f = s.farmer;
-  let targets = jobTargets(s, kind);
+  let targets;
   if (kind === 'plant') {
-    const seeds = totalSeeds(s);
-    if (!seeds) return fail(events, 'noseeds');
+    const seeds = crop ? s.seeds[crop] : totalSeeds(s);
+    if (!seeds) return fail(events, 'noseeds', { crop });
+    targets = freePlots(s);
     if (!targets.length) return fail(events, 'nofreeplots');
     targets = route(s, targets).slice(0, seeds);
   } else {
-    if (!targets.length) return fail(events, 'nothingripe');
+    targets = jobTargets(s, kind, crop);
+    if (!targets.length) return fail(events, kind === 'water' ? 'nothingdry' : 'nothingripe');
     targets = route(s, targets);
   }
-  f.queue = targets.map(([x, y]) => ({ type: kind === 'plant' ? 'jobplant' : 'jobharvest', x, y }));
-  f.job = { kind, done: 0, total: targets.length };
+  f.busy = null;
+  f.queue = targets.map(([x, y]) => ({ type: JOB_TASK[kind], x, y }));
+  f.job = { kind, crop, done: 0, total: targets.length };
   f.task = null;
   events.push({ type: 'jobstart', kind, total: targets.length });
   continueJob(s, null, events);
@@ -287,7 +320,9 @@ export function startJob(s, kind, events = []) {
 function jobPlant(s, x, y, events) {
   const i = idx(x, y);
   if (!s.plots[i] || s.plots[i].crop || sprinklerAt(s, x, y) >= 0) return { ok: false, reason: 'skip' };
-  const crop = s.seeds[s.seed] > 0 ? s.seed : CROPS.find((c) => s.seeds[c.id] > 0)?.id;
+  const only = s.farmer.job?.crop;
+  const crop = only ? (s.seeds[only] > 0 ? only : null)
+    : s.seeds[s.seed] > 0 ? s.seed : CROPS.find((c) => s.seeds[c.id] > 0)?.id;
   if (!crop) return fail(events, 'noseeds');
   return plant(s, i, crop, events);
 }
@@ -298,12 +333,27 @@ function jobHarvest(s, x, y, events) {
   return harvestHand(s, idx(x, y), events);
 }
 
+function jobWater(s, x, y, events) {
+  const i = idx(x, y);
+  const p = s.plots[i];
+  if (!p || !needsWater(p)) return { ok: false, reason: 'skip' };
+  if (s.water <= 0) {
+    // empty can: fetch water first, then come back to this plot
+    s.farmer.queue.unshift({ type: 'jobrefill' }, { type: 'jobwater', x, y });
+    return { ok: false, reason: 'refill' };
+  }
+  return waterPlot(s, i, events);
+}
+
+const waterSources = (s) => [...OBJECTS.pond.access, ...(s.upgrades.well ? OBJECTS.well.access : [])];
+
 function continueJob(s, result, events) {
   const f = s.farmer;
   const job = f.job;
   if (!job) return;
   if (result?.ok) job.done++;
-  if ((result && JOB_STOP.has(result.reason)) || (job.kind === 'plant' && !totalSeeds(s) && f.queue.length)) {
+  const seedsLeft = job.crop ? s.seeds[job.crop] : totalSeeds(s);
+  if ((result && JOB_STOP.has(result.reason)) || (job.kind === 'plant' && !seedsLeft && f.queue.length)) {
     events.push({ type: 'jobend', kind: job.kind, done: job.done, total: job.total, reason: result?.reason ?? 'noseeds' });
     f.job = null;
     f.queue = [];
@@ -311,7 +361,8 @@ function continueJob(s, result, events) {
   }
   while (f.queue.length) {
     const next = f.queue.shift();
-    const path = findPath([Math.round(f.x), Math.round(f.y)], [[next.x, next.y]], isWalkable);
+    const goals = next.type === 'jobrefill' ? waterSources(s) : [[next.x, next.y]];
+    const path = findPath([Math.round(f.x), Math.round(f.y)], goals, isWalkable);
     if (!path) continue;
     if (f.x !== Math.round(f.x) || f.y !== Math.round(f.y)) path.unshift([Math.round(f.x), Math.round(f.y)]);
     f.path = path;
@@ -360,7 +411,15 @@ function pickUpFind(s, x, y, events) {
 }
 
 export function objectAction(s, id, events = []) {
-  if (id === 'well' && !s.upgrades.well) return fail(events, 'nowell');
+  if (id === 'well' && !s.upgrades.well) {
+    if (!s.upgrades.wellPlan) return fail(events, 'noplan');
+    if (s.coins < WELL_BUILD.coins) return fail(events, 'coins', { need: WELL_BUILD.coins });
+    if (s.energy < WELL_BUILD.energy) return fail(events, 'tired');
+    s.farmer.busy = { what: 'well', left: WELL_BUILD.seconds, total: WELL_BUILD.seconds };
+    s.farmer.dir = 'up';
+    events.push({ type: 'buildstart', what: 'well' });
+    return { ok: true };
+  }
   if (id === 'house' && !s.found.house) {
     s.found.house = true;
     s.seeds[HOUSE_SEEDS.crop] += HOUSE_SEEDS.n;
@@ -546,13 +605,24 @@ export function extractSeeds(s, slot, events = []) {
 
 export const packPrice = (crop) => cropById[crop].seed * SEED_PACK;
 
+// Order a bag of fertilizer; it is delivered to the chest the next morning.
+export function orderFertilizer(s, events = []) {
+  if (s.coins < FERTILIZER_PRICE) return fail(events, 'coins', { need: FERTILIZER_PRICE });
+  s.coins -= FERTILIZER_PRICE;
+  const o = s.orders.find((x) => x.item === 'fertilizer');
+  if (o) o.n++;
+  else s.orders.push({ item: 'fertilizer', n: 1 });
+  events.push({ type: 'ordered', item: 'fertilizer', n: 1, price: FERTILIZER_PRICE });
+  return { ok: true };
+}
+
 // Order a pack of seeds through the phone; it arrives the next morning.
 export function orderSeeds(s, crop, events = []) {
   if (!isUnlocked(s, crop)) return fail(events, 'notincatalog');
   const price = packPrice(crop);
   if (s.coins < price) return fail(events, 'coins', { need: price });
   s.coins -= price;
-  const o = s.orders.find((x) => x.crop === crop);
+  const o = s.orders.find((x) => x.crop === crop && !x.item);
   if (o) o.n += SEED_PACK;
   else s.orders.push({ crop, n: SEED_PACK });
   events.push({ type: 'ordered', crop, n: SEED_PACK, price });
@@ -560,11 +630,18 @@ export function orderSeeds(s, crop, events = []) {
 }
 
 function morning(s, events) {
+  const waiting = [];
   for (const o of s.orders) {
-    s.seeds[o.crop] += o.n;
-    events.push({ type: 'delivered', crop: o.crop, n: o.n });
+    if (o.item) {
+      const n = addItem(s.chest, o.item, o.n);
+      if (n) events.push({ type: 'delivered', item: o.item, n });
+      if (n < o.n) waiting.push({ item: o.item, n: o.n - n }); // chest full: the rest comes tomorrow
+    } else {
+      s.seeds[o.crop] += o.n;
+      events.push({ type: 'delivered', crop: o.crop, n: o.n });
+    }
   }
-  s.orders = [];
+  s.orders = waiting;
   if (s.finds.length < 6 && rand(s) < DAILY_FIND_CHANCE) {
     for (let tries = 0; tries < 40; tries++) {
       const x = 2 + Math.floor(rand(s) * 40);
@@ -611,21 +688,43 @@ function growPlots(s, dt, night, events) {
   }
 }
 
+// Tiles a sprinkler at (x, y) reaches at the given irrigation level (not its own tile).
+export function sprinklerReach(level, x, y) {
+  const r = IRRIGATION_RADII[Math.max(1, Math.min(IRRIGATION_RADII.length, level)) - 1];
+  const out = [];
+  const k = Math.ceil(r);
+  for (let dy = -k; dy <= k; dy++) {
+    for (let dx = -k; dx <= k; dx++) if ((dx || dy) && dx * dx + dy * dy <= r * r + 1e-6) out.push([x + dx, y + dy]);
+  }
+  return out;
+}
+
+export const irrigationCost = (s) => (s.irrigation >= IRRIGATION_RADII.length ? null : IRRIGATION_COSTS[s.irrigation]);
+
+export function upgradeIrrigation(s, events = []) {
+  if (!s.upgrades.well) return fail(events, 'requires');
+  const cost = irrigationCost(s);
+  if (cost === null) return fail(events, 'owned');
+  if (s.coins < cost) return fail(events, 'coins', { need: cost });
+  s.coins -= cost;
+  s.irrigation++;
+  events.push({ type: 'irrigation', level: s.irrigation, reach: sprinklerReach(s.irrigation, 0, 0).length });
+  return { ok: true };
+}
+
 function runSprinklers(s, dt, events) {
   for (const sp of s.sprinklers) {
     sp.t += dt;
     while (sp.t >= SPRINKLER_INTERVAL) {
       sp.t -= SPRINKLER_INTERVAL;
       const tiles = [];
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          const i = idx(sp.x + dx, sp.y + dy);
-          const p = s.plots[i];
-          if ((dx || dy) && p && plotUnlocked(s, i) && p.crop && p.progress < 1 && p.water <= WATER_DURATION / 2) {
-            p.water = WATER_DURATION;
-            p.wetBy = 'auto';
-            tiles.push([sp.x + dx, sp.y + dy]);
-          }
+      for (const [x, y] of sprinklerReach(s.irrigation, sp.x, sp.y)) {
+        const i = idx(x, y);
+        const p = s.plots[i];
+        if (p && plotUnlocked(s, i) && p.crop && p.progress < 1 && p.water <= WATER_DURATION / 2) {
+          p.water = WATER_DURATION;
+          p.wetBy = 'auto';
+          tiles.push([x, y]);
         }
       }
       if (tiles.length) events.push({ type: 'sprinkle', x: sp.x, y: sp.y, tiles });
@@ -792,10 +891,26 @@ export function tick(s, dt, events = []) {
     sleep(s, events, true);
     return events;
   }
-  moveFarmer(s, dt, events);
+  if (s.farmer.busy) build(s, dt, events);
+  else moveFarmer(s, dt, events);
   worldStep(s, dt, isNight(s.clock), events);
   runCustomers(s, dt, events);
   return events;
+}
+
+function build(s, dt, events) {
+  const b = s.farmer.busy;
+  b.left -= dt;
+  if (b.left > 0) return;
+  s.farmer.busy = null;
+  if (s.coins < WELL_BUILD.coins || s.energy < WELL_BUILD.energy) {
+    fail(events, s.coins < WELL_BUILD.coins ? 'coins' : 'tired');
+    return;
+  }
+  s.coins -= WELL_BUILD.coins;
+  s.energy -= WELL_BUILD.energy;
+  s.upgrades.well = true;
+  events.push({ type: 'built', what: 'well' });
 }
 
 // Advance in small steps (used by tests and to catch up after a slow frame).
@@ -819,7 +934,7 @@ export function sleep(s, events = [], passedOut = false) {
   s.energy = passedOut ? Math.round(MAX_ENERGY / 2) : MAX_ENERGY;
   s.customers = [];
   s.customerTimer = 8;
-  Object.assign(s.farmer, { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null, queue: [], job: null });
+  Object.assign(s.farmer, { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null, queue: [], job: null, busy: null });
   const mornEvents = [];
   morning(s, mornEvents);
   const summary = {
