@@ -113,7 +113,8 @@ export function createUI(cb) {
   const tools = [
     { id: 'hand', key: '1', icon: 'hand', name: 'Ruke' },
     { id: 'seed', key: '2', icon: 'seeds', name: 'Sjeme' },
-    { id: 'fert', key: '3', icon: 'fertilizer', name: 'Gnojivo' },
+    { id: 'can', key: '3', icon: 'can', name: 'Kanta' },
+    { id: 'fert', key: '4', icon: 'fertilizer', name: 'Gnojivo' },
   ];
   const toolEls = new Map();
   for (const t of tools) {
@@ -201,7 +202,8 @@ export function createUI(cb) {
       const { b, sub } = toolEls.get(t.id);
       b.classList.toggle('selected', s.tool === t.id && !ui.placing);
       const text = t.id === 'seed' ? `${cropById[s.seed].name} × ${s.seeds[s.seed]}`
-        : t.id === 'fert' ? `× ${countWhere(s.bag, (id) => id === 'fertilizer')}` : 'bere, uzima';
+        : t.id === 'can' ? `💧 ${s.water}/${canSize(s)}`
+          : t.id === 'fert' ? `× ${countWhere(s.bag, (id) => id === 'fertilizer')}` : 'bere, uzima';
       setText(sub, text);
     }
 
@@ -215,7 +217,7 @@ export function createUI(cb) {
       setText(name, mine ? 'Prekini' : `${j.name} ▾`);
       setText(sub, mine ? `${running.done}/${running.total} · Esc`
         : kind === 'plant' ? (totalSeeds(s) ? `${n} ${plots(n)}` : 'nema sjemena')
-          : kind === 'water' ? `suhih: ${n} · 💧${s.water}/${canSize(s)}` : `zrelih: ${n}`);
+          : kind === 'water' ? `suhih: ${n}` : `zrelih: ${n}`);
     }
     if (running && !menu.hidden) closeMenu();
   }
@@ -266,7 +268,7 @@ export function createUI(cb) {
       } else if (p.kind === 'sprinkler') {
         row.append(button('Postavi na parcelu', () => cb.onPlace()));
       } else if (p.kind === 'fertilizer') {
-        row.append(button('Uzmi u ruku (3)', () => cb.onTool('fert')));
+        row.append(button('Uzmi u ruku (4)', () => cb.onTool('fert')));
       }
       out.push(row);
       return out;

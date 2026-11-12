@@ -61,6 +61,7 @@ function farmerSays(e) {
     case 'nowell': return 'Ovdje bi bio dobar bunar. Mogu ga sazidati na radnom stolu.';
     case 'notfruit': return 'Iz toga nema sjemena.';
     case 'standfull': return 'Štand je pun.';
+    case 'needtool': return 'Raste. Mogu je zaliti kantom (3) ili pognojiti (4).';
     case 'nofreeplots': return 'Nema slobodnih parcela.';
     case 'tooearly': return 'Još je rano za spavanje. Ima posla do večeri.';
     case 'nothingdry': return 'Sve je već zaliveno.';
@@ -84,7 +85,7 @@ function report(events) {
       case 'fail': {
         if (state.farmer.job || events.some((x) => x.type === 'jobend')) break; // the job summary says it
         const text = farmerSays(e);
-        if (text) ui.say(text, ['needseed', 'wet', 'nowell', 'fertilized', 'full'].includes(e.reason) ? '' : 'sad');
+        if (text) ui.say(text, ['needseed', 'needtool', 'wet', 'nowell', 'fertilized', 'full'].includes(e.reason) ? '' : 'sad');
         else if (e.reason === 'chestfull') ui.notify('🚁 Dron: škrinja je puna, stao sam s berbom.', 'err');
         else if (e.reason === 'notincatalog') ui.notify('📦 Toga još nema u katalogu.', 'err');
         break;
@@ -211,7 +212,7 @@ function flushDrone() {
 }
 
 function intro() {
-  ui.notify('👋 Dobrodošlica na farmu! Klikni bilo gdje na mapi i farmer ode tamo. Klik na suhu biljku je zalije, a klik na parcelu inače radi ono što farmer drži u ruci (tipke 1–3). Zalij ▾ zalije sve odjednom.', 'info');
+  ui.notify('👋 Dobrodošlica na farmu! Klikni bilo gdje na mapi i farmer ode tamo. Klik na parcelu radi ono što farmer drži u ruci (tipke 1–4): sjeme sadi, kanta zalijeva jednu biljku, gnojivo gnoji. Zalij ▾ zalije sve odjednom.', 'info');
   ui.notify(`🌱 Sjeme se broji: nađi ga na imanju, izvadi iz plodova na radnom stolu ili naruči ovdje, pod "Dostava sjemena".`, 'info');
   ui.notify('🌙 Usjevi rastu preko noći: svako jutro jedan dan ako su dan prije bili zaliveni, pola dana ako nisu. Dovoljno je zaliti jednom dnevno.', 'info');
   ui.notify('🏪 Plodove stavi na štand ispred kuće. Bolja kvaliteta, bolja cijena. Od 18 h možeš spavati u kući: tako se igra sprema.', 'info');
@@ -357,7 +358,7 @@ canvas.addEventListener('wheel', (e) => {
 
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement || e.ctrlKey || e.metaKey || e.altKey) return;
-  const tool = { 1: 'hand', 2: 'seed', 3: 'fert' }[e.key];
+  const tool = { 1: 'hand', 2: 'seed', 3: 'can', 4: 'fert' }[e.key];
   if (tool) onTool(tool);
   else if (e.key === 'p' || e.key === 'P') onJob('plant');
   else if (e.key === 'b' || e.key === 'B') onJob('harvest');

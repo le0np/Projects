@@ -18,7 +18,7 @@ import { findPath } from './path.js';
 
 export const cropById = Object.fromEntries(CROPS.map((c) => [c.id, c]));
 export const recipeById = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
-export const TOOLS = ['hand', 'seed', 'fert'];
+export const TOOLS = ['hand', 'seed', 'can', 'fert'];
 const EPS = 1e-9;
 
 // ---------------------------------------------------------------- state
@@ -466,8 +466,9 @@ export function plotAction(s, x, y, events = []) {
     if (s.tool !== 'seed') return fail(events, 'needseed');
     return plant(s, i, s.seed, events);
   }
+  if (s.tool === 'can') return waterPlot(s, i, events);
   if (s.tool === 'fert') return fertilize(s, i, events);
-  return waterPlot(s, i, events); // the can is always at hand
+  return fail(events, 'needtool');
 }
 
 function plant(s, i, cropId, events, by = 'hand') {

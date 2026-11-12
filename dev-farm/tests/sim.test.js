@@ -117,7 +117,7 @@ test('crops grow per day: a watered radish is ripe on the third morning', () => 
   assert.equal(daysLeft(plotOf(s)), 3);
   for (let d = 0; d < 3; d++) {
     assert.equal(plotOf(s).progress < 1, true);
-    s.tool = 'hand';
+    s.tool = 'can';
     assert.ok(plotAction(s, AX, AY).ok, `watering on day ${d + 1}`);
     advance(s, 60); // the day goes by: nothing grows during the day
     nextDay(s);
@@ -147,6 +147,8 @@ test('the soil dries overnight, so watering is once a day', () => {
   s.tool = 'seed';
   plotAction(s, AX, AY);
   s.tool = 'hand';
+  assert.equal(plotAction(s, AX, AY).reason, 'needtool', 'single plants are watered with the can');
+  s.tool = 'can';
   assert.ok(plotAction(s, AX, AY).ok);
   assert.equal(plotAction(s, AX, AY).reason, 'wet');
   nextDay(s);
@@ -244,7 +246,7 @@ test('watering uses the can; the pond refills it, the well only once it is built
   const s = withSeeds();
   s.tool = 'seed';
   plotAction(s, AX, AY);
-  s.tool = 'hand';
+  s.tool = 'can';
   assert.ok(plotAction(s, AX, AY).ok);
   assert.equal(s.water, CAN_SIZES[0] - 1);
   s.water = 0;
