@@ -11,6 +11,7 @@ export const H = 32;
 
 export const HOUSE = { x: 5, y: 4, w: 6, h: 5 };
 export const STAND = { x: 40, y: 10, w: 2, h: 2 }; // by the road, where customers come from
+export const COOP_AREA = { x: 12, y: 3, w: 2, h: 2 }; // the old chicken coop by the house
 export const HOUSE_DOOR = [8, 9]; // tile in front of the door
 export const DRONE_HOME = [8, 5]; // on the roof
 export const CUSTOMER_SPOT = [40, 12];
@@ -52,6 +53,7 @@ function build() {
   // buildings
   rect(HOUSE.x, HOUSE.y, HOUSE.x + HOUSE.w - 1, HOUSE.y + HOUSE.h - 1, 'H');
   rect(STAND.x, STAND.y, STAND.x + STAND.w - 1, STAND.y + STAND.h - 1, 'S');
+  rect(COOP_AREA.x, COOP_AREA.y, COOP_AREA.x + COOP_AREA.w - 1, COOP_AREA.y + COOP_AREA.h - 1, 'K');
   g[8][11] = 'C';
   g[6][15] = 'W';
   g[8][3] = 'B';
@@ -119,10 +121,25 @@ export const OBJECTS = {
   house: { name: 'Kuća', access: [HOUSE_DOOR] },
   chest: { name: 'Škrinja', access: [[11, 9]] },
   stand: { name: 'Štand', access: [[41, 12], [39, 11]] },
+  coop: { name: 'Kokošinjac', access: [[12, 5], [13, 5]] },
   well: { name: 'Bunar', access: [[15, 7]] },
   workbench: { name: 'Radni stol', access: [[3, 9]] },
   pond: { name: 'Ribnjak', access: pondAccess() },
 };
 
-const CHAR_OBJECT = { H: 'house', S: 'stand', C: 'chest', W: 'well', B: 'workbench', '~': 'pond' };
+const CHAR_OBJECT = { H: 'house', S: 'stand', C: 'chest', W: 'well', B: 'workbench', K: 'coop', '~': 'pond' };
 export const objectAt = (x, y) => CHAR_OBJECT[charAt(x, y)] ?? null;
+
+// grass next to the woods, where forage grows
+export const FOREST_EDGE = (() => {
+  const out = [];
+  for (let y = 2; y < H - 2; y++) {
+    for (let x = 2; x < W - 2; x++) {
+      if (MAP[y][x] !== '.') continue;
+      let trees = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (MAP[y + dy][x + dx] === 't') trees++;
+      if (trees) out.push([x, y]);
+    }
+  }
+  return out;
+})();

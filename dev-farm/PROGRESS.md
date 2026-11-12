@@ -87,20 +87,29 @@ Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša i rad
 - kraći natpis štanda u HUD-u (🏪 otvoreno / 🏪 08–19 h)
 - štand premješten uz cestu (kraj glavne staze), kupci dolaze ravno s ceste
 
+### v11 – šuma, kokošinjac i honorarci (zanimacija dok usjevi rastu)
+
+- šuma: uz rub šume niču gljive, kupine, grane (drva) i kamenje; 8 na početku (4 blizu kuće), 3–5 novih svako jutro, najviše 14; branje troši 1 energije
+- novi materijali drva i kamenje; bunar sada traži 150 zl + 12 kamena + 6 drva
+- prodaja i drugih stvari osim usjeva: gljive (6 zl/kg), kupine (5 zl/kg), jaja (40 sr/kom); iz njih nema sjemena
+- stari kokošinjac kod kuće: popravak na radnom stolu (25 zl, 10 drva, 4 kamena), 3 kokoši (dokup do 9); svako jutro jaje po nahranjenoj kokoši (1 kg ploda), hranilica do 60 kg, jaja se skupljaju klikom; kokoši šeću i kljucaju oko kokošinjca
+- honorarci na mobitelu (nova kartica „Poslovi“): 1–3 ponude svako jutro, rad u kući za laptopom (farmer se ne vidi, traka napretka nad vratima), plaća 4–28 zl, napredak ostaje ako se posao prekine
+- nova grafika: oronuli i popravljeni kokošinjac, kokoši, nalazišta u šumi, ikone za drva, kamenje, jaja, gljive i kupine
+
 ## Zadnja automatizirana provjera
 
-Provedeno 12. studenog 2026. nakon v10:
+Provedeno 12. studenog 2026. nakon v11:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` u `dev-farm/` | 34/34 testova prolazi |
+| `npm test` u `dev-farm/` | 38/38 testova prolazi |
 | `npm start` + dohvat stranice i modula | server vraća 200 za `index.html` i `src/*.js` |
-| Headless Firefox (scenariji u scratchpadu) | iscrtavanje bez JS grešaka; provjereni hodanje, škrinja, skupna sadnja, zalijevanje s odlaskom po vodu, zidanje bunara, doseg prskalice, izbornik koji se zatvara, novčići u HUD-u, izbornici sva četiri alata, prekid skupnih poslova, štand uz cestu, noć |
+| Headless Firefox (scenariji u scratchpadu) | iscrtavanje bez JS grešaka; provjereni hodanje, škrinja, skupna sadnja, zalijevanje s odlaskom po vodu, zidanje bunara, doseg prskalice, izbornik koji se zatvara, novčići u HUD-u, izbornici sva četiri alata, prekid skupnih poslova, štand uz cestu, šuma, kokošinjac s kokošima, honorarac u kući, noć |
 
 ## Poznata ograničenja
 
 - Tempo i ekonomija nisu isprobani stvarnim igranjem; cijene, trajanje rasta i cijene izuma su procjene u `src/data.js`.
-- Prva berba stiže tek treći dan (najmanje oko 20 minuta igre).
+- Prva berba stiže tek treći dan; do tada igru nose šuma, kokošinjac i honorarci (tempo nije isproban igranjem).
 - Ako se dvije farmerove poruke dogode istovremeno, druga zamijeni prvu u oblačiću.
 - Glatkoća zooma nije provjerena automatski, samo da konačni prikaz radi.
 - Dijelovi pločica ribnjaka uz uglove izgledaju kao trava, ali farmer na njih ne može.
@@ -111,11 +120,15 @@ Provedeno 12. studenog 2026. nakon v10:
 
 Ideje koje su predložene, a još nisu napravljene:
 
-1. Kiša: nasumični dani koji sami zaliju sve.
-2. Malč: zemlja ostaje vlažna dva dana.
-3. Obavijest u browseru kad nešto sazrije ili se štand isprazni.
-4. Hladnjača: plodovi u škrinji polako gube kvalitetu, a hladnjača ih čuva.
-5. Odabrati ime aplikacije na mobitelu.
+1. **Grad s tržnicom (ideja vlasnika):** dodati grad u kojem je tržnica i tamo otvoriti štand. Kad ima dovoljno novca za kombi i zaposlenika, oni sami voze plodove na tržnicu i prodaju ih.
+2. Kiša: nasumični dani koji sami zaliju sve.
+3. Malč: zemlja ostaje vlažna dva dana.
+4. Obavijest u browseru kad nešto sazrije ili se štand isprazni.
+5. Hladnjača: plodovi u škrinji polako gube kvalitetu, a hladnjača ih čuva.
+6. Odabrati ime aplikacije na mobitelu.
+7. Ribolov na ribnjaku (kratka mini-igra), riba se prodaje na štandu.
+8. Narudžbe kupaca na štandu („5 kg mrkve ★★★ do petka“) uz bonus.
+9. Pčele i med; uređivanje farme (staze, ograde, ukrasi); pas ili mačka koji prati farmera.
 
 ## Handoff za novi chat
 

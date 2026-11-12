@@ -1,7 +1,7 @@
 // Draws the world with a camera that follows the farmer.
 // Art comes from art.js (generated once and cached as canvases); game state from sim.js.
 
-import { W, H, MAP, HOUSE, STAND, xy } from './world.js';
+import { W, H, MAP, HOUSE, STAND, COOP_AREA, xy } from './world.js';
 import { plotUnlocked, parseItem, sprinklerReach, sprinklerAt } from './sim.js';
 import { Pix, hash01, withAlpha } from './pixel.js';
 import * as A from './art.js';
@@ -49,7 +49,7 @@ const shadowSprite = (w) => art(`shadow:${w}`, () => {
 
 // ------------------------------------------------------------------ static props (y-sorted with people)
 
-function buildProps(field2, hasWell) {
+function buildProps(field2, hasWell, coopBuilt) {
   const list = [];
   const at = (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? MAP[y][x] : '');
   for (let ty = 0; ty < H; ty++) {
@@ -78,6 +78,10 @@ function buildProps(field2, hasWell) {
     : { img: art('wellSite', A.wellSite), x: 15 * TS - 4, y: 6 * TS - 20, base: 6 * TS + 30 });
   list.push({ img: art('workbench', A.workbench), x: 3 * TS - 6, y: 8 * TS - 8, base: 8 * TS + 30 });
   if (!field2) list.push({ img: art('sign', A.sign), x: 21 * TS, y: 13 * TS - 8, base: 13 * TS + 30 });
+  list.push({
+    img: art(`coop${coopBuilt ? 1 : 0}`, () => A.coop(!coopBuilt)),
+    x: COOP_AREA.x * TS + A.COOP_SPRITE.dx, y: COOP_AREA.y * TS + A.COOP_SPRITE.dy, base: (COOP_AREA.y + COOP_AREA.h) * TS - 1,
+  });
   return list;
 }
 
@@ -271,10 +275,10 @@ export function createRenderer(canvas) {
   function draw(s, now, opts = {}) {
     const dt = fx.last ? Math.min(0.1, (now - fx.last) / 1000) : 0;
     fx.last = now;
-    const key = `${s.upgrades.field2}|${s.upgrades.well}`;
+    const key = `${s.upgrades.field2}|${s.upgrades.well}|${s.coop.built}`;
     if (builtFor !== key) {
       if (!ground || !builtFor || builtFor.split('|')[0] !== String(s.upgrades.field2)) ground = toCanvas(A.terrain(s.upgrades.field2));
-      props = buildProps(s.upgrades.field2, s.upgrades.well);
+      props = buildProps(s.upgrades.field2, s.upgrades.well, s.coop.built);
       builtFor = key;
     }
     updateCamera(s, dt);
@@ -318,6 +322,12 @@ export function createRenderer(canvas) {
       }
     }
 
+    // things to pick in the woods
+    for (const f of s.forage) {
+      img(shadowSprite(16), f.x * TS + 8, f.y * TS + 26);
+      img(art(`forage:${f.type}`, () => A.forageSprite(f.type)), f.x * TS + 4, f.y * TS + 6);
+    }
+
     // places where seeds can be found
     for (const f of s.finds) {
       img(shadowSprite(14), f.x * TS + 9, f.y * TS + 26);
@@ -333,7 +343,11 @@ export function createRenderer(canvas) {
     }
 
     // shadows under people and the drone
-    const people = [{ e: s.farmer, kind: 'farmer', look: 0 }, ...s.customers.map((c) => ({ e: c, kind: 'villager', look: c.look }))];
+    const inside = s.farmer.busy?.what === 'gig'; // working on the laptop in the house
+    const people = [
+      ...(inside ? [] : [{ e: s.farmer, kind: 'farmer', look: 0 }]),
+      ...s.customers.map((c) => ({ e: c, kind: 'villager', look: c.look })),
+    ];
     for (const { e } of people) img(shadowSprite(18), e.x * TS + 7, e.y * TS + 27);
     if (s.upgrades.drone) img(shadowSprite(16), s.drone.x * TS + 8, s.drone.y * TS + 26);
 
@@ -341,11 +355,23 @@ export function createRenderer(canvas) {
     const inView = (p) => p.x < cx + viewW && p.x + p.img.width > cx && p.y < cy + viewH && p.y + p.img.height > cy;
     const items = props.filter(inView).map((p) => ({ base: p.base, p }));
     for (const person of people) items.push({ base: person.e.y * TS + 29, person });
+    for (const h of hens(s, now)) items.push({ base: h.y + 11, hen: h });
     items.sort((a, b) => a.base - b.base);
     for (const it of items) {
       if (it.p) {
         img(it.p.img, it.p.x, it.p.y);
         if (it.p.stand) drawGoods(s);
+      } else if (it.hen) {
+        const h = it.hen;
+        const pic = art(`hen${h.brown ? 1 : 0}${h.peck ? 1 : 0}`, () => A.hen(h.brown, h.peck ? 1 : 0));
+        img(shadowSprite(12), h.x + 1, h.y + 9);
+        if (h.left) {
+          ctx.save();
+          ctx.translate(Math.round(h.x) + pic.width, Math.round(h.y));
+          ctx.scale(-1, 1);
+          ctx.drawImage(pic, 0, 0);
+          ctx.restore();
+        } else img(pic, h.x, h.y);
       } else {
         drawPerson(it.person.e, now, it.person.kind, it.person.look);
       }
@@ -373,7 +399,7 @@ export function createRenderer(canvas) {
       ctx.fillRect(fxp, fyp, 28, 5);
       ctx.fillStyle = '#f2cf63';
       ctx.fillRect(fxp + 1, fyp + 1, Math.round(26 * (1 - b.left / b.total)), 3);
-      for (let k = 0; k < 6; k++) {
+      for (let k = 0; k < 6 && b.what === 'well'; k++) {
         const t = ((now / 700 + k / 6) % 1);
         ctx.fillStyle = `rgba(214,200,170,${0.7 * (1 - t)})`;
         ctx.fillRect(Math.round(15 * TS + 6 + ((k * 37) % 28) + t * (k % 2 ? 6 : -6)), Math.round(6 * TS + 22 - t * 14), 2, 2);
@@ -383,6 +409,27 @@ export function createRenderer(canvas) {
     drawEffects(s, now, dt, cx, cy, viewW, viewH);
     drawMarkers(s, now);
     drawNight(s, now, cx, cy, u);
+  }
+
+  // Hens wander around in front of the coop: each picks a new spot every few seconds.
+  function hens(s, now) {
+    if (!s.coop.built) return [];
+    const out = [];
+    const area = { x: (COOP_AREA.x - 1) * TS, y: (COOP_AREA.y + COOP_AREA.h) * TS + 2, w: 4 * TS, h: 1.4 * TS };
+    const spot = (k, seg) => [area.x + hash01(k, seg, 71) * area.w, area.y + hash01(k, seg, 72) * area.h];
+    for (let k = 0; k < s.coop.hens; k++) {
+      const t = now / 1000 + k * 2.3;
+      const seg = Math.floor(t / 4);
+      const [x0, y0] = spot(k, seg - 1);
+      const [x1, y1] = spot(k, seg);
+      const u = Math.min(1, (t - seg * 4) / 1.6);
+      const e = u * u * (3 - 2 * u);
+      out.push({
+        x: x0 + (x1 - x0) * e, y: y0 + (y1 - y0) * e, brown: k % 3 === 1,
+        left: x1 < x0, peck: u >= 1 && Math.floor(now / 260 + k) % 3 === 0,
+      });
+    }
+    return out;
   }
 
   function drawGoods(s) {

@@ -4,7 +4,8 @@
 
 import {
   createState, tick, command, sleep, coffee, eat, moveItem, craft, cropById, recipeById,
-  countWhere, extractSeeds, orderSeeds, startJob, upgradeIrrigation, orderFertilizer,
+  countWhere, extractSeeds, orderSeeds, startJob, upgradeIrrigation, orderFertilizer, feedHens, acceptGig,
+  goWork, goodById, forageById,
 } from './sim.js';
 import { TIER_NAMES } from './data.js';
 import { SAVE_KEY, OLDER_KEYS, serialize, deserialize } from './save.js';
@@ -29,7 +30,7 @@ if (savedZoom > 0) renderer.setZoom(savedZoom);
 
 const ui = createUI({
   onTool, onSeed, onMove, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
-  onIrrigation, onOrderFertilizer,
+  onIrrigation, onOrderFertilizer, onAcceptGig, onGoWork,
   onClosePanel: closePanel,
   onChange: refresh,
 });
@@ -65,6 +66,10 @@ function farmerSays(e) {
     case 'nofreeplots': return 'Nema slobodnih parcela.';
     case 'tooearly': return 'Još je rano za spavanje. Ima posla do večeri.';
     case 'nothingdry': return 'Sve je već zaliveno.';
+    case 'coopbroken': return 'Stari kokošinjac. Popravit ću ga na radnom stolu kad skupim drva i kamenja.';
+    case 'nomats': return e.mats ? `Za ovo trebam ${e.mats.wood} drva i ${e.mats.stone} kamena u torbi. Ima ih uz rub šume.` : 'Nemam dovoljno materijala.';
+    case 'notfood': return 'To kokoši ne jedu.';
+    case 'feederfull': return 'Hranilica je puna.';
     case 'nothingtofert': return 'Nema ništa za pognojiti.';
     case 'noplan': return 'Ovdje bi bio dobar bunar, ali treba mi plan. Skicirat ću ga na radnom stolu.';
     case 'nothingripe': return 'Još ništa nije zrelo.';
@@ -89,6 +94,7 @@ function report(events) {
         if (text) ui.say(text, ['needseed', 'needtool', 'wet', 'nowell', 'fertilized', 'full'].includes(e.reason) ? '' : 'sad');
         else if (e.reason === 'chestfull') ui.notify('🚁 Dron: škrinja je puna, stao sam s berbom.', 'err');
         else if (e.reason === 'notincatalog') ui.notify('📦 Toga još nema u katalogu.', 'err');
+        else if (e.reason === 'gigbusy') ui.notify('💼 Već radiš jedan posao.', 'err');
         break;
       }
       case 'open':
@@ -99,6 +105,41 @@ function report(events) {
         ui.say(e.what === 'ladica u kući'
           ? `U ladici je vrećica sjemena: ${e.n}× ${name(e.crop)}!`
           : `${e.what[0].toUpperCase()}${e.what.slice(1)}! ${e.n}× sjeme (${name(e.crop)}).`, 'happy');
+        break;
+      case 'foraged': {
+        const f = forageById[e.what];
+        const what = e.item === 'wood' ? `${e.n} drva` : e.item === 'stone' ? `${e.n} kamena` : `${e.n} kg`;
+        ui.say(`${f.name[0].toUpperCase()}${f.name.slice(1)}! +${what}.`, 'happy');
+        break;
+      }
+      case 'forage':
+        ui.notify(`🍄 U šumi je preko noći niknulo: ${e.n}.`, 'info');
+        break;
+      case 'laid':
+        if (e.n) ui.notify(`🐔 Kokoši su snijele ${e.n} ${e.n === 1 ? 'jaje' : 'jaja'}.`, 'ok');
+        if (e.hungry) ui.notify(`🐔 Gladnih kokoši: ${e.hungry}. Stavi plodove u hranilicu.`, 'err');
+        break;
+      case 'eggs':
+        ui.say(`Jaja! +${e.n}`, 'happy');
+        break;
+      case 'fed':
+        ui.say(`Hranilica: +${e.n} kg.`);
+        break;
+      case 'gigoffers':
+        ui.notify(`💼 Novi poslovi: ${e.n}. Pogledaj karticu Poslovi.`, 'info');
+        break;
+      case 'gigaccepted':
+        ui.say('Prihvaćeno. Idem doma za laptop.');
+        break;
+      case 'gigstart':
+        ui.say('Kodiram… 💻');
+        break;
+      case 'gigpause':
+        ui.say('Posao čeka, nastavit ću poslije.');
+        break;
+      case 'gigdone':
+        ui.say(`Gotovo! +${formatMoney(e.pay)}`, 'happy');
+        ui.notify(`💼 Plaćeno: ${e.title} · +${formatMoney(e.pay)}`, 'ok');
         break;
       case 'newfind':
         ui.notify('🌱 Na imanju je nešto niknulo samo od sebe. Možda sjeme?', 'info');
@@ -130,7 +171,7 @@ function report(events) {
         else ui.say(`${cropById[e.crop].name} ${stars(e.tier)}, ${TIER_NAMES[e.tier]}! ${e.kg} kg.`, e.tier >= 3 ? 'happy' : e.tier === 1 ? 'sad' : '');
         break;
       case 'sale':
-        ui.notify(`🛒 Kupac je kupio ${e.qty} kg: ${cropById[e.crop].name} ${stars(e.tier)} · +${formatMoney(e.money)}`, 'ok');
+        ui.notify(`🛒 Kupac je kupio ${e.qty} ${goodById[e.crop].unit}: ${goodById[e.crop].name}${cropById[e.crop] ? ` ${stars(e.tier)}` : ''} · +${formatMoney(e.money)}`, 'ok');
         break;
       case 'nosale':
         ui.notify('🛒 Kupac je došao do praznog štanda i otišao.', 'info');
@@ -216,6 +257,7 @@ function flushDrone() {
 function intro() {
   ui.notify('👋 Dobrodošlica na farmu! Klikni bilo gdje na mapi i farmer ode tamo. Klik na parcelu radi ono što farmer drži u ruci (tipke 1–4): ruke beru, sjeme sadi, kanta zalijeva, gnojivo gnoji. ▾ uz svaki alat radi to na svim parcelama ili samo za jednu vrstu. Kotačić miša mijenja zoom.', 'info');
   ui.notify(`🌱 Sjeme se broji: nađi ga na imanju, izvadi iz plodova na radnom stolu ili naruči ovdje, pod "Dostava".`, 'info');
+  ui.notify('🌲 Dok usjevi rastu: uz rub šume skupljaj gljive, kupine, drva i kamenje, popravi stari kokošinjac kod kuće, a na mobitelu pod Poslovi uzmi koji honorarac.', 'info');
   ui.notify('🌙 Usjevi rastu preko noći: svako jutro jedan dan ako su dan prije bili zaliveni, pola dana ako nisu. Dovoljno je zaliti jednom dnevno.', 'info');
   ui.notify('🏪 Plodove stavi na štand uz cestu. Bolja kvaliteta, bolja cijena. Od 18 h možeš spavati u kući: tako se igra sprema.', 'info');
   setTimeout(() => ui.say('Nova farma! Sjemena još nemam… Možda u kući nešto ima?'), 600);
@@ -250,7 +292,18 @@ function onSeed(id) {
 }
 
 function onMove(from, slot, to) {
-  act((ev) => moveItem(state, from, slot, to, ev));
+  if (to === 'coop') act((ev) => feedHens(state, slot, ev));
+  else act((ev) => moveItem(state, from, slot, to, ev));
+}
+
+function onAcceptGig(id) {
+  ui.state.panel = null;
+  act((ev) => acceptGig(state, id, ev));
+}
+
+function onGoWork() {
+  ui.state.panel = null;
+  act((ev) => goWork(state, ev));
 }
 
 function onEat(slot) {

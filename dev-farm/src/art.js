@@ -41,6 +41,12 @@ export const RAMP = {
   chard: ['#14301f', '#1d4229', '#285834', '#367041', '#4a8a52', '#66a466'],
   chardStem: ['#6e1420', '#94202c', '#bd3440', '#da5560', '#ee8a90'],
   sweetpotato: ['#3e1622', '#5c2232', '#7e3243', '#a04757', '#c06a74', '#da9298'],
+  hen: ['#8a7f6e', '#b5ab98', '#d9d2c3', '#f2eee4', '#ffffff'],
+  henBrown: ['#4a2a14', '#6e3f1e', '#94582a', '#b5733c', '#d19455'],
+  mushroom: ['#3e2214', '#5e3520', '#83502f', '#a86e44', '#c98e5e'],
+  stem: ['#a89a80', '#cdbf9f', '#e8dcbf', '#f6efdc'],
+  berry: ['#14081c', '#26102e', '#3c1a46', '#5a2a66', '#80508c'],
+  egg: ['#b59c78', '#d3bd98', '#e8d6b6', '#f5ead6', '#fffaf0'],
   stripeRed: ['#6a1a1f', '#8d2428', '#b03332', '#cc4a43', '#e06a5e'],
   stripeCream: ['#9a8b70', '#b8a888', '#d3c4a2', '#e8dcbf', '#f6efdc'],
   burlap: ['#5e4a2e', '#7a6340', '#957d55', '#ae966b', '#c7b085'],
@@ -679,6 +685,109 @@ export function well() {
   return p.outline(0.42);
 }
 
+// The chicken coop by the house (72 × 72 over a 2 × 2 tile footprint): broken or repaired.
+export const COOP_SPRITE = { dx: -4, dy: -8 };
+export function coop(broken) {
+  const p = new Pix(72, 72);
+  const r = rng(broken ? 31 : 30);
+  const holes = broken ? [[14, 36, 5, 9], [50, 52, 6, 7], [22, 56, 4, 6]] : [];
+  const inHole = (x, y) => holes.some(([hx, hy, w, h]) => x >= hx && x < hx + w && y >= hy && y < hy + h);
+  // walls of vertical planks
+  for (let y = 30; y < 68; y++) {
+    for (let x = 10; x < 62; x++) {
+      const plank = (x - 10) % 6;
+      let t = 0.58 - plank * 0.04 + (vnoise(x / 2, y / 7, 3) - 0.5) * 0.22 - (x > 52 ? 0.08 : 0);
+      if (plank === 5) t = 0.12;
+      if (y > 64) t -= 0.12;
+      p.set(x, y, inHole(x, y) ? '#1a120c' : pick(RAMP.wood, t, x, y));
+    }
+  }
+  // door opening with straw, and a little ramp
+  p.rect(30, 48, 12, 20, (x, y) => (y > 63 ? pick(RAMP.straw, 0.55 + (hash01(x, y, 4) - 0.5) * 0.4, x, y) : '#1f1610'));
+  for (let y = 66; y < 72; y++) for (let x = 27; x < 45; x++) if ((y - 66) % 2 === 0 || x % 5) p.set(x, y, pick(RAMP.wood, 0.7 - (y - 66) * 0.06, x, y));
+  // window with wire mesh
+  p.rect(46, 38, 10, 8, (x, y) => ((x + y) % 3 === 0 ? RAMP.metal[3] : '#1f1610'));
+  p.rect(45, 37, 12, 1, RAMP.wood[4]);
+  p.rect(45, 46, 12, 1, RAMP.wood[2]);
+  // roof
+  for (let y = 10; y < 33; y++) {
+    const k = (y - 10) / 22;
+    const sag = broken ? Math.round(Math.sin((y - 10) / 3) * 1.2) : 0;
+    const x0 = Math.round(16 - k * 12);
+    const x1 = Math.round(56 + k * 12);
+    for (let x = x0; x <= x1; x++) {
+      const row = Math.floor((y - 10) / 5);
+      const ry = (y - 10) % 5;
+      const col = Math.floor((x + (row % 2) * 4) / 8);
+      const missing = broken && hash01(row, col, 9) < 0.18;
+      let t = 0.55 + (hash01(row, col, 2) - 0.5) * 0.25 + (ry === 0 ? 0.25 : ry === 4 ? -0.35 : 0);
+      if ((x + (row % 2) * 4) % 8 === 0) t -= 0.25;
+      p.set(x, y + sag, missing ? '#1a120c' : pick(broken ? RAMP.log : RAMP.roof, t, x, y));
+    }
+  }
+  p.rect(4, 32, 64, 3, (x, y) => pick(RAMP.wood, y === 32 ? 0.75 : 0.35, x, y));
+  if (broken) {
+    // loose boards and weeds
+    p.line(4, 66, 20, 70, (x, y) => pick(RAMP.wood, 0.5, x, y));
+    p.line(50, 69, 66, 64, (x, y) => pick(RAMP.wood, 0.45, x, y));
+    for (let k = 0; k < 9; k++) {
+      const x = 8 + Math.floor(r() * 56);
+      p.line(x, 67, x + (r() - 0.5) * 3, 60 - r() * 5, (px, py, t) => pick(RAMP.grass, 0.25 + t * 0.6, px, py));
+    }
+  } else {
+    // straw peeking out of the window, a nest box sign
+    for (const [x, y] of [[47, 45], [49, 45], [52, 45]]) p.set(x, y, RAMP.straw[4]);
+    p.rect(14, 38, 10, 6, (x, y) => (x === 14 || x === 23 || y === 38 || y === 43 ? RAMP.wood[1] : pick(RAMP.wood, 0.85, x, y)));
+    ball(p, 19, 41, 2.2, 1.6, RAMP.egg, 0.3);
+  }
+  return p.outline(0.42);
+}
+
+// A hen (14 × 12). Frame 1 pecks at the ground.
+export function hen(brown, frame) {
+  const p = new Pix(14, 12);
+  const ramp = brown ? RAMP.henBrown : RAMP.hen;
+  p.set(6, 11, RAMP.carrot[3]);
+  p.set(8, 11, RAMP.carrot[3]);
+  p.rect(6, 10, 1, 1, RAMP.carrot[2]);
+  p.rect(8, 10, 1, 1, RAMP.carrot[2]);
+  p.ellipse(6.5, 7, 5, 3.6, (nx, ny, x, y) => pick(ramp, 0.25 + sphere(nx, ny) * 0.75, x, y));
+  for (const [x, y] of [[1, 4], [1, 5], [2, 3], [2, 4]]) p.set(x, y, ramp[1]);
+  const [hx, hy] = frame ? [11, 7] : [10.5, 3.6];
+  p.ellipse(hx, hy, 2.3, 2.2, (nx, ny, x, y) => pick(ramp, 0.4 + sphere(nx, ny) * 0.6, x, y));
+  p.set(Math.floor(hx), Math.floor(hy) - 2, '#d23a2c');
+  p.set(Math.floor(hx) + 1, Math.floor(hy) - 2, '#d23a2c');
+  p.set(Math.floor(hx) + 2, Math.floor(hy), RAMP.carrot[4]);
+  p.set(Math.floor(hx) + 3, Math.floor(hy), RAMP.carrot[3]);
+  p.set(Math.floor(hx) + 1, Math.floor(hy) - 1, '#1b1410');
+  p.set(Math.floor(hx), Math.floor(hy) + 2, '#d23a2c');
+  return p.outline(0.45);
+}
+
+// Things that grow in the woods (24 × 24).
+export function forageSprite(type) {
+  const p = new Pix(24, 24);
+  const r = rng(type.length * 7);
+  if (type === 'mushroom') {
+    for (const [x, y, s] of [[8, 16, 1], [15, 18, 0.8], [12, 12, 0.65]]) {
+      p.rect(x - 1.5 * s, y, 3 * s, 5 * s, (px, py) => pick(RAMP.stem, 0.8 - (px - x + 1.5 * s) * 0.15, px, py));
+      p.ellipse(x, y, 5 * s, 3.4 * s, (nx, ny, px, py) => (ny > 0.35 ? null : pick(RAMP.mushroom, 0.15 + sphere(nx, ny) * 0.85, px, py)));
+    }
+  } else if (type === 'blackberry') {
+    for (let k = 0; k < 9; k++) leaf(p, 12, 19, -Math.PI + (k / 8) * Math.PI, 7 + r() * 3, 2.6, RAMP.leaf, (k % 2) * 0.05);
+    for (const [x, y] of [[7, 12], [11, 9], [16, 11], [13, 14], [9, 16], [17, 15]]) ball(p, x, y, 1.6, 1.6, RAMP.berry, 0.1);
+  } else if (type === 'branches') {
+    for (const [x0, y0, x1, y1] of [[3, 19, 20, 14], [5, 13, 21, 20], [7, 21, 18, 10]]) {
+      p.line(x0, y0, x1, y1, (x, y) => pick(RAMP.bark, 0.6, x, y));
+      p.line(x0, y0 + 1, x1, y1 + 1, (x, y) => pick(RAMP.bark, 0.3, x, y));
+    }
+    leaf(p, 18, 11, -0.6, 4, 1.4, RAMP.leaf, 0);
+  } else {
+    for (const [x, y, rx, ry] of [[8, 16, 5, 3.6], [15, 17, 4.2, 3], [12, 12, 3.4, 2.6]]) ball(p, x, y, rx, ry, RAMP.stone, 0.12);
+  }
+  return p.outline(0.42);
+}
+
 // Where the well will be: stakes, string and a pile of stones (same frame as the well).
 export function wellSite() {
   const p = new Pix(40, 52);
@@ -1149,6 +1258,27 @@ export function icon(name) {
       p.set(6, 4, ramp[5]);
       break;
     }
+    case 'egg':
+      ball(p, 8, 9, 4.6, 5.8, RAMP.egg, 0.15);
+      break;
+    case 'mushroom':
+      p.rect(6.5, 8, 4, 6, (x, y) => pick(RAMP.stem, 0.8 - (x - 6.5) * 0.15, x, y));
+      p.ellipse(8.5, 8, 7, 4.6, (nx, ny, x, y) => (ny > 0.3 ? null : pick(RAMP.mushroom, 0.15 + sphere(nx, ny) * 0.85, x, y)));
+      break;
+    case 'blackberry':
+      leaf(p, 9, 6, -0.9, 6, 2, RAMP.leaf, 0.1);
+      for (const [x, y] of [[6, 9], [9, 10], [7, 12], [10, 13], [5, 12], [8, 8]]) ball(p, x, y, 1.7, 1.7, RAMP.berry, 0.15);
+      break;
+    case 'wood':
+      for (const [x, y] of [[5, 11], [11, 11], [8, 6]]) {
+        p.rect(x - 4, y - 2, 8, 4, (px, py) => pick(RAMP.bark, 0.6 - (py - y + 2) * 0.12, px, py));
+        p.ellipse(x + 3, y, 2.2, 2.4, (nx, ny, px, py) => pick(RAMP.wood, 0.85 - Math.hypot(nx, ny) * 0.4, px, py));
+      }
+      break;
+    case 'stone':
+      ball(p, 6, 10, 4.6, 3.6, RAMP.stone, 0.12);
+      ball(p, 11, 8, 3.8, 3.2, RAMP.stone, 0.12);
+      break;
     case 'phone':
       p.rect(4, 1, 8, 14, (x, y) => (x === 4 || x === 11 || y === 1 || y === 14 ? RAMP.metal[1] : null));
       p.rect(5, 2, 6, 12, (x, y) => pick(RAMP.glass, 0.95 - (y - 2) * 0.05 + (x + y === 12 ? 0.2 : 0), x, y));

@@ -3,12 +3,12 @@
 
 import {
   CROPS, RECIPES, MAX_ENERGY, COFFEE, EAT_ENERGY, TIER_NAMES, SHOP_OPEN, SHOP_CLOSE, ROT_DAY,
-  SEEDS_FROM_FRUIT, SEED_PACK, FERTILIZER_PRICE, WELL_BUILD, IRRIGATION_RADII, zl, SLEEP_FROM,
+  SEEDS_FROM_FRUIT, SEED_PACK, FERTILIZER_PRICE, WELL_BUILD, IRRIGATION_RADII, zl, SLEEP_FROM, COOP,
 } from './data.js';
 import {
   parseItem, isUnlocked, canSize, countWhere, canCraft, salePrice, isSellable, cropById,
   plotUnlocked, sprinklerAt, qualityScore, tierOf, ripeCount, shopOpen, packPrice, findAt, jobTargets,
-  totalSeeds, sprinklerReach, irrigationCost, daysLeft,
+  totalSeeds, sprinklerReach, irrigationCost, daysLeft, goodById, forageAt, forageById, matCount,
 } from './sim.js';
 import { idx, objectAt, isPlotTile, OBJECTS } from './world.js';
 import { iconUrl } from './render.js';
@@ -41,8 +41,16 @@ export function itemName(id) {
   if (!p) return id;
   if (p.kind === 'fertilizer') return 'Gnojivo';
   if (p.kind === 'sprinkler') return 'Prskalica (water.sh)';
-  return `${cropById[p.crop].name} ${stars(p.tier)}`;
+  if (p.kind === 'wood') return 'Drva';
+  if (p.kind === 'stone') return 'Kamenje';
+  return cropById[p.crop] ? `${goodById[p.crop].name} ${stars(p.tier)}` : goodById[p.crop].name;
 }
+
+// "kg" for produce sold by weight, "kom" for pieces
+export const unitOf = (id) => {
+  const p = parseItem(id);
+  return p?.kind === 'crop' ? goodById[p.crop].unit : 'kom';
+};
 
 const itemIcon = (id) => {
   const p = parseItem(id);
@@ -83,8 +91,8 @@ function slotButton(it, onClick, { label = '' } = {}) {
   } else {
     const p = parseItem(it.id);
     b.append(icon(p.kind === 'crop' ? p.crop : p.kind, ''), el('span', 'count', String(it.n)));
-    if (p.kind === 'crop') b.append(el('span', `tier tier-${p.tier}`, stars(p.tier)));
-    b.title = `${itemName(it.id)} · ${it.n}${p.kind === 'crop' ? ' kg' : ' kom'}${label ? ` · ${label}` : ''}`;
+    if (p.kind === 'crop' && cropById[p.crop]) b.append(el('span', `tier tier-${p.tier}`, stars(p.tier)));
+    b.title = `${itemName(it.id)} · ${it.n} ${unitOf(it.id)}${label ? ` · ${label}` : ''}`;
     b.setAttribute('aria-label', b.title);
   }
   if (onClick) b.addEventListener('click', onClick);
@@ -105,7 +113,7 @@ export function createUI(cb) {
     energyBar: $('hud-energy-bar'), energy: $('hud-energy'), hotbar: $('hotbar'), seeds: $('seeds'),
     panel: $('panel'), bag: $('bag'), bagInfo: $('bag-info'), inspect: $('inspect'),
     bubble: $('bubble'), feed: $('phone-feed'), shopTab: $('phone-shop'), phoneTime: $('phone-time'),
-    badge: $('phone-badge'), zoomIn: $('zoom-in'), zoomOut: $('zoom-out'),
+    badge: $('phone-badge'), zoomIn: $('zoom-in'), zoomOut: $('zoom-out'), gigsTab: $('phone-gigs'), gigBadge: $('gig-badge'),
   };
   const ui = { panel: null, selected: -1, placing: false, phoneTab: 'feed', unread: 0, clock: 360 };
 
@@ -262,12 +270,12 @@ export function createUI(cb) {
 
   // ---- bag
   function bag(s) {
-    const transfer = ui.panel === 'chest' || ui.panel === 'stand';
+    const transfer = ui.panel === 'chest' || ui.panel === 'stand' || ui.panel === 'coop';
     const sig = JSON.stringify([s.bag, ui.selected, ui.panel]);
     renderIfChanged(els.bag, sig, () => s.bag.map((it, i) => {
       const b = slotButton(it, it ? () => (transfer ? cb.onMove('bag', i, ui.panel) : select(i)) : null);
       if (i === ui.selected) b.classList.add('selected');
-      if (ui.panel === 'stand' && it && !isSellable(it.id)) b.classList.add('dim');
+      if ((ui.panel === 'stand' && it && !isSellable(it.id)) || (ui.panel === 'coop' && it && (parseItem(it.id).kind !== 'crop' || parseItem(it.id).crop === 'egg'))) b.classList.add('dim');
       return b;
     }));
 
@@ -276,14 +284,19 @@ export function createUI(cb) {
     renderIfChanged(els.bagInfo, infoSig, () => {
       if (ui.panel === 'chest') return [el('p', 'muted', 'Klik na stvar u torbi spremi je u škrinju.')];
       if (ui.panel === 'stand') return [el('p', 'muted', 'Klik na plod u torbi stavi ga na štand.')];
+      if (ui.panel === 'coop') return [el('p', 'muted', 'Klik na plod u torbi stavi ga u hranilicu. Najbolje za to su loši (★) plodovi.')];
       if (!it) return [el('p', 'muted', 'Klikni stvar u torbi za detalje.')];
       const p = parseItem(it.id);
-      const out = [el('p', 'item-title', `${itemName(it.id)} · ${it.n} kg`)];
+      const unit = unitOf(it.id);
+      const out = [el('p', 'item-title', `${itemName(it.id)} · ${it.n} ${unit}`)];
       const row = el('div', 'row');
-      if (p.kind === 'crop') {
-        out.push(el('p', 'muted', `${TIER_NAMES[p.tier]} · na štandu ${formatMoney(salePrice(p.crop, p.tier))}/kg${p.tier === 1 ? ', i to samo kad nema boljeg' : ''}`));
-        row.append(button(`Pojedi (+${EAT_ENERGY[p.tier]} ⚡)`, () => cb.onEat(ui.selected), { disabled: s.energy >= MAX_ENERGY }));
-        if (ui.panel === 'workbench') row.append(button(`Izvadi sjeme (${SEEDS_FROM_FRUIT[0]}–${SEEDS_FROM_FRUIT[1]})`, () => cb.onExtract(ui.selected)));
+      if (p.kind === 'wood' || p.kind === 'stone') {
+        out.push(el('p', 'muted', 'Materijal za radni stol: kokošinjac, bunar i drugo.'));
+      } else if (p.kind === 'crop') {
+        const tier = cropById[p.crop] ? `${TIER_NAMES[p.tier]} · ` : '';
+        out.push(el('p', 'muted', `${tier}na štandu ${formatMoney(salePrice(p.crop, p.tier))}/${unit}${p.tier === 1 ? ', i to samo kad nema boljeg' : ''}`));
+        if (p.crop !== 'egg') row.append(button(`Pojedi (+${EAT_ENERGY[p.tier]} ⚡)`, () => cb.onEat(ui.selected), { disabled: s.energy >= MAX_ENERGY }));
+        if (ui.panel === 'workbench' && cropById[p.crop]) row.append(button(`Izvadi sjeme (${SEEDS_FROM_FRUIT[0]}–${SEEDS_FROM_FRUIT[1]})`, () => cb.onExtract(ui.selected)));
       } else if (p.kind === 'sprinkler') {
         row.append(button('Postavi na parcelu', () => cb.onPlace()));
       } else if (p.kind === 'fertilizer') {
@@ -311,14 +324,24 @@ export function createUI(cb) {
 
     if (ui.panel === 'house') {
       const canSleep = s.clock >= SLEEP_FROM;
-      const sig = JSON.stringify(['house', s.money >= zl(COFFEE.price), s.energy >= MAX_ENERGY, canSleep]);
+      const gig = s.gigs.active;
+      const sig = JSON.stringify(['house', s.money >= zl(COFFEE.price), s.energy >= MAX_ENERGY, canSleep, gig?.title, Boolean(s.farmer.busy)]);
       renderIfChanged(els.panel, sig, () => [
         head(),
+        ...(gig && !s.farmer.busy ? [button(`💻 Nastavi posao: ${gig.title}`, cb.onGoWork, { cls: 'btn' })] : []),
         el('p', 'muted', 'Spavanjem završavaš dan i spremaš igru. Usjevi rastu preko noći, a zreli te strpljivo čekaju. Ujutro stiže naručena dostava.'),
         button(canSleep ? 'Spavaj do 06:00 i spremi' : `Spava se od ${formatClock(SLEEP_FROM)}`, cb.onSleep, { cls: 'btn primary', disabled: !canSleep }),
         button(`Skuhaj kavu · ${formatMoney(zl(COFFEE.price))} · +${COFFEE.energy} ⚡`, cb.onCoffee, {
           disabled: s.money < zl(COFFEE.price) || s.energy >= MAX_ENERGY,
         }),
+      ]);
+    } else if (ui.panel === 'coop') {
+      const c = s.coop;
+      renderIfChanged(els.panel, JSON.stringify(['coop', c]), () => [
+        head(),
+        el('p', '', `🐔 Kokoši: ${c.hens} · 🥚 čeka: ${c.eggs}`),
+        el('p', '', `Hranilica: ${c.feed} kg ${c.feed < c.hens ? '· premalo za sutra!' : `· dosta za ${Math.floor(c.feed / Math.max(1, c.hens))} ${c.feed / c.hens >= 2 ? 'dana' : 'dan'}`}`),
+        el('p', 'muted small', `Svaka kokoš ujutro snese jaje ako je u hranilici bilo 1 kg hrane za nju. Jaja se skupe klikom na kokošinjac. Hranilica drži najviše ${COOP.feedCap} kg.`),
       ]);
     } else if (ui.panel === 'chest') {
       renderIfChanged(els.panel, JSON.stringify(['chest', s.chest]), () => {
@@ -331,7 +354,7 @@ export function createUI(cb) {
         const grid = el('div', 'slots');
         s.stand.forEach((it, i) => {
           const p = it && parseItem(it.id);
-          grid.append(slotButton(it, it ? () => cb.onMove('stand', i, 'bag') : null, { label: p ? `${formatMoney(salePrice(p.crop, p.tier))}/kg` : '' }));
+          grid.append(slotButton(it, it ? () => cb.onMove('stand', i, 'bag') : null, { label: p ? `${formatMoney(salePrice(p.crop, p.tier))}/${unitOf(it.id)}` : '' }));
         });
         return [
           head(),
@@ -341,7 +364,7 @@ export function createUI(cb) {
         ];
       });
     } else if (ui.panel === 'workbench') {
-      const fruits = s.bag.map((it, i) => [it, i]).filter(([it]) => it && parseItem(it.id).kind === 'crop');
+      const fruits = s.bag.map((it, i) => [it, i]).filter(([it]) => it && parseItem(it.id).kind === 'crop' && cropById[parseItem(it.id).crop]);
       const sig = JSON.stringify(['wb', RECIPES.map((r) => canCraft(s, r.id)), fruits]);
       renderIfChanged(els.panel, sig, () => {
         const list = el('div', 'recipes');
@@ -360,12 +383,14 @@ export function createUI(cb) {
           if (problem === 'owned') continue;
           const card = el('div', 'recipe');
           const top = el('div', 'recipe-head');
-          top.append(el('code', '', r.name), el('span', 'muted', r.price ? formatMoney(zl(r.price)) : r.bad ? `${r.bad} kg ★` : ''));
+          top.append(el('code', '', r.name), el('span', 'muted', [r.price ? formatMoney(zl(r.price)) : r.bad ? `${r.bad} kg ★` : '', matsText(r.mats)].filter(Boolean).join(' · ')));
           const why = {
-            coins: 'nedovoljno novca', nobad: `treba ${r.bad} kg loših (★) plodova u torbi`,
-            bagfull: 'torba je puna', requires: r.requires === 'well' ? 'prvo sazidaj bunar' : 'prvo izradi harvest-drone',
+            coins: 'nedovoljno novca', nobad: `treba ${r.bad} kg loših (★) plodova u torbi`, nomats: `u torbi treba ${matsText(r.mats)}`,
+            bagfull: 'torba je puna',
+            requires: { well: 'prvo sazidaj bunar', drone: 'prvo izradi harvest-drone', coop: 'prvo popravi kokošinjac' }[r.requires],
           }[problem];
-          if (r.id === 'wellPlan') top.lastChild.textContent = `zidanje ${formatMoney(zl(WELL_BUILD.price))} · ${WELL_BUILD.energy} ⚡`;
+          if (r.id === 'wellPlan') top.lastChild.textContent = `zidanje ${formatMoney(zl(WELL_BUILD.price))} · ${matsText(WELL_BUILD)} · ${WELL_BUILD.energy} ⚡`;
+          if (r.id === 'hens') top.firstChild.textContent = `${r.name} (sad ${s.coop.hens})`;
           card.append(top, el('p', 'small', r.desc), button(why ?? (r.id === 'wellPlan' ? 'Skiciraj plan' : 'Izradi'), () => cb.onCraft(r.id), { disabled: Boolean(problem) }));
           list.append(card);
           if (r.id === 'sprinkler') list.append(irrigationCard(s));
@@ -374,6 +399,8 @@ export function createUI(cb) {
       });
     }
   }
+
+  const matsText = (m) => (m ? [m.wood && `${m.wood} drva`, m.stone && `${m.stone} kamena`].filter(Boolean).join(', ') : '');
 
   function irrigationCard(s) {
     const card = el('div', 'recipe');
@@ -401,8 +428,13 @@ export function createUI(cb) {
     for (const tab of document.querySelectorAll('.phone-tabs button')) tab.classList.toggle('active', tab.dataset.tab === ui.phoneTab);
     els.feed.hidden = ui.phoneTab !== 'feed';
     els.shopTab.hidden = ui.phoneTab !== 'shop';
+    els.gigsTab.hidden = ui.phoneTab !== 'gigs';
+    if (ui.phoneTab === 'gigs') gigsTab(s);
     if (ui.phoneTab === 'feed') ui.unread = 0;
     setText(els.badge, ui.unread ? String(Math.min(99, ui.unread)) : '');
+    const offers = s.gigs.offers.length;
+    setText(els.gigBadge, offers && ui.phoneTab !== 'gigs' ? String(offers) : '');
+    els.gigBadge.hidden = !offers || ui.phoneTab === 'gigs';
     els.badge.hidden = !ui.unread;
     if (ui.phoneTab !== 'shop') return;
     const sig = JSON.stringify(['shop', s.money, s.totalEarned, s.orders]);
@@ -425,6 +457,31 @@ export function createUI(cb) {
       }
       if (s.orders.length) {
         out.push(el('p', 'small', `Stiže sutra: ${s.orders.map((o) => (o.item ? `${o.n}× gnojivo` : `${o.n}× ${cropById[o.crop].name}`)).join(', ')}`));
+      }
+      return out;
+    });
+  }
+
+  function gigsTab(s) {
+    const g = s.gigs.active;
+    const sig = JSON.stringify(['gigs', s.gigs.offers, g && [g.title, Math.round(g.left)], s.farmer.busy?.what, s.energy >= (g?.energy ?? 0)]);
+    renderIfChanged(els.gigsTab, sig, () => {
+      const out = [el('p', 'small muted', 'Honorarci za susjede i lokalne firme. Farmer ih radi kod kuće za laptopom: troše vrijeme i energiju, a plaćaju odmah.')];
+      if (g) {
+        const total = (g.hours * 60) / 2;
+        const pct = Math.round((1 - g.left / total) * 100);
+        const row = el('div', 'gig active');
+        row.append(el('span', 'grow', `💻 ${g.title} · ${pct} %`), el('span', 'muted', formatMoney(g.pay)));
+        out.push(row);
+        out.push(s.farmer.busy?.what === 'gig' ? el('p', 'small', 'Farmer radi u kući…') : button('Nastavi raditi', cb.onGoWork, { cls: 'btn' }));
+      }
+      if (!s.gigs.offers.length) out.push(el('p', 'small muted', 'Nema novih ponuda. Nove stižu svako jutro.'));
+      for (const o of s.gigs.offers) {
+        const row = el('div', 'gig');
+        const info = el('span', 'grow');
+        info.append(el('span', '', o.title), el('span', 'muted small', ` · ${o.hours} h · ${o.energy} ⚡`));
+        row.append(info, button(`${formatMoney(o.pay)}`, () => cb.onAcceptGig(o.id), { disabled: Boolean(g), title: g ? 'Prvo dovrši posao koji radiš' : 'Prihvati posao' }));
+        out.push(row);
       }
       return out;
     });
@@ -478,11 +535,15 @@ export function createUI(cb) {
       const i = idx(x, y);
       const p = s.plots[i];
       const f = s.finds[findAt(s, x, y)];
-      if (f) {
+      const fo = s.forage[forageAt(s, x, y)];
+      if (fo) {
+        text = `U šumi: ${forageById[fo.type].name}. Klik: farmer ode ubrati.`;
+      } else if (f) {
         text = `Ovdje nešto raste samo od sebe (${f.what}). Klik: farmer ode po sjeme.`;
       } else if (obj) {
         text = {
-          house: s.found.house ? 'Kuća: spavanje (spremanje igre) i kava.' : 'Kuća. Tko zna što je ostalo u ladicama?',
+          house: s.found.house ? 'Kuća: spavanje (spremanje igre), kava i honorarci za laptopom.' : 'Kuća. Tko zna što je ostalo u ladicama?',
+          coop: s.coop.built ? `Kokošinjac: ${s.coop.hens} kokoši, ${s.coop.eggs} jaja čeka, ${s.coop.feed} kg u hranilici.` : 'Stari kokošinjac. Popravlja se na radnom stolu (drva, kamenje).',
           chest: 'Škrinja: spremi višak iz torbe. Ovamo dron nosi urod.',
           stand: 'Štand: stavi plodove, kupci dolaze cestom.',
           well: s.upgrades.well ? 'Bunar: napuni kantu. Izvor za navodnjavanje.'

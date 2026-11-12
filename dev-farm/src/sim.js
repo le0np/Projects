@@ -9,14 +9,18 @@ import {
   TIER_PRICE, MACHINE_MAX_TIER, CUSTOMER_INTERVAL, CUSTOMER_KG, SEO_BONUS,
   CROPS, RECIPES, RIPE_PENALTY, ROT_DAY, SEEDS_FROM_FRUIT, SEED_PACK, HOUSE_SEEDS, START_FINDS,
   DAILY_FIND_CHANCE, FERTILIZER_PRICE, WELL_BUILD, IRRIGATION_RADII, IRRIGATION_COSTS,
+  GOODS, FORAGE, FORAGE_START, FORAGE_DAILY, FORAGE_MAX, COOP, GIGS, GIG_OFFERS, GIG_ENERGY_PER_HOUR,
 } from './data.js';
 import {
   idx, xy, charAt, isWalkable, isPlotTile, objectAt, OBJECTS, PLOTS_A, PLOTS_B, inFieldA,
-  HOUSE_DOOR, DRONE_HOME, SPAWNS, CUSTOMER_SPOT, npcCost,
+  HOUSE_DOOR, DRONE_HOME, SPAWNS, CUSTOMER_SPOT, npcCost, FOREST_EDGE,
 } from './world.js';
 import { findPath } from './path.js';
 
 export const cropById = Object.fromEntries(CROPS.map((c) => [c.id, c]));
+// everything that can be sold: crops plus forage and eggs
+export const goodById = Object.fromEntries([...CROPS, ...GOODS].map((g) => [g.id, { unit: 'kg', ...g }]));
+export const forageById = Object.fromEntries(FORAGE.map((f) => [f.id, f]));
 export const recipeById = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
 export const TOOLS = ['hand', 'seed', 'can', 'fert'];
 const EPS = 1e-9;
@@ -31,7 +35,7 @@ export function makePlot() {
 
 const emptySlots = (n) => Array(n).fill(null);
 
-export function createState(seed = 12345) {
+function baseState(seed) {
   const plots = {};
   for (const i of [...PLOTS_A, ...PLOTS_B]) plots[i] = makePlot();
   return {
@@ -48,6 +52,9 @@ export function createState(seed = 12345) {
     found: { house: false },
     finds: START_FINDS.map((f) => ({ ...f })),
     orders: [],
+    forage: [],
+    coop: { built: false, hens: 0, feed: 0, eggs: 0 },
+    gigs: { offers: [], active: null, done: 0 },
     upgrades: { wellPlan: false, well: false, bigCan: false, drone: false, replant: false, seo: false, field2: false },
     irrigation: 1,
     farmer: { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null, queue: [], job: null, busy: null },
@@ -63,6 +70,20 @@ export function createState(seed = 12345) {
     nextId: 1,
     stats: { harvested: 0, sold: 0 },
   };
+}
+
+export function createState(seed = 12345) {
+  const s = baseState(seed);
+  // a few things to pick close to the house, so the woods are discovered on day one
+  const [hx, hy] = HOUSE_DOOR;
+  const near = [...FOREST_EDGE].sort((a, b) => Math.hypot(a[0] - hx, a[1] - hy) - Math.hypot(b[0] - hx, b[1] - hy)).slice(0, 30);
+  for (const type of ['branches', 'rocks', 'mushroom', 'branches']) {
+    const free = near.filter(([x, y]) => forageAt(s, x, y) < 0);
+    const [x, y] = free[Math.floor(rand(s) * free.length)];
+    s.forage.push({ x, y, type });
+  }
+  spawnForage(s, FORAGE_START - 4);
+  return s;
 }
 
 function rand(s) {
@@ -84,16 +105,16 @@ export const sprinklerAt = (s, x, y) => s.sprinklers.findIndex((p) => p.x === x 
 export const cropItem = (crop, tier) => `crop:${crop}:${tier}`;
 
 export function parseItem(id) {
-  if (id === 'fertilizer' || id === 'sprinkler') return { kind: id };
+  if (id === 'fertilizer' || id === 'sprinkler' || id === 'wood' || id === 'stone') return { kind: id };
   const m = /^crop:([a-z]+):([1-4])$/.exec(id ?? '');
-  if (m && cropById[m[1]]) return { kind: 'crop', crop: m[1], tier: Number(m[2]) };
+  if (m && goodById[m[1]]) return { kind: 'crop', crop: m[1], tier: Number(m[2]) };
   return null;
 }
 
 const isBad = (id) => parseItem(id)?.tier === 1;
 export const isSellable = (id) => parseItem(id)?.kind === 'crop';
 // srebrenjaci per kg
-export const salePrice = (crop, tier) => Math.round(zl(cropById[crop].price) * TIER_PRICE[tier]);
+export const salePrice = (crop, tier) => Math.round(zl(goodById[crop].price) * TIER_PRICE[tier]);
 
 export function canAdd(slots, id) {
   return slots.some((it) => it === null || (it.id === id && it.n < STACK_MAX));
@@ -189,7 +210,7 @@ export function command(s, x, y, mode = 'auto', events = []) {
     f.queue = [];
   }
   if (f.busy) {
-    events.push({ type: 'buildcancel', what: f.busy.what });
+    events.push({ type: f.busy.what === 'gig' ? 'gigpause' : 'buildcancel', what: f.busy.what });
     f.busy = null;
   }
   let task = null;
@@ -197,6 +218,9 @@ export function command(s, x, y, mode = 'auto', events = []) {
   const obj = objectAt(x, y);
   if (mode !== 'place' && findAt(s, x, y) >= 0) {
     task = { type: 'find', x, y };
+    goals = [[x, y]];
+  } else if (mode !== 'place' && forageAt(s, x, y) >= 0) {
+    task = { type: 'forage', x, y };
     goals = [[x, y]];
   } else if (mode === 'place') {
     if (!isPlotTile(x, y)) return fail(events, 'placeplot');
@@ -232,6 +256,8 @@ function arrive(s, events) {
   else if (t.type === 'object') objectAction(s, t.id, events);
   else if (t.type === 'place') placeSprinkler(s, t.x, t.y, events);
   else if (t.type === 'find') pickUpFind(s, t.x, t.y, events);
+  else if (t.type === 'forage') pickForage(s, t.x, t.y, events);
+  else if (t.type === 'gig') startGigWork(s, events);
   else if (t.type === 'jobplant') continueJob(s, jobPlant(s, t.x, t.y, events), events);
   else if (t.type === 'jobharvest') continueJob(s, jobHarvest(s, t.x, t.y, events), events);
   else if (t.type === 'jobwater') continueJob(s, jobWater(s, t.x, t.y, events), events);
@@ -434,9 +460,21 @@ function pickUpFind(s, x, y, events) {
 }
 
 export function objectAction(s, id, events = []) {
+  if (id === 'coop') {
+    if (!s.coop.built) return fail(events, 'coopbroken');
+    if (s.coop.eggs) {
+      const n = addItem(s.bag, 'crop:egg:2', s.coop.eggs);
+      s.coop.eggs -= n;
+      if (n) events.push({ type: 'eggs', n });
+      if (s.coop.eggs) fail(events, 'bagfull');
+    }
+    events.push({ type: 'open', panel: 'coop' });
+    return { ok: true };
+  }
   if (id === 'well' && !s.upgrades.well) {
     if (!s.upgrades.wellPlan) return fail(events, 'noplan');
     if (s.money < zl(WELL_BUILD.price)) return fail(events, 'coins', { need: zl(WELL_BUILD.price) });
+    if (!hasMats(s, WELL_BUILD)) return fail(events, 'nomats', { mats: WELL_BUILD });
     if (s.energy < WELL_BUILD.energy) return fail(events, 'tired');
     s.farmer.busy = { what: 'well', left: WELL_BUILD.seconds, total: WELL_BUILD.seconds };
     s.farmer.dir = 'up';
@@ -587,11 +625,21 @@ export function moveItem(s, from, slot, to, events = []) {
   return { ok: true };
 }
 
+export const matCount = (s, kind) => countWhere(s.bag, (id) => id === kind);
+export const hasMats = (s, need) => matCount(s, 'wood') >= (need.wood ?? 0) && matCount(s, 'stone') >= (need.stone ?? 0);
+function useMats(s, need) {
+  takeWhere(s.bag, (id) => id === 'wood', need.wood ?? 0);
+  takeWhere(s.bag, (id) => id === 'stone', need.stone ?? 0);
+}
+const owns = (s, key) => (key === 'coop' ? s.coop.built : s.upgrades[key]);
+
 export function canCraft(s, id) {
   const r = recipeById[id];
   if (!r) return 'unknown';
-  if (r.once && s.upgrades[r.once]) return 'owned';
-  if (r.requires && !s.upgrades[r.requires]) return 'requires';
+  if (r.once && owns(s, r.once)) return 'owned';
+  if (r.requires && !owns(s, r.requires)) return 'requires';
+  if (id === 'hens' && s.coop.hens >= COOP.maxHens) return 'owned';
+  if (r.mats && !hasMats(s, r.mats)) return 'nomats';
   if (s.money < zl(r.price)) return 'coins';
   if (r.bad && countWhere(s.bag, isBad) < r.bad) return 'nobad';
   if (r.gives && !canAdd(s.bag, r.gives)) return 'bagfull';
@@ -603,9 +651,12 @@ export function craft(s, id, events = []) {
   if (problem) return fail(events, problem, { recipe: id });
   const r = recipeById[id];
   s.money -= zl(r.price);
+  if (r.mats) useMats(s, r.mats);
   if (r.bad) takeWhere(s.bag, isBad, r.bad);
   if (r.gives) addItem(s.bag, r.gives);
-  if (r.once) s.upgrades[r.once] = true;
+  if (r.once === 'coop') Object.assign(s.coop, { built: true, hens: COOP.hens });
+  else if (r.once) s.upgrades[r.once] = true;
+  if (id === 'hens') s.coop.hens = Math.min(COOP.maxHens, s.coop.hens + COOP.moreHens);
   if (r.once === 'bigCan') s.water = canSize(s);
   events.push({ type: 'craft', recipe: id });
   return { ok: true };
@@ -617,7 +668,7 @@ export function craft(s, id, events = []) {
 export function extractSeeds(s, slot, events = []) {
   const it = s.bag[slot];
   const p = it && parseItem(it.id);
-  if (!p || p.kind !== 'crop') return fail(events, 'notfruit');
+  if (!p || p.kind !== 'crop' || !cropById[p.crop]) return fail(events, 'notfruit');
   takeWhere([it], () => true, 1);
   if (it.n === 0) s.bag[slot] = null;
   const [lo, hi] = SEEDS_FROM_FRUIT;
@@ -654,6 +705,16 @@ export function orderSeeds(s, crop, events = []) {
 }
 
 function morning(s, events) {
+  const [lo, hi] = FORAGE_DAILY;
+  const grown = spawnForage(s, lo + Math.floor(rand(s) * (hi - lo + 1)));
+  if (grown) events.push({ type: 'forage', n: grown });
+  if (s.coop.built) {
+    const laid = Math.min(s.coop.hens, s.coop.feed);
+    s.coop.feed -= laid;
+    s.coop.eggs = Math.min(COOP.eggCap, s.coop.eggs + laid);
+    events.push({ type: 'laid', n: laid, hungry: s.coop.hens - laid });
+  }
+  offerGigs(s, events);
   const waiting = [];
   for (const o of s.orders) {
     if (o.item) {
@@ -897,6 +958,119 @@ function runCustomers(s, dt, events) {
   s.customers = s.customers.filter((c) => c.phase !== 'gone');
 }
 
+// ---------------------------------------------------------------- the woods
+
+export const forageAt = (s, x, y) => s.forage.findIndex((f) => f.x === x && f.y === y);
+
+// Grow up to n new things along the forest edge; returns how many appeared.
+function spawnForage(s, n) {
+  let grown = 0;
+  const total = FORAGE.reduce((a, f) => a + f.weight, 0);
+  for (let tries = 0; grown < n && s.forage.length < FORAGE_MAX && tries < n * 20; tries++) {
+    const [x, y] = FOREST_EDGE[Math.floor(rand(s) * FOREST_EDGE.length)];
+    if (forageAt(s, x, y) >= 0 || findAt(s, x, y) >= 0) continue;
+    let r = rand(s) * total;
+    const f = FORAGE.find((k) => (r -= k.weight) < 0) ?? FORAGE[0];
+    s.forage.push({ x, y, type: f.id });
+    grown++;
+  }
+  return grown;
+}
+
+function pickForage(s, x, y, events) {
+  const k = forageAt(s, x, y);
+  if (k < 0) return { ok: false };
+  const f = forageById[s.forage[k].type];
+  const [lo, hi] = f.n;
+  const n = lo + Math.floor(rand(s) * (hi - lo + 1));
+  if (spaceFor(s.bag, f.item) < n) return fail(events, 'bagfull');
+  if (!spend(s, 1, events)) return { ok: false, reason: 'tired' };
+  addItem(s.bag, f.item, n);
+  s.forage.splice(k, 1);
+  events.push({ type: 'foraged', what: f.id, item: f.item, n, x, y });
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------- the chicken coop
+
+// Put produce from the bag into the feeder (1 kg feeds one hen for a day).
+export function feedHens(s, slot, events = []) {
+  const it = s.bag[slot];
+  const p = it && parseItem(it.id);
+  if (!s.coop.built) return fail(events, 'coopbroken');
+  if (!p || p.kind !== 'crop' || p.crop === 'egg') return fail(events, 'notfood');
+  const room = COOP.feedCap - s.coop.feed;
+  if (room <= 0) return fail(events, 'feederfull');
+  const n = takeWhere([it], () => true, room);
+  if (it.n === 0) s.bag[slot] = null;
+  s.coop.feed += n;
+  events.push({ type: 'fed', n, crop: p.crop });
+  return { ok: true, n };
+}
+
+// ---------------------------------------------------------------- side gigs
+
+const gigSeconds = (hours) => (hours * 60) / GAME_MIN_PER_SEC;
+
+function offerGigs(s, events) {
+  const [lo, hi] = GIG_OFFERS;
+  const n = lo + Math.floor(rand(s) * (hi - lo + 1));
+  const pool = [...GIGS];
+  s.gigs.offers = [];
+  for (let k = 0; k < n && pool.length; k++) {
+    const g = pool.splice(Math.floor(rand(s) * pool.length), 1)[0];
+    const [a, b] = g.pay;
+    s.gigs.offers.push({
+      id: s.nextId++, title: g.title, hours: g.hours,
+      pay: zl(a + Math.floor(rand(s) * (b - a + 1))), energy: g.hours * GIG_ENERGY_PER_HOUR,
+    });
+  }
+  if (s.gigs.offers.length) events.push({ type: 'gigoffers', n: s.gigs.offers.length });
+}
+
+// Take a gig from the phone; the farmer heads home to work on it.
+export function acceptGig(s, id, events = []) {
+  if (s.gigs.active) return fail(events, 'gigbusy');
+  const k = s.gigs.offers.findIndex((g) => g.id === id);
+  if (k < 0) return fail(events, 'nogig');
+  const [g] = s.gigs.offers.splice(k, 1);
+  s.gigs.active = { ...g, left: gigSeconds(g.hours) };
+  events.push({ type: 'gigaccepted', title: g.title });
+  return goWork(s, events);
+}
+
+// Walk home and work on the active gig.
+export function goWork(s, events = []) {
+  if (!s.gigs.active) return fail(events, 'nogig');
+  const f0 = s.farmer;
+  if (!f0.path.length && f0.x === HOUSE_DOOR[0] && f0.y === HOUSE_DOOR[1]) return startGigWork(s, events);
+  const r = command(s, HOUSE_DOOR[0], HOUSE_DOOR[1] - 1, 'auto', events);
+  if (!r.ok) return r;
+  const f = s.farmer;
+  if (f.path.length) f.task = { type: 'gig' };
+  else startGigWork(s, events);
+  return { ok: true };
+}
+
+function startGigWork(s, events) {
+  const g = s.gigs.active;
+  if (!g) return { ok: false };
+  if (s.energy < g.energy) return fail(events, 'tired');
+  s.farmer.busy = { what: 'gig', left: g.left, total: gigSeconds(g.hours) };
+  s.farmer.dir = 'up';
+  events.push({ type: 'gigstart', title: g.title });
+  return { ok: true };
+}
+
+function finishGig(s, events) {
+  const g = s.gigs.active;
+  s.gigs.active = null;
+  s.gigs.done++;
+  s.energy = Math.max(0, s.energy - g.energy);
+  addMoney(s, g.pay, events);
+  events.push({ type: 'gigdone', title: g.title, pay: g.pay });
+}
+
 // ---------------------------------------------------------------- time
 
 export function tick(s, dt, events = []) {
@@ -918,12 +1092,18 @@ export function tick(s, dt, events = []) {
 function build(s, dt, events) {
   const b = s.farmer.busy;
   b.left -= dt;
+  if (b.what === 'gig' && s.gigs.active) s.gigs.active.left = Math.max(0, b.left);
   if (b.left > 0) return;
   s.farmer.busy = null;
-  if (s.money < zl(WELL_BUILD.price) || s.energy < WELL_BUILD.energy) {
-    fail(events, s.money < zl(WELL_BUILD.price) ? 'coins' : 'tired');
+  if (b.what === 'gig') {
+    finishGig(s, events);
     return;
   }
+  if (s.money < zl(WELL_BUILD.price) || s.energy < WELL_BUILD.energy || !hasMats(s, WELL_BUILD)) {
+    fail(events, s.money < zl(WELL_BUILD.price) ? 'coins' : !hasMats(s, WELL_BUILD) ? 'nomats' : 'tired');
+    return;
+  }
+  useMats(s, WELL_BUILD);
   s.money -= zl(WELL_BUILD.price);
   s.energy -= WELL_BUILD.energy;
   s.upgrades.well = true;

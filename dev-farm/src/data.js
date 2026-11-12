@@ -61,7 +61,7 @@ export const DAILY_FIND_CHANCE = 0.6;
 export const FERTILIZER_PRICE = 6; // zl per bag, ordered on the phone, delivered to the chest
 
 // The well: a plan is sketched at the workbench, then the farmer builds it on site.
-export const WELL_BUILD = { price: 250, energy: 30, seconds: 6 };
+export const WELL_BUILD = { price: 150, wood: 6, stone: 12, energy: 30, seconds: 6 };
 
 // Irrigation: every sprinkler waters the plots within this radius (in tiles), each morning.
 // Levels 1–10 cover 4, 8, 12, 20, 24, 28, 36, 44, 48 and 56 plots.
@@ -89,10 +89,54 @@ export const CROPS = [
   { id: 'pumpkin', name: 'Bundeva', days: 7, yield: 9, price: 1.6, pack: 2.5, unlock: 220 },
 ];
 
+// Other things sold at the stand: what grows in the woods, and eggs (price per unit at ★★).
+export const GOODS = [
+  { id: 'mushroom', name: 'Gljive', price: 6, unit: 'kg' },
+  { id: 'blackberry', name: 'Kupine', price: 5, unit: 'kg' },
+  { id: 'egg', name: 'Jaja', price: 0.4, unit: 'kom' },
+];
+
+// The woods: a few of these appear along the forest edge every morning.
+export const FORAGE = [
+  { id: 'mushroom', name: 'gljive', item: 'crop:mushroom:2', n: [1, 1], weight: 2 },
+  { id: 'blackberry', name: 'kupine', item: 'crop:blackberry:2', n: [1, 2], weight: 2 },
+  { id: 'branches', name: 'grane', item: 'wood', n: [2, 3], weight: 3 },
+  { id: 'rocks', name: 'kamenje', item: 'stone', n: [2, 3], weight: 3 },
+];
+export const FORAGE_START = 8;
+export const FORAGE_DAILY = [3, 5];
+export const FORAGE_MAX = 14;
+
+// The old chicken coop by the house: repaired at the workbench, then hens lay one egg
+// each morning if there is food (1 kg of produce feeds one hen for a day).
+export const COOP = { hens: 3, moreHens: 3, maxHens: 9, eggCap: 30, feedCap: 60 };
+
+// Side gigs on the phone: the farmer works from home on the laptop (game hours).
+export const GIGS = [
+  { title: 'Susjedi Mari ne radi WiFi', pay: [4, 7], hours: 1 },
+  { title: 'Instaliraj printer u općini', pay: [5, 8], hours: 1 },
+  { title: 'Backup fotografija s krstitki', pay: [5, 9], hours: 1 },
+  { title: 'Excel tablica za lovačko društvo', pay: [8, 12], hours: 2 },
+  { title: 'Bug u aplikaciji za apartmane', pay: [10, 16], hours: 3 },
+  { title: 'Migracija servera za vinariju', pay: [14, 22], hours: 3 },
+  { title: 'Web stranica za OPG Horvat', pay: [15, 25], hours: 4 },
+  { title: 'Webshop za domaći med', pay: [18, 28], hours: 4 },
+];
+export const GIG_OFFERS = [1, 3]; // new offers each morning
+export const GIG_ENERGY_PER_HOUR = 6;
+
 export const RECIPES = [
   {
     id: 'compost', name: 'Gnojivo (kompost)', gives: 'fertilizer', price: 0, bad: 2,
     desc: '2 kg loših (★) plodova → 1 gnojivo.',
+  },
+  {
+    id: 'coop', name: 'Popravak kokošinjca', once: 'coop', price: 25, mats: { wood: 10, stone: 4 },
+    desc: 'Popravi stari kokošinjac kod kuće: 3 kokoši nesu jaja svako jutro ako imaju hrane.',
+  },
+  {
+    id: 'hens', name: 'Još kokoši', price: 15, requires: 'coop',
+    desc: `+${COOP.moreHens} kokoši (najviše ${COOP.maxHens}).`,
   },
   {
     id: 'wellPlan', name: 'Plan bunara', once: 'wellPlan', price: 0,

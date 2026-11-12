@@ -26,6 +26,9 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
   - **Otkrivanjem:** u ladici u kući, a na imanju rastu stara rotkvica, divlja mrkva i divlji krumpir. Svako jutro nešto novo može niknuti samo od sebe.
   - **Iz plodova** na radnom stolu: neprodani plod daje 2–10 sjemenki, nasumično. Tako jedan usjev donosi puno novih.
   - **Dostavom:** naručiš na mobitelu („Dostava“), paket od 5 sjemenki stiže sutra ujutro. Katalog se širi kako zarađuješ. Ondje se naručuje i gnojivo (6 zl po vreći), koje stiže u škrinju.
+- **Šuma:** uz rub šume svako jutro nikne nekoliko stvari: gljive i kupine (prodaju se na štandu ili jedu), grane (drva) i kamenje. Drva i kamenje su materijal za radni stol.
+- **Kokošinjac:** stari kokošinjac kod kuće popravi se na radnom stolu (25 zl, 10 drva, 4 kamena). Kokoši (3, kasnije do 9) šeću oko njega i svako jutro snesu jaje ako je u hranilici bilo hrane: 1 kg ploda po kokoši, idealno loši (★) plodovi. Hrani se klikom na plod u torbi dok je kokošinjac otvoren, a jaja se skupe klikom na kokošinjac i prodaju na štandu (40 sr po komadu).
+- **Honorarci (mobitel → Poslovi):** svako jutro stigne 1–3 ponude poput „Susjedi Mari ne radi WiFi“ ili „Web stranica za OPG Horvat“. Prihvaćeni posao farmer radi kod kuće za laptopom (1–4 sata u igri, troši energiju) i odmah je plaćen (4–28 zl). Ako ga pozoveš van, napredak ostaje.
 - **Usjevi rastu po danima, ne po sekundama.** Svako jutro biljka naraste jedan dan ako je dan prije bila zalivena, a pola dana ako nije. Zemlja ostaje vlažna cijeli dan i presuši preko noći, pa je **dovoljno zaliti jednom dnevno**. Ostatak dana tab može mirno stajati sa strane. Rast se vidi ujutro.
 - **Kvaliteta: ★ loše, ★★ dobro, ★★★ odlično, ★★★★ zlatno.** Ovisi o tri stvari:
   - koliko je dana rasta biljka bila zalivena
@@ -50,7 +53,7 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
 - **Štand uz cestu:** stavi plodove na štand. Kupci dolaze cestom od 08 do 19 h i uvijek uzmu najbolje što vide. Kupuju 1–4 kg odjednom. **Cijena ovisi o kvaliteti:** ★ pola cijene, ★★ tržišna cijena, ★★★ +30 %, zlatno +60 %. Loše (★) plodove kupuju samo kad na štandu nema boljih. Mogu se i pojesti za energiju, pretvoriti u gnojivo ili u sjeme.
 - **Kuća:** spavanje (od 18 h) završava dan, vraća svu energiju i **sprema igru**. Ranije se ne može, inače bi se spavanjem preskakali dani rasta. Kava (1 zl 50 sr) daje +35 energije. Tko ostane budan do 02 h, zaspi na nogama i budi se s pola energije.
 - **Energija:** svaki posao troši energiju (sadnja 2, zalijevanje, gnojenje i berba po 1). Hodanje je besplatno.
-- **Voda:** na početku samo **ribnjak** puni kantu (12 zalijevanja, s velikom kantom 30). **Bunara nema:** kod kuće je gradilište. Na radnom stolu se skicira plan, a onda farmer ode na gradilište i zida (nekoliko sekundi, 250 zl i 30 energije; plaća se tek kad je gotovo, a ako farmer ode, zidanje stane). Kad je sazidan, voda je blizu polja i postaje izvor za **navodnjavanje**: prskalice se mogu izraditi tek kad bunar postoji.
+- **Voda:** na početku samo **ribnjak** puni kantu (12 zalijevanja, s velikom kantom 30). **Bunara nema:** kod kuće je gradilište. Na radnom stolu se skicira plan, a onda farmer ode na gradilište i zida (nekoliko sekundi, 150 zl, 12 kamena, 6 drva i 30 energije; plaća se tek kad je gotovo, a ako farmer ode, zidanje stane). Kad je sazidan, voda je blizu polja i postaje izvor za **navodnjavanje**: prskalice se mogu izraditi tek kad bunar postoji.
 - **Škrinja** (24 mjesta) za višak. Torba ima samo 8 mjesta.
 - **Radni stol (izumi):**
 
@@ -58,6 +61,8 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
   | --- | --- |
   | Sjeme iz plodova | 1 plod → 2–10 sjemenki |
   | Gnojivo (kompost) | od 2 kg loših plodova (kupovno gnojivo se naručuje na mobitelu) |
+  | Popravak kokošinjca (25 zl, 10 drva, 4 kamena) | kokoši nesu jaja |
+  | Još kokoši (15 zl) | +3 kokoši, najviše 9 |
   | Plan bunara | skica; bunar zida farmer na gradilištu |
   | Prskalica · `water.sh` (35 zl) | traži bunar; postavi se na parcelu i svako jutro u 6 h zalije parcele oko sebe |
   | Navodnjavanje v1–v10 (25–450 zl) | 10 razina za sve prskalice: 4, 8, 12, 20, 24, 28, 36, 44, 48 pa 56 parcela po prskalici |

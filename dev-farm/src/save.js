@@ -1,7 +1,7 @@
 // Turning state into a string and back. Anything unexpected falls back to safe values.
 
-import { createState, cropById, parseItem, isSellable, TOOLS, canSize } from './sim.js';
-import { SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, IRRIGATION_RADII } from './data.js';
+import { createState, cropById, parseItem, isSellable, TOOLS, canSize, forageById } from './sim.js';
+import { SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, IRRIGATION_RADII, COOP, FORAGE_MAX, GIGS } from './data.js';
 import { W, H, isWalkable, isPlotTile } from './world.js';
 
 
@@ -69,6 +69,29 @@ export function deserialize(raw) {
       .map((o) => (o.item ? { item: o.item, n: int(o.n, 1, 999, 1) } : { crop: o.crop, n: int(o.n, 1, 999, 5) }));
   }
   s.irrigation = int(d.irrigation, 1, IRRIGATION_RADII.length, 1);
+
+  // the woods: keep the saved spots (older saves keep the fresh ones)
+  if (Array.isArray(d.forage)) {
+    s.forage = d.forage.slice(0, FORAGE_MAX).filter((f) => f && forageById[f.type] && isWalkable(f.x, f.y))
+      .map((f) => ({ x: f.x, y: f.y, type: f.type }));
+  }
+  if (d.coop && typeof d.coop === 'object') {
+    s.coop.built = d.coop.built === true;
+    s.coop.hens = s.coop.built ? int(d.coop.hens, 0, COOP.maxHens, COOP.hens) : 0;
+    s.coop.feed = int(d.coop.feed, 0, COOP.feedCap, 0);
+    s.coop.eggs = int(d.coop.eggs, 0, COOP.eggCap, 0);
+  }
+  const titles = new Set(GIGS.map((g) => g.title));
+  const gig = (g) => (g && titles.has(g.title) ? {
+    id: int(g.id, 1, big, 1), title: g.title, hours: int(g.hours, 1, 8, 1),
+    pay: int(g.pay, 0, 1e6, 0), energy: int(g.energy, 0, MAX_ENERGY, 0),
+  } : null);
+  if (d.gigs && typeof d.gigs === 'object') {
+    s.gigs.offers = Array.isArray(d.gigs.offers) ? d.gigs.offers.slice(0, 5).map(gig).filter(Boolean) : [];
+    const a = gig(d.gigs.active);
+    s.gigs.active = a ? { ...a, left: num(d.gigs.active.left, 0, a.hours * 60, a.hours * 30) } : null;
+    s.gigs.done = int(d.gigs.done, 0, big, 0);
+  }
   if (fromV2) {
     s.upgrades.well = true;
     s.upgrades.wellPlan = true;

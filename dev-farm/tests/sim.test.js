@@ -5,7 +5,7 @@ import {
   createState, command, plotAction, objectAction, advance, tick, sleep, craft, moveItem, eat,
   coffee, addItem, qualityScore, tierOf, cropItem, makePlot, isSellable, ripeCount, extractSeeds,
   orderSeeds, packPrice, salePrice, startJob, sprinklerReach, upgradeIrrigation, orderFertilizer,
-  daysLeft,
+  daysLeft, matCount, forageAt, feedHens, acceptGig, goWork,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -14,7 +14,7 @@ import {
 import { findPath } from '../src/path.js';
 import {
   BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZES, CROPS, START_FINDS, HOUSE_SEEDS,
-  RECIPES, zl, ROT_DAY,
+  RECIPES, zl, ROT_DAY, FORAGE_START, FORAGE_MAX,
 } from '../src/data.js';
 
 const [AX, AY] = xy(PLOTS_A[0]);
@@ -264,10 +264,14 @@ test('watering uses the can; the pond refills it, the well only once it is built
   assert.equal(craft(s, 'sprinkler').reason, 'requires', 'irrigation needs the well');
   assert.ok(craft(s, 'wellPlan').ok);
   assert.ok(!s.upgrades.well, 'the workbench only sketches the plan');
+  assert.ok(walkTo(s, 15, 6).events.some((e) => e.reason === 'nomats'), 'stone and wood are needed');
+  addItem(s.bag, 'wood', 6);
+  addItem(s.bag, 'stone', 12);
   assert.ok(walkTo(s, 15, 6).events.some((e) => e.type === 'buildstart'));
   assert.ok(advance(s, 7).some((e) => e.type === 'built'));
   assert.ok(s.upgrades.well);
-  assert.equal(s.money, zl(250));
+  assert.equal(s.money, zl(350));
+  assert.equal(matCount(s, 'stone') + matCount(s, 'wood'), 0, 'materials used up');
   walkTo(s, 15, 6);
   assert.equal(s.water, CAN_SIZES[0]);
   assert.ok(craft(s, 'sprinkler').ok);
@@ -277,6 +281,8 @@ test('walking away stops the building, nothing is paid', () => {
   const s = createState();
   s.money = zl(500);
   craft(s, 'wellPlan');
+  addItem(s.bag, 'wood', 6);
+  addItem(s.bag, 'stone', 12);
   walkTo(s, 15, 6);
   advance(s, 2);
   const events = [];
@@ -481,6 +487,85 @@ test('fertilize all uses the bags in the bag and stops when they run out', () =>
   assert.equal(startJob(s, 'fertilize').reason, 'nofert');
 });
 
+test('the woods: things to pick along the forest edge, new ones every morning', () => {
+  const s = createState();
+  assert.equal(s.forage.length, FORAGE_START);
+  const spot = s.forage.find((f) => f.type === 'rocks') ?? s.forage[0];
+  const { events } = walkTo(s, spot.x, spot.y);
+  const picked = events.find((e) => e.type === 'foraged');
+  assert.ok(picked, 'picked something');
+  assert.equal(forageAt(s, spot.x, spot.y), -1);
+  assert.ok(s.bag.some((it) => it?.id === picked.item && it.n === picked.n));
+  const before = s.forage.length;
+  nextDay(s);
+  assert.ok(s.forage.length > before, 'more grew overnight');
+  assert.ok(s.forage.length <= FORAGE_MAX);
+});
+
+test('forage food sells at the stand; wood and stone do not', () => {
+  assert.ok(isSellable(cropItem('mushroom', 2)));
+  assert.equal(salePrice('mushroom', 2), 600);
+  assert.equal(salePrice('egg', 2), 40);
+  assert.ok(!isSellable('wood'));
+  const s = createState();
+  addItem(s.bag, cropItem('mushroom', 2), 1);
+  assert.equal(extractSeeds(s, 0).reason, 'notfruit', 'no seeds from mushrooms');
+});
+
+test('the coop: repaired with materials, hens lay eggs when fed', () => {
+  const s = createState();
+  assert.equal(walkTo(s, 12, 3).events.find((e) => e.type === 'fail').reason, 'coopbroken');
+  s.money = zl(100);
+  assert.equal(craft(s, 'coop').reason, 'nomats');
+  addItem(s.bag, 'wood', 10);
+  addItem(s.bag, 'stone', 4);
+  assert.ok(craft(s, 'coop').ok);
+  assert.equal(s.coop.hens, 3);
+  assert.equal(s.money, zl(75));
+
+  nextDay(s);
+  assert.equal(s.coop.eggs, 0, 'no food, no eggs');
+  addItem(s.bag, cropItem('radish', 1), 2);
+  const slot = s.bag.findIndex((it) => it?.id === cropItem('radish', 1));
+  assert.ok(feedHens(s, slot).ok);
+  assert.equal(s.coop.feed, 2);
+  const events = nextDay(s);
+  assert.equal(s.coop.eggs, 2, 'only two hens had food');
+  assert.ok(events.some((e) => e.type === 'laid' && e.hungry === 1));
+
+  const ev = walkTo(s, 12, 3).events;
+  assert.ok(ev.some((e) => e.type === 'eggs' && e.n === 2));
+  assert.ok(s.bag.some((it) => it?.id === cropItem('egg', 2) && it.n === 2));
+  assert.ok(craft(s, 'hens').ok);
+  assert.equal(s.coop.hens, 6);
+});
+
+test('side gigs: offered each morning, worked at home, paid when done', () => {
+  const s = createState();
+  nextDay(s);
+  assert.ok(s.gigs.offers.length >= 1 && s.gigs.offers.length <= 3);
+  const g = s.gigs.offers[0];
+  const events = [];
+  assert.ok(acceptGig(s, g.id, events).ok);
+  assert.equal(acceptGig(s, s.gigs.offers[0]?.id ?? -1).reason, s.gigs.offers.length ? 'gigbusy' : 'gigbusy');
+  for (let i = 0; i < 600 && !s.farmer.busy; i++) tick(s, 0.1, events);
+  assert.equal(s.farmer.busy.what, 'gig', 'working at home');
+
+  // stepping away keeps the progress
+  advance(s, 10);
+  const left = s.gigs.active.left;
+  command(s, 8, 12, 'auto', events);
+  assert.ok(events.some((e) => e.type === 'gigpause'));
+  assert.ok(s.gigs.active.left <= left + 1e-9);
+
+  const money = s.money;
+  goWork(s, events);
+  for (let i = 0; i < 4000 && s.gigs.active; i++) tick(s, 0.1, events);
+  assert.equal(s.gigs.active, null);
+  assert.equal(s.money, money + g.pay);
+  assert.ok(events.some((e) => e.type === 'gigdone'));
+});
+
 test('the stand is by the road', () => {
   assert.ok(OBJECTS.stand.access.every(([x]) => x >= 38), 'next to the road on the east side');
   const fromRoad = findPath(SPAWNS[0], [CUSTOMER_SPOT], isWalkable);
@@ -577,6 +662,10 @@ test('all art generates: correct sizes, nothing empty', async () => {
     for (const stage of ['sprout', 'young', 'ripe', 'rotten']) check(A.crop(c.id, stage), 24, 28, `${c.id} ${stage}`);
     check(A.icon(c.id), 16, 16, `icon ${c.id}`);
   }
-  for (const i of ['fertilizer', 'sprinkler', 'hand', 'seeds', 'can', 'phone', 'gold', 'silver']) check(A.icon(i), 16, 16, i);
+  for (const i of ['fertilizer', 'sprinkler', 'hand', 'seeds', 'can', 'phone', 'gold', 'silver', 'egg', 'mushroom', 'blackberry', 'wood', 'stone']) check(A.icon(i), 16, 16, i);
+  check(A.coop(true), 72, 72, 'broken coop');
+  check(A.coop(false), 72, 72, 'coop');
+  for (const f of ['mushroom', 'blackberry', 'branches', 'rocks']) check(A.forageSprite(f), 24, 24, f);
+  check(A.hen(true, 1), 14, 12, 'hen');
   assert.deepEqual(A.roundTree(5).d, A.roundTree(5).d, 'art is deterministic');
 });
