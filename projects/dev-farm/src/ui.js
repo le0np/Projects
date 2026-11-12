@@ -8,7 +8,7 @@ import {
   plotUnlocked, sprinklerAt, qualityScore, tierOf, ripeCount, shopOpen,
 } from './sim.js';
 import { idx, objectAt, isPlotTile, OBJECTS } from './world.js';
-import { spriteUrl } from './sprites.js';
+import { iconUrl } from './render.js';
 
 const numberFormat = new Intl.NumberFormat('hr-HR');
 export const formatCoins = (n) => numberFormat.format(Math.floor(n));
@@ -29,7 +29,7 @@ export function itemName(id) {
 
 const itemIcon = (id) => {
   const p = parseItem(id);
-  return spriteUrl(p.kind === 'crop' ? p.crop : p.kind);
+  return iconUrl(p.kind === 'crop' ? p.crop : p.kind);
 };
 
 const el = (tag, cls, text) => {
@@ -90,15 +90,15 @@ export function createUI(cb) {
 
   // hotbar
   const tools = [
-    { id: 'hand', key: '1', icon: '✋', name: 'Ruke' },
-    { id: 'seed', key: '2', icon: '🌱', name: 'Sjeme' },
-    { id: 'can', key: '3', icon: '🪣', name: 'Kanta' },
-    { id: 'fert', key: '4', icon: '🧪', name: 'Gnojivo' },
+    { id: 'hand', key: '1', icon: 'hand', name: 'Ruke' },
+    { id: 'seed', key: '2', icon: 'seeds', name: 'Sjeme' },
+    { id: 'can', key: '3', icon: 'can', name: 'Kanta' },
+    { id: 'fert', key: '4', icon: 'fertilizer', name: 'Gnojivo' },
   ];
   const toolEls = new Map();
   for (const t of tools) {
     const b = button('', () => cb.onTool(t.id), { cls: 'tool' });
-    b.innerHTML = `<kbd>${t.key}</kbd><span class="tool-icon">${t.icon}</span><span class="tool-name">${t.name}</span><span class="tool-sub"></span>`;
+    b.innerHTML = `<kbd>${t.key}</kbd><img class="tool-icon" src="${iconUrl(t.icon)}" alt=""><span class="tool-name">${t.name}</span><span class="tool-sub"></span>`;
     els.hotbar.append(b);
     toolEls.set(t.id, { b, sub: b.querySelector('.tool-sub') });
   }
@@ -108,7 +108,7 @@ export function createUI(cb) {
   for (const c of CROPS) {
     const b = button('', () => cb.onSeed(c.id), { cls: 'seed' });
     const img = new Image();
-    img.src = spriteUrl(c.id);
+    img.src = iconUrl(c.id);
     img.alt = '';
     b.append(img, el('span', 'seed-name', c.name), el('span', 'seed-cost', `${c.seed} 🪙`));
     els.seeds.append(b);

@@ -2,7 +2,7 @@
 
 2D farma za browser za ITjevce koji sanjaju o selu. Vodiš farmera po imanju klikovima miša: sadiš, zalijevaš, gnojiš i bereš, a kvalitetnu robu prodaješ na štandu ispred kuće. Navečer ideš spavati, čime se igra sprema. Kako farma raste, developer u tebi gradi izume koji preuzimaju dio posla: prskalice, dron, skripte.
 
-**Status:** 🚧 u izradi (v2 igriva)
+**Status:** 🚧 u izradi (v3 igriva)
 
 ## Pokretanje
 
@@ -52,7 +52,15 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
 - **Sva pravila su u `src/sim.js`** kao čiste funkcije nad jednim objektom stanja, bez DOM-a: kretanje, rast, kvaliteta, kupci, dron, spavanje. Zato se testiraju izravno iz Nodea (`node --test`), a browser samo crta i prosljeđuje klikove.
 - **Mapa (48×32 polja) se gradi u kodu** (`src/world.js`) od pravokutnika i deterministički raspoređenog drveća. Svaki put ista, a lako se mijenja.
 - **Traženje puta:** Dijkstra po mreži. Farmer ide najkraćim putem, a kupci preferiraju cestu i stazu i ne gaze po poljima.
-- **Pixel art je nacrtan u kodu** (`src/sprites.js`, jedan znak = jedan piksel). Kuća i štand se crtaju pravokutnicima. Statični dio svijeta iscrta se jednom u pozadinski canvas, a svaki frame se crtaju samo parcele, likovi i efekti.
+- **Pixel art se generira u kodu, piksel po piksel** (`src/pixel.js` + `src/art.js`), bez ijedne slike. Polje je 32×32 piksela, likovi 24×32, kuća 208×192. Za izgled se brinu:
+  - sjenčanje kao da svjetlo pada odozgo lijevo, pa svaki oblik ima volumen
+  - ditherani prijelazi između tonova
+  - obrisi u tamnijoj nijansi susjedne boje umjesto crne linije
+  - noise za travu, zemlju, koru i crijep
+
+  Teren (organski rubovi staza, obala ribnjaka, trska, cvijeće) iscrta se jednom u veliki pozadinski canvas. Drveće, zgrade, ograde i likovi crtaju se po dubini, pa farmer može stati iza drveta.
+- **Atmosfera:** dim iz dimnjaka, svjetlucanje vode, prskanje prskalice, a noću zaseban sloj svjetla: prozori i lampioni bacaju toplu svjetlost, uz krijesnice.
+- Grafika se skalira samo cijelim brojevima piksela (ovisno o ekranu), pa pikseli ostaju oštri.
 - **Vrijeme:** 1 sekunda = 2 minute u igri, pa dan od 06 do 02 h traje 10 minuta. Noć je tamni sloj preko mape, a prozori kuće svijetle.
 - **Spremanje:** `localStorage`. Spavanje sprema „službeno“, uz to se tiho sprema svakih 30 s i pri zatvaranju taba. Učitani podaci se provjeravaju polje po polje, a pokvaren ili stari zapis znači novu farmu umjesto rušenja.
 - Žanr je inspiriran igrama poput Graveyard Keepera (farmer, poslovi, kuća, prodaja), ali grafika, likovi i svijet su originalni.
@@ -72,7 +80,8 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
 │   ├── path.js       # traženje puta (Dijkstra)
 │   ├── sim.js        # pravila igre (čista logika)
 │   ├── save.js       # spremanje i provjera učitanog
-│   ├── sprites.js    # pixel art
+│   ├── pixel.js      # alat za pixel art: oblici, svjetlo, dithering, obrisi
+│   ├── art.js        # sva grafika: teren, zgrade, likovi, usjevi, ikone
 │   ├── render.js     # kamera, svijet, likovi, noć, efekti
 │   ├── ui.js         # HUD, alati, torba, paneli, terminal
 │   └── main.js       # petlja, klikovi, tipke, poruke

@@ -264,10 +264,26 @@ test('save round trip, and broken saves fall back safely', () => {
   assert.ok(CROPS.length === 5 && WATER_DURATION > 0);
 });
 
-test('every sprite is a clean rectangle of known colours', async () => {
-  const { SPRITES, PALETTE } = await import('../src/sprites.js');
-  for (const [name, rows] of Object.entries(SPRITES)) {
-    assert.ok(rows.every((r) => r.length === rows[0].length), `${name}: uneven rows`);
-    for (const ch of rows.join('')) assert.ok(ch === '.' || PALETTE[ch], `${name}: unknown colour ${ch}`);
+test('all art generates: correct sizes, nothing empty', async () => {
+  const A = await import('../src/art.js');
+  const check = (p, w, h, name) => {
+    assert.equal(p.w, w, name);
+    assert.equal(p.h, h, name);
+    assert.ok(p.count() > 20, `${name} is empty`);
+  };
+  check(A.house(), 208, 192, 'house');
+  check(A.stand(), 72, 72, 'stand');
+  for (const dir of ['down', 'up', 'side']) {
+    for (const frame of [0, 1, 2, 3]) {
+      check(A.person({ dir, frame, farmer: true }), 24, 32, `farmer ${dir} ${frame}`);
+      check(A.person({ dir, frame, ...A.VILLAGERS[frame] }), 24, 32, `villager ${dir} ${frame}`);
+    }
   }
+  for (const c of CROPS) {
+    for (const stage of ['sprout', 'young', 'ripe', 'rotten']) check(A.crop(c.id, stage), 24, 28, `${c.id} ${stage}`);
+    check(A.icon(c.id), 16, 16, `icon ${c.id}`);
+  }
+  for (const i of ['fertilizer', 'sprinkler', 'hand', 'seeds', 'can']) check(A.icon(i), 16, 16, i);
+  // deterministic: same input, same pixels
+  assert.deepEqual(A.roundTree(5).d, A.roundTree(5).d);
 });
