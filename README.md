@@ -18,7 +18,7 @@ Statusi: 💡 ideja · 🚧 u izradi · ✅ gotovo · 🧊 pauzirano
 ├── README.md            # ovaj pregled i popis projekata
 ├── CLAUDE.md            # pravila kojih se Claude drži u ovom repou
 ├── IDEJE.md             # ideje koje čekaju na red
-├── _template/           # predložak README-a za novi projekt
+├── _template/           # predlošci README.md i PROGRESS.md za novi projekt
 ├── dev-farm/            # jedan projekt = jedna mapa
 └── pixel-runner/
 ```
