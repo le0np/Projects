@@ -9,7 +9,7 @@
 Treba samo [Node.js](https://nodejs.org) 20 ili noviji, bez instalacije paketa.
 
 ```bash
-cd projects/dev-farm
+cd dev-farm
 npm start          # server na http://localhost:8080
 npm test           # testovi pravila igre
 ```

@@ -7,7 +7,7 @@ Mala 2D "endless runner" igra u Pythonu i Pygameu. Trčiš, skačeš preko puže
 ## Pokretanje
 
 ```bash
-cd projects/pixel-runner
+cd pixel-runner
 pip install -r requirements.txt
 python main.py
 ```
