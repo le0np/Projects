@@ -110,6 +110,7 @@ function material(ch, field2) {
   if (ch === '~') return M_WATER;
   if (ch === 'P') return M_SOIL;
   if (ch === 'Q') return field2 ? M_SOIL : M_WILD;
+  if (ch === 'V') return M_ROAD; // the gravel parking lot by the road
   return M_GRASS;
 }
 
@@ -627,18 +628,26 @@ export function stand() {
   return p.outline(0.4);
 }
 
-export function chest() {
+// The chest; as a cold room (from the workbench) it is painted icy blue with frost on the lid.
+const ICE = ['#1f3a52', '#2c5878', '#3f7aa0', '#5e9cc0', '#8cc0dc', '#c3e2f2', '#eef8ff'];
+export function chest(cold = false) {
   const p = new Pix(32, 32);
+  const wood = cold ? ICE : RAMP.wood;
   for (let y = 14; y < 30; y++) {
     for (let x = 4; x < 28; x++) {
       const ry = (y - 14) % 5;
       let t = 0.62 - (x - 4) * 0.012 + (ry === 0 ? 0.18 : 0) - (ry === 4 ? 0.3 : 0) + (vnoise(x / 4, y, 2) - 0.5) * 0.15;
       if (y > 26) t -= 0.12;
-      p.set(x, y, pick(RAMP.wood, t, x, y));
+      p.set(x, y, pick(wood, t, x, y));
     }
   }
-  p.ellipse(16, 14, 12.5, 8, (nx, ny, x, y) => (y > 14 ? null : pick(RAMP.wood, 0.35 + sphere(nx * 0.6, ny) * 0.6, x, y)));
-  p.rect(4, 13, 24, 2, RAMP.wood[1]);
+  p.ellipse(16, 14, 12.5, 8, (nx, ny, x, y) => (y > 14 ? null : pick(wood, 0.35 + sphere(nx * 0.6, ny) * 0.6, x, y)));
+  p.rect(4, 13, 24, 2, wood[1]);
+  if (cold) {
+    // frost along the lid and a snowflake
+    for (let x = 6; x < 27; x++) if (hash01(x, 7, 5) < 0.6) p.set(x, 7 + Math.floor(hash01(x, 2, 9) * 2), '#f4fbff');
+    for (const [x, y] of [[12, 21], [12, 19], [12, 23], [10, 21], [14, 21], [11, 20], [13, 22], [11, 22], [13, 20]]) p.set(x, y, '#f4fbff');
+  }
   for (const bx of [8, 21]) {
     for (let y = 6; y < 30; y++) {
       for (let x = bx; x < bx + 3; x++) if (p.alpha(x, y)) p.set(x, y, pick(RAMP.metal, 0.75 - (x - bx) * 0.22, x, y));
@@ -871,7 +880,130 @@ const GLYPHS = {
   g: ['111', '101', '111', '001', '111'],
   i: ['010', '000', '010', '010', '010'],
   t: ['010', '111', '010', '010', '011'],
+  G: ['111', '100', '101', '101', '111'],
+  R: ['110', '101', '110', '101', '101'],
+  A: ['010', '101', '111', '101', '101'],
+  D: ['110', '101', '101', '101', '110'],
+  O: ['111', '101', '101', '101', '111'],
+  P: ['110', '101', '110', '100', '100'],
+  '^': ['010', '111', '010', '010', '010'],
 };
+
+function carve(p, text, x0, y0, color) {
+  let gx = x0;
+  for (const ch of text) {
+    GLYPHS[ch]?.forEach((row, y) => [...row].forEach((on, x) => { if (on === '1') p.set(gx + x, y0 + y, color); }));
+    gx += 4;
+  }
+}
+
+// The road sign at the parking lot: "^ GRAD", the way to town (32 × 40).
+export function townSign() {
+  const p = new Pix(32, 40);
+  p.rect(14, 14, 4, 25, (x, y) => pick(RAMP.metal, 0.75 - (x - 14) * 0.18, x, y));
+  p.rect(2, 4, 28, 12, (x, y) => (x === 2 || x === 29 || y === 4 || y === 15 ? '#e9ecef' : pick(['#1f5a33', '#256b3c', '#2d7a45'], 0.6 - (y - 4) * 0.03, x, y)));
+  carve(p, '^', 5, 7, '#f4f6f8');
+  carve(p, 'GRAD', 11, 7, '#f4f6f8');
+  return p.outline(0.42);
+}
+
+// The farm's used van (white, with "OPG" on the side): from the side facing right
+// (64 × 44), from behind (34 × 44, driving off to town) and from the front (coming back).
+const VAN = ['#4d5660', '#6f7a85', '#98a3ad', '#c4ccd3', '#e4e8ec', '#f7f9fa'];
+function wheel(p, cx, cy, r) {
+  p.ellipse(cx, cy, r, r, (nx, ny, x, y) => pick(['#121416', '#1d2023', '#2a2e33', '#3a3f45'], 0.2 + sphere(nx, ny) * 0.6, x, y));
+  p.ellipse(cx, cy, r * 0.45, r * 0.45, (nx, ny, x, y) => pick(RAMP.metal, 0.35 + sphere(nx, ny) * 0.6, x, y));
+}
+
+export function vanSide() {
+  const p = new Pix(64, 44);
+  for (let y = 4; y < 36; y++) {
+    for (let x = 2; x < 62; x++) {
+      // rounded roof corners, a sloped bonnet at the front (right)
+      if (y < 7 && (x < 5 - (y - 4) || x > 44 + (y - 4) * 2)) continue;
+      if (x > 47 && y < 16 && x - 47 > (y - 4) * 1.3 + 2) continue;
+      if (x > 59 && y < 20) continue;
+      let t = 0.78 - (y - 4) * 0.012 - (y > 30 ? 0.25 : 0);
+      if (y === 4 || (x > 47 && y < 16 && x - 47 > (y - 4) * 1.3)) t = 0.95;
+      p.set(x, y, pick(VAN, t, x, y));
+    }
+  }
+  // windows: the cab (sloped windscreen) and one in the back door
+  for (let y = 8; y < 17; y++) {
+    for (let x = 40; x < 59; x++) {
+      if (x - 47 > (y - 4) * 1.3 - 1) continue;
+      p.set(x, y, pick(RAMP.glass, 0.75 - (x - 40) * 0.02 - (y - 8) * 0.05 + ((x + y) % 9 === 0 ? 0.3 : 0), x, y));
+    }
+  }
+  p.rect(5, 8, 12, 8, (x, y) => pick(RAMP.glass, 0.6 - (y - 8) * 0.05 + ((x + y) % 7 === 0 ? 0.3 : 0), x, y));
+  // door seams, handle, a green stripe and "OPG"
+  p.rect(38, 7, 1, 25, VAN[1]);
+  p.rect(20, 7, 1, 25, VAN[2]);
+  p.rect(42, 19, 3, 1, VAN[0]);
+  p.rect(2, 22, 60, 3, (x, y) => pick(['#1f5a33', '#2d7a45', '#3c8f55'], y === 22 ? 0.9 : 0.4, x, y));
+  carve(p, 'OPG', 24, 13, '#2d7a45');
+  // lights and bumpers
+  p.rect(59, 21, 3, 3, '#fff3c4');
+  p.rect(2, 19, 2, 4, '#c8352b');
+  p.rect(1, 30, 6, 3, VAN[1]);
+  p.rect(57, 30, 6, 3, VAN[1]);
+  // wheel arches and wheels
+  for (const cx of [14, 49]) {
+    p.ellipse(cx, 35, 8, 7, (nx, ny, x, y) => (y < 29 ? null : '#1a1d20'));
+    wheel(p, cx, 36, 6);
+  }
+  return p.outline(0.4);
+}
+
+export function vanBack() {
+  const p = new Pix(34, 44);
+  wheel(p, 6, 37, 4.5);
+  wheel(p, 28, 37, 4.5);
+  for (let y = 3; y < 36; y++) {
+    for (let x = 2; x < 32; x++) {
+      if (y < 6 && (x < 5 - (y - 3) || x > 28 + (y - 3))) continue;
+      const t = 0.8 - (y - 3) * 0.01 - Math.abs(x - 17) * 0.008 - (y > 31 ? 0.3 : 0) + (y === 3 ? 0.15 : 0);
+      p.set(x, y, pick(VAN, t, x, y));
+    }
+  }
+  // two back doors with windows, a seam in the middle
+  for (const x0 of [4, 18]) p.rect(x0, 7, 12, 9, (x, y) => pick(RAMP.glass, 0.55 - (y - 7) * 0.04 + ((x + y) % 8 === 0 ? 0.3 : 0), x, y));
+  p.rect(17, 6, 1, 26, VAN[1]);
+  p.rect(14, 20, 2, 2, VAN[0]);
+  p.rect(19, 20, 2, 2, VAN[0]);
+  // tail lights, number plate, bumper
+  p.rect(2, 22, 3, 6, '#c8352b');
+  p.rect(29, 22, 3, 6, '#c8352b');
+  p.rect(12, 27, 11, 4, '#eef0f2');
+  p.rect(13, 28, 9, 1, '#2a3550');
+  p.rect(1, 32, 32, 3, (x, y) => pick(['#2a2e33', '#3a3f45', '#4d535a'], y === 32 ? 0.9 : 0.4, x, y));
+  return p.outline(0.4);
+}
+
+export function vanFront() {
+  const p = new Pix(34, 44);
+  wheel(p, 6, 37, 4.5);
+  wheel(p, 28, 37, 4.5);
+  for (let y = 3; y < 36; y++) {
+    for (let x = 2; x < 32; x++) {
+      if (y < 6 && (x < 5 - (y - 3) || x > 28 + (y - 3))) continue;
+      const t = 0.82 - (y - 3) * 0.01 - Math.abs(x - 17) * 0.008 - (y > 31 ? 0.3 : 0) + (y === 3 ? 0.15 : 0);
+      p.set(x, y, pick(VAN, t, x, y));
+    }
+  }
+  // wide windscreen with the driver, mirrors, headlights and the grille
+  p.rect(4, 6, 26, 11, (x, y) => pick(RAMP.glass, 0.7 - (y - 6) * 0.05 + ((x - y) % 9 === 0 ? 0.3 : 0), x, y));
+  p.ellipse(11, 13, 3, 3, (nx, ny, x, y) => (y > 15 ? null : pick(RAMP.skin, 0.4 + sphere(nx, ny) * 0.5, x, y)));
+  p.rect(8, 15, 7, 2, RAMP.shutter[2]);
+  p.rect(0, 9, 2, 4, VAN[1]);
+  p.rect(32, 9, 2, 4, VAN[1]);
+  p.rect(3, 22, 6, 4, '#fff3c4');
+  p.rect(25, 22, 6, 4, '#fff3c4');
+  p.rect(11, 22, 12, 5, (x, y) => ((y - 22) % 2 ? '#2a2e33' : '#5a6068'));
+  p.rect(12, 29, 10, 3, '#eef0f2');
+  p.rect(1, 32, 32, 3, (x, y) => pick(['#2a2e33', '#3a3f45', '#4d535a'], y === 32 ? 0.9 : 0.4, x, y));
+  return p.outline(0.4);
+}
 
 export function sign() {
   const p = new Pix(32, 40);
@@ -1269,15 +1401,8 @@ export function icon(name) {
       break;
     }
     case 'gold':
-    case 'silver': {
-      const ramp = name === 'gold' ? RAMP.gold : RAMP.metal;
-      p.ellipse(8, 8.5, 6.5, 6.5, (nx, ny, x, y) => pick(ramp, 0.2 + sphere(nx, ny) * 0.8, x, y));
-      p.ellipse(8, 8.5, 4.4, 4.4, (nx, ny, x, y) => pick(ramp, 0.65 - sphere(nx, ny) * 0.35, x, y));
-      for (const [x, y] of [[8, 6], [7, 7], [8, 7], [9, 7], [8, 8], [8, 9], [7, 10], [8, 10], [9, 10], [8, 11]]) p.set(x, y, ramp[1]);
-      p.set(5, 5, ramp[5]);
-      p.set(6, 4, ramp[5]);
-      break;
-    }
+    case 'silver':
+      return coin(name);
     case 'hose':
       for (const [r, t] of [[6, 0.75], [4.4, 0.55], [2.8, 0.4]]) {
         for (let a = 0; a < Math.PI * 2; a += 0.12) p.set(8 + Math.cos(a) * r, 8.5 + Math.sin(a) * r * 0.8, pick(RAMP.leaf, t - Math.sin(a) * 0.15, 0, 0));
@@ -1320,6 +1445,92 @@ export function icon(name) {
       p.rect(6, 6, 3, 1, '#9fe07a');
       p.rect(6, 8, 4, 1, '#f1ece0');
       break;
+    case 'carp':
+    case 'tench':
+    case 'pike': {
+      // a fish lying on its side: body, tail, fin and eye
+      const ramp = {
+        carp: ['#4a3410', '#6e4f18', '#94702a', '#b8913f', '#d6b260', '#ecd38e'],
+        tench: ['#1f2e14', '#2f4319', '#435a22', '#5b742e', '#78903f', '#9aad5c'],
+        pike: ['#1b3020', '#284530', '#365c3f', '#4a7650', '#679366', '#8fb385'],
+      }[name];
+      const long = name === 'pike';
+      const rx = long ? 6 : 5;
+      p.ellipse(7, 8.5, rx, long ? 2.6 : 3.4, (nx, ny, x, y) => pick(ramp, 0.2 + sphere(nx, ny) * 0.8 + (ny > 0.4 ? 0.15 : 0), x, y));
+      for (let y = 5; y <= 12; y++) {
+        const w = Math.abs(y - 8.5);
+        for (let x = 12 + Math.floor(w * 0.6); x <= 15 - Math.floor(w * 0.3) && w < 3.6; x++) p.set(x, y, pick(ramp, 0.45 - w * 0.06, x, y));
+      }
+      p.set(5, 5, ramp[2]); p.set(6, 5, ramp[1]); p.set(7, 4.5, ramp[1]);
+      if (name === 'pike') for (const [x, y] of [[5, 8], [8, 9], [10, 8], [7, 7]]) p.set(x, y, ramp[5]);
+      if (name === 'carp') for (const [x, y] of [[6, 8], [8, 8], [7, 10], [9, 10]]) p.set(x, y, ramp[2]);
+      p.set(long ? 2 : 3, 7.5, '#121212');
+      p.set(long ? 1 : 2, 9, ramp[0]);
+      break;
+    }
+    case 'rod':
+      // a bent rod with a reel and line
+      for (let t = 0; t <= 1; t += 0.04) p.set(2 + t * 12, 14 - t * 12 + Math.sin(t * Math.PI) * 1.2, pick(RAMP.wood, 0.75 - t * 0.3, 0, 0));
+      p.rect(4, 10, 3, 3, (x, y) => pick(RAMP.metal, 0.8 - (y - 10) * 0.2, x, y));
+      p.line(14, 2, 14, 11, '#dfe6ee');
+      p.rect(13, 11, 3, 2, '#d23a2c');
+      p.set(14, 13, '#f4f6f8');
+      break;
+    case 'mulch':
+      p.ellipse(8, 10, 6, 5, (nx, ny, x, y) => pick(RAMP.burlap, 0.25 + sphere(nx, ny) * 0.7, x, y));
+      for (const [x, y] of [[5, 5], [7, 4], [9, 5], [11, 4], [6, 6], [10, 6]]) p.set(x, y, ['#b98a4e', '#d4a866', '#9a6e3a'][x % 3]);
+      break;
+    case 'hive':
+      p.rect(3, 7, 10, 7, (x, y) => pick(RAMP.straw, 0.8 - (x - 3) * 0.04, x, y));
+      p.rect(3, 10, 10, 1, RAMP.straw[1]);
+      p.rect(2, 4, 12, 3, (x, y) => pick(RAMP.roof, 0.7 - (y - 4) * 0.1, x, y));
+      p.rect(6, 12, 4, 1, '#2a1a10');
+      p.set(13, 3, '#f2c14b'); p.set(14, 2, '#2a1a10');
+      break;
+    case 'honey':
+      p.rect(4, 5, 8, 10, (x, y) => pick(RAMP.gold, 0.75 - (x - 4) * 0.05 + (x === 5 ? 0.2 : 0), x, y));
+      p.rect(4, 3, 8, 2, (x, y) => pick(RAMP.burlap, 0.6, x, y));
+      p.rect(5, 8, 6, 3, '#f4f1e6');
+      break;
+    case 'deco:path':
+      for (const [x, y, r] of [[5, 5, 3.6], [11, 6, 3.2], [6, 11, 3.2], [11, 11, 3.6]]) p.ellipse(x, y, r, r * 0.8, (nx, ny, px, py) => pick(RAMP.stone, 0.35 + sphere(nx, ny) * 0.55, px, py));
+      break;
+    case 'deco:fence':
+      for (const x0 of [3, 11]) p.rect(x0, 3, 2, 12, (x, y) => pick(RAMP.wood, 0.7 - (x - x0) * 0.2, x, y));
+      for (const y0 of [5, 10]) p.rect(1, y0, 14, 2, (x, y) => pick(RAMP.wood, y === y0 ? 0.8 : 0.5, x, y));
+      break;
+    case 'deco:flowers':
+      p.ellipse(8, 12, 7, 3, RAMP.soil[2]);
+      for (const [x, y, c] of [[4, 7, '#f08cb0'], [8, 5, '#f2d14b'], [12, 7, '#c49af0'], [6, 10, '#f4f1e6'], [10, 10, '#e85b3e']]) flower(p, x, y, c);
+      break;
+    case 'deco:bench':
+      p.rect(1, 8, 14, 2, RAMP.wood[4]);
+      p.rect(1, 4, 14, 2, RAMP.wood[3]);
+      p.rect(2, 10, 2, 4, RAMP.wood[1]); p.rect(12, 10, 2, 4, RAMP.wood[1]);
+      p.rect(2, 4, 1, 6, RAMP.wood[2]); p.rect(13, 4, 1, 6, RAMP.wood[2]);
+      break;
+    case 'deco:gnome':
+      for (let y = 1; y < 6; y++) p.rect(8 - (y - 1) * 0.6, y, (y - 1) * 1.2 + 1, 1, RAMP.redShirt[3]);
+      p.rect(5, 6, 6, 2, RAMP.skin[3]);
+      p.ellipse(8, 10, 3, 2.5, '#eef1f4');
+      p.rect(5, 11, 6, 3, RAMP.denim[3]);
+      break;
+    case 'deco:lamp':
+      p.rect(7, 7, 2, 8, RAMP.metal[2]);
+      p.rect(5, 2, 6, 6, (x, y) => (x === 5 || x === 10 || y === 2 || y === 7 ? RAMP.metal[1] : RAMP.gold[4]));
+      break;
+    case 'bag': {
+      // a leather satchel with a flap and a strap
+      const leather = ['#3e2414', '#5a3520', '#76482b', '#925c38', '#ad7347', '#c58c5c'];
+      for (let a = Math.PI; a <= Math.PI * 2; a += 0.08) p.set(8 + Math.cos(a) * 5, 6 + Math.sin(a) * 4.5, leather[1]);
+      p.rect(2, 6, 12, 9, (x, y) => pick(leather, 0.72 - (y - 6) * 0.05 - (x - 2) * 0.02, x, y));
+      p.rect(2, 6, 12, 4, (x, y) => pick(leather, (y === 6 ? 0.95 : 0.8) - (x - 2) * 0.02, x, y));
+      p.rect(2, 10, 12, 1, leather[0]);
+      p.rect(7, 9, 2, 3, RAMP.gold[4]);
+      p.set(7, 11, RAMP.gold[2]);
+      p.rect(2, 14, 12, 1, leather[1]);
+      break;
+    }
     case 'drop':
       for (let y = 2; y < 15; y++) {
         const w = y < 8 ? (y - 2) * 0.75 : Math.sqrt(Math.max(0, 25 - (y - 9.5) ** 2));
@@ -1331,6 +1542,190 @@ export function icon(name) {
       return icon('potato');
   }
   return p.outline(0.4);
+}
+
+// ------------------------------------------------------------------ coins
+
+// The gold coin (zlatnik) carries the sun, the silver one (srebrenjak) a crescent moon, both with
+// a reeded rim, so they differ in shape too, not only in colour. Picked from five sketches (v19).
+const COIN_RAMP = {
+  gold: ['#4a2c08', '#7a4e10', '#a8741c', '#d29e2e', '#f0c64a', '#fde58a', '#fffbe0'],
+  silver: ['#2b313c', '#4b5463', '#737e90', '#9ca6b6', '#c3cbd7', '#e4e9f0', '#ffffff'],
+};
+
+// Coins are drawn pixel by pixel from row widths (clean circles, no dithering).
+// rows(widths, top): the pixels of a shape centred in the 16 px icon, one width per row.
+const rows = (widths, top, cx = 8) => widths.flatMap((w, i) => Array.from({ length: w }, (_, k) => [cx - w / 2 + k, top + i]));
+const key = ([x, y]) => `${x},${y}`;
+// pixel maps for emblems: '#' = raised pixel
+const map = (lines, x0, y0) => lines.flatMap((row, y) => [...row].flatMap((ch, x) => (ch === '#' ? [[x0 + x, y0 + y]] : [])));
+const EMBLEMS = {
+  sun: ['...#...', '.#...#.', '..###..', '#.###.#', '..###..', '.#...#.', '...#...'],
+  moon: ['..###', '.###.', '###..', '###..', '###..', '.###.', '..###'],
+};
+
+// light from the top left: 0..1 for a pixel at (x, y) of a shape centred on (cx, cy)
+const lit = (x, y, cx = 7.5, cy = 7.5, size = 7) => Math.max(0, Math.min(1, 0.5 - ((x - cx) + (y - cy)) / (size * 2.4)));
+const step = (r, t) => r[Math.max(0, Math.min(r.length - 1, Math.round(t * (r.length - 1))))];
+
+// a round coin with a rim, a recessed face and a raised emblem
+function roundCoin(p, r, emblem, { reeded = false } = {}) {
+  const body = rows([6, 10, 12, 12, 14, 14, 14, 14, 14, 14, 12, 12, 10, 6], 1);
+  const face = new Set(rows([4, 8, 10, 10, 10, 10, 10, 10, 8, 4], 3).map(key));
+  for (const [x, y] of body) {
+    if (face.has(key([x, y]))) continue;
+    let t = 0.2 + lit(x, y) * 0.8;
+    if (reeded && (x + y) % 2) t -= 0.17;
+    p.set(x, y, step(r, t));
+  }
+  for (const k of face) {
+    const [x, y] = k.split(',').map(Number);
+    // recessed: the top left edge of the face is in shadow, the bottom right edge catches light
+    const tl = !face.has(key([x - 1, y])) || !face.has(key([x, y - 1]));
+    const br = !face.has(key([x + 1, y])) || !face.has(key([x, y + 1]));
+    p.set(x, y, tl ? r[2] : br ? r[5] : r[4]);
+  }
+  const raised = new Set(emblem.map(key));
+  for (const [x, y] of emblem) if (!raised.has(key([x + 1, y + 1])) && face.has(key([x + 1, y + 1]))) p.set(x + 1, y + 1, r[2]);
+  for (const [x, y] of emblem) p.set(x, y, r[6]);
+}
+
+export function coin(kind) {
+  const r = COIN_RAMP[kind];
+  const p = new Pix(16, 16);
+  roundCoin(p, r, kind === 'gold' ? map(EMBLEMS.sun, 4, 4) : map(EMBLEMS.moon, 5, 4), { reeded: true });
+  return p.outline(0.4);
+}
+
+// a tiny coin (9 × 9) for the "+money" that floats above the stand
+export function coinMini(kind) {
+  const r = COIN_RAMP[kind];
+  const p = new Pix(9, 9);
+  for (const [x, y] of rows([3, 5, 7, 7, 7, 5, 3], 1, 4.5)) p.set(x, y, step(r, 0.25 + lit(x, y, 4, 4, 3.5) * 0.75));
+  for (const [x, y] of rows([3, 3, 3], 3, 4.5)) p.set(x, y, r[3]);
+  p.set(3, 3, r[6]);
+  return p.outline(0.4);
+}
+
+// ------------------------------------------------------------------ mulch, bees, decorations, pets
+
+// wood chips spread on a plot
+export function mulchOverlay() {
+  const p = new Pix(32, 32);
+  const r = rng(77);
+  const chips = ['#b98a4e', '#9a6e3a', '#d4a866', '#7d5630'];
+  // a ring of chips around the plant, denser towards the edges of the plot
+  for (let k = 0; k < 120; k++) {
+    const x = 1 + Math.floor(r() * 29);
+    const y = 2 + Math.floor(r() * 28);
+    if (Math.abs(x - 15.5) < 6 && Math.abs(y - 15) < 7 && r() < 0.8) continue;
+    const c = chips[k % chips.length];
+    p.set(x, y, c);
+    p.set(x + 1, y, c);
+    if (k % 3 === 0) p.set(x, y + 1, chips[(k + 1) % chips.length]);
+  }
+  return p;
+}
+
+// a wooden beehive: two boxes, a little roof and the entrance (28 × 34)
+export function hive() {
+  const p = new Pix(28, 34);
+  p.rect(5, 28, 18, 4, (x, y) => pick(RAMP.wood, 0.35 - (y - 28) * 0.05, x, y)); // stand
+  for (const [y0, h] of [[16, 12], [6, 10]]) {
+    p.rect(3, y0, 22, h, (x, y) => pick(RAMP.straw, 0.82 - (x - 3) * 0.025 - (y - y0) * 0.02 + (y === y0 ? 0.1 : 0), x, y));
+    p.rect(3, y0 + h - 1, 22, 1, RAMP.straw[1]);
+  }
+  for (let y = 1; y < 7; y++) p.rect(1 + (6 - y) * 0.2, y, 26 - (6 - y) * 0.4, 1, pick(RAMP.roof, 0.75 - y * 0.06, 0, y));
+  p.rect(10, 25, 8, 2, '#2a1a10'); // entrance
+  return p.outline(0.4);
+}
+
+// flagstones set in the grass (drawn on the ground, not outlined)
+export function pathStone(v = 0) {
+  const p = new Pix(32, 32);
+  const r = rng(300 + v);
+  const stones = [[2, 2, 14, 12], [17, 3, 13, 11], [3, 16, 11, 13], [15, 15, 15, 14]];
+  for (const [x0, y0, w, h] of stones) {
+    const dx = Math.floor(r() * 2);
+    const dy = Math.floor(r() * 2);
+    p.ellipse(x0 + dx + w / 2, y0 + dy + h / 2 + 0.5, w / 2, h / 2, '#4d4a42');
+    p.ellipse(x0 + dx + w / 2, y0 + dy + h / 2, w / 2 - 0.6, h / 2 - 0.6, (nx, ny, x, y) => pick(RAMP.stone, 0.45 + sphere(nx, ny) * 0.35 + (vnoise(x / 3, y / 3, v) - 0.5) * 0.2, x, y));
+  }
+  return p;
+}
+
+export function flowerBed() {
+  const p = new Pix(32, 26);
+  p.ellipse(16, 18, 14, 7, (nx, ny, x, y) => pick(RAMP.soil, 0.45 + sphere(nx, ny) * 0.3, x, y));
+  const r = rng(41);
+  const colors = ['#f08cb0', '#f2d14b', '#f4f1e6', '#c49af0', '#e85b3e'];
+  for (let k = 0; k < 14; k++) {
+    const x = 5 + Math.floor(r() * 22);
+    const y = 9 + Math.floor(r() * 11);
+    p.line(x, y + 1, x, y + 4, RAMP.leaf[3]);
+    flower(p, x, y, colors[k % colors.length], '#f2c14b');
+  }
+  return p.outline(0.42);
+}
+
+export function bench() {
+  const p = new Pix(32, 26);
+  for (const x0 of [5, 24]) p.rect(x0, 15, 3, 10, (x, y) => pick(RAMP.wood, 0.45 - (x - x0) * 0.1, x, y));
+  p.rect(2, 13, 28, 4, (x, y) => pick(RAMP.wood, (y === 13 ? 0.85 : 0.6) - (y - 13) * 0.06, x, y));
+  for (const y0 of [3, 8]) p.rect(3, y0, 26, 3, (x, y) => pick(RAMP.wood, (y === y0 ? 0.8 : 0.55) + (vnoise(x / 5, y, 4) - 0.5) * 0.15, x, y));
+  for (const x0 of [6, 25]) p.rect(x0, 3, 2, 11, RAMP.wood[2]);
+  return p.outline(0.42);
+}
+
+export function gnome() {
+  const p = new Pix(16, 26);
+  for (let y = 1; y < 11; y++) p.rect(8 - (y - 1) * 0.45, y, (y - 1) * 0.9 + 1, 1, pick(RAMP.redShirt, 0.8 - y * 0.03, 0, y)); // hat
+  p.rect(4, 10, 8, 4, (x, y) => pick(RAMP.skin, 0.7 - (x - 4) * 0.04, x, y)); // face
+  p.set(6, 11, '#2a1a10'); p.set(9, 11, '#2a1a10');
+  p.ellipse(8, 16, 4.5, 4, (nx, ny, x, y) => pick(['#d8dde3', '#eef1f4', '#ffffff'], 0.4 + sphere(nx, ny) * 0.6, x, y)); // beard
+  p.rect(3, 18, 10, 6, (x, y) => pick(RAMP.denim, 0.6 - (x - 3) * 0.04, x, y));
+  p.rect(3, 24, 4, 2, RAMP.boot[1]); p.rect(9, 24, 4, 2, RAMP.boot[1]);
+  return p.outline(0.42);
+}
+
+export function lamp() {
+  const p = new Pix(14, 40);
+  p.rect(6, 12, 2, 26, (x, y) => pick(RAMP.metal, x === 6 ? 0.6 : 0.3, x, y));
+  p.rect(3, 37, 8, 2, RAMP.metal[1]);
+  p.rect(3, 3, 8, 9, (x, y) => (x === 3 || x === 10 || y === 3 || y === 11 ? RAMP.metal[1] : pick(RAMP.gold, 0.75, x, y)));
+  p.rect(2, 1, 10, 2, RAMP.metal[2]);
+  return p.outline(0.42);
+}
+
+// The pet: a dog or a cat seen from the side, facing right (mirrored for left). frame 0–1
+// walks, frame 2 sits. 22 × 18.
+export function pet(kind, frame = 0) {
+  const p = new Pix(22, 18);
+  const dog = kind === 'dog';
+  const fur = dog ? ['#4a2e1a', '#6e4526', '#93613a', '#b7834f', '#d4a46c'] : ['#3a3a40', '#55555d', '#75757e', '#9a9aa3', '#c4c4cc'];
+  const sit = frame === 2;
+  // body
+  if (sit) p.ellipse(9, 11, 5, 5, (nx, ny, x, y) => pick(fur, 0.35 + sphere(nx, ny) * 0.6, x, y));
+  else p.ellipse(10, 11, 7, 3.6, (nx, ny, x, y) => pick(fur, 0.35 + sphere(nx, ny) * 0.6, x, y));
+  // legs
+  const legs = sit ? [[6, 14], [11, 14]] : frame ? [[5, 13], [8, 14], [12, 13], [15, 14]] : [[6, 14], [9, 13], [13, 14], [15, 13]];
+  for (const [x, y] of legs) p.rect(x, y, 2, 17 - y, fur[1]);
+  // head
+  const hx = sit ? 14 : 17;
+  const hy = sit ? 5 : 7;
+  p.ellipse(hx, hy, dog ? 3.6 : 3.2, 3.2, (nx, ny, x, y) => pick(fur, 0.4 + sphere(nx, ny) * 0.55, x, y));
+  if (dog) {
+    p.rect(hx + 2, hy, 3, 2, fur[3]); p.set(hx + 4, hy, '#1a1210'); // snout and nose
+    p.rect(hx - 2, hy - 3, 2, 4, fur[0]); // floppy ear
+  } else {
+    p.set(hx - 2, hy - 4, fur[1]); p.set(hx - 2, hy - 3, fur[2]); p.set(hx + 1, hy - 4, fur[1]); p.set(hx + 1, hy - 3, fur[2]); // pointy ears
+    p.set(hx + 3, hy + 1, '#e6a0a8');
+  }
+  p.set(hx + 1, hy - 1, '#121010'); // eye
+  // tail
+  if (dog) p.line(sit ? 4 : 3, sit ? 13 : 9, sit ? 1 : 0, sit ? 10 : 5 + frame, fur[2]);
+  else p.line(sit ? 4 : 3, sit ? 14 : 10, sit ? 1 : 1, sit ? 8 : 4, fur[2]);
+  return p.outline(0.42);
 }
 
 // small drop shown on thirsty plots (7 × 9)

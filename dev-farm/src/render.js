@@ -1,17 +1,11 @@
 // Draws the world with a camera that follows the farmer.
 // Art comes from art.js (generated once and cached as canvases); game state from sim.js.
 
-import { W, H, MAP, HOUSE, STAND, COOP_AREA, xy } from './world.js';
-import { plotUnlocked, parseItem, sprinklerReach, sprinklerAt } from './sim.js';
+import { W, H, MAP, HOUSE, STAND, COOP_AREA, LOT, POND_CENTER, HOUSE_DOOR, xy } from './world.js';
+import { MARKET, GAME_MIN_PER_SEC, DECOR } from './data.js';
+import { plotUnlocked, parseItem, sprinklerReach, sprinklerAt, placeProblem, decorAt } from './sim.js';
 import { Pix, hash01, withAlpha } from './pixel.js';
 import * as A from './art.js';
-
-// srebrenjaci → "3 zl 50 sr" (1 zlatnik = 100 srebrenjaka)
-const formatMoney = (sr) => {
-  const g = Math.floor(sr / 100);
-  const s = Math.round(sr % 100);
-  return g ? (s ? `${g} zl ${s} sr` : `${g} zl`) : `${s} sr`;
-};
 
 const TS = A.TS;
 
@@ -49,7 +43,7 @@ const shadowSprite = (w) => art(`shadow:${w}`, () => {
 
 // ------------------------------------------------------------------ static props (y-sorted with people)
 
-function buildProps(field2, hasWell, coopBuilt, hasPump) {
+function buildProps(field2, hasWell, coopBuilt, hasPump, cold) {
   const list = [];
   const at = (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? MAP[y][x] : '');
   for (let ty = 0; ty < H; ty++) {
@@ -72,13 +66,14 @@ function buildProps(field2, hasWell, coopBuilt, hasPump) {
   const S = A.HOUSE_SPRITE;
   list.push({ img: art('house', A.house), x: S.x, y: S.y, base: (HOUSE.y + HOUSE.h) * TS - 1 });
   list.push({ img: art('stand', A.stand), x: A.STAND_SPRITE.x, y: A.STAND_SPRITE.y, base: (STAND.y + STAND.h) * TS - 1, stand: true });
-  list.push({ img: art('chest', A.chest), x: 11 * TS, y: 8 * TS, base: 8 * TS + 30 });
+  list.push({ img: cold ? art('chestCold', () => A.chest(true)) : art('chest', A.chest), x: 11 * TS, y: 8 * TS, base: 8 * TS + 30 });
   list.push(hasWell
     ? { img: art('well', A.well), x: 15 * TS - 4, y: 6 * TS - 20, base: 6 * TS + 30 }
     : { img: art('wellSite', A.wellSite), x: 15 * TS - 4, y: 6 * TS - 20, base: 6 * TS + 30 });
   if (hasPump) list.push({ img: art('pumpProp', A.pumpProp), x: 16 * TS + 2, y: 6 * TS + 8, base: 6 * TS + 28 });
   list.push({ img: art('workbench', A.workbench), x: 3 * TS - 6, y: 8 * TS - 8, base: 8 * TS + 30 });
   if (!field2) list.push({ img: art('sign', A.sign), x: 21 * TS, y: 13 * TS - 8, base: 13 * TS + 30 });
+  list.push({ img: art('townSign', A.townSign), x: LOT.x * TS - 12, y: LOT.y * TS - 30, base: LOT.y * TS + 8 });
   list.push({
     img: art(`coop${coopBuilt ? 1 : 0}`, () => A.coop(!coopBuilt)),
     x: COOP_AREA.x * TS + A.COOP_SPRITE.dx, y: COOP_AREA.y * TS + A.COOP_SPRITE.dy, base: (COOP_AREA.y + COOP_AREA.h) * TS - 1,
@@ -103,7 +98,7 @@ const LIGHTS = [
   { x: A.STAND_SPRITE.x + A.STAND_LANTERN.x, y: A.STAND_SPRITE.y + A.STAND_LANTERN.y, r: 58 },
 ];
 
-const TIER_COLORS = ['', '#c9c2b6', '#f1ece0', '#a8ec7e', '#ffd84a'];
+const TIER_COLORS = ['', '#c9c2b6', '#f1ece0', '#a8ec7e', '#ffd84a', '#d9a8ff'];
 
 // ------------------------------------------------------------------ renderer
 
@@ -135,7 +130,8 @@ export function createRenderer(canvas) {
   function resize() {
     const box = canvas.parentElement.getBoundingClientRect();
     cssW = Math.max(200, Math.floor(box.width));
-    cssH = Math.max(260, Math.min(680, Math.floor(window.innerHeight - 230)));
+    // the map takes the whole width; below it only the tools and one line of text
+    cssH = Math.max(300, Math.min(960, Math.floor(window.innerHeight - 170)));
     dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
     zoom = closestZoom(userZoom ?? Math.max(32, Math.min(64, cssW / 16)) / TS);
     canvas.style.width = `${cssW}px`;
@@ -175,8 +171,10 @@ export function createRenderer(canvas) {
     const viewW = cssW / view;
     const viewH = cssH / view;
     const clamp = (c, v, size) => (v >= size ? size / 2 : Math.min(size - v / 2, Math.max(v / 2, c)));
-    const tx = clamp(s.farmer.x * TS + TS / 2, viewW, W * TS);
-    const ty = clamp(s.farmer.y * TS + TS / 2, viewH, H * TS);
+    // while the farmer is in town the camera waits at the parking lot
+    const away = s.market.trips.farmer;
+    const tx = clamp(away ? (LOT.x + 1) * TS : s.farmer.x * TS + TS / 2, viewW, W * TS);
+    const ty = clamp(away ? (LOT.y + 1) * TS : s.farmer.y * TS + TS / 2, viewH, H * TS);
     if (!cam.ready) {
       cam.cx = tx;
       cam.cy = ty;
@@ -208,6 +206,7 @@ export function createRenderer(canvas) {
     const wet = growing && p.wet;
     const v = (x * 7 + y * 3) % 3;
     img(art(`soil${wet ? 1 : 0}${v}`, () => A.soil(wet, v)), px, py);
+    if (p.mulch) img(art('mulch', A.mulchOverlay), px, py);
     if (p.fert) img(art('fert', A.fertOverlay), px, py);
     if (!p.crop) return;
     const stage = p.rotten ? 'rotten' : p.progress >= 1 ? 'ripe' : p.progress < 0.34 ? 'sprout' : 'young';
@@ -243,7 +242,7 @@ export function createRenderer(canvas) {
   }
 
   function drawPerson(e, now, kind, look) {
-    const moving = e.path?.length > 0 || Boolean(e.busy);
+    const moving = e.path?.length > 0 || (Boolean(e.busy) && e.busy.what !== 'fish');
     const frame = moving ? Math.floor(now / 120) % 4 : 0;
     const pic = personImage(kind, look, e.dir, frame);
     const px = Math.round(e.x * TS + 4);
@@ -263,23 +262,27 @@ export function createRenderer(canvas) {
     const float = (x, y, text, color) => fx.floats.push({ x: x * TS + 16, y: y * TS, text, color, t0: now });
     for (const e of events) {
       if (e.type === 'harvest') float(e.x, e.y, `${'★'.repeat(e.tier)} ${e.kg} kg`, TIER_COLORS[e.tier]);
-      else if (e.type === 'sale') float(STAND.x + 1, STAND.y, `+${formatMoney(e.money)}`, '#ffe066');
+      else if (e.type === 'sale') fx.floats.push({ x: (STAND.x + 1) * TS + 16, y: STAND.y * TS, money: e.money, t0: now });
       else if (e.type === 'water') fx.splashes.push({ x: e.x, y: e.y, t0: now });
       else if (e.type === 'sprinkle') {
         fx.sprays.push({ x: e.x, y: e.y, t0: now });
         for (const [x, y] of e.tiles) fx.splashes.push({ x, y, t0: now + 250 });
       } else if (e.type === 'eat' || e.type === 'coffee') float(s.farmer.x, s.farmer.y - 0.6, `+${e.gain}⚡`, '#a8ec7e');
       else if (e.type === 'refill') float(s.farmer.x, s.farmer.y - 0.6, `💧${e.water}`, '#a9dcff');
+      else if (e.type === 'caught') {
+        fx.catchAt = now;
+        float(s.farmer.x, s.farmer.y - 0.6, `🐟 ${'★'.repeat(e.tier)} ${e.kg} kg`, TIER_COLORS[e.tier]);
+      }
     }
   }
 
   function draw(s, now, opts = {}) {
     const dt = fx.last ? Math.min(0.1, (now - fx.last) / 1000) : 0;
     fx.last = now;
-    const key = `${s.upgrades.field2}|${s.upgrades.well}|${s.coop.built}|${s.upgrades.pump}`;
+    const key = `${s.upgrades.field2}|${s.upgrades.well}|${s.coop.built}|${s.upgrades.pump}|${s.upgrades.coldroom}`;
     if (builtFor !== key) {
       if (!ground || !builtFor || builtFor.split('|')[0] !== String(s.upgrades.field2)) ground = toCanvas(A.terrain(s.upgrades.field2));
-      props = buildProps(s.upgrades.field2, s.upgrades.well, s.coop.built, s.upgrades.pump);
+      props = buildProps(s.upgrades.field2, s.upgrades.well, s.coop.built, s.upgrades.pump, s.upgrades.coldroom);
       builtFor = key;
     }
     updateCamera(s, dt);
@@ -295,6 +298,8 @@ export function createRenderer(canvas) {
     ctx.setTransform(u, 0, 0, u, -cx * u, -cy * u);
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(ground, 0, 0);
+    // flagstone paths lie on the ground, under everything else
+    for (const d of s.decor) if (d.kind === 'path') img(art(`pathStone${(d.x + d.y) % 3}`, () => A.pathStone((d.x + d.y) % 3)), d.x * TS, d.y * TS);
 
     // plots and sprinklers
     const x0 = Math.max(0, Math.floor(cx / TS) - 1);
@@ -317,12 +322,12 @@ export function createRenderer(canvas) {
 
     // which plots a sprinkler reaches (hovering one, or choosing where to put one)
     const c = fx.corner;
-    if (c && (opts.placing || (c.near && sprinklerAt(s, c.x, c.y) >= 0))) {
+    if (c && (opts.placing === true || (c.near && sprinklerAt(s, c.x, c.y) >= 0))) {
       ctx.fillStyle = 'rgba(90,175,255,.22)';
       for (const [x, y] of sprinklerReach(s.irrigation, c.x, c.y)) {
         if (s.plots[y * W + x] && plotUnlocked(s, y * W + x)) ctx.fillRect(x * TS + 1, y * TS + 1, TS - 2, TS - 2);
       }
-      if (opts.placing) {
+      if (opts.placing === true) {
         ctx.globalAlpha = 0.6;
         img(art('sprinkler0', () => A.sprinkler(0)), c.x * TS - 16, c.y * TS - 26);
         ctx.globalAlpha = 1;
@@ -350,7 +355,8 @@ export function createRenderer(canvas) {
     }
 
     // shadows under people and the drone
-    const inside = s.farmer.busy?.what === 'gig'; // working on the laptop in the house
+    // working on the laptop in the house, or away in town
+    const inside = s.farmer.busy?.what === 'gig' || Boolean(s.market.trips.farmer);
     const people = [
       ...(inside ? [] : [{ e: s.farmer, kind: 'farmer', look: 0 }]),
       ...s.customers.map((c) => ({ e: c, kind: 'villager', look: c.look })),
@@ -363,6 +369,11 @@ export function createRenderer(canvas) {
     const items = props.filter(inView).map((p) => ({ base: p.base, p }));
     for (const person of people) items.push({ base: person.e.y * TS + 29, person });
     for (const h of hens(s, now)) items.push({ base: h.y + 11, hen: h });
+    for (const p of placedProps(s)) items.push({ base: p.base, p });
+    const petPose = updatePet(s, dt, inside);
+    if (petPose) items.push({ base: petPose.y * TS + 29, pet: petPose });
+    const van = vanPose(s);
+    if (van) items.push({ base: van.base, p: van });
     items.sort((a, b) => a.base - b.base);
     for (const it of items) {
       if (it.p) {
@@ -379,6 +390,8 @@ export function createRenderer(canvas) {
           ctx.drawImage(pic, 0, 0);
           ctx.restore();
         } else img(pic, h.x, h.y);
+      } else if (it.pet) {
+        drawPet(s, it.pet, now);
       } else {
         drawPerson(it.person.e, now, it.person.kind, it.person.look);
       }
@@ -396,7 +409,8 @@ export function createRenderer(canvas) {
       }
     }
 
-    if (s.farmer.busy) {
+    if (s.farmer.busy?.what === 'fish') drawFishing(s, now);
+    else if (s.farmer.busy) {
       const b = s.farmer.busy;
       const fxp = Math.round(s.farmer.x * TS + 2);
       const fyp = Math.round(s.farmer.y * TS - 16);
@@ -413,9 +427,219 @@ export function createRenderer(canvas) {
       }
     }
 
+    drawBees(s, now);
+    drawPlacing(s, opts, now);
     drawEffects(s, now, dt, cx, cy, viewW, viewH);
+    if (s.weather === 'rain') drawRain(now, cx, cy, viewW, viewH);
     drawMarkers(s, now);
     drawNight(s, now, cx, cy, u);
+  }
+
+  // Fishing: the rod held out over the water, the line and a bobber that dips when a fish bites.
+  function drawFishing(s, now) {
+    const f = s.farmer;
+    // everything points towards the middle of the pond
+    const cx = POND_CENTER[0] * TS;
+    const cy = POND_CENTER[1] * TS;
+    const fx0 = f.x * TS + 16;
+    const fy0 = f.y * TS + 16;
+    const dist = Math.hypot(cx - fx0, cy - fy0) || 1;
+    const dx = (cx - fx0) / dist;
+    const dy = (cy - fy0) / dist;
+    const hx = fx0 + dx * 6;
+    const hy = fy0 - 2 + dy * 2;
+    const tipX = hx + dx * 18;
+    const tipY = hy - 16 + dy * 6;
+    // the bobber lands well inside the water, about 1.7 tiles from the middle; it dips when a fish is caught
+    const pulling = now - (fx.catchAt ?? -1e9) < 900;
+    const bob = pulling ? 2 + Math.round(Math.sin(now / 60)) : Math.round(Math.sin(now / 420));
+    const bx = Math.round(cx - dx * 56);
+    const by = Math.round(cy - dy * 56) + bob;
+    // line: a gentle sag from the rod tip to the bobber
+    ctx.fillStyle = 'rgba(235,240,245,.75)';
+    for (let k = 0; k <= 24; k++) {
+      const t = k / 24;
+      const x = tipX + (bx - tipX) * t;
+      const y = tipY + (by - tipY) * t + Math.sin(t * Math.PI) * 6;
+      ctx.fillRect(Math.round(x), Math.round(y), 1, 1);
+    }
+    // the rod
+    ctx.fillStyle = '#6b4429';
+    for (let k = 0; k <= 12; k++) {
+      const t = k / 12;
+      ctx.fillRect(Math.round(hx + (tipX - hx) * t), Math.round(hy + (tipY - hy) * t), 2, 2);
+    }
+    // slow ripples while waiting, a splash when a fish is caught
+    const rings = pulling ? 2 : 1;
+    for (let k = 0; k < rings; k++) {
+      const t = ((now / (pulling ? 350 : 1400)) + k / rings) % 1;
+      ctx.strokeStyle = `rgba(220,240,255,${0.6 * (1 - t)})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(bx + 1.5, by + 3, 3 + t * 9, 1.5 + t * 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#d23a2c';
+    ctx.fillRect(bx, by, 3, pulling ? 1 : 2);
+    if (!pulling) {
+      ctx.fillStyle = '#f4f6f8';
+      ctx.fillRect(bx, by + 2, 3, 1);
+    } else {
+      ctx.fillStyle = 'rgba(200,232,250,.9)';
+      for (const [sx, sy] of [[-3, -2], [5, -3], [-1, -4], [3, -5]]) ctx.fillRect(bx + sx, by + sy - Math.round((now - fx.catchAt) / 150), 1, 1);
+    }
+  }
+
+  // Hives and decorations the player put down (paths are drawn with the ground).
+  function placedProps(s) {
+    const out = [];
+    for (const h of s.hives) {
+      out.push({ img: art('hive', A.hive), x: h.x * TS + 2, y: h.y * TS - 6, base: h.y * TS + 28 });
+      if (h.honey) out.push({ img: art('icon:honey', () => A.icon('honey')), x: h.x * TS + 20, y: h.y * TS - 14, base: h.y * TS + 29 });
+    }
+    const fenceAt = (x, y) => decorAt(s, x, y) >= 0 && s.decor[decorAt(s, x, y)].kind === 'fence';
+    for (const d of s.decor) {
+      const x = d.x * TS;
+      const y = d.y * TS;
+      if (d.kind === 'fence') {
+        const mask = (fenceAt(d.x - 1, d.y) ? 1 : 0) | (fenceAt(d.x + 1, d.y) ? 2 : 0) | (fenceAt(d.x, d.y - 1) ? 4 : 0) | (fenceAt(d.x, d.y + 1) ? 8 : 0);
+        out.push({ img: art(`fence${mask}`, () => A.fence(mask)), x, y: y - 8, base: y + 30 });
+      } else if (d.kind === 'flowers') out.push({ img: art('flowerBed', A.flowerBed), x, y: y + 4, base: y + 26 });
+      else if (d.kind === 'bench') out.push({ img: art('bench', A.bench), x, y: y + 4, base: y + 28 });
+      else if (d.kind === 'gnome') out.push({ img: art('gnome', A.gnome), x: x + 8, y: y + 4, base: y + 28 });
+      else if (d.kind === 'lamp') out.push({ img: art('lamp', A.lamp), x: x + 9, y: y - 12, base: y + 28 });
+    }
+    return out;
+  }
+
+  // a few bees buzzing around every hive
+  function drawBees(s, now) {
+    ctx.fillStyle = '#f2c14b';
+    for (const h of s.hives) {
+      for (let k = 0; k < 4; k++) {
+        const t = now / (700 + k * 130) + k * 1.7 + h.x;
+        const bx = h.x * TS + 16 + Math.cos(t) * (10 + k * 3);
+        const by = h.y * TS + 2 + Math.sin(t * 1.6) * (6 + k);
+        ctx.fillRect(Math.round(bx), Math.round(by), 2, 1);
+        ctx.fillStyle = '#2a1a10';
+        ctx.fillRect(Math.round(bx) + 1, Math.round(by), 1, 1);
+        ctx.fillStyle = '#f2c14b';
+      }
+    }
+  }
+
+  // choosing where to put a hive or a decoration: a see-through preview, red where it can't go
+  function drawPlacing(s, opts, now) {
+    const id = opts.placing;
+    if (!id || id === true || !fx.hover) return;
+    const [tx, ty] = fx.hover;
+    if (id === 'remove') {
+      const has = s.hives.some((h) => h.x === tx && h.y === ty) || decorAt(s, tx, ty) >= 0;
+      corners(tx * TS + 1, ty * TS + 1, TS - 2, TS - 2, 8, has ? 'rgba(255,120,110,.95)' : 'rgba(255,255,255,.4)');
+      return;
+    }
+    const ok = !placeProblem(s, tx, ty, id);
+    ctx.fillStyle = ok ? 'rgba(120,220,120,.25)' : 'rgba(240,90,80,.3)';
+    ctx.fillRect(tx * TS, ty * TS, TS, TS);
+    const p = parseItem(id);
+    ctx.globalAlpha = 0.55 + Math.sin(now / 200) * 0.1;
+    const pic = p.kind === 'hive' ? art('hive', A.hive) : art(`icon:${id}`, () => A.icon(id));
+    img(pic, tx * TS + (TS - pic.width) / 2, ty * TS + TS - pic.height);
+    ctx.globalAlpha = 1;
+  }
+
+  // Rain: a cool tint and streaks falling across the view
+  function drawRain(now, cx, cy, viewW, viewH) {
+    ctx.fillStyle = 'rgba(40,60,90,.16)';
+    ctx.fillRect(cx, cy, viewW, viewH);
+    ctx.strokeStyle = 'rgba(190,215,240,.45)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let k = 0; k < 140; k++) {
+      const sx = hash01(k, 1, 7) * (viewW + 40);
+      const speed = 0.35 + hash01(k, 2, 7) * 0.2;
+      const sy = ((hash01(k, 3, 7) * (viewH + 40) + now * speed) % (viewH + 40)) - 20;
+      const x = cx + ((sx - sy * 0.25) % (viewW + 40) + viewW + 40) % (viewW + 40) - 20;
+      const y = cy + sy;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - 2, y + 7);
+    }
+    ctx.stroke();
+  }
+
+  // The pet follows the farmer a step behind, sits when he stops, waits by the door when he is away.
+  const petState = { x: null, y: null, left: false, idle: 0 };
+  function updatePet(s, dt, farmerAway) {
+    if (!s.pet) return null;
+    const f = s.farmer;
+    const back = { up: [0, 0.9], down: [0, -0.9], left: [0.9, 0], right: [-0.9, 0] }[f.dir] ?? [0, 0];
+    const [tx, ty] = farmerAway ? [HOUSE_DOOR[0] + 1, HOUSE_DOOR[1]] : [f.x + back[0], f.y + back[1]];
+    if (petState.x === null) { petState.x = tx; petState.y = ty; }
+    const dx = tx - petState.x;
+    const dy = ty - petState.y;
+    const d = Math.hypot(dx, dy);
+    let moving = false;
+    if (d > 0.25) {
+      const speed = d > 3 ? 9 : 5.5;
+      const step = Math.min(d, speed * dt);
+      petState.x += (dx / d) * step;
+      petState.y += (dy / d) * step;
+      if (Math.abs(dx) > 0.05) petState.left = dx < 0;
+      moving = true;
+      petState.idle = 0;
+    } else petState.idle += dt;
+    return { x: petState.x, y: petState.y, left: petState.left, moving, sitting: petState.idle > 0.5 };
+  }
+
+  function drawPet(s, pose, now) {
+    const frame = pose.moving ? Math.floor(now / 140) % 2 : pose.sitting ? 2 : 0;
+    const pic = art(`pet:${s.pet.kind}:${frame}`, () => A.pet(s.pet.kind, frame));
+    const px = Math.round(pose.x * TS + 5);
+    const py = Math.round(pose.y * TS + 12);
+    img(shadowSprite(16), px + 3, py + 13);
+    if (pose.left) {
+      ctx.save();
+      ctx.translate(px + pic.width, py);
+      ctx.scale(-1, 1);
+      ctx.drawImage(pic, 0, 0);
+      ctx.restore();
+    } else img(pic, px, py);
+  }
+
+  // The van parks on the lot facing the road. Leaving for town it pulls out onto the
+  // road and drives off north; coming back it comes down the road and backs into the lot.
+  function vanPose(s) {
+    if (!s.market.van) return null;
+    const t = s.market.trips.van;
+    const travel = MARKET.travel / GAME_MIN_PER_SEC;
+    const park = (LOT.x + 1) * TS;
+    const ground = (LOT.y + LOT.h) * TS - 4;
+    const north = 44 * TS + 16; // northbound lane
+    const south = 43 * TS + 16;
+    const ease = (u) => u * u * (3 - 2 * u);
+    let view = 'side';
+    let cx = park;
+    let bottom = ground;
+    if (t?.phase === 'sell') return null;
+    if (t?.phase === 'go') {
+      const e = travel - t.left;
+      if (e < 1.2) cx = park + (north - park) * ease(e / 1.2);
+      else if (e < 4.5) {
+        view = 'back';
+        cx = north;
+        bottom = ground - (ground + 50) * ((e - 1.2) / 3.3) ** 1.4;
+      } else return null;
+    } else if (t?.phase === 'back') {
+      const r = t.left;
+      if (r < 1.2) cx = south + (park - south) * ease(1 - r / 1.2);
+      else if (r < 4.5) {
+        view = 'front';
+        cx = south;
+        bottom = -50 + (ground + 50) * ease(1 - (r - 1.2) / 3.3);
+      } else return null;
+    }
+    const pic = art(`van:${view}`, { side: A.vanSide, back: A.vanBack, front: A.vanFront }[view]);
+    return { img: pic, x: Math.round(cx - pic.width / 2), y: Math.round(bottom - pic.height), base: bottom };
   }
 
   // Hens wander around in front of the coop: each picks a new spot every few seconds.
@@ -510,12 +734,42 @@ export function createRenderer(canvas) {
       const t = (now - f.t0) / 1300;
       ctx.globalAlpha = 1 - t * t;
       const y = Math.round(f.y - t * 16);
+      if (f.money !== undefined) {
+        drawMoney(f.money, f.x, y);
+        continue;
+      }
       ctx.strokeStyle = '#1a140f';
       ctx.strokeText(f.text, f.x, y);
       ctx.fillStyle = f.color;
       ctx.fillText(f.text, f.x, y);
     }
     ctx.globalAlpha = 1;
+    ctx.textAlign = 'center';
+  }
+
+  // "+3 (gold coin) 50 (silver coin)", centred on x, text baseline at y
+  function drawMoney(sr, x, y) {
+    const g = Math.floor(sr / 100);
+    const sv = Math.round(sr % 100);
+    const parts = [{ text: '+' }];
+    if (g) parts.push({ text: String(g) }, { coin: 'gold' });
+    if (sv || !g) parts.push({ text: String(sv) }, { coin: 'silver' });
+    const coinW = 10;
+    const width = parts.reduce((a, p) => a + (p.coin ? coinW + 1 : ctx.measureText(p.text).width), 0);
+    let cx = Math.round(x - width / 2);
+    ctx.textAlign = 'left';
+    for (const p of parts) {
+      if (p.coin) {
+        img(art(`coinMini:${p.coin}`, () => A.coinMini(p.coin)), cx, y - 9);
+        cx += coinW + 1;
+      } else {
+        ctx.strokeStyle = '#1a140f';
+        ctx.strokeText(p.text, cx, y);
+        ctx.fillStyle = '#ffe066';
+        ctx.fillText(p.text, cx, y);
+        cx += ctx.measureText(p.text).width;
+      }
+    }
   }
 
   function corners(x, y, w, h, len, color) {
@@ -556,6 +810,7 @@ export function createRenderer(canvas) {
     }
     ctx.fillRect(A.HOUSE_SPRITE.x + 138, A.HOUSE_SPRITE.y + 140, 3, 6);
     ctx.fillRect(A.STAND_SPRITE.x + 63, A.STAND_SPRITE.y + 17, 3, 5);
+    for (const d of s.decor) if (d.kind === 'lamp') ctx.fillRect(d.x * TS + 13, d.y * TS - 10, 6, 7);
     ctx.globalAlpha = 1;
 
     // darkness with holes around the lights
@@ -566,7 +821,8 @@ export function createRenderer(canvas) {
     lctx.fillRect(0, 0, light.width, light.height);
     lctx.globalCompositeOperation = 'destination-out';
     const toScreen = (wx, wy) => [(wx - cx) * u, (wy - cy) * u];
-    for (const l of LIGHTS) {
+    const lights = [...LIGHTS, ...s.decor.filter((d) => d.kind === 'lamp').map((d) => ({ x: d.x * TS + 16, y: d.y * TS - 2, r: 56 }))];
+    for (const l of lights) {
       const [sx, sy] = toScreen(l.x, l.y);
       const rad = l.r * u;
       const grad = lctx.createRadialGradient(sx, sy, 0, sx, sy, rad);
@@ -581,7 +837,7 @@ export function createRenderer(canvas) {
 
     // warm glow and fireflies
     ctx.globalCompositeOperation = 'lighter';
-    for (const l of LIGHTS) {
+    for (const l of lights) {
       const [sx, sy] = toScreen(l.x, l.y);
       const rad = l.r * 0.7 * u;
       const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, rad);
@@ -614,6 +870,14 @@ export function createRenderer(canvas) {
     resize,
     notify,
     tileFromClient,
+    // is the click on the pet? (it is drawn where the renderer keeps it, not in the game state)
+    petHit(clientX, clientY) {
+      if (petState.x === null) return false;
+      const r = canvas.getBoundingClientRect();
+      const wx = (clientX - r.left) / view + cam.x;
+      const wy = (clientY - r.top) / view + cam.y;
+      return Math.abs(wx - (petState.x * TS + 16)) < 13 && Math.abs(wy - (petState.y * TS + 21)) < 11;
+    },
     setHover(t) { fx.hover = t; },
     setCorner(c) { fx.corner = c; },
     // nearest plot crossing to the mouse; near = close enough to mean "this sprinkler"

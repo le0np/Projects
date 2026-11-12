@@ -5,6 +5,7 @@
 //   t  tree         f  fence         ~  pond          P  field plot
 //   Q  plot in the overgrown second field (unlocked with "git clone polje")
 //   H  house        S  stand         C  chest         W  well          B  workbench
+//   V  parking lot by the road: the way to town (market, van)
 
 export const W = 48;
 export const H = 32;
@@ -12,6 +13,8 @@ export const H = 32;
 export const HOUSE = { x: 5, y: 4, w: 6, h: 5 };
 export const STAND = { x: 40, y: 10, w: 2, h: 2 }; // by the road, where customers come from
 export const COOP_AREA = { x: 12, y: 3, w: 2, h: 2 }; // the old chicken coop by the house
+export const LOT = { x: 41, y: 14, w: 2, h: 2 }; // parking lot by the road, the way to town
+export const TOWN_EXIT = [43, 0]; // where the road leaves the map towards town
 export const HOUSE_DOOR = [8, 9]; // tile in front of the door
 export const DRONE_HOME = [8, 5]; // on the roof
 export const CUSTOMER_SPOT = [40, 12];
@@ -54,6 +57,7 @@ function build() {
   rect(HOUSE.x, HOUSE.y, HOUSE.x + HOUSE.w - 1, HOUSE.y + HOUSE.h - 1, 'H');
   rect(STAND.x, STAND.y, STAND.x + STAND.w - 1, STAND.y + STAND.h - 1, 'S');
   rect(COOP_AREA.x, COOP_AREA.y, COOP_AREA.x + COOP_AREA.w - 1, COOP_AREA.y + COOP_AREA.h - 1, 'K');
+  rect(LOT.x, LOT.y, LOT.x + LOT.w - 1, LOT.y + LOT.h - 1, 'V');
   g[8][11] = 'C';
   g[6][15] = 'W';
   g[8][3] = 'B';
@@ -117,6 +121,12 @@ const pondAccess = () => {
   return [...seen].map(xy);
 };
 
+// middle of the pond (in tiles), where the fishing line is cast towards
+export const POND_CENTER = (() => {
+  const tiles = collect('~').map(xy);
+  return [tiles.reduce((a, [x]) => a + x, 0) / tiles.length + 0.5, tiles.reduce((a, [, y]) => a + y, 0) / tiles.length + 0.5];
+})();
+
 export const OBJECTS = {
   house: { name: 'Kuća', access: [HOUSE_DOOR] },
   chest: { name: 'Škrinja', access: [[11, 9]] },
@@ -125,9 +135,10 @@ export const OBJECTS = {
   well: { name: 'Bunar', access: [[15, 7]] },
   workbench: { name: 'Radni stol', access: [[3, 9]] },
   pond: { name: 'Ribnjak', access: pondAccess() },
+  market: { name: 'Put u grad', access: [[41, 13], [42, 13], [43, 14], [43, 15]] },
 };
 
-const CHAR_OBJECT = { H: 'house', S: 'stand', C: 'chest', W: 'well', B: 'workbench', K: 'coop', '~': 'pond' };
+const CHAR_OBJECT = { H: 'house', S: 'stand', C: 'chest', W: 'well', B: 'workbench', K: 'coop', V: 'market', '~': 'pond' };
 export const objectAt = (x, y) => CHAR_OBJECT[charAt(x, y)] ?? null;
 
 // grass next to the woods, where forage grows

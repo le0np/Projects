@@ -16,11 +16,14 @@
         <div id="settings" class="settings" hidden>
           <label><input id="set-bgtime" type="checkbox"> Vrijeme teče i kad igra nije na ekranu</label>
           <p class="muted small">Isključeno: dok je tab skriven, farma stoji. Uključeno: dan ide dalje, kupci kupuju, usjevi rastu.</p>
+          <label><input id="set-notify" type="checkbox"> Obavijesti u browseru</label>
+          <p class="muted small">Kad igra nije u fokusu: sazrijevanje usjeva, prazan štand, povratak kombija i nova narudžba kupca.</p>
           <button id="reset" type="button" class="reset">rm -rf farma</button>
         </div>
       </span>
       <span class="hud-item"><strong id="hud-day">Dan 1</strong> · <span id="hud-clock">06:00</span></span>
       <span class="hud-item muted" id="hud-shop"></span>
+      <button id="hud-trip" type="button" class="hud-item trip" hidden></button>
       <span class="hud-item coins" id="hud-money"><img id="hud-gold-icon" class="coin" alt="zlatnici"><span id="hud-gold">0</span><img id="hud-silver-icon" class="coin" alt="srebrenjaci"><span id="hud-silver" class="silver">0</span></span>
       <span class="hud-item energy" title="Energija">
         ⚡ <span class="bar"><span id="hud-energy-bar"></span></span> <span id="hud-energy" class="muted"></span>
@@ -29,45 +32,54 @@
   </header>
 
   <main class="layout">
-    <div class="main-col">
-      <div class="world-wrap">
-        <canvas id="world" aria-label="Farma. Klikni gdje farmer treba otići."></canvas>
-        <div id="bubble" class="bubble" role="status" aria-live="polite" hidden></div>
-        <div class="zoom" aria-label="Zoom">
-          <button id="zoom-in" type="button" title="Približi (+)">+</button>
-          <button id="zoom-out" type="button" title="Udalji (−)">−</button>
-        </div>
+    <div class="world-wrap">
+      <canvas id="world" aria-label="Farma. Klikni gdje farmer treba otići."></canvas>
+      <div id="bubble" class="bubble" role="status" aria-live="polite" hidden></div>
+      <div class="map-buttons">
+        <button id="zoom-in" type="button" title="Približi (+)">+</button>
+        <button id="zoom-out" type="button" title="Udalji (−)">−</button>
+        <button id="bag-btn" type="button" class="map-btn" title="Torba (T)" aria-label="Torba"><img id="bag-btn-icon" alt=""></button>
+        <button id="phone-btn" type="button" class="map-btn" title="Mobitel (M)" aria-label="Mobitel"><img id="phone-btn-icon" alt=""><span id="phone-btn-badge" class="badge" hidden></span></button>
       </div>
-      <div class="toolbar">
-        <div id="hotbar" class="hotbar" aria-label="Alati"></div>
-        <div id="seeds" class="seeds" aria-label="Vrećica sa sjemenom"></div>
-      </div>
-      <p id="inspect" class="inspect" aria-live="polite"></p>
-    </div>
 
-    <aside class="side">
-      <section id="panel" class="card panel"></section>
-      <section class="card">
-        <div class="card-title">torba</div>
-        <div id="bag" class="slots"></div>
-        <div id="bag-info" class="bag-info"></div>
-      </section>
-      <section class="phone" aria-label="Mobitel">
-        <div class="phone-top">
-          <span id="phone-time">06:00</span>
-          <span class="phone-title">📱 Mobitel</span>
-          <span class="phone-battery" aria-hidden="true">▮▮▮▯</span>
-        </div>
-        <div class="phone-tabs" role="tablist">
-          <button type="button" data-tab="feed" role="tab">Obavijesti <span id="phone-badge" class="badge" hidden></span></button>
-          <button type="button" data-tab="shop" role="tab">Dostava</button>
-          <button type="button" data-tab="gigs" role="tab">Poslovi <span id="gig-badge" class="badge" hidden></span></button>
-        </div>
-        <div id="phone-feed" class="phone-feed" role="log" aria-live="polite"></div>
-        <div id="phone-shop" class="phone-shop" hidden></div>
-        <div id="phone-gigs" class="phone-shop" hidden></div>
-      </section>
-    </aside>
+      <!-- whatever is open floats over the map: a building, the bag, the phone -->
+      <div class="overlays">
+        <section id="panel" class="card panel" hidden></section>
+        <section id="bag-card" class="card bag-card" hidden>
+          <div class="panel-head"><span class="card-title">🎒 torba</span><button id="bag-close" type="button" class="close" title="Zatvori (T)">✕</button></div>
+          <div id="bag" class="slots"></div>
+          <div id="bag-info" class="bag-info"></div>
+        </section>
+        <section id="phone" class="phone" aria-label="Mobitel" hidden>
+          <div class="phone-top">
+            <span id="phone-time">06:00</span>
+            <span class="phone-title">📱 Mobitel</span>
+            <button id="phone-close" type="button" class="phone-close" title="Zatvori (M)">✕</button>
+          </div>
+          <div class="phone-tabs" role="tablist">
+            <button type="button" data-tab="feed" role="tab" title="Obavijesti"><span class="tab-label">Obavijesti</span><span id="phone-badge" class="badge" hidden></span></button>
+            <button type="button" data-tab="shop" role="tab" title="Dostava"><span class="tab-label">Dostava</span></button>
+            <button type="button" data-tab="gigs" role="tab" title="Poslovi"><span class="tab-label">Poslovi</span><span id="gig-badge" class="badge" hidden></span></button>
+            <button type="button" data-tab="guide" role="tab" title="Priručnik: kako se što radi"><span class="tab-label">Priručnik</span></button>
+          </div>
+          <div id="phone-feed" class="phone-feed" role="log" aria-live="polite"></div>
+          <div id="phone-shop" class="phone-shop" hidden></div>
+          <div id="phone-gigs" class="phone-shop" hidden></div>
+          <div id="phone-guide" class="phone-shop phone-guide" hidden>
+            <input id="guide-search" type="search" placeholder="Traži, npr. gnojivo, bunar, kokoši…" aria-label="Traži u priručniku" autocomplete="off">
+            <div id="guide-list"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- new phone messages pop up here while the phone is closed -->
+      <div id="toasts" class="toasts" aria-hidden="true"></div>
+    </div>
+    <div class="toolbar">
+      <div id="hotbar" class="hotbar" aria-label="Alati"></div>
+      <div id="seeds" class="seeds" aria-label="Vrećica sa sjemenom"></div>
+    </div>
+    <p id="inspect" class="inspect" aria-live="polite"></p>
   </main>
 
 

@@ -6,7 +6,7 @@ Radionica za projekte: ja zamislim ideju, Claude je napravi. Svaki projekt živi
 
 | Projekt | Opis | Tehnologije | Status |
 | ------- | ---- | ----------- | ------ |
-| [dev-farm](dev-farm) | 2D farma za browser: farmer, kvaliteta uroda, štand, izumi i navodnjavanje | HTML, CSS, JavaScript | 🚧 u izradi |
+| [dev-farm](dev-farm) | 2D farma za browser: farmer, kvaliteta uroda, štand, tržnica u gradu, izumi i navodnjavanje | HTML, CSS, JavaScript | 🚧 u izradi |
 | [pixel-runner](pixel-runner) | Endless runner: skači preko puževa i muha | Python, Pygame | ✅ gotovo |
 
 Statusi: 💡 ideja · 🚧 u izradi · ✅ gotovo · 🧊 pauzirano
