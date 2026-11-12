@@ -49,7 +49,7 @@ const shadowSprite = (w) => art(`shadow:${w}`, () => {
 
 // ------------------------------------------------------------------ static props (y-sorted with people)
 
-function buildProps(field2, hasWell, coopBuilt) {
+function buildProps(field2, hasWell, coopBuilt, hasPump) {
   const list = [];
   const at = (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? MAP[y][x] : '');
   for (let ty = 0; ty < H; ty++) {
@@ -76,6 +76,7 @@ function buildProps(field2, hasWell, coopBuilt) {
   list.push(hasWell
     ? { img: art('well', A.well), x: 15 * TS - 4, y: 6 * TS - 20, base: 6 * TS + 30 }
     : { img: art('wellSite', A.wellSite), x: 15 * TS - 4, y: 6 * TS - 20, base: 6 * TS + 30 });
+  if (hasPump) list.push({ img: art('pumpProp', A.pumpProp), x: 16 * TS + 2, y: 6 * TS + 8, base: 6 * TS + 28 });
   list.push({ img: art('workbench', A.workbench), x: 3 * TS - 6, y: 8 * TS - 8, base: 8 * TS + 30 });
   if (!field2) list.push({ img: art('sign', A.sign), x: 21 * TS, y: 13 * TS - 8, base: 13 * TS + 30 });
   list.push({
@@ -275,10 +276,10 @@ export function createRenderer(canvas) {
   function draw(s, now, opts = {}) {
     const dt = fx.last ? Math.min(0.1, (now - fx.last) / 1000) : 0;
     fx.last = now;
-    const key = `${s.upgrades.field2}|${s.upgrades.well}|${s.coop.built}`;
+    const key = `${s.upgrades.field2}|${s.upgrades.well}|${s.coop.built}|${s.upgrades.pump}`;
     if (builtFor !== key) {
       if (!ground || !builtFor || builtFor.split('|')[0] !== String(s.upgrades.field2)) ground = toCanvas(A.terrain(s.upgrades.field2));
-      props = buildProps(s.upgrades.field2, s.upgrades.well, s.coop.built);
+      props = buildProps(s.upgrades.field2, s.upgrades.well, s.coop.built, s.upgrades.pump);
       builtFor = key;
     }
     updateCamera(s, dt);
@@ -307,18 +308,24 @@ export function createRenderer(canvas) {
       }
     }
     fx.sprays = fx.sprays.filter((sp) => now - sp.t0 < 1200);
+    // sprinklers stand on plot crossings: (x, y) is a grid corner
     for (const sp of s.sprinklers) {
       const spraying = fx.sprays.some((f) => f.x === sp.x && f.y === sp.y);
       const frame = spraying ? Math.floor(now / 80) % 4 : 0;
-      img(art(`sprinkler${frame}`, () => A.sprinkler(frame)), sp.x * TS, sp.y * TS - 4);
+      img(art(`sprinkler${frame}`, () => A.sprinkler(frame)), sp.x * TS - 16, sp.y * TS - 26);
     }
 
     // which plots a sprinkler reaches (hovering one, or choosing where to put one)
-    const h = fx.hover;
-    if (h && (opts.placing || sprinklerAt(s, h[0], h[1]) >= 0)) {
+    const c = fx.corner;
+    if (c && (opts.placing || (c.near && sprinklerAt(s, c.x, c.y) >= 0))) {
       ctx.fillStyle = 'rgba(90,175,255,.22)';
-      for (const [x, y] of sprinklerReach(s.irrigation, h[0], h[1])) {
+      for (const [x, y] of sprinklerReach(s.irrigation, c.x, c.y)) {
         if (s.plots[y * W + x] && plotUnlocked(s, y * W + x)) ctx.fillRect(x * TS + 1, y * TS + 1, TS - 2, TS - 2);
+      }
+      if (opts.placing) {
+        ctx.globalAlpha = 0.6;
+        img(art('sprinkler0', () => A.sprinkler(0)), c.x * TS - 16, c.y * TS - 26);
+        ctx.globalAlpha = 1;
       }
     }
 
@@ -480,7 +487,7 @@ export function createRenderer(canvas) {
       ctx.fillStyle = `rgba(170,220,255,${0.75 * (1 - t)})`;
       for (let k = 0; k < 18; k++) {
         const a = (k / 18) * Math.PI * 2 + t * 4;
-        ctx.fillRect(Math.round(sp.x * TS + 16 + Math.cos(a) * r), Math.round(sp.y * TS + 10 + Math.sin(a) * r * 0.55 + t * 8), 2, 2);
+        ctx.fillRect(Math.round(sp.x * TS + Math.cos(a) * r), Math.round(sp.y * TS - 14 + Math.sin(a) * r * 0.55 + t * 8), 2, 2);
       }
     }
 
@@ -608,6 +615,16 @@ export function createRenderer(canvas) {
     notify,
     tileFromClient,
     setHover(t) { fx.hover = t; },
+    setCorner(c) { fx.corner = c; },
+    // nearest plot crossing to the mouse; near = close enough to mean "this sprinkler"
+    cornerFromClient(clientX, clientY) {
+      const r = canvas.getBoundingClientRect();
+      const wx = (clientX - r.left) / view + cam.x;
+      const wy = (clientY - r.top) / view + cam.y;
+      const x = Math.round(wx / TS);
+      const y = Math.round(wy / TS);
+      return { x, y, near: Math.hypot(wx - x * TS, wy - (y * TS - 10)) < 14 };
+    },
     zoomIn: () => stepZoom(1),
     zoomOut: () => stepZoom(-1),
     setZoom(z) { userZoom = z * TS; zoom = closestZoom(z); },

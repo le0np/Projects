@@ -1,7 +1,7 @@
 // Turning state into a string and back. Anything unexpected falls back to safe values.
 
-import { createState, cropById, parseItem, isSellable, TOOLS, canSize, forageById } from './sim.js';
-import { SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, IRRIGATION_RADII, COOP, FORAGE_MAX, GIGS } from './data.js';
+import { createState, cropById, parseItem, isSellable, TOOLS, canSize, forageById, isCornerSpot } from './sim.js';
+import { SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, IRRIGATION_R2, COOP, FORAGE_MAX, GIGS } from './data.js';
 import { W, H, isWalkable, isPlotTile } from './world.js';
 
 
@@ -46,7 +46,7 @@ export function deserialize(raw) {
   // v2/v3 used plain coins (1 coin = 40 sr) and grew crops by the second.
   const fromV2 = d.version === 2;
   const legacy = d.version === 2 || d.version === 3;
-  if (d.version !== SAVE_VERSION && !legacy) return fresh;
+  if (d.version !== SAVE_VERSION && d.version !== 4 && !legacy) return fresh;
 
   const s = fresh.state;
   const big = Number.MAX_SAFE_INTEGER;
@@ -68,7 +68,9 @@ export function deserialize(raw) {
     s.orders = d.orders.slice(0, 10).filter((o) => o && (cropById[o.crop] || o.item === 'fertilizer'))
       .map((o) => (o.item ? { item: o.item, n: int(o.n, 1, 999, 1) } : { crop: o.crop, n: int(o.n, 1, 999, 5) }));
   }
-  s.irrigation = int(d.irrigation, 1, IRRIGATION_RADII.length, 1);
+  s.irrigation = int(d.irrigation, 1, IRRIGATION_R2.length, 1);
+  // before v5 sprinklers worked without a pump: keep old farms watering
+  if (d.version < 5 && Array.isArray(d.sprinklers) && d.sprinklers.length) s.upgrades.pump = true;
 
   // the woods: keep the saved spots (older saves keep the fresh ones)
   if (Array.isArray(d.forage)) {
@@ -133,7 +135,7 @@ export function deserialize(raw) {
     for (const sp of d.sprinklers.slice(0, 200)) {
       const x = int(sp?.x, 0, W - 1, -1);
       const y = int(sp?.y, 0, H - 1, -1);
-      if (x < 0 || y < 0 || !isPlotTile(x, y) || seen.has(`${x},${y}`)) continue;
+      if (x < 0 || y < 0 || !isCornerSpot(s, x, y) || seen.has(`${x},${y}`)) continue;
       seen.add(`${x},${y}`);
       s.sprinklers.push({ x, y });
     }

@@ -96,15 +96,25 @@ Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša i rad
 - honorarci na mobitelu (nova kartica „Poslovi“): 1–3 ponude svako jutro, rad u kući za laptopom (farmer se ne vidi, traka napretka nad vratima), plaća 4–28 zl, napredak ostaje ako se posao prekine
 - nova grafika: oronuli i popravljeni kokošinjac, kokoši, nalazišta u šumi, ikone za drva, kamenje, jaja, gljive i kupine
 
+### v12 – navodnjavanje iz dijelova, prskalice na križanjima
+
+- navodnjavanje traži dijelove: vodena pumpa (montira se na bunar, kratki rad farmera), crijevo (10 m po prskalici) i prskalice; recept za prskalicu na radnom stolu uklonjen
+- dijelovi se naručuju na mobitelu (Dostava → Navodnjavanje: pumpa 70 zl, crijevo 10 m 9 zl, prskalica 8 zl) ili nađu u šumi (novo nalazište „odbačeni dijelovi“)
+- prskalica stoji na križanju četiri parcele i ne zauzima parcelu; doseg se računa od križanja, razine 1–10 zalijevaju 4, 12, 16, 24, 32, 44, 52, 60, 68, 80 parcela
+- prskalice rade samo s pumpom; klik na prskalicu vraća nju i crijevo u torbu
+- na radnom stolu popis dijelova s kvačicama (bunar, pumpa, crijevo, prskalice) i nadogradnje razina
+- postavljanje: prozirna prskalica i doseg uz miš; pumpa nacrtana uz bunar
+- format spremanja v5; starije farme s prskalicama dobiju pumpu, a prskalice prelaze na gornji lijevi kut svoje parcele
+
 ## Zadnja automatizirana provjera
 
-Provedeno 12. studenog 2026. nakon v11:
+Provedeno 12. studenog 2026. nakon v12:
 
 | Provjera | Rezultat |
 | --- | --- |
 | `npm test` u `dev-farm/` | 38/38 testova prolazi |
 | `npm start` + dohvat stranice i modula | server vraća 200 za `index.html` i `src/*.js` |
-| Headless Firefox (scenariji u scratchpadu) | iscrtavanje bez JS grešaka; provjereni hodanje, škrinja, skupna sadnja, zalijevanje s odlaskom po vodu, zidanje bunara, doseg prskalice, izbornik koji se zatvara, novčići u HUD-u, izbornici sva četiri alata, prekid skupnih poslova, štand uz cestu, šuma, kokošinjac s kokošima, honorarac u kući, noć |
+| Headless Firefox (scenariji u scratchpadu) | iscrtavanje bez JS grešaka; provjereni hodanje, škrinja, skupna sadnja, zalijevanje s odlaskom po vodu, zidanje bunara, doseg prskalice, izbornik koji se zatvara, novčići u HUD-u, izbornici sva četiri alata, prekid skupnih poslova, štand uz cestu, šuma, kokošinjac s kokošima, honorarac u kući, prskalice na križanjima s pumpom i pregledom dosega, noć |
 
 ## Poznata ograničenja
 
@@ -137,5 +147,5 @@ Ideje koje su predložene, a još nisu napravljene:
 3. Pokretanje: `cd dev-farm && npm start` (http://localhost:8080). Testovi: `npm test`.
 4. Arhitektura: `src/data.js` (brojke) → `src/sim.js` (čista pravila, testirana) → `src/render.js` + `src/art.js` (crtanje) i `src/ui.js` (DOM) → `src/main.js` (petlja, ulaz, poruke). Pravila ne smiju ovisiti o DOM-u.
 5. Novac se u stanju čuva u srebrenjacima (cijeli brojevi), cijene se u `data.js` pišu u zlatnicima (`zl()`).
-6. Format spremanja je v4 (`src/save.js`); kod promjene stanja dodati prijenos starijih spremanja.
+6. Format spremanja je v5 (`src/save.js`); kod promjene stanja dodati prijenos starijih spremanja.
 7. Nakon svake promjene ažurirati ovaj dokument (novi odjeljak, zadnja provjera, ograničenja, sljedeći koraci).

@@ -3,7 +3,7 @@
 // here and kept as whole srebrenjaci in the game state (see zl()). The ratios follow real
 // Croatian market prices, so 1 zl is roughly what 1 € buys at the market.
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 export const START_MONEY = 30; // zl
 export const MAX_ENERGY = 100;
 
@@ -63,9 +63,21 @@ export const FERTILIZER_PRICE = 6; // zl per bag, ordered on the phone, delivere
 // The well: a plan is sketched at the workbench, then the farmer builds it on site.
 export const WELL_BUILD = { price: 150, wood: 6, stone: 12, energy: 30, seconds: 6 };
 
-// Irrigation: every sprinkler waters the plots within this radius (in tiles), each morning.
-// Levels 1–10 cover 4, 8, 12, 20, 24, 28, 36, 44, 48 and 56 plots.
-export const IRRIGATION_RADII = [1, 1.42, 2, 2.24, 2.83, 3, 3.17, 3.61, 4, 4.13];
+// Irrigation is a system built from parts: a water pump on the well, hose (10 m per
+// sprinkler) and sprinklers. Sprinklers stand on the crossing of four plots, so they take
+// no plot away; each morning they water every plot whose centre lies within the radius
+// (squared, in tiles) of that crossing. Levels 1–10 reach 4, 12, 16, 24, 32, 44, 52, 60, 68 and 80 plots.
+export const IRRIGATION_R2 = [0.5, 2.5, 4.5, 6.5, 8.5, 12.5, 14.5, 18.5, 20.5, 24.5];
+export const HOSE_PER_SPRINKLER = 10; // m
+export const PUMP_INSTALL_SECONDS = 4;
+
+// Delivered to the chest the next morning, ordered on the phone.
+export const SHOP_ITEMS = [
+  { id: 'fertilizer', name: 'Gnojivo', n: 1, unit: 'vreća', price: 6 },
+  { id: 'pump', name: 'Vodena pumpa', n: 1, unit: 'kom', price: 70 },
+  { id: 'hose', name: 'Crijevo', n: 10, unit: 'm', price: 9 },
+  { id: 'sprinkler', name: 'Prskalica', n: 1, unit: 'kom', price: 8 },
+];
 export const IRRIGATION_COSTS = [0, 25, 40, 60, 90, 130, 180, 250, 340, 450]; // zl to reach level i + 1
 
 export const CUSTOMER_INTERVAL = [18, 36]; // seconds between customers
@@ -102,6 +114,8 @@ export const FORAGE = [
   { id: 'blackberry', name: 'kupine', item: 'crop:blackberry:2', n: [1, 2], weight: 2 },
   { id: 'branches', name: 'grane', item: 'wood', n: [2, 3], weight: 3 },
   { id: 'rocks', name: 'kamenje', item: 'stone', n: [2, 3], weight: 3 },
+  // somebody's old garden things: a piece of hose or, rarely, a whole sprinkler
+  { id: 'scrap', name: 'odbačeni dijelovi', loot: [{ item: 'hose', n: [3, 6], weight: 7 }, { item: 'sprinkler', n: [1, 1], weight: 3 }], weight: 1 },
 ];
 export const FORAGE_START = 8;
 export const FORAGE_DAILY = [3, 5];
@@ -141,10 +155,6 @@ export const RECIPES = [
   {
     id: 'wellPlan', name: 'Plan bunara', once: 'wellPlan', price: 0,
     desc: 'Skiciraj bunar. Zida se na gradilištu kod kuće: farmer ode tamo i zida.',
-  },
-  {
-    id: 'sprinkler', name: 'Prskalica · water.sh', gives: 'sprinkler', price: 35, requires: 'well',
-    desc: 'Navodnjavanje iz bunara: postavi je na praznu parcelu, svako jutro u 6 h zalije parcele oko sebe.',
   },
   {
     id: 'bigCan', name: 'Velika kanta', once: 'bigCan', price: 15,

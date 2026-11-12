@@ -5,7 +5,7 @@ import {
   createState, command, plotAction, objectAction, advance, tick, sleep, craft, moveItem, eat,
   coffee, addItem, qualityScore, tierOf, cropItem, makePlot, isSellable, ripeCount, extractSeeds,
   orderSeeds, packPrice, salePrice, startJob, sprinklerReach, upgradeIrrigation, orderFertilizer,
-  daysLeft, matCount, forageAt, feedHens, acceptGig, goWork,
+  daysLeft, matCount, forageAt, feedHens, acceptGig, goWork, orderItem,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -261,7 +261,6 @@ test('watering uses the can; the pond refills it, the well only once it is built
 
   s.water = 0;
   s.money = zl(500);
-  assert.equal(craft(s, 'sprinkler').reason, 'requires', 'irrigation needs the well');
   assert.ok(craft(s, 'wellPlan').ok);
   assert.ok(!s.upgrades.well, 'the workbench only sketches the plan');
   assert.ok(walkTo(s, 15, 6).events.some((e) => e.reason === 'nomats'), 'stone and wood are needed');
@@ -274,7 +273,6 @@ test('watering uses the can; the pond refills it, the well only once it is built
   assert.equal(matCount(s, 'stone') + matCount(s, 'wood'), 0, 'materials used up');
   walkTo(s, 15, 6);
   assert.equal(s.water, CAN_SIZES[0]);
-  assert.ok(craft(s, 'sprinkler').ok);
 });
 
 test('walking away stops the building, nothing is paid', () => {
@@ -295,7 +293,7 @@ test('walking away stops the building, nothing is paid', () => {
 
 test('irrigation has 10 levels, each reaching more plots', () => {
   const reach = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((l) => sprinklerReach(l, 0, 0).length);
-  assert.deepEqual(reach, [4, 8, 12, 20, 24, 28, 36, 44, 48, 56]);
+  assert.deepEqual(reach, [4, 12, 16, 24, 32, 44, 52, 60, 68, 80]);
   const s = createState();
   s.money = zl(1e5);
   assert.equal(upgradeIrrigation(s).reason, 'requires');
@@ -305,23 +303,42 @@ test('irrigation has 10 levels, each reaching more plots', () => {
   assert.equal(upgradeIrrigation(s).reason, 'owned');
 });
 
-test('sprinklers water their reach every morning, with less quality credit', () => {
+test('irrigation is built from parts: pump on the well, hose and sprinklers', () => {
   const s = withSeeds();
-  s.money = zl(1000);
+  const [cx, cy] = [20, 7]; // crossing of plots (19..20, 6..7) in field A
+  assert.equal(walkTo(s, cx, cy, 'place').events.find((e) => e.type === 'fail').reason, 'nowell');
   s.upgrades.well = true;
-  s.irrigation = 2; // 3 × 3
-  assert.ok(craft(s, 'sprinkler').ok);
-  const [x, y] = xy(PLOTS_A[9]);
-  walkTo(s, x, y, 'place');
-  assert.equal(s.sprinklers.length, 1);
-  s.plots[idx(x + 1, y)] = { ...makePlot(), crop: 'carrot' };
-  const events = nextDay(s);
-  assert.ok(events.some((e) => e.type === 'sprinkle'));
-  assert.equal(s.plots[idx(x + 1, y)].wetBy, 'auto');
+  assert.equal(walkTo(s, cx, cy, 'place').events.find((e) => e.type === 'fail').reason, 'nopump');
+
+  // the pump is ordered, delivered to the chest and installed on the well
+  s.money = zl(200);
+  for (const id of ['pump', 'hose', 'sprinkler', 'sprinkler']) assert.ok(orderItem(s, id).ok);
   nextDay(s);
-  assert.equal(s.plots[idx(x + 1, y)].wetDays, 0.75);
+  assert.deepEqual(s.chest.filter(Boolean).map((it) => [it.id, it.n]), [['pump', 1], ['hose', 10], ['sprinkler', 2]]);
+  for (let i = 0; i < 3; i++) moveItem(s, 'chest', i, 'bag');
+  assert.ok(walkTo(s, 15, 6).events.some((e) => e.type === 'buildstart' && e.what === 'pump'));
+  assert.ok(advance(s, 5).some((e) => e.type === 'built' && e.what === 'pump'));
+  assert.ok(s.upgrades.pump);
+
+  // a sprinkler stands on the crossing and takes no plot
+  assert.ok(walkTo(s, cx, cy, 'place').events.some((e) => e.type === 'placed'));
+  assert.equal(s.sprinklers.length, 1);
+  assert.equal(matCount(s, 'hose'), 0, '10 m of hose per sprinkler');
+  assert.equal(walkTo(s, 22, 7, 'place').events.find((e) => e.type === 'fail').reason, 'nohose');
   s.tool = 'seed';
-  assert.equal(plotAction(s, x, y).reason, 'sprinklerhere');
+  for (const [x, y] of [[19, 6], [20, 6], [19, 7], [20, 7]]) assert.ok(plotAction(s, x, y).ok, 'all four plots can still be planted');
+
+  // and it waters them every morning, with less quality credit than by hand
+  const events = nextDay(s);
+  assert.ok(events.some((e) => e.type === 'sprinkle' && e.tiles.length === 4));
+  assert.equal(s.plots[idx(19, 6)].wetBy, 'auto');
+  nextDay(s);
+  assert.equal(s.plots[idx(19, 6)].wetDays, 0.75);
+
+  // picking it up gives back the sprinkler and the hose
+  assert.ok(walkTo(s, cx, cy, 'pickup').events.some((e) => e.type === 'pickup'));
+  assert.equal(s.sprinklers.length, 0);
+  assert.equal(matCount(s, 'hose'), 10);
 });
 
 test('no energy, no work; coffee and food help', () => {

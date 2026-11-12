@@ -8,7 +8,8 @@ import {
   AUTO_WATER_CREDIT, CAN_SIZES, ENERGY_COST, COFFEE, EAT_ENERGY,
   TIER_PRICE, MACHINE_MAX_TIER, CUSTOMER_INTERVAL, CUSTOMER_KG, SEO_BONUS,
   CROPS, RECIPES, RIPE_PENALTY, ROT_DAY, SEEDS_FROM_FRUIT, SEED_PACK, HOUSE_SEEDS, START_FINDS,
-  DAILY_FIND_CHANCE, FERTILIZER_PRICE, WELL_BUILD, IRRIGATION_RADII, IRRIGATION_COSTS,
+  DAILY_FIND_CHANCE, FERTILIZER_PRICE, WELL_BUILD, IRRIGATION_R2, IRRIGATION_COSTS, HOSE_PER_SPRINKLER,
+  PUMP_INSTALL_SECONDS, SHOP_ITEMS,
   GOODS, FORAGE, FORAGE_START, FORAGE_DAILY, FORAGE_MAX, COOP, GIGS, GIG_OFFERS, GIG_ENERGY_PER_HOUR,
 } from './data.js';
 import {
@@ -55,7 +56,7 @@ function baseState(seed) {
     forage: [],
     coop: { built: false, hens: 0, feed: 0, eggs: 0 },
     gigs: { offers: [], active: null, done: 0 },
-    upgrades: { wellPlan: false, well: false, bigCan: false, drone: false, replant: false, seo: false, field2: false },
+    upgrades: { wellPlan: false, well: false, pump: false, bigCan: false, drone: false, replant: false, seo: false, field2: false },
     irrigation: 1,
     farmer: { x: HOUSE_DOOR[0], y: HOUSE_DOOR[1], dir: 'down', path: [], task: null, queue: [], job: null, busy: null },
     plots,
@@ -98,14 +99,17 @@ export const shopOpen = (clock) => clock >= SHOP_OPEN && clock < SHOP_CLOSE;
 export const isUnlocked = (s, id) => Boolean(cropById[id]) && s.totalEarned >= zl(cropById[id].unlock);
 export const findAt = (s, x, y) => s.finds.findIndex((f) => f.x === x && f.y === y);
 export const plotUnlocked = (s, i) => inFieldA(i) || (s.upgrades.field2 && s.plots[i] !== undefined);
+// Sprinklers sit on grid crossings: (x, y) is the corner shared by tiles (x-1..x, y-1..y).
 export const sprinklerAt = (s, x, y) => s.sprinklers.findIndex((p) => p.x === x && p.y === y);
+const cornerTiles = (x, y) => [[x - 1, y - 1], [x, y - 1], [x - 1, y], [x, y]];
+export const isCornerSpot = (s, x, y) => cornerTiles(x, y).some(([tx, ty]) => s.plots[idx(tx, ty)] && plotUnlocked(s, idx(tx, ty)));
 
 // ---------------------------------------------------------------- items
 
 export const cropItem = (crop, tier) => `crop:${crop}:${tier}`;
 
 export function parseItem(id) {
-  if (id === 'fertilizer' || id === 'sprinkler' || id === 'wood' || id === 'stone') return { kind: id };
+  if (['fertilizer', 'sprinkler', 'wood', 'stone', 'hose', 'pump'].includes(id)) return { kind: id };
   const m = /^crop:([a-z]+):([1-4])$/.exec(id ?? '');
   if (m && goodById[m[1]]) return { kind: 'crop', crop: m[1], tier: Number(m[2]) };
   return null;
@@ -222,10 +226,12 @@ export function command(s, x, y, mode = 'auto', events = []) {
   } else if (mode !== 'place' && forageAt(s, x, y) >= 0) {
     task = { type: 'forage', x, y };
     goals = [[x, y]];
-  } else if (mode === 'place') {
-    if (!isPlotTile(x, y)) return fail(events, 'placeplot');
-    task = { type: 'place', x, y };
-    goals = [[x, y]];
+  } else if (mode === 'place' || mode === 'pickup') {
+    // (x, y) is a crossing; stand on one of the four tiles around it
+    if (mode === 'place' && !isCornerSpot(s, x, y)) return fail(events, 'placeplot');
+    if (mode === 'pickup' && sprinklerAt(s, x, y) < 0) return { ok: false, reason: 'blocked' };
+    task = { type: mode, x, y };
+    goals = cornerTiles(x, y).filter(([tx, ty]) => isWalkable(tx, ty));
   } else if (obj) {
     task = { type: 'object', id: obj };
     goals = OBJECTS[obj].access;
@@ -255,6 +261,7 @@ function arrive(s, events) {
   if (t.type === 'plot') plotAction(s, t.x, t.y, events);
   else if (t.type === 'object') objectAction(s, t.id, events);
   else if (t.type === 'place') placeSprinkler(s, t.x, t.y, events);
+  else if (t.type === 'pickup') pickUpSprinkler(s, t.x, t.y, events);
   else if (t.type === 'find') pickUpFind(s, t.x, t.y, events);
   else if (t.type === 'forage') pickForage(s, t.x, t.y, events);
   else if (t.type === 'gig') startGigWork(s, events);
@@ -281,7 +288,7 @@ function needsWater(p) {
 
 function freePlots(s) {
   return Object.keys(s.plots).map(Number)
-    .filter((i) => plotUnlocked(s, i) && !s.plots[i].crop && sprinklerAt(s, ...xy(i)) < 0 && findAt(s, ...xy(i)) < 0)
+    .filter((i) => plotUnlocked(s, i) && !s.plots[i].crop && findAt(s, ...xy(i)) < 0)
     .map(xy);
 }
 
@@ -362,7 +369,7 @@ export function startJob(s, kind, crop = null, events = []) {
 
 function jobPlant(s, x, y, events) {
   const i = idx(x, y);
-  if (!s.plots[i] || s.plots[i].crop || sprinklerAt(s, x, y) >= 0) return { ok: false, reason: 'skip' };
+  if (!s.plots[i] || s.plots[i].crop) return { ok: false, reason: 'skip' };
   const only = s.farmer.job?.crop;
   const crop = only ? (s.seeds[only] > 0 ? only : null)
     : s.seeds[s.seed] > 0 ? s.seed : CROPS.find((c) => s.seeds[c.id] > 0)?.id;
@@ -486,6 +493,12 @@ export function objectAction(s, id, events = []) {
     s.seeds[HOUSE_SEEDS.crop] += HOUSE_SEEDS.n;
     events.push({ type: 'found', crop: HOUSE_SEEDS.crop, n: HOUSE_SEEDS.n, what: 'ladica u kući' });
   }
+  if (id === 'well' && !s.upgrades.pump && countWhere(s.bag, (k) => k === 'pump')) {
+    s.farmer.busy = { what: 'pump', left: PUMP_INSTALL_SECONDS, total: PUMP_INSTALL_SECONDS };
+    s.farmer.dir = 'up';
+    events.push({ type: 'buildstart', what: 'pump' });
+    return { ok: true };
+  }
   if (id === 'well' || id === 'pond') {
     s.water = canSize(s);
     events.push({ type: 'refill', water: s.water });
@@ -499,15 +512,6 @@ export function plotAction(s, x, y, events = []) {
   const i = idx(x, y);
   if (!s.plots[i]) return fail(events, 'notplot');
   if (!plotUnlocked(s, i)) return fail(events, 'locked');
-  const sp = sprinklerAt(s, x, y);
-  if (sp >= 0) {
-    if (s.tool !== 'hand') return fail(events, 'sprinklerhere');
-    if (!canAdd(s.bag, 'sprinkler')) return fail(events, 'bagfull');
-    addItem(s.bag, 'sprinkler');
-    s.sprinklers.splice(sp, 1);
-    events.push({ type: 'pickup', x, y });
-    return { ok: true };
-  }
   const p = s.plots[i];
   if (p.rotten) {
     if (!spend(s, ENERGY_COST.clear, events)) return { ok: false, reason: 'tired' };
@@ -576,14 +580,34 @@ function harvestHand(s, i, events) {
   return { ok: true, tier };
 }
 
+// What is still missing before a sprinkler can go in: null when everything is ready.
+export function irrigationMissing(s) {
+  if (!s.upgrades.well) return 'nowell';
+  if (!s.upgrades.pump) return 'nopump';
+  if (!countWhere(s.bag, (id) => id === 'sprinkler')) return 'nosprinkler';
+  if (countWhere(s.bag, (id) => id === 'hose') < HOSE_PER_SPRINKLER) return 'nohose';
+  return null;
+}
+
 function placeSprinkler(s, x, y, events) {
-  const i = idx(x, y);
-  if (!s.plots[i] || !plotUnlocked(s, i) || s.plots[i].crop || sprinklerAt(s, x, y) >= 0) {
-    return fail(events, 'placeplot');
-  }
-  if (!takeWhere(s.bag, (id) => id === 'sprinkler', 1)) return fail(events, 'nosprinkler');
+  if (!isCornerSpot(s, x, y) || sprinklerAt(s, x, y) >= 0) return fail(events, 'placeplot');
+  const missing = irrigationMissing(s);
+  if (missing) return fail(events, missing, { hose: countWhere(s.bag, (id) => id === 'hose') });
+  takeWhere(s.bag, (id) => id === 'sprinkler', 1);
+  takeWhere(s.bag, (id) => id === 'hose', HOSE_PER_SPRINKLER);
   s.sprinklers.push({ x, y });
   events.push({ type: 'placed', x, y });
+  return { ok: true };
+}
+
+function pickUpSprinkler(s, x, y, events) {
+  const k = sprinklerAt(s, x, y);
+  if (k < 0) return { ok: false };
+  if (!canAdd(s.bag, 'sprinkler') || spaceFor(s.bag, 'hose') < HOSE_PER_SPRINKLER) return fail(events, 'bagfull');
+  s.sprinklers.splice(k, 1);
+  addItem(s.bag, 'sprinkler');
+  addItem(s.bag, 'hose', HOSE_PER_SPRINKLER);
+  events.push({ type: 'pickup', x, y });
   return { ok: true };
 }
 
@@ -680,16 +704,22 @@ export function extractSeeds(s, slot, events = []) {
 
 export const packPrice = (crop) => zl(cropById[crop].pack); // srebrenjaci
 
-// Order a bag of fertilizer; it is delivered to the chest the next morning.
-export function orderFertilizer(s, events = []) {
-  if (s.money < zl(FERTILIZER_PRICE)) return fail(events, 'coins', { need: zl(FERTILIZER_PRICE) });
-  s.money -= zl(FERTILIZER_PRICE);
-  const o = s.orders.find((x) => x.item === 'fertilizer');
-  if (o) o.n++;
-  else s.orders.push({ item: 'fertilizer', n: 1 });
-  events.push({ type: 'ordered', item: 'fertilizer', n: 1, price: zl(FERTILIZER_PRICE) });
+export const shopItemById = Object.fromEntries(SHOP_ITEMS.map((i) => [i.id, i]));
+
+// Order fertilizer or irrigation parts; they are delivered to the chest the next morning.
+export function orderItem(s, id, events = []) {
+  const it = shopItemById[id];
+  if (!it) return fail(events, 'notincatalog');
+  if (s.money < zl(it.price)) return fail(events, 'coins', { need: zl(it.price) });
+  s.money -= zl(it.price);
+  const o = s.orders.find((x) => x.item === id);
+  if (o) o.n += it.n;
+  else s.orders.push({ item: id, n: it.n });
+  events.push({ type: 'ordered', item: id, n: it.n, price: zl(it.price) });
   return { ok: true };
 }
+
+export const orderFertilizer = (s, events = []) => orderItem(s, 'fertilizer', events);
 
 // Order a pack of seeds through the phone; it arrives the next morning.
 export function orderSeeds(s, crop, events = []) {
@@ -770,7 +800,7 @@ function newDay(s, events) {
     p.wet = false;
     p.wetBy = null;
   }
-  for (const sp of s.sprinklers) {
+  for (const sp of s.upgrades.pump ? s.sprinklers : []) {
     const tiles = [];
     for (const [x, y] of sprinklerReach(s.irrigation, sp.x, sp.y)) {
       const i = idx(x, y);
@@ -785,18 +815,21 @@ function newDay(s, events) {
   }
 }
 
-// Tiles a sprinkler at (x, y) reaches at the given irrigation level (not its own tile).
+// Tiles a sprinkler on crossing (x, y) reaches at the given level: plot centres within the radius.
 export function sprinklerReach(level, x, y) {
-  const r = IRRIGATION_RADII[Math.max(1, Math.min(IRRIGATION_RADII.length, level)) - 1];
+  const r2 = IRRIGATION_R2[Math.max(1, Math.min(IRRIGATION_R2.length, level)) - 1];
   const out = [];
-  const k = Math.ceil(r);
-  for (let dy = -k; dy <= k; dy++) {
-    for (let dx = -k; dx <= k; dx++) if ((dx || dy) && dx * dx + dy * dy <= r * r + 1e-6) out.push([x + dx, y + dy]);
+  const k = Math.ceil(Math.sqrt(r2));
+  for (let ty = y - k; ty < y + k; ty++) {
+    for (let tx = x - k; tx < x + k; tx++) {
+      if ((tx + 0.5 - x) ** 2 + (ty + 0.5 - y) ** 2 <= r2 + 1e-6) out.push([tx, ty]);
+    }
   }
   return out;
 }
 
-export const irrigationCost = (s) => (s.irrigation >= IRRIGATION_RADII.length ? null : zl(IRRIGATION_COSTS[s.irrigation])); // srebrenjaci
+export const IRRIGATION_LEVELS = IRRIGATION_R2.length;
+export const irrigationCost = (s) => (s.irrigation >= IRRIGATION_LEVELS ? null : zl(IRRIGATION_COSTS[s.irrigation])); // srebrenjaci
 
 export function upgradeIrrigation(s, events = []) {
   if (!s.upgrades.well) return fail(events, 'requires');
@@ -981,13 +1014,18 @@ function pickForage(s, x, y, events) {
   const k = forageAt(s, x, y);
   if (k < 0) return { ok: false };
   const f = forageById[s.forage[k].type];
-  const [lo, hi] = f.n;
+  let loot = f;
+  if (f.loot) {
+    let r = rand(s) * f.loot.reduce((a, l) => a + l.weight, 0);
+    loot = f.loot.find((l) => (r -= l.weight) < 0) ?? f.loot[0];
+  }
+  const [lo, hi] = loot.n;
   const n = lo + Math.floor(rand(s) * (hi - lo + 1));
-  if (spaceFor(s.bag, f.item) < n) return fail(events, 'bagfull');
+  if (spaceFor(s.bag, loot.item) < n) return fail(events, 'bagfull');
   if (!spend(s, 1, events)) return { ok: false, reason: 'tired' };
-  addItem(s.bag, f.item, n);
+  addItem(s.bag, loot.item, n);
   s.forage.splice(k, 1);
-  events.push({ type: 'foraged', what: f.id, item: f.item, n, x, y });
+  events.push({ type: 'foraged', what: f.id, item: loot.item, n, x, y });
   return { ok: true };
 }
 
@@ -1097,6 +1135,12 @@ function build(s, dt, events) {
   s.farmer.busy = null;
   if (b.what === 'gig') {
     finishGig(s, events);
+    return;
+  }
+  if (b.what === 'pump') {
+    if (!takeWhere(s.bag, (id) => id === 'pump', 1)) return;
+    s.upgrades.pump = true;
+    events.push({ type: 'built', what: 'pump' });
     return;
   }
   if (s.money < zl(WELL_BUILD.price) || s.energy < WELL_BUILD.energy || !hasMats(s, WELL_BUILD)) {

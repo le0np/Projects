@@ -764,6 +764,18 @@ export function hen(brown, frame) {
   return p.outline(0.45);
 }
 
+// The water pump mounted next to the well (20 × 20).
+export function pumpProp() {
+  const p = new Pix(20, 20);
+  p.rect(3, 7, 12, 10, (x, y) => pick(['#5a1a1a', '#8a2626', '#b53a32', '#d4584a'], 0.85 - (y - 7) * 0.06 - (x - 3) * 0.03, x, y));
+  p.ellipse(9, 12, 3.6, 3.6, (nx, ny, x, y) => pick(RAMP.metal, 0.3 + sphere(nx, ny) * 0.7, x, y));
+  p.rect(15, 9, 4, 3, (x, y) => pick(RAMP.metal, y === 9 ? 0.8 : 0.4, x, y));
+  p.rect(1, 9, 2, 3, RAMP.metal[2]);
+  p.rect(6, 3, 3, 4, (x, y) => pick(RAMP.metal, x === 6 ? 0.8 : 0.4, x, y));
+  p.rect(2, 17, 15, 2, (x, y) => pick(RAMP.stone, y === 17 ? 0.7 : 0.4, x, y));
+  return p.outline(0.42);
+}
+
 // Things that grow in the woods (24 × 24).
 export function forageSprite(type) {
   const p = new Pix(24, 24);
@@ -776,6 +788,14 @@ export function forageSprite(type) {
   } else if (type === 'blackberry') {
     for (let k = 0; k < 9; k++) leaf(p, 12, 19, -Math.PI + (k / 8) * Math.PI, 7 + r() * 3, 2.6, RAMP.leaf, (k % 2) * 0.05);
     for (const [x, y] of [[7, 12], [11, 9], [16, 11], [13, 14], [9, 16], [17, 15]]) ball(p, x, y, 1.6, 1.6, RAMP.berry, 0.1);
+  } else if (type === 'scrap') {
+    for (let a = 0; a < Math.PI * 2; a += 0.15) {
+      p.set(9 + Math.cos(a) * 5, 16 + Math.sin(a) * 3, pick(RAMP.leaf, 0.55 - Math.sin(a) * 0.2, 0, 0));
+      p.set(9 + Math.cos(a) * 3, 16 + Math.sin(a) * 1.8, pick(RAMP.leaf, 0.35, 0, 0));
+    }
+    p.rect(14, 10, 6, 9, (x, y) => pick(RAMP.wood, 0.6 - (x - 14) * 0.08, x, y));
+    p.rect(16, 7, 2, 4, RAMP.metal[3]);
+    p.ellipse(17, 7, 2, 1.2, RAMP.metal[4]);
   } else if (type === 'branches') {
     for (const [x0, y0, x1, y1] of [[3, 19, 20, 14], [5, 13, 21, 20], [7, 21, 18, 10]]) {
       p.line(x0, y0, x1, y1, (x, y) => pick(RAMP.bark, 0.6, x, y));
@@ -1258,6 +1278,19 @@ export function icon(name) {
       p.set(6, 4, ramp[5]);
       break;
     }
+    case 'hose':
+      for (const [r, t] of [[6, 0.75], [4.4, 0.55], [2.8, 0.4]]) {
+        for (let a = 0; a < Math.PI * 2; a += 0.12) p.set(8 + Math.cos(a) * r, 8.5 + Math.sin(a) * r * 0.8, pick(RAMP.leaf, t - Math.sin(a) * 0.15, 0, 0));
+      }
+      p.rect(13, 12, 2, 3, RAMP.metal[4]);
+      break;
+    case 'pump':
+      p.rect(3, 6, 9, 8, (x, y) => pick(['#5a1a1a', '#8a2626', '#b53a32', '#d4584a'], 0.8 - (y - 6) * 0.08 - (x - 3) * 0.04, x, y));
+      p.ellipse(7.5, 10, 3, 3, (nx, ny, x, y) => pick(RAMP.metal, 0.3 + sphere(nx, ny) * 0.7, x, y));
+      p.rect(12, 8, 3, 2, RAMP.metal[3]);
+      p.rect(5, 3, 2, 3, RAMP.metal[2]);
+      p.rect(2, 14, 12, 1, RAMP.metal[1]);
+      break;
     case 'egg':
       ball(p, 8, 9, 4.6, 5.8, RAMP.egg, 0.15);
       break;

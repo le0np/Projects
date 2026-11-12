@@ -3,12 +3,13 @@
 
 import {
   CROPS, RECIPES, MAX_ENERGY, COFFEE, EAT_ENERGY, TIER_NAMES, SHOP_OPEN, SHOP_CLOSE, ROT_DAY,
-  SEEDS_FROM_FRUIT, SEED_PACK, FERTILIZER_PRICE, WELL_BUILD, IRRIGATION_RADII, zl, SLEEP_FROM, COOP,
+  SEEDS_FROM_FRUIT, SEED_PACK, WELL_BUILD, zl, SLEEP_FROM, COOP, SHOP_ITEMS, HOSE_PER_SPRINKLER,
 } from './data.js';
 import {
   parseItem, isUnlocked, canSize, countWhere, canCraft, salePrice, isSellable, cropById,
-  plotUnlocked, sprinklerAt, qualityScore, tierOf, ripeCount, shopOpen, packPrice, findAt, jobTargets,
+  plotUnlocked, qualityScore, tierOf, ripeCount, shopOpen, packPrice, findAt, jobTargets,
   totalSeeds, sprinklerReach, irrigationCost, daysLeft, goodById, forageAt, forageById, matCount,
+  IRRIGATION_LEVELS, irrigationMissing,
 } from './sim.js';
 import { idx, objectAt, isPlotTile, OBJECTS } from './world.js';
 import { iconUrl } from './render.js';
@@ -42,6 +43,8 @@ export function itemName(id) {
   if (p.kind === 'fertilizer') return 'Gnojivo';
   if (p.kind === 'sprinkler') return 'Prskalica (water.sh)';
   if (p.kind === 'wood') return 'Drva';
+  if (p.kind === 'hose') return 'Crijevo';
+  if (p.kind === 'pump') return 'Vodena pumpa';
   if (p.kind === 'stone') return 'Kamenje';
   return cropById[p.crop] ? `${goodById[p.crop].name} ${stars(p.tier)}` : goodById[p.crop].name;
 }
@@ -49,7 +52,7 @@ export function itemName(id) {
 // "kg" for produce sold by weight, "kom" for pieces
 export const unitOf = (id) => {
   const p = parseItem(id);
-  return p?.kind === 'crop' ? goodById[p.crop].unit : 'kom';
+  return p?.kind === 'crop' ? goodById[p.crop].unit : p?.kind === 'hose' ? 'm' : 'kom';
 };
 
 const itemIcon = (id) => {
@@ -298,7 +301,12 @@ export function createUI(cb) {
         if (p.crop !== 'egg') row.append(button(`Pojedi (+${EAT_ENERGY[p.tier]} ⚡)`, () => cb.onEat(ui.selected), { disabled: s.energy >= MAX_ENERGY }));
         if (ui.panel === 'workbench' && cropById[p.crop]) row.append(button(`Izvadi sjeme (${SEEDS_FROM_FRUIT[0]}–${SEEDS_FROM_FRUIT[1]})`, () => cb.onExtract(ui.selected)));
       } else if (p.kind === 'sprinkler') {
-        row.append(button('Postavi na parcelu', () => cb.onPlace()));
+        out.push(el('p', 'muted', `Stoji na križanju parcela i troši ${HOSE_PER_SPRINKLER} m crijeva. Radi s pumpom na bunaru.`));
+        row.append(button('Postavi na križanje', () => cb.onPlace()));
+      } else if (p.kind === 'hose') {
+        out.push(el('p', 'muted', `Svaka prskalica treba ${HOSE_PER_SPRINKLER} m crijeva.`));
+      } else if (p.kind === 'pump') {
+        out.push(el('p', 'muted', s.upgrades.well ? 'Klikni bunar: farmer će je montirati.' : 'Ide na bunar, a bunar se prvo mora sazidati.'));
       } else if (p.kind === 'fertilizer') {
         row.append(button('Uzmi u ruku (4)', () => cb.onTool('fert')));
       }
@@ -407,13 +415,22 @@ export function createUI(cb) {
     const top = el('div', 'recipe-head');
     const level = s.irrigation;
     const cost = irrigationCost(s);
-    const max = IRRIGATION_RADII.length;
+    const max = IRRIGATION_LEVELS;
+    const hose = matCount(s, 'hose');
+    const parts = el('ul', 'parts');
+    for (const [ok, text] of [
+      [s.upgrades.well, 'bunar'],
+      [s.upgrades.pump, 'vodena pumpa na bunaru'],
+      [hose >= HOSE_PER_SPRINKLER, `crijevo: ${hose} m u torbi (${HOSE_PER_SPRINKLER} m po prskalici)`],
+      [matCount(s, 'sprinkler') > 0 || s.sprinklers.length > 0, `prskalice: ${matCount(s, 'sprinkler')} u torbi, ${s.sprinklers.length} postavljeno`],
+    ]) parts.append(el('li', ok ? 'ok' : '', `${ok ? '✔' : '○'} ${text}`));
     const now = sprinklerReach(level, 0, 0).length;
     top.append(el('code', '', `Navodnjavanje · water.sh v${level}`), el('span', 'muted', cost === null ? 'max' : formatMoney(cost)));
     const meter = el('div', 'meter');
     for (let l = 1; l <= max; l++) meter.append(el('span', l <= level ? 'on' : ''));
     const next = cost === null ? 'Najviša razina.' : `Sljedeća razina: ${sprinklerReach(level + 1, 0, 0).length} parcela po prskalici.`;
-    card.append(top, meter, el('p', 'small', `Svaka prskalica sada zalijeva ${now} parcela oko sebe. ${next}`));
+    card.append(top, el('p', 'small', 'Sustav se slaže od dijelova: pumpa, crijevo i prskalice (Dostava na mobitelu, ponešto se nađe u šumi). Prskalica stoji na križanju četiri parcele, pa ne zauzima nijednu.'), parts, meter,
+      el('p', 'small', `Svaka prskalica sada zalijeva ${now} parcela oko sebe. ${next}`));
     if (cost !== null) {
       const why = !s.upgrades.well ? 'prvo sazidaj bunar' : s.money < cost ? 'nedovoljno novca' : null;
       card.append(button(why ?? `Nadogradi na v${level + 1}`, () => cb.onIrrigation(), { disabled: Boolean(why) }));
@@ -439,10 +456,14 @@ export function createUI(cb) {
     if (ui.phoneTab !== 'shop') return;
     const sig = JSON.stringify(['shop', s.money, s.totalEarned, s.orders]);
     renderIfChanged(els.shopTab, sig, () => {
-      const out = [el('p', 'small muted', `Sve stiže sutra ujutro. Sjeme (paket od ${SEED_PACK}) ide u vrećicu, gnojivo u škrinju.`)];
-      const fert = el('div', 'catalog-row');
-      fert.append(icon('fertilizer'), el('span', 'grow', 'Gnojivo · 1 vreća'), button(formatMoney(zl(FERTILIZER_PRICE)), () => cb.onOrderFertilizer(), { disabled: s.money < zl(FERTILIZER_PRICE) }));
-      out.push(fert);
+      const out = [el('p', 'small muted', `Sve stiže sutra ujutro. Sjeme (paket od ${SEED_PACK}) ide u vrećicu, ostalo u škrinju.`)];
+      SHOP_ITEMS.forEach((it, k) => {
+        if (k === 1) out.push(el('p', 'small catalog-head', 'Navodnjavanje'));
+        const row = el('div', 'catalog-row');
+        row.append(icon(it.id), el('span', 'grow', `${it.name} · ${it.n} ${it.unit}`), button(formatMoney(zl(it.price)), () => cb.onOrderItem(it.id), { disabled: s.money < zl(it.price) }));
+        out.push(row);
+      });
+      out.push(el('p', 'small catalog-head', 'Sjeme'));
       for (const c of CROPS) {
         const row = el('div', 'catalog-row');
         row.append(icon(c.id));
@@ -456,7 +477,7 @@ export function createUI(cb) {
         out.push(row);
       }
       if (s.orders.length) {
-        out.push(el('p', 'small', `Stiže sutra: ${s.orders.map((o) => (o.item ? `${o.n}× gnojivo` : `${o.n}× ${cropById[o.crop].name}`)).join(', ')}`));
+        out.push(el('p', 'small', `Stiže sutra: ${s.orders.map((o) => (o.item ? `${o.n} ${unitOf(o.item)} ${itemName(o.item).toLowerCase()}` : `${o.n}× ${cropById[o.crop].name}`)).join(', ')}`));
       }
       return out;
     });
@@ -526,10 +547,15 @@ export function createUI(cb) {
     if (document.title !== t) document.title = t;
   }
 
-  function inspect(s, tile) {
+  function inspect(s, tile, corner) {
     let text = '';
-    if (ui.placing) text = 'Postavljanje prskalice: klikni praznu parcelu (Esc za odustajanje).';
-    else if (tile) {
+    if (ui.placing) {
+      const missing = irrigationMissing(s);
+      text = missing === 'nopump' || missing === 'nowell' ? 'Prskalica se postavlja tek kad je pumpa na bunaru.'
+        : 'Postavljanje prskalice: klikni križanje gdje se dodiruju četiri parcele (Esc za odustajanje).';
+    } else if (corner?.near && s.sprinklers.some((p) => p.x === corner.x && p.y === corner.y)) {
+      text = `Prskalica (water.sh v${s.irrigation}): svako jutro zalije ${sprinklerReach(s.irrigation, 0, 0).length} parcela oko sebe${s.upgrades.pump ? '' : ' (kad pumpa bude na bunaru)'}. Klik: farmer je pokupi s crijevom.`;
+    } else if (tile) {
       const [x, y] = tile;
       const obj = objectAt(x, y);
       const i = idx(x, y);
@@ -554,8 +580,6 @@ export function createUI(cb) {
         }[obj];
       } else if (isPlotTile(x, y) && !plotUnlocked(s, i)) {
         text = 'Zaraslo polje. Otključava se na radnom stolu: git clone polje.';
-      } else if (p && sprinklerAt(s, x, y) >= 0) {
-        text = `Prskalica (water.sh v${s.irrigation}): zalijeva ${sprinklerReach(s.irrigation, 0, 0).length} parcela oko sebe. Rukama (1) je pokupiš.`;
       } else if (p && !p.crop) {
         text = s.tool === 'seed' ? `Prazna parcela: klik posadi ${cropById[s.seed].name} (imaš ${s.seeds[s.seed]}).`
           : 'Prazna parcela. Uzmi sjeme (2) za sadnju.';
@@ -576,14 +600,14 @@ export function createUI(cb) {
 
   return {
     state: ui,
-    update(s, tile, zoom) {
+    update(s, tile, zoom, corner) {
       hud(s);
       pouch(s);
       bag(s);
       panel(s);
       phone(s);
       title(s);
-      inspect(s, tile);
+      inspect(s, tile, corner);
       els.zoomIn.disabled = !zoom.canIn;
       els.zoomOut.disabled = !zoom.canOut;
     },

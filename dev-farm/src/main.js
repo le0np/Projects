@@ -4,10 +4,10 @@
 
 import {
   createState, tick, command, sleep, coffee, eat, moveItem, craft, cropById, recipeById,
-  countWhere, extractSeeds, orderSeeds, startJob, upgradeIrrigation, orderFertilizer, feedHens, acceptGig,
-  goWork, goodById, forageById,
+  countWhere, extractSeeds, orderSeeds, startJob, upgradeIrrigation, orderItem, feedHens, acceptGig, sprinklerAt,
+  goWork, goodById, forageById, shopItemById,
 } from './sim.js';
-import { TIER_NAMES } from './data.js';
+import { TIER_NAMES, HOSE_PER_SPRINKLER } from './data.js';
 import { SAVE_KEY, OLDER_KEYS, serialize, deserialize } from './save.js';
 import { createRenderer } from './render.js';
 import { createUI, itemName, stars, formatMoney, plots } from './ui.js';
@@ -22,6 +22,7 @@ const storage = {
 const loaded = deserialize([SAVE_KEY, ...OLDER_KEYS].map((k) => storage.get(k)).find((v) => v) ?? null);
 let state = loaded.state;
 let hoverTile = null;
+let hoverCorner = null;
 
 const canvas = document.getElementById('world');
 const renderer = createRenderer(canvas);
@@ -30,7 +31,7 @@ if (savedZoom > 0) renderer.setZoom(savedZoom);
 
 const ui = createUI({
   onTool, onSeed, onMove, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
-  onIrrigation, onOrderFertilizer, onAcceptGig, onGoWork,
+  onIrrigation, onOrderItem, onAcceptGig, onGoWork,
   onClosePanel: closePanel,
   onChange: refresh,
 });
@@ -56,8 +57,11 @@ function farmerSays(e) {
       return e.crop ? `Nemam više sjemena za ${name(e.crop)}. Izvadit ću ga iz ploda ili naručiti.` : 'Nemam sjemena.';
     case 'locked': return 'Sve je zaraslo. Za ovo treba plan: git clone polje.';
     case 'nopath': return 'Ne mogu doći do tamo.';
-    case 'placeplot': return 'Prskalica ide samo na praznu parcelu.';
-    case 'sprinklerhere': return 'Tu stoji prskalica. Rukama (1) je mogu pokupiti.';
+    case 'placeplot': return 'Prskalica ide na križanje gdje se dodiruju parcele.';
+    case 'nowell': return state.upgrades.wellPlan ? 'Prvo treba sazidati bunar.' : 'Za navodnjavanje trebam bunar. Plan ću skicirati na radnom stolu.';
+    case 'nopump': return 'Treba mi vodena pumpa na bunaru. Naručit ću je na mobitelu (Dostava).';
+    case 'nohose': return `Treba mi ${HOSE_PER_SPRINKLER} m crijeva po prskalici, a imam ${e.hose ?? 0} m.`;
+    case 'nosprinkler': return 'Nemam prskalicu u torbi.';
     case 'full': return 'Energija mi je puna.';
     case 'nowell': return 'Ovdje bi bio dobar bunar. Mogu ga sazidati na radnom stolu.';
     case 'notfruit': return 'Iz toga nema sjemena.';
@@ -108,7 +112,7 @@ function report(events) {
         break;
       case 'foraged': {
         const f = forageById[e.what];
-        const what = e.item === 'wood' ? `${e.n} drva` : e.item === 'stone' ? `${e.n} kamena` : `${e.n} kg`;
+        const what = { wood: `${e.n} drva`, stone: `${e.n} kamena`, hose: `${e.n} m crijeva`, sprinkler: 'cijela prskalica' }[e.item] ?? `${e.n} kg`;
         ui.say(`${f.name[0].toUpperCase()}${f.name.slice(1)}! +${what}.`, 'happy');
         break;
       }
@@ -187,21 +191,26 @@ function report(events) {
         break;
       case 'ordered':
         ui.notify(e.item
-          ? `📦 Naručeno: vreća gnojiva (−${formatMoney(e.price)}). Stiže sutra ujutro u škrinju.`
+          ? `📦 Naručeno: ${shopItemById[e.item].name.toLowerCase()} · ${e.n} ${shopItemById[e.item].unit} (−${formatMoney(e.price)}). Stiže sutra ujutro u škrinju.`
           : `📦 Naručeno: ${e.n}× sjeme, ${cropById[e.crop].name} (−${formatMoney(e.price)}). Stiže sutra ujutro.`);
         break;
       case 'delivered':
-        ui.notify(e.item ? `📦 Dostava je stigla: ${e.n}× gnojivo, u škrinji.` : `📦 Dostava je stigla: ${e.n}× sjeme (${name(e.crop)}).`, 'ok');
+        ui.notify(e.item ? `📦 Dostava je stigla u škrinju: ${shopItemById[e.item].name.toLowerCase()} · ${e.n} ${shopItemById[e.item].unit}.` : `📦 Dostava je stigla: ${e.n}× sjeme (${name(e.crop)}).`, 'ok');
         break;
       case 'buildstart':
-        ui.say('Plan je tu. Zidam bunar…');
+        ui.say(e.what === 'pump' ? 'Montiram pumpu na bunar…' : 'Plan je tu. Zidam bunar…');
         break;
       case 'buildcancel':
         ui.say('Bunar ću dovršiti drugi put.');
         break;
       case 'built':
-        ui.say('Bunar je sazidan! Voda je sad blizu, a može i navodnjavanje.', 'happy');
-        ui.notify('🪣 Bunar je sazidan. Na radnom stolu sad možeš izraditi prskalice.', 'ok');
+        if (e.what === 'pump') {
+          ui.say('Pumpa je na bunaru! Sad trebam crijevo i prskalice.', 'happy');
+          ui.notify('💧 Pumpa je montirana. Prskalice stavi na križanja parcela (10 m crijeva po prskalici).', 'ok');
+        } else {
+          ui.say('Bunar je sazidan! Voda je sad blizu.', 'happy');
+          ui.notify('🪣 Bunar je sazidan. Za navodnjavanje trebaju pumpa, crijevo i prskalice (Dostava na mobitelu).', 'ok');
+        }
         break;
       case 'irrigation':
         ui.say(`water.sh v${e.level}: svaka prskalica sad zalijeva ${e.reach} parcela.`, 'happy');
@@ -212,10 +221,10 @@ function report(events) {
         break;
       }
       case 'placed':
-        ui.say('Prskalica postavljena. water.sh radi svakih 30 s.', 'happy');
+        ui.say('Prskalica postavljena. water.sh zalijeva svako jutro u 6 h.', 'happy');
         break;
       case 'pickup':
-        ui.say('Prskalica je u torbi.');
+        ui.say(`Prskalica i ${HOSE_PER_SPRINKLER} m crijeva su u torbi.`);
         break;
       case 'coffee':
         ui.say(`Ahh, kava. +${e.gain} ⚡`, 'happy');
@@ -324,7 +333,7 @@ function onPlace() {
   if (!countWhere(state.bag, (id) => id === 'sprinkler')) return;
   ui.state.placing = true;
   ui.state.panel = null;
-  ui.say('Gdje da je stavim? Klikni praznu parcelu.');
+  ui.say('Gdje da je stavim? Klikni križanje parcela.');
   refresh();
 }
 
@@ -354,8 +363,8 @@ function onIrrigation() {
   act((ev) => upgradeIrrigation(state, ev));
 }
 
-function onOrderFertilizer() {
-  act((ev) => orderFertilizer(state, ev));
+function onOrderItem(id) {
+  act((ev) => orderItem(state, id, ev));
 }
 
 function cancelJob() {
@@ -390,21 +399,36 @@ function onReset() {
 // ------------------------------------------------------------------ input
 
 canvas.addEventListener('click', (e) => {
+  const c = renderer.cornerFromClient(e.clientX, e.clientY);
+  if (ui.state.placing) {
+    // sprinklers go on the crossing of four plots
+    ui.state.placing = false;
+    ui.state.panel = null;
+    act((ev) => command(state, c.x, c.y, 'place', ev));
+    return;
+  }
+  if (c.near && sprinklerAt(state, c.x, c.y) >= 0) {
+    ui.state.panel = null;
+    act((ev) => command(state, c.x, c.y, 'pickup', ev));
+    return;
+  }
   const t = renderer.tileFromClient(e.clientX, e.clientY);
   if (!t) return;
-  const mode = ui.state.placing ? 'place' : 'auto';
-  ui.state.placing = false;
   ui.state.panel = null;
-  act((ev) => command(state, t[0], t[1], mode, ev));
+  act((ev) => command(state, t[0], t[1], 'auto', ev));
 });
 
 canvas.addEventListener('mousemove', (e) => {
   hoverTile = renderer.tileFromClient(e.clientX, e.clientY);
+  hoverCorner = renderer.cornerFromClient(e.clientX, e.clientY);
   renderer.setHover(hoverTile);
+  renderer.setCorner(hoverCorner);
 });
 canvas.addEventListener('mouseleave', () => {
   hoverTile = null;
+  hoverCorner = null;
   renderer.setHover(null);
+  renderer.setCorner(null);
 });
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
@@ -436,7 +460,7 @@ let lastFrame = performance.now();
 let lastUi = 0;
 
 function refresh() {
-  ui.update(state, hoverTile, { canIn: renderer.canZoom(1), canOut: renderer.canZoom(-1) });
+  ui.update(state, hoverTile, { canIn: renderer.canZoom(1), canOut: renderer.canZoom(-1) }, hoverCorner);
 }
 
 function frame(now) {
