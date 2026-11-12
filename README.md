@@ -6,7 +6,7 @@ Radionica za projekte: ja zamislim ideju, Claude je napravi. Svaki projekt živi
 
 | Projekt | Opis | Tehnologije | Status |
 | ------- | ---- | ----------- | ------ |
-| _još nema projekata_ | | | |
+| [pixel-runner](projects/pixel-runner) | Endless runner: skači preko puževa i muha | Python, Pygame | ✅ gotovo |
 
 Statusi: 💡 ideja · 🚧 u izradi · ✅ gotovo · 🧊 pauzirano
 
