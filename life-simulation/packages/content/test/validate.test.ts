@@ -150,6 +150,13 @@ describe("validator catches", () => {
     );
   });
 
+  it("recap tags for the `about` character only on pair facts", () => {
+    expectError(
+      mutate(null, (_ev, raw) => ((raw.facts.data as any).facts[0].recap = { about: "saved_another" })),
+      "only pair facts",
+    );
+  });
+
   it("duplicate ids and file name mismatch", () => {
     expectError(
       mutate(null, (_ev, raw) => raw.events.push({ file: "copy.json", data: structuredClone(raw.events[0]!.data) })),

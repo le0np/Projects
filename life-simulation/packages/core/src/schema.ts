@@ -13,6 +13,7 @@ import {
   STATUSES,
 } from "./constants";
 import type { Condition } from "./conditions";
+import { OUTCOME_TAGS } from "./view";
 
 /** Current version of the event file format. Bump on breaking schema changes. */
 export const EVENT_SCHEMA_VERSION = 1;
@@ -282,6 +283,10 @@ export const FactSchema = z.strictObject({
   description: NonEmptyText,
   /** Set by the engine at character creation, not by events. */
   setAtInit: z.boolean().optional(),
+  /** Life Recap outcome tags granted by this fact: to the fact holder and/or to the `about` character. */
+  recap: z
+    .strictObject({ holder: z.enum(OUTCOME_TAGS).optional(), about: z.enum(OUTCOME_TAGS).optional() })
+    .optional(),
 });
 export type Fact = z.infer<typeof FactSchema>;
 export const FactsFileSchema = z.strictObject({ facts: z.array(FactSchema).min(1) });

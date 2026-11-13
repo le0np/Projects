@@ -4,6 +4,7 @@
     { "key": "exposed_mistake", "scope": "character", "description": "A serious work mistake of this character became known." },
     { "key": "covered_for", "scope": "pair", "description": "This character lied to protect the other one." },
     { "key": "owes_money", "scope": "pair", "description": "This character owes money to the other one." },
-    { "key": "saved_by", "scope": "pair", "description": "The other character saved this character's life." }
+    { "key": "saved_by", "scope": "pair", "description": "The other character saved this character's life.",
+      "recap": { "about": "saved_another" } }
   ]
 }

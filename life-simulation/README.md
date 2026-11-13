@@ -2,7 +2,7 @@
 
 Kratka (5–10 min) multiplayer društvena simulacija života u browseru. Igrači i botovi s različitim karijerama prolaze kroz svakodnevne situacije i odlučuju jedni o drugima kroz unaprijed zadane izbore. Prva verzija radi samo s botovima.
 
-**Status:** 🚧 u izradi. Gotov je M1 (format sadržaja, validator, temelji enginea); slijedi M2 (engine).
+**Status:** 🚧 u izradi. Gotovi su M1 (format sadržaja, validator) i M2 (engine); slijedi M3 (botovi).
 
 ## Pokretanje
 
@@ -24,6 +24,7 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
 - Validator koji hvata nedostajuće izbore, neispravne uvjete, pokvarene nastavke, nemoguće zahtjeve za sudionike i konfliktne ishode, s točnom putanjom do greške.
 - 10 karijera s pasivnim sposobnostima te 6 testnih eventa, od kojih su 2 dio lanaca.
 - Deterministički PRNG s neovisnim tokovima, virtualni sat i red timera, jezik uvjeta s evaluatorom.
+- Engine koji izvrti cijelu sesiju bez grafike, s paralelnim eventima, rokovima i zadanim odlukama, ishodima, nastavcima, smrću, čitljivim logom i Life Recapom. Ista sesija s istim seedom uvijek daje isti rezultat.
 
 ## Kako je napravljeno
 
@@ -48,7 +49,8 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
 │   ├── core/                  # konstante, PRNG, Clock/TimerQueue, DSL uvjeta, Zod sheme
 │   │   ├── src/
 │   │   └── test/
-│   └── content/               # sadržaj + loader + validator + CLI
+│   ├── content/               # sadržaj + loader + validator + CLI
+│   └── engine/                # sesija, direktor, razrješenje, nastavci, log, Life Recap
 │       ├── data/              # careers.json, facts.json, events/*.json
 │       ├── src/
 │       └── test/
@@ -57,7 +59,7 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
 └── vitest.config.ts
 ```
 
-Planirani paketi: `engine` (M2), `bots` (M3), `sim` (M5), `server` (M6) i `web` (M7).
+Planirani paketi: `bots` (M3), `sim` (M5), `server` (M6) i `web` (M7).
 
 ## Moguća poboljšanja
 

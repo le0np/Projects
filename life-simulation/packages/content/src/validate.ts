@@ -171,6 +171,7 @@ export function validateContent(raw: RawContent): ValidationResult {
     facts.data.facts.forEach((f, i) => {
       if (reg.facts.has(f.key)) report("error", `facts[${i}].key`, `duplicate fact key "${f.key}"`);
       if (f.setAtInit && f.scope !== "character") report("error", `facts[${i}]`, "only character facts can be set at init");
+      if (f.recap?.about && f.scope !== "pair") report("error", `facts[${i}].recap.about`, "only pair facts have an `about` character");
       reg.facts.set(f.key, f);
     });
   }
