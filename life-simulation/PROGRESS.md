@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-M2 je gotov: engine izvrti cijelu sesiju bez grafike, s paralelnim eventima, rokovima, ishodima, nastavcima, završecima, logom i Life Recapom. Za sada odluke donosi nasumični testni kontroler. Sljedeći je M3 (botovi).
+**Prvi igrivi prototip postoji (M3):** cijela sesija se odigra samo s botovima čije odluke ovise o osobnosti, motivima i sjećanju (`npm run sim`). Sadržaja je još malo (6 eventa), pa likovima nakon otprilike 2–4 minute ponestane eventa. Sljedeći su M4 (50+ eventa) i M5 (batch statistika).
 
 ## Napravljeno 13. studenog 2026.
 
@@ -81,6 +81,28 @@ M2 je gotov: engine izvrti cijelu sesiju bez grafike, s paralelnim eventima, rok
   - validacija odluka, timeout i default, kombinacije simultanih odluka, otkrivanje izbora, modifikatori karijera;
   - nastavci s odgodom, odbačeni nastavci, smrt i `all_ended`, `endsSession`, oznake u recapu, početni odnosi.
 
+### M3: botovi (`packages/bots`) i simulacijski CLI (`packages/sim`)
+
+- Sučelje `Controller` premješteno je u `core`. Paket `bots` ovisi samo o `core`, a test provjerava da ne uvozi ništa drugo. Bot tako fizički ne može pročitati skriveno stanje (02 §8).
+- Osobnost: 10 osobina 0–100 (osobina „Trust“ iz specifikacije zove se `trusting`, vidi K2). Postoji 10 arhetipova sa srednjim vrijednostima, a svaka osobina dobiva individualnu varijaciju (sd 10), pa je svaki bot jedinstven. Bot dobiva 1–2 motiva iz skupa svog arhetipa, jačine 0.4–0.9.
+- Motivi:
+  - vezani uz osobu (zaštiti prijatelja, sačuvaj odnos, stekni povjerenje) cilj biraju iz onoga što bot vidi;
+  - osveta nastaje iz zamjerki: agresivniji bot je razvije lakše.
+- Bodovanje:
+  - korisnost izbora zbraja osobnu korist (iz percipiranih posljedica, s težinama po osobinama), moralnu usklađenost (tablica oznaka izbora × osobine, konfigurabilna), utjecaj na odnose i motive, a oduzima rizik (nepoznat rizik vrijedi 0.2);
+  - koliko bot mari za drugog lika ovisi o naklonosti, povjerenju, sjećanju, empatiji, lojalnosti i agresivnosti.
+- Slučajnost: softmax s temperaturom 0.12 + 0.45 × impulzivnost.
+- Vrijeme razmišljanja: impulzivni botovi odgovaraju brže, a svi uvijek unutar roka.
+- Sjećanje sesije gradi se iz botovih vlastitih obavijesti: susreti, otkriveni tuđi izbori (pomoć → zahvalnost; laž ili prijetnja → zamjerka), a neobjašnjiv gubitak budi blagu sumnju prema sudionicima.
+- Svaka odluka bilježi razloge (`traces`): korisnost i vjerojatnost svakog izbora. CLI ih ispisuje s `--explain`.
+- `packages/sim`: `runBotSession`, `createBotParticipants` i CLI `npm run sim` s opcijama `--players`, `--seed`, `--careers`, `--archetypes`, `--duration`, `--explain`, `--json` i `--quiet`.
+- Testovi:
+  - profili: deterministični i jedinstveni;
+  - ponašanje prema osobnosti: principijelni govore istinu > 80 %, manipulatori < 30 %; altruisti pomažu češće od oportunista; impulzivni riskiraju češće od opreznih;
+  - nijedan arhetip ne bira uvijek isto;
+  - naklonost mijenja procjenu, sjećanje radi, osveta nastaje;
+  - sesija samo s botovima završi bez defaulta i odbijenih odluka i ponovljiva je iz seeda.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:
@@ -89,12 +111,12 @@ Provedeno 13. studenog 2026.:
 | --- | --- |
 | `npm run typecheck` | prolazi |
 | `npm run validate` | 6 eventa, 0 grešaka, 6 upozorenja (6 karijera još nema poseban izbor, očekivano do M4); hash sadržaja `feea9c890b061482` |
-| `npm test` | 59/59 testova prolazi (core 20, content 18, engine 21) |
+| `npm test` | 74/74 testova prolazi (core 20, content 18, engine 21, bots 12, sim 3) |
+| `npm run sim -- --seed demo --explain` | sesija sa 6 botova, 10 eventa, 1 nastavak; odluke su u skladu s osobnostima (npr. principijelan bot posuđuje novac i oprašta dug, manipulator laže i izbjegava vjerovnika) |
 | Ručno: CLI na pokvarenoj kopiji sadržaja | izlazni kod 1; prijavljuje neispravan JSON i nepostojeći nastavak |
 
 ## Poznata ograničenja
 
-- Odluke su zasad nasumične (bez botova).
 - Sa samo 6 eventa likovi nakon otprilike 2 minute ostanu bez sadržaja i sesija čeka kraj. To se rješava s M4 (50+ eventa).
 - Engineer, teacher, mechanic, psychologist, journalist i civilian još nemaju poseban izbor ni u jednom eventu (dolazi s M4).
 - Kad Zod `union` padne (uvjeti), poruka greške prikazuje grananje koje je stiglo najdublje. Ponekad je zato manje jasna od poruka za efekte.
@@ -102,15 +124,13 @@ Provedeno 13. studenog 2026.:
 
 ## Sljedeći koraci
 
-1. M3, paket `bots`:
-   - osobnosti, 10 arhetipova i skriveni motivi;
-   - utility bodovanje iz `perceived` i oznaka izbora, softmax odabir i sjećanje sesije;
-   - CLI `npm run sim`.
-2. M4: biblioteka od 50+ eventa.
-3. M5: batch simulacija, statistika i replay.
+1. M5 (ranije, jer pomaže pisati sadržaj): batch simulacija stotina sesija, statistika iz 07 §2 i balansni izvještaj.
+2. M4: biblioteka od 50+ eventa po raspodjeli iz 03 §9 (+ Family), posebni izbori za sve karijere i lanci.
+3. Replay iz zapisanih odluka.
+4. M6: server.
 
 ## Handoff za novi chat
 
 1. Projekt je u `life-simulation/`. Prvo pročitati `docs/IMPLEMENTATION_PLAN.md` i `docs/EVENT_FORMAT.md`, a za detalje `docs/spec/`.
-2. `cd life-simulation && npm install && npm run check` (typecheck, validacija sadržaja, testovi).
+2. `cd life-simulation && npm install && npm run check` (typecheck, validacija sadržaja, testovi); `npm run sim -- --explain` za sesiju samo s botovima.
 3. Granice: engine bez I/O i bez stvarnog sata; `bots` ovisi samo o `core` tipovima, nikad o `engine`; sadržaj eventa je JSON u `packages/content`, nikad u kodu; ne mijenjati koncept igre bez dogovora s vlasnikom.

@@ -152,3 +152,19 @@ export interface LifeRecap {
   /** Internal balancing metric; not shown to players as a "win". */
   lifeScore: number;
 }
+
+export interface Decision {
+  choiceId: string;
+  /** Simulated thinking time before the decision is submitted. */
+  thinkMs: number;
+}
+
+/**
+ * Decision maker for one character (bot, scripted test, or a human proxy).
+ * It only ever sees `CharacterView` and its own notices — exactly what a human client sees.
+ */
+export interface Controller {
+  /** Return null to not decide (the deadline default will apply). */
+  decide(view: CharacterView): Decision | null;
+  observe?(notice: Notice): void;
+}

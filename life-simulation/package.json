@@ -10,7 +10,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "validate": "tsx packages/content/src/cli.ts",
-    "check": "npm run typecheck && npm run validate && npm test"
+    "check": "npm run typecheck && npm run validate && npm test",
+    "sim": "tsx packages/sim/src/cli.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

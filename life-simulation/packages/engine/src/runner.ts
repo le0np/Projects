@@ -2,26 +2,12 @@
  * Runs a whole session in virtual time with synchronous controllers.
  * Used by tests and the simulator; the multiplayer server will drive `Session` with a real clock instead.
  */
-import { Rng, TimerQueue, VirtualClock, type CharacterView, type Notice } from "@lifesim/core";
+import { Rng, TimerQueue, VirtualClock, type CharacterView, type Controller, type Decision, type Notice } from "@lifesim/core";
 import type { ContentBundle } from "@lifesim/content";
 import { resolveConfig, type SessionConfig } from "./config";
 import { Session, type ParticipantSpec, type SessionResult } from "./session";
 
-export interface Decision {
-  choiceId: string;
-  /** Simulated thinking time before the decision is submitted. */
-  thinkMs: number;
-}
-
-/**
- * Decision maker for one character. It only ever sees `CharacterView` and its own notices,
- * exactly like a human client would.
- */
-export interface Controller {
-  /** Return null to not decide (the deadline default will apply). */
-  decide(view: CharacterView): Decision | null;
-  observe?(notice: Notice): void;
-}
+export type { Controller, Decision } from "@lifesim/core";
 
 export interface ParticipantSetup extends ParticipantSpec {
   controller: Controller;

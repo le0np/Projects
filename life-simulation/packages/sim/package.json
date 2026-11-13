@@ -1,0 +1,15 @@
+{
+  "name": "@lifesim/sim",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@lifesim/bots": "0.1.0",
+    "@lifesim/content": "0.1.0",
+    "@lifesim/core": "0.1.0",
+    "@lifesim/engine": "0.1.0"
+  }
+}
