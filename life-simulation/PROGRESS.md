@@ -195,7 +195,7 @@ Provedeno 13. studenog 2026.:
 | --- | --- |
 | `npm run typecheck` | prolazi |
 | `npm run validate` | 57 eventa, 0 grešaka, 0 upozorenja; hash sadržaja `8554608747611859` |
-| `npm test` | 85/85 testova prolazi |
+| `npm test` | 84/84 testova prolazi |
 | `TEST_DATABASE_URL=… npx vitest run packages/server` | 4/4 na PostgreSQL 16 (privremeni lokalni klaster); u bazi: sesija `completed`, 40 odluka igrača i 1 default (dok je igrač bio odspojen), 4 rezultata |
 | `npm run server` + curl | health, registracija, validacijske poruke, karijere rade |
 | `npm run sim:batch -- --sessions 500 --seed m4` | 500 sesija; replay 3/3 identičan; izvještaj u `docs/reports/m4.report.md` |
