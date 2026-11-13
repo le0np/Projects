@@ -7,6 +7,7 @@ Radionica za projekte: ja zamislim ideju, Claude je napravi. Svaki projekt živi
 | Projekt | Opis | Tehnologije | Status |
 | ------- | ---- | ----------- | ------ |
 | [dev-farm](dev-farm) | 2D farma za browser: farmer, kvaliteta uroda, štand, tržnica u gradu, izumi i navodnjavanje | HTML, CSS, JavaScript | 🚧 u izradi |
+| [life-simulation](life-simulation) | Kratka multiplayer simulacija života: karijere, odnosi, tajne i odluke o drugima; prvo samo s botovima | TypeScript, Node.js | 🚧 u izradi |
 | [pixel-runner](pixel-runner) | Endless runner: skači preko puževa i muha | Python, Pygame | ✅ gotovo |
 
 Statusi: 💡 ideja · 🚧 u izradi · ✅ gotovo · 🧊 pauzirano
@@ -20,6 +21,7 @@ Statusi: 💡 ideja · 🚧 u izradi · ✅ gotovo · 🧊 pauzirano
 ├── IDEJE.md             # ideje koje čekaju na red
 ├── _template/           # predlošci README.md i PROGRESS.md za novi projekt
 ├── dev-farm/            # jedan projekt = jedna mapa
+├── life-simulation/
 └── pixel-runner/
 ```
 
