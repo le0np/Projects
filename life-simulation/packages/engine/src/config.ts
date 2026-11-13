@@ -30,7 +30,7 @@ export interface SessionConfig {
 export const DEFAULT_CONFIG: Omit<SessionConfig, "seed"> = {
   durationSeconds: 480,
   deadlines: { simple: [10, 20], multi: [15, 30], important: [20, 40] },
-  restSeconds: [4, 12],
+  restSeconds: [6, 15],
   initialDelaySeconds: [1, 8],
   idleRetrySeconds: 6,
   followUpMaxWaitSeconds: 90,

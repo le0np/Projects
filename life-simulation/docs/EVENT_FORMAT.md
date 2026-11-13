@@ -49,6 +49,7 @@ Nakon svake izmjene pokreni `npm run validate`.
 - `count` je broj mjesta: broj ili `[min, max]`.
 - U `conditions` uloge, `self` je kandidat za tu ulogu. Smije se referencirati **samo uloge deklarirane ranije**, jer engine dodjeljuje uloge redom.
 - Uloga bez unosa u `choices` je pasivna: sudjeluje, ali ne odlučuje (npr. onesviješteni pacijent).
+- `"aware": false` znači da lik sudjeluje, ali ne zna da se event događa (npr. netko o kome se trača, netko koga prisluškuju). Ne dobiva obavijest na početku eventa, samo tekst ishoda za svoju ulogu. Takva uloga ne smije imati izbore.
 
 ### Reference
 

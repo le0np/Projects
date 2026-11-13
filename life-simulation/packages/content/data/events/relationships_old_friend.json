@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1, "id": "relationships_old_friend", "version": 1, "title": "Long Time No See",
+  "category": "relationships", "trigger": "director", "importance": "simple", "weight": 7,
+  "cooldown": { "maxPerCharacter": 1 },
+  "roles": {
+    "a": { "count": 1 },
+    "b": { "count": 1, "conditions": { "relation": { "to": "role:a", "typeIn": ["acquaintance", "colleague", "friend"] } } }
+  },
+  "text": {
+    "public": "{a} and {b} bump into each other at the bus stop with twenty minutes to kill.",
+    "private": { "a": "You have been meaning to get to know {b} better.", "b": "You are tired and not in the mood for small talk." }
+  },
+  "choices": {
+    "a": [
+      { "id": "coffee", "label": "Suggest grabbing a coffee instead", "tags": ["help"], "perceived": { "relation": { "b": 1 }, "money": -1 } },
+      { "id": "chat", "label": "Make polite conversation", "tags": ["negotiate"], "default": true }
+    ],
+    "b": [
+      { "id": "open_up", "label": "Tell them about your week — honestly", "tags": ["truth"], "perceived": { "relation": { "a": 1 } } },
+      { "id": "headphones", "label": "Put your headphones on", "tags": ["ignore"], "default": true, "perceived": { "relation": { "a": -1 } } }
+    ]
+  },
+  "outcomes": [
+    { "id": "friendship", "when": { "all": [ { "chose": "coffee", "role": "a" }, { "chose": "open_up", "role": "b" } ] },
+      "effects": [{ "type": "relation", "from": "role:a", "to": "role:b", "affinity": 25, "trust": 10, "mutual": true },
+        { "type": "attr", "target": "role:a", "delta": { "mental": 4 } }, { "type": "attr", "target": "role:b", "delta": { "mental": 4 } }],
+      "text": { "a": "You miss three buses. Worth it.", "b": "You needed that conversation more than you knew." } },
+    { "id": "nice_chat", "when": { "chose": "open_up", "role": "b" },
+      "effects": [{ "type": "relation", "from": "role:a", "to": "role:b", "affinity": 10, "mutual": true }],
+      "text": { "a": "A good chat.", "b": "A good chat." } },
+    { "id": "brushed_off", "effects": [{ "type": "relation", "from": "role:a", "to": "role:b", "affinity": -5 }],
+      "text": { "a": "{b} clearly does not want to talk.", "b": "You get some peace and quiet." } }
+  ]
+}

@@ -31,6 +31,17 @@ describe("shipped content", () => {
     expect(bundle.hash).toMatch(/^[0-9a-f]{16}$/);
   });
 
+  it("meets the library requirements of EVENT_SYSTEM §9 without warnings", () => {
+    const { bundle, issues } = validateContent(original);
+    expect(issues.filter((i) => i.severity === "warning")).toEqual([]); // e.g. every career has a special choice
+    const events = [...bundle!.events.values()];
+    expect(events.length).toBeGreaterThanOrEqual(50);
+    const perCategory = (c: string) => events.filter((e) => e.category === c).length;
+    const minimum = { everyday: 10, social: 10, career: 8, relationships: 6, financial: 5, health: 5, critical: 6, family: 3 };
+    for (const [category, n] of Object.entries(minimum)) expect(perCategory(category), category).toBeGreaterThanOrEqual(n);
+    expect(events.filter((e) => e.trigger === "followup_only").length).toBeGreaterThanOrEqual(5);
+  });
+
   it("content hash is stable and changes with content", () => {
     const a = validateContent(original).bundle!.hash;
     expect(validateContent(structuredClone(original)).bundle!.hash).toBe(a);

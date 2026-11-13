@@ -2,7 +2,7 @@
 
 Kratka (5–10 min) multiplayer društvena simulacija života u browseru. Igrači i botovi s različitim karijerama prolaze kroz svakodnevne situacije i odlučuju jedni o drugima kroz unaprijed zadane izbore. Prva verzija radi samo s botovima.
 
-**Status:** 🚧 u izradi. Postoji prvi igrivi prototip: sesije samo s botovima (M1–M3). Slijede veća biblioteka eventa i batch statistika.
+**Status:** 🚧 u izradi. Gotova je simulacija samo s botovima (M1–M5): 57 eventa, botovi s osobnošću, batch statistika i replay. Slijede server i web klijent.
 
 ## Pokretanje
 
@@ -36,7 +36,7 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
 
 - Format eventa (verzija 1) s ulogama, privatnim informacijama, izborima koje vide samo pojedine karijere, percipiranim posljedicama, ishodima koji ovise o kombinaciji odluka, slučajnosti, odgođenim nastavcima i smrću. Opis je u [`docs/EVENT_FORMAT.md`](docs/EVENT_FORMAT.md).
 - Validator koji hvata nedostajuće izbore, neispravne uvjete, pokvarene nastavke, nemoguće zahtjeve za sudionike i konfliktne ishode, s točnom putanjom do greške.
-- 10 karijera s pasivnim sposobnostima te 6 testnih eventa, od kojih su 2 dio lanaca.
+- 10 karijera s pasivnim sposobnostima i posebnim izborima te 57 eventa u svim kategorijama, uz lance poput preporuka → unaprjeđenje → dilema šefa ili nesreća s bijegom → istraga.
 - Deterministički PRNG s neovisnim tokovima, virtualni sat i red timera, jezik uvjeta s evaluatorom.
 - Batch simulaciju stotina sesija sa statistikom (smrtnost, karijere, arhetipovi, izbori, ishodi, ponavljanje, nastavci, tempo) i replay sesije iz loga.
 - Botove s osobnošću (10 osobina, 10 arhetipova), skrivenim motivima i sjećanjem sesije. Odlučuju preko bodovanja korisnosti i kontrolirane slučajnosti, a vide isto što bi vidio čovjek.

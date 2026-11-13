@@ -1,0 +1,311 @@
+{
+  "schemaVersion": 1,
+  "id": "critical_building_fire",
+  "version": 2,
+  "title": "Fire!",
+  "category": "critical",
+  "trigger": "director",
+  "importance": "important",
+  "weight": 3,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "roles": {
+    "trapped": {
+      "count": 1,
+      "description": "Asleep on the top floor; does not decide"
+    },
+    "resident": {
+      "count": [
+        2,
+        3
+      ]
+    }
+  },
+  "conditions": {
+    "progress": {
+      "gte": 0.7
+    }
+  },
+  "text": {
+    "public": "Smoke fills the stairwell of the apartment block where {resident} live. {trapped} has not come out of the top-floor flat.",
+    "private": {
+      "trapped": "You took a sleeping pill tonight.",
+      "resident": "The fire brigade is at least ten minutes away. The smoke is getting thicker."
+    }
+  },
+  "choices": {
+    "resident": [
+      {
+        "id": "go_up",
+        "label": "Run upstairs to get {trapped}",
+        "tags": [
+          "sacrifice",
+          "risk",
+          "help"
+        ],
+        "perceived": {
+          "health": -2,
+          "relation": {
+            "trapped": 2
+          },
+          "risk": 2
+        }
+      },
+      {
+        "id": "evacuate",
+        "label": "Get out and guide the fire brigade to the right flat",
+        "tags": [
+          "help"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "trapped": 1
+          }
+        }
+      },
+      {
+        "id": "save_things",
+        "label": "Grab your valuables first",
+        "tags": [
+          "risk"
+        ],
+        "perceived": {
+          "money": 1,
+          "risk": 1,
+          "relation": {
+            "trapped": -1
+          }
+        }
+      },
+      {
+        "id": "shut_gas",
+        "label": "Cut the building's gas and power at the main valve",
+        "tags": [
+          "help"
+        ],
+        "careers": [
+          "engineer",
+          "mechanic"
+        ],
+        "perceived": {
+          "reputation": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "reputation": 6
+            }
+          }
+        ]
+      },
+      {
+        "id": "lead_rescue",
+        "label": "Organise a wet-towel human chain up the stairs",
+        "tags": [
+          "help",
+          "risk"
+        ],
+        "careers": [
+          "police_officer"
+        ],
+        "perceived": {
+          "relation": {
+            "trapped": 2
+          },
+          "risk": 1
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "organised_rescue",
+      "when": {
+        "chose": "lead_rescue",
+        "role": "resident"
+      },
+      "important": true,
+      "revealChoices": true,
+      "endsSession": true,
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:trapped",
+          "key": "saved_by",
+          "about": "role:resident"
+        },
+        {
+          "type": "attr",
+          "target": "role:trapped",
+          "delta": {
+            "health": -10
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:resident",
+          "delta": {
+            "health": -5,
+            "reputation": 5
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:trapped",
+          "to": "role:resident",
+          "affinity": 35,
+          "trust": 25
+        }
+      ],
+      "text": {
+        "trapped": "Hands pull you out of the smoke. Your neighbours, all of them.",
+        "resident": "Together you get {trapped} out. The whole street saw it."
+      }
+    },
+    {
+      "id": "hero_hurt",
+      "when": {
+        "chose": "go_up",
+        "role": "resident"
+      },
+      "chance": 0.35,
+      "important": true,
+      "revealChoices": true,
+      "endsSession": true,
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:trapped",
+          "key": "saved_by",
+          "about": "role:resident"
+        },
+        {
+          "type": "attr",
+          "target": "role:trapped",
+          "delta": {
+            "health": -15
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:resident",
+          "delta": {
+            "health": -35
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:trapped",
+          "to": "role:resident",
+          "affinity": 40,
+          "trust": 30
+        }
+      ],
+      "text": {
+        "trapped": "Someone carries you out through the smoke. They are badly burned.",
+        "resident": "You get {trapped} out. The smoke takes its toll."
+      }
+    },
+    {
+      "id": "rescued",
+      "when": {
+        "chose": "go_up",
+        "role": "resident"
+      },
+      "important": true,
+      "revealChoices": true,
+      "endsSession": true,
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:trapped",
+          "key": "saved_by",
+          "about": "role:resident"
+        },
+        {
+          "type": "attr",
+          "target": "role:trapped",
+          "delta": {
+            "health": -10
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:resident",
+          "delta": {
+            "health": -10,
+            "reputation": 6
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:trapped",
+          "to": "role:resident",
+          "affinity": 40,
+          "trust": 30
+        }
+      ],
+      "text": {
+        "trapped": "You wake up on the pavement under a blanket. A neighbour went in for you.",
+        "resident": "Coughing, eyes streaming, you drag {trapped} outside."
+      }
+    },
+    {
+      "id": "lost",
+      "when": {
+        "chose": "evacuate",
+        "role": "resident",
+        "count": "none"
+      },
+      "chance": 0.4,
+      "important": true,
+      "endsSession": true,
+      "effects": [
+        {
+          "type": "status",
+          "target": "role:trapped",
+          "status": "dead",
+          "cause": "Died in a fire while neighbours saved their belongings"
+        },
+        {
+          "type": "attr",
+          "target": "role:resident",
+          "delta": {
+            "mental": -12
+          }
+        }
+      ],
+      "text": {
+        "trapped": "You never wake up.",
+        "resident": "The fire brigade carries out {trapped}. Too late."
+      }
+    },
+    {
+      "id": "brigade",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:trapped",
+          "delta": {
+            "health": -25
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:resident",
+          "delta": {
+            "mental": -4
+          }
+        }
+      ],
+      "text": {
+        "trapped": "Firefighters break down your door. Smoke inhalation, but alive.",
+        "resident": "The firefighters bring {trapped} out alive."
+      }
+    }
+  ]
+}

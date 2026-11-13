@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1, "id": "relationships_first_date", "version": 1, "title": "A First Date",
+  "category": "relationships", "trigger": "director", "importance": "multi", "weight": 6,
+  "cooldown": { "maxPerSession": 2, "maxPerCharacter": 1 },
+  "roles": {
+    "a": { "count": 1 },
+    "b": { "count": 1, "conditions": { "relation": { "to": "role:a", "typeIn": ["acquaintance", "friend", "colleague"], "affinityGte": 10 } } }
+  },
+  "text": {
+    "public": "{a} and {b} finally go out for dinner, just the two of them.",
+    "private": { "a": "You have liked {b} for a while.", "b": "You are nervous. You want {a} to be impressed." }
+  },
+  "choices": {
+    "a": [
+      { "id": "genuine", "label": "Be yourself", "tags": ["truth"], "perceived": { "relation": { "b": 1 } } },
+      { "id": "impress", "label": "Exaggerate your successes a little", "tags": ["lie"], "perceived": { "relation": { "b": 1 }, "risk": 1 } },
+      { "id": "nervous", "label": "Talk about work the whole time", "tags": ["ignore"], "default": true }
+    ],
+    "b": [
+      { "id": "genuine", "label": "Be yourself", "tags": ["truth"], "perceived": { "relation": { "a": 1 } } },
+      { "id": "impress", "label": "Pretend to love everything {a} loves", "tags": ["lie"], "perceived": { "relation": { "a": 1 }, "risk": 1 } },
+      { "id": "nervous", "label": "Check your phone when it gets awkward", "tags": ["ignore"], "default": true }
+    ]
+  },
+  "outcomes": [
+    { "id": "spark", "when": { "all": [ { "chose": "genuine", "role": "a" }, { "chose": "genuine", "role": "b" } ] }, "important": true, "revealChoices": true,
+      "effects": [{ "type": "relation", "from": "role:a", "to": "role:b", "setType": "partner", "affinity": 35, "trust": 20, "mutual": true },
+        { "type": "attr", "target": "role:a", "delta": { "mental": 8 } }, { "type": "attr", "target": "role:b", "delta": { "mental": 8 } }],
+      "text": { "a": "You talk until the restaurant closes. You are together now.", "b": "You talk until the restaurant closes. You are together now." } },
+    { "id": "pleasant", "when": { "any": [ { "chose": "impress", "role": "a" }, { "chose": "impress", "role": "b" } ] }, "chance": 0.5,
+      "effects": [{ "type": "relation", "from": "role:a", "to": "role:b", "setType": "partner", "affinity": 20, "mutual": true }],
+      "text": { "a": "A lovely evening. Something about it felt a bit like a performance.", "b": "A lovely evening. You hope they never find out how much you pretended." } },
+    { "id": "mixed", "when": { "any": [ { "chose": "genuine", "role": "a" }, { "chose": "genuine", "role": "b" }, { "chose": "impress", "role": "a" }, { "chose": "impress", "role": "b" } ] },
+      "effects": [{ "type": "relation", "from": "role:a", "to": "role:b", "affinity": 5, "mutual": true }],
+      "text": { "a": "Nice, but no spark. Friends, probably.", "b": "Nice, but no spark. Friends, probably." } },
+    { "id": "flop", "effects": [{ "type": "relation", "from": "role:a", "to": "role:b", "affinity": -5, "mutual": true },
+        { "type": "attr", "target": "role:a", "delta": { "mental": -3 } }, { "type": "attr", "target": "role:b", "delta": { "mental": -3 } }],
+      "text": { "a": "Long silences. You split the bill and go home.", "b": "Long silences. You split the bill and go home." } }
+  ]
+}

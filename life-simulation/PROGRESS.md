@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-**Prvi igrivi prototip postoji (M3):** cijela sesija se odigra samo s botovima čije odluke ovise o osobnosti, motivima i sjećanju (`npm run sim`). Sadržaja je još malo (6 eventa), pa likovima nakon otprilike 2–4 minute ponestane eventa. Batch simulacija sa statistikom i replayem (M5) također radi. Sljedeći je M4 (50+ eventa).
+Gotovi su M1–M5. Sesija samo s botovima traje punih 5–10 minuta i ima 57 eventa iz svih kategorija, lance, posebne izbore za svaku karijeru, smrt kao moguć (ne obavezan) ishod i razrješenje priče. Batch statistika i replay rade. Sljedeći je M6 (server: auth, lobby, matchmaking, WebSocket).
 
 ## Napravljeno 13. studenog 2026.
 
@@ -117,6 +117,51 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
   - manipulatori lažu u 64 % odluka, a principijelni nikad ne umiru.
   Glavni cilj za M4 je zato ispuniti sesiju: ~12+ eventa po liku i aktivnost do kraja.
 
+### M4: biblioteka eventa
+
+- **57 eventa:**
+
+  | Kategorija | Broj | Napomena |
+  |---|---|---|
+  | everyday | 12 | |
+  | social | 10 | od toga 1 nastavak |
+  | career | 9 | od toga 2 nastavka |
+  | relationships | 6 | |
+  | family | 3 | |
+  | financial | 6 | od toga 2 nastavka |
+  | health | 5 | |
+  | critical | 7 | od toga 2 nastavka |
+
+  Ukupno je 8 eventa koji nastaju samo kao nastavci.
+- **Lanci:**
+  - preporuka za posao → unaprjeđenje → dilema šefa (lanac iz 03 §6; šef može zaštititi, ignorirati ili otpustiti);
+  - natjecanje za unaprjeđenje → dilema šefa;
+  - tračanje → sukob oko glasina;
+  - poruka na telefonu → razgovor o krizi veze;
+  - zajednički kafić → nestali novac (zatvor);
+  - bol u prsima → srčani udar (u koji ulazi novi sudionik);
+  - nesreća s bijegom → istraga (policajac ili novinar);
+  - posudba → dug, uz produljenje.
+- Svaka karijera ima posebne izbore, a tagovi `technical`, `vehicle` i `secret` koriste se kroz više eventa.
+- Nova mogućnost formata: uloga s `"aware": false`, kad je lik uključen, a ne zna to (trač, prisluškivanje, žrtva u istrazi). Dodana je u shemu, engine i validator, uz test.
+- Novi test čuva zahtjeve biblioteke: barem 50 eventa, minimalna raspodjela po kategorijama, barem 5 nastavaka i nula upozorenja validatora.
+- **Balansiranje kroz batch (500 sesija po krugu):**
+  1. Prvi krug pokazao je tri problema:
+     - 73 % sesija završavalo je požarom, pa je jedan kritični event postao gotovo obavezan završetak;
+     - smrt se događala u 53 % sesija, a srčani udar ubijao je i kad je netko pomagao;
+     - novac je sustavno padao (medijan -16).
+  2. Popravci:
+     - srčani udar je smrtonosan samo ako nitko ne pomogne;
+     - kolaps na ulici događa se tek kad je zdravlje ≤ 55, sa 30 % šanse za smrt;
+     - požar dolazi tek u zadnjih 30 % sesije, uz manju težinu, i završava sesiju samo kad je priča razriješena;
+     - dodana su 2 eventa s prihodom (honorarni posao, godišnja ocjena).
+  3. Rezultat (`docs/reports/m4.report.md`):
+     - 22,8 eventa po liku, 42 % vremena u eventima, zadnja aktivnost na 457 s od 480;
+     - smrt kod 5,7 % likova i u 31 % sesija; razrješenje priče u 11 % sesija;
+     - medijan promjene novca +6;
+     - karijere i arhetipovi u razumnom rasponu.
+- Odmor između eventa produljen je s 4–12 s na 6–15 s, jer ljudski igrač mora stići pročitati ishod. Ovo je parametar za podešavanje u M8.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:
@@ -124,23 +169,30 @@ Provedeno 13. studenog 2026.:
 | Provjera | Rezultat |
 | --- | --- |
 | `npm run typecheck` | prolazi |
-| `npm run validate` | 6 eventa, 0 grešaka, 6 upozorenja (6 karijera još nema poseban izbor, očekivano do M4); hash sadržaja `feea9c890b061482` |
-| `npm test` | 77/77 testova prolazi (core 20, content 18, engine 21, bots 12, sim 6) |
-| `npm run sim:batch -- --sessions 200` | 200 sesija za ~4,5 s; replay 3/3 identičan |
+| `npm run validate` | 57 eventa, 0 grešaka, 0 upozorenja; hash sadržaja `8554608747611859` |
+| `npm test` | 80/80 testova prolazi |
+| `npm run sim:batch -- --sessions 500 --seed m4` | 500 sesija; replay 3/3 identičan; izvještaj u `docs/reports/m4.report.md` |
 | `npm run sim -- --seed demo --explain` | sesija sa 6 botova, 10 eventa, 1 nastavak; odluke su u skladu s osobnostima (npr. principijelan bot posuđuje novac i oprašta dug, manipulator laže i izbjegava vjerovnika) |
 | Ručno: CLI na pokvarenoj kopiji sadržaja | izlazni kod 1; prijavljuje neispravan JSON i nepostojeći nastavak |
 
 ## Poznata ograničenja
 
-- Sa samo 6 eventa likovi nakon otprilike 2 minute ostanu bez sadržaja i sesija čeka kraj. To se rješava s M4 (50+ eventa).
+- Oko 40 % zakazanih nastavaka ne stigne se aktivirati jer im rok pada nakon kraja sesije (`session_ended`). To su odgođene posljedice koje se „dogode poslije“. U Life Recapu se još ne prikazuju.
+- Pojedini eventi su rijetki jer ovise o prethodnim događajima (kriza veze, istraga nesreće); to je namjerno.
+- Botovi odlučuju u dijelu roka, pa je tempo u simulaciji gušći nego što će biti s ljudima.
 - Engineer, teacher, mechanic, psychologist, journalist i civilian još nemaju poseban izbor ni u jednom eventu (dolazi s M4).
 - Kad Zod `union` padne (uvjeti), poruka greške prikazuje grananje koje je stiglo najdublje. Ponekad je zato manje jasna od poruka za efekte.
-- Tagovi `technical` i `vehicle` (sposobnosti inženjera i mehaničara) još se ne pojavljuju ni u jednom eventu.
 
 ## Sljedeći koraci
 
-1. M4: biblioteka od 50+ eventa po raspodjeli iz 03 §9 (+ Family), posebni izbori za sve karijere, lanci; provjera batch izvještajem prema polaznom izvještaju.
-2. M6: server (Fastify + Socket.IO), auth, lobby, matchmaking s popunom botovima.
+1. M6, paket `server`:
+   - Fastify + Socket.IO;
+   - registracija i prijava (hash lozinke), lobby, profil;
+   - matchmaking s popunom botovima;
+   - ljudski kontroler preko WebSocketa, timeout i default za odspojene, reconnect;
+   - PostgreSQL za korisnike, profile, rezultate i logove sesija.
+2. M7: web klijent (Vite + React).
+3. M8: balansiranje s ljudima; prikaz neaktiviranih odgođenih posljedica u Life Recapu.
 
 ## Handoff za novi chat
 

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1, "id": "health_sports_injury", "version": 1, "title": "Five-a-Side",
+  "category": "health", "trigger": "director", "importance": "multi", "weight": 6,
+  "cooldown": { "maxPerCharacter": 1, "maxPerSession": 2 },
+  "roles": { "player": { "count": 1 }, "teammate": { "count": 1 } },
+  "text": {
+    "public": "During a five-a-side game, {player} goes down clutching their knee. {teammate} is closest.",
+    "private": { "player": "It hurts a lot, but it is the final and you are winning.", "teammate": "That knee looks wrong." }
+  },
+  "choices": {
+    "player": [
+      { "id": "play_on", "label": "Strap it and play on", "tags": ["risk"], "perceived": { "health": -1, "risk": 2 } },
+      { "id": "stop", "label": "Stop and get it checked", "tags": ["take_responsibility"], "default": true, "perceived": { "health": 1 } }
+    ],
+    "teammate": [
+      { "id": "insist", "label": "Insist they stop", "tags": ["help", "truth"], "perceived": { "relation": { "player": 0 } } },
+      { "id": "cheer", "label": "Cheer them on", "tags": ["risk"], "perceived": { "relation": { "player": 1 } } },
+      { "id": "examine", "label": "Examine the knee properly", "tags": ["help"], "careers": ["doctor"], "perceived": { "relation": { "player": 1 } } },
+      { "id": "keep_playing", "label": "Leave it to them", "tags": ["ignore"], "default": true }
+    ]
+  },
+  "outcomes": [
+    { "id": "diagnosed", "when": { "chose": "examine", "role": "teammate" }, "revealChoices": true,
+      "effects": [{ "type": "attr", "target": "role:player", "delta": { "health": -3 } }, { "type": "relation", "from": "role:player", "to": "role:teammate", "affinity": 15, "trust": 15 }],
+      "text": { "player": "{teammate} spots a torn ligament and stops you from making it worse.", "teammate": "A torn ligament. You make them sit down." } },
+    { "id": "made_worse", "when": { "all": [ { "chose": "play_on", "role": "player" }, { "chose": "insist", "role": "teammate", "count": "none" } ] }, "important": true,
+      "effects": [{ "type": "attr", "target": "role:player", "delta": { "health": -20, "career": -4 } }],
+      "text": { "player": "You win the final — and need surgery.", "teammate": "{player} plays on. Later you hear they need surgery." } },
+    { "id": "sensible", "effects": [{ "type": "attr", "target": "role:player", "delta": { "health": -6 } }, { "type": "relation", "from": "role:player", "to": "role:teammate", "affinity": 5 }],
+      "text": { "player": "A sprain. A few weeks of rest.", "teammate": "{player} goes off. It is just a sprain." } }
+  ]
+}

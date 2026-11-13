@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1, "id": "health_test_results", "version": 1, "title": "The Test Results",
+  "category": "health", "trigger": "director", "importance": "important", "weight": 5,
+  "cooldown": { "maxPerSession": 1 },
+  "roles": {
+    "doctor": { "count": 1, "careers": ["doctor"] },
+    "patient": { "count": 1, "conditions": { "attr": "health", "lte": 80 } }
+  },
+  "text": {
+    "public": "{patient} comes to {doctor}'s clinic for their test results.",
+    "private": {
+      "doctor": "The results show an early-stage illness. Treatable — but {patient} will need to change a lot.",
+      "patient": "You have been worrying about these results for a week."
+    }
+  },
+  "choices": {
+    "doctor": [
+      { "id": "full_truth", "label": "Explain everything clearly, including the risks", "tags": ["truth"], "perceived": { "relation": { "patient": 0 } } },
+      { "id": "soften", "label": "Soften it: \"Nothing to worry about yet\"", "tags": ["lie"], "default": true, "perceived": { "relation": { "patient": 1 }, "risk": 1 } }
+    ],
+    "patient": [
+      { "id": "all_details", "label": "Ask for every detail", "tags": ["truth"], "perceived": { "mental": -1 } },
+      { "id": "only_essentials", "label": "Ask only what you need to do", "tags": ["ignore"], "default": true }
+    ]
+  },
+  "outcomes": [
+    { "id": "treated", "when": { "chose": "full_truth", "role": "doctor" }, "important": true,
+      "effects": [{ "type": "attr", "target": "role:patient", "delta": { "health": 10, "mental": -5 } }, { "type": "relation", "from": "role:patient", "to": "role:doctor", "trust": 20, "affinity": 10 }],
+      "text": { "doctor": "{patient} takes it hard, but starts treatment the same week.", "patient": "Frightening news, honestly delivered. You start treatment straight away." } },
+    { "id": "found_out", "when": { "chose": "all_details", "role": "patient" },
+      "effects": [{ "type": "attr", "target": "role:patient", "delta": { "health": 5 } }, { "type": "relation", "from": "role:patient", "to": "role:doctor", "trust": -20 }],
+      "text": { "doctor": "{patient} keeps asking until you admit it is more serious.", "patient": "You had to drag the truth out of {doctor}. At least you know now." } },
+    { "id": "untreated", "effects": [{ "type": "attr", "target": "role:patient", "delta": { "health": -12 } }, { "type": "fact", "target": "role:patient", "key": "ignored_symptoms" }],
+      "text": { "doctor": "{patient} leaves reassured. Perhaps too reassured.", "patient": "\"Nothing to worry about.\" What a relief." } }
+  ]
+}

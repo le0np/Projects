@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1, "id": "financial_investment_tip", "version": 1, "title": "A Sure Thing",
+  "category": "financial", "trigger": "director", "importance": "multi", "weight": 7,
+  "cooldown": { "maxPerCharacter": 1, "maxPerSession": 2 },
+  "roles": {
+    "tipper": { "count": 1 },
+    "investor": { "count": 1, "conditions": { "all": [ { "attr": "money", "gte": 30 },
+      { "relation": { "to": "role:tipper", "typeIn": ["acquaintance", "friend", "colleague", "family", "partner"] } } ] } }
+  },
+  "text": {
+    "public": "{tipper} tells {investor} about a start-up that is \"guaranteed to triple\".",
+    "private": {
+      "tipper": "You get a commission for every investor you bring in. You are not sure the company is real.",
+      "investor": "Your savings are not much, but tripling them would change things."
+    }
+  },
+  "choices": {
+    "tipper": [
+      { "id": "hype", "label": "Hype it up", "tags": ["lie"], "perceived": { "money": 1, "relation": { "investor": -1 }, "risk": 1 } },
+      { "id": "disclose", "label": "Mention the commission and that it is risky", "tags": ["truth"], "default": true, "perceived": { "relation": { "investor": 1 } } }
+    ],
+    "investor": [
+      { "id": "invest_big", "label": "Invest most of your savings", "tags": ["risk"], "perceived": { "money": 2, "risk": 2 } },
+      { "id": "invest_small", "label": "Invest a small amount", "tags": ["risk"], "perceived": { "money": 1, "risk": 1 } },
+      { "id": "due_diligence", "label": "Check the company's books first", "tags": ["negotiate"], "careers": ["entrepreneur", "lawyer", "journalist"],
+        "perceived": { "money": 0 }, "insight": { "careers": ["entrepreneur", "lawyer", "journalist"], "perceived": { "risk": 2 }, "note": "The company has no registered address." } },
+      { "id": "pass", "label": "Politely pass", "tags": ["refuse"], "default": true }
+    ]
+  },
+  "outcomes": [
+    { "id": "exposed_scam", "when": { "chose": "due_diligence", "role": "investor" }, "revealChoices": true,
+      "effects": [{ "type": "attr", "target": "role:investor", "delta": { "reputation": 4 } }, { "type": "relation", "from": "role:investor", "to": "role:tipper", "trust": -15 }],
+      "text": { "tipper": "{investor} found out the company does not exist. You were lucky it was not your money.", "investor": "No address, no accounts. A scam — and {tipper} was selling it." } },
+    { "id": "jackpot", "when": { "any": [ { "chose": "invest_big", "role": "investor" }, { "chose": "invest_small", "role": "investor" } ] }, "chance": 0.2, "important": true,
+      "effects": [{ "type": "attr", "target": "role:investor", "delta": { "money": 20, "mental": 6 } }, { "type": "attr", "target": "role:tipper", "delta": { "money": 6 } },
+        { "type": "relation", "from": "role:investor", "to": "role:tipper", "affinity": 20 }],
+      "text": { "tipper": "Against all odds, the company takes off.", "investor": "It actually triples. {tipper} was right." } },
+    { "id": "wiped_out", "when": { "chose": "invest_big", "role": "investor" }, "important": true,
+      "effects": [{ "type": "attr", "target": "role:investor", "delta": { "money": -25, "mental": -10 } }, { "type": "attr", "target": "role:tipper", "delta": { "money": 6 } },
+        { "type": "relation", "from": "role:investor", "to": "role:tipper", "affinity": -30, "trust": -40 }],
+      "text": { "tipper": "The website disappears. You kept your commission.", "investor": "The company vanishes with your savings. {tipper} still has their commission." } },
+    { "id": "small_loss", "when": { "chose": "invest_small", "role": "investor" },
+      "effects": [{ "type": "attr", "target": "role:investor", "delta": { "money": -8 } }, { "type": "relation", "from": "role:investor", "to": "role:tipper", "trust": -15 }],
+      "text": { "tipper": "The company folds. Small amounts, you tell yourself.", "investor": "You lose what you put in. Lesson learned." } },
+    { "id": "passed", "text": { "tipper": "{investor} is not interested.", "investor": "You keep your money where it is." } }
+  ]
+}

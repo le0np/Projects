@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1, "id": "critical_accident_investigation", "version": 1, "title": "The Investigation",
+  "category": "critical", "trigger": "followup_only", "importance": "important",
+  "cooldown": { "maxPerSession": 1 },
+  "roles": {
+    "suspect": { "count": 1 },
+    "victim": { "count": 1, "aware": false },
+    "investigator": { "count": 1, "careers": ["police_officer", "journalist"], "description": "Drawn in to investigate" }
+  },
+  "conditions": { "fact": "fled_accident", "of": "role:suspect" },
+  "text": {
+    "public": "{investigator} is looking into the hit-and-run that left {victim} in hospital. The trail leads to {suspect}.",
+    "private": {
+      "suspect": "{investigator} is asking about the dent in your car.",
+      "investigator": "Paint traces on the bicycle match {suspect}'s car. But the evidence is thin."
+    }
+  },
+  "choices": {
+    "suspect": [
+      { "id": "confess", "label": "Confess", "tags": ["truth", "take_responsibility"], "perceived": { "reputation": -1, "mental": 1 } },
+      { "id": "deny", "label": "Deny everything", "tags": ["lie", "avoid_responsibility"], "default": true, "perceived": { "risk": 2 } },
+      { "id": "bribe", "label": "Offer {investigator} money to drop it", "tags": ["lie", "risk"], "perceived": { "money": -1, "risk": 2 } }
+    ],
+    "investigator": [
+      { "id": "pursue", "label": "Build the case properly", "tags": ["truth"], "default": true, "perceived": { "career": 1, "relation": { "suspect": -2 } } },
+      { "id": "drop", "label": "Drop it — not enough evidence", "tags": ["ignore"], "perceived": { "relation": { "suspect": 1 } } },
+      { "id": "take_bribe", "label": "Accept money if it is offered", "tags": ["lie", "risk"], "perceived": { "money": 2, "risk": 2 } }
+    ]
+  },
+  "outcomes": [
+    { "id": "corruption", "when": { "all": [ { "chose": "bribe", "role": "suspect" }, { "chose": "take_bribe", "role": "investigator" } ] }, "important": true, "revealChoices": true,
+      "effects": [
+        { "type": "attr", "target": "role:suspect", "delta": { "money": -15 } }, { "type": "attr", "target": "role:investigator", "delta": { "money": 15 } },
+        { "type": "fact", "target": "role:investigator", "key": "knows_secret", "about": "role:suspect" },
+        { "type": "fact", "target": "role:suspect", "key": "knows_secret", "about": "role:investigator" }
+      ],
+      "text": { "suspect": "Money changes hands. The file is closed. You both know what happened.", "investigator": "You take the money. The file is closed.", "victim": "The police say they have no leads." } },
+    { "id": "bribery_arrest", "when": { "chose": "bribe", "role": "suspect" }, "important": true, "revealChoices": true,
+      "effects": [
+        { "type": "status", "target": "role:suspect", "status": "imprisoned", "cause": "Hit-and-run and attempted bribery" },
+        { "type": "attr", "target": "role:investigator", "delta": { "career": 10, "reputation": 8 } }
+      ],
+      "text": { "suspect": "{investigator} records your offer. That settles it.", "investigator": "The bribe attempt is all the evidence you need.", "victim": "The driver who hit you is arrested." } },
+    { "id": "confessed", "when": { "chose": "confess", "role": "suspect" }, "important": true,
+      "effects": [
+        { "type": "attr", "target": "role:suspect", "delta": { "money": -15, "reputation": -12, "career": -10, "mental": 8 } },
+        { "type": "fact", "target": "role:suspect", "key": "fled_accident", "remove": true },
+        { "type": "relation", "from": "role:victim", "to": "role:suspect", "affinity": -15, "trust": 10 }
+      ],
+      "text": { "suspect": "A suspended sentence and a heavy fine. The weight on your chest is finally gone.", "investigator": "{suspect} confesses. Case closed.", "victim": "The driver confessed. It does not fix your leg, but it helps." } },
+    { "id": "convicted", "when": { "chose": "pursue", "role": "investigator" }, "chance": 0.55, "important": true,
+      "effects": [
+        { "type": "status", "target": "role:suspect", "status": "imprisoned", "cause": "Convicted of a hit-and-run" },
+        { "type": "attr", "target": "role:investigator", "delta": { "career": 8 } }
+      ],
+      "text": { "suspect": "The evidence holds. You are convicted.", "investigator": "The case holds up in court.", "victim": "The driver who left you on the road is convicted." } },
+    { "id": "unsolved", "effects": [{ "type": "attr", "target": "role:suspect", "delta": { "mental": -8 } }],
+      "text": { "suspect": "The case goes cold. You never stop looking over your shoulder.", "investigator": "Not enough to charge anyone.", "victim": "No one is ever charged." } }
+  ]
+}
