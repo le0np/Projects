@@ -15,6 +15,7 @@ npm run validate     # provjera sadržaja (karijere, činjenice, eventi)
 npm test             # automatski testovi (Vitest)
 npm run check        # typecheck + validate + test
 npm run sim          # jedna sesija samo s botovima: log, profili botova, Life Recap
+npm run sim:batch    # 200 sesija → statistika i balansni izvještaj u sim-output/
 ```
 
 Primjeri simulacije:
@@ -27,6 +28,8 @@ npm run sim -- --duration 300 --json sim-output/run.json --quiet
 
 `--explain` ispisuje za svaku odluku bota korisnost i vjerojatnost svakog izbora.
 
+Batch: `npm run sim:batch -- --sessions 500 --players 2-8 --seed s1 --logs` piše `sim-output/s1.report.md` (i JSONL logove sesija s `--logs`). Na kraju provjerava da replay iz loga daje identičnu sesiju.
+
 Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ako ima grešaka, izlazni kod je 1; upozorenja ne ruše provjeru.
 
 ## Što može
@@ -35,6 +38,7 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
 - Validator koji hvata nedostajuće izbore, neispravne uvjete, pokvarene nastavke, nemoguće zahtjeve za sudionike i konfliktne ishode, s točnom putanjom do greške.
 - 10 karijera s pasivnim sposobnostima te 6 testnih eventa, od kojih su 2 dio lanaca.
 - Deterministički PRNG s neovisnim tokovima, virtualni sat i red timera, jezik uvjeta s evaluatorom.
+- Batch simulaciju stotina sesija sa statistikom (smrtnost, karijere, arhetipovi, izbori, ishodi, ponavljanje, nastavci, tempo) i replay sesije iz loga.
 - Botove s osobnošću (10 osobina, 10 arhetipova), skrivenim motivima i sjećanjem sesije. Odlučuju preko bodovanja korisnosti i kontrolirane slučajnosti, a vide isto što bi vidio čovjek.
 - Engine koji izvrti cijelu sesiju bez grafike, s paralelnim eventima, rokovima i zadanim odlukama, ishodima, nastavcima, smrću, čitljivim logom i Life Recapom. Ista sesija s istim seedom uvijek daje isti rezultat.
 
@@ -65,7 +69,7 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
 │   ├── content/               # sadržaj + loader + validator + CLI
 │   ├── engine/                # sesija, direktor, razrješenje, nastavci, log, Life Recap
 │   ├── bots/                  # osobnost, arhetipovi, motivi, sjećanje, bodovanje
-│   └── sim/                   # sesije samo s botovima + CLI
+│   └── sim/                   # sesije samo s botovima, batch, statistika, replay, CLI
 │       ├── data/              # careers.json, facts.json, events/*.json
 │       ├── src/
 │       └── test/

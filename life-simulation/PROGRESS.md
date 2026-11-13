@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-**Prvi igrivi prototip postoji (M3):** cijela sesija se odigra samo s botovima čije odluke ovise o osobnosti, motivima i sjećanju (`npm run sim`). Sadržaja je još malo (6 eventa), pa likovima nakon otprilike 2–4 minute ponestane eventa. Sljedeći su M4 (50+ eventa) i M5 (batch statistika).
+**Prvi igrivi prototip postoji (M3):** cijela sesija se odigra samo s botovima čije odluke ovise o osobnosti, motivima i sjećanju (`npm run sim`). Sadržaja je još malo (6 eventa), pa likovima nakon otprilike 2–4 minute ponestane eventa. Batch simulacija sa statistikom i replayem (M5) također radi. Sljedeći je M4 (50+ eventa).
 
 ## Napravljeno 13. studenog 2026.
 
@@ -103,6 +103,20 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
   - naklonost mijenja procjenu, sjećanje radi, osveta nastaje;
   - sesija samo s botovima završi bez defaulta i odbijenih odluka i ponovljiva je iz seeda.
 
+### M5: batch simulacija, statistika i replay (prije M4)
+
+- `runBatch` pokreće N sesija s nasumičnim brojem botova u zadanom rasponu, nasumičnim karijerama i arhetipovima.
+- `aggregate` i `formatReport` daju sve metrike iz 07 §2 te dvije dodatne mjere tempa:
+  - metrike iz specifikacije: trajanje, eventi po sesiji i po liku, smrtnost, najčešći izbori i ishodi po eventu, uspješnost karijera, ponašanje arhetipova, stopa ponavljanja, nastavci (aktivirani i odbačeni po razlogu), odluke (default, odbijene), koliko puta direktor nije našao event, eventi koji se nikad ne pojave;
+  - mjere tempa: udio vremena u eventima i vrijeme zadnje aktivnosti.
+- `replaySession` rekonstruira sesiju iz loga (seed, konfiguracija, hash sadržaja, odluke s vremenima) i provjerava da je log identičan. Ako se verzija sadržaja ne poklapa, javlja grešku.
+- CLI `npm run sim:batch` piše Markdown izvještaj (i JSONL logove s `--logs`) i na kraju provjerava replay.
+- Polazni izvještaj prije M4: `docs/reports/baseline.report.md` (200 sesija, 4–8 botova):
+  - samo 6 eventa: likovi su u eventima 5 % vremena, zadnja aktivnost dolazi u prosjeku 93 s nakon početka, 2,6 eventa po liku;
+  - smrtnost 1,7 %, karijere 55,9–61,1 life score;
+  - manipulatori lažu u 64 % odluka, a principijelni nikad ne umiru.
+  Glavni cilj za M4 je zato ispuniti sesiju: ~12+ eventa po liku i aktivnost do kraja.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:
@@ -111,7 +125,8 @@ Provedeno 13. studenog 2026.:
 | --- | --- |
 | `npm run typecheck` | prolazi |
 | `npm run validate` | 6 eventa, 0 grešaka, 6 upozorenja (6 karijera još nema poseban izbor, očekivano do M4); hash sadržaja `feea9c890b061482` |
-| `npm test` | 74/74 testova prolazi (core 20, content 18, engine 21, bots 12, sim 3) |
+| `npm test` | 77/77 testova prolazi (core 20, content 18, engine 21, bots 12, sim 6) |
+| `npm run sim:batch -- --sessions 200` | 200 sesija za ~4,5 s; replay 3/3 identičan |
 | `npm run sim -- --seed demo --explain` | sesija sa 6 botova, 10 eventa, 1 nastavak; odluke su u skladu s osobnostima (npr. principijelan bot posuđuje novac i oprašta dug, manipulator laže i izbjegava vjerovnika) |
 | Ručno: CLI na pokvarenoj kopiji sadržaja | izlazni kod 1; prijavljuje neispravan JSON i nepostojeći nastavak |
 
@@ -124,10 +139,8 @@ Provedeno 13. studenog 2026.:
 
 ## Sljedeći koraci
 
-1. M5 (ranije, jer pomaže pisati sadržaj): batch simulacija stotina sesija, statistika iz 07 §2 i balansni izvještaj.
-2. M4: biblioteka od 50+ eventa po raspodjeli iz 03 §9 (+ Family), posebni izbori za sve karijere i lanci.
-3. Replay iz zapisanih odluka.
-4. M6: server.
+1. M4: biblioteka od 50+ eventa po raspodjeli iz 03 §9 (+ Family), posebni izbori za sve karijere, lanci; provjera batch izvještajem prema polaznom izvještaju.
+2. M6: server (Fastify + Socket.IO), auth, lobby, matchmaking s popunom botovima.
 
 ## Handoff za novi chat
 
