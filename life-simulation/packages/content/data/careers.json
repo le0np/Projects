@@ -1,0 +1,152 @@
+{
+  "careers": [
+    {
+      "id": "doctor",
+      "name": "Doctor",
+      "description": "Medical knowledge and diagnosis. Notices symptoms others overlook.",
+      "abilities": [
+        { "id": "medical_training", "name": "Medical training", "description": "Takes less health damage in health and critical situations.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "health", "direction": "loss", "factor": 0.6, "categories": ["health", "critical"] }] },
+        { "id": "on_call", "name": "On call", "description": "Ends up in medical situations more often.",
+          "modifiers": [{ "type": "selection_weight", "factor": 1.5, "categories": ["health", "critical"] }] },
+        { "id": "long_shifts", "name": "Long shifts", "description": "Well paid, but starts the day already tired.",
+          "modifiers": [{ "type": "start_bonus", "attribute": "money", "amount": 10 }, { "type": "start_bonus", "attribute": "mental", "amount": -10 }] }
+      ],
+      "strengths": ["Recognises medical emergencies and knows how to treat them", "Resilient in health crises"],
+      "weaknesses": ["Starts with lower mental condition", "No special insight into money or law"]
+    },
+    {
+      "id": "police_officer",
+      "name": "Police Officer",
+      "description": "Conflict management and security. Others tend to look to them when things go wrong.",
+      "abilities": [
+        { "id": "public_trust", "name": "Public trust", "description": "Starts with a better reputation.",
+          "modifiers": [{ "type": "start_bonus", "attribute": "reputation", "amount": 10 }] },
+        { "id": "trained_responder", "name": "Trained responder", "description": "Takes less health damage in critical situations.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "health", "direction": "loss", "factor": 0.8, "categories": ["critical"] }] },
+        { "id": "hard_job", "name": "Hard job", "description": "Conflicts take a heavier mental toll.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "mental", "direction": "loss", "factor": 1.25, "categories": ["critical", "social"] }] }
+      ],
+      "strengths": ["Can de-escalate and secure dangerous situations", "Good starting reputation"],
+      "weaknesses": ["Mentally worn down by conflict", "Modest income"]
+    },
+    {
+      "id": "engineer",
+      "name": "Engineer",
+      "description": "Technical problem solving. Can fix what others can only describe.",
+      "abilities": [
+        { "id": "problem_solver", "name": "Problem solver", "description": "Gains more from career successes.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "career", "direction": "gain", "factor": 1.25 }] },
+        { "id": "technical_eye", "name": "Technical eye", "description": "Runs into technical problems more often.",
+          "modifiers": [{ "type": "selection_weight", "factor": 2, "tags": ["technical"] }] },
+        { "id": "awkward", "name": "Awkward", "description": "Social friction is more stressful.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "mental", "direction": "loss", "factor": 1.2, "categories": ["social", "relationships"] }] }
+      ],
+      "strengths": ["Repairs equipment nobody else can", "Strong career growth"],
+      "weaknesses": ["Struggles in tense social situations"]
+    },
+    {
+      "id": "teacher",
+      "name": "Teacher",
+      "description": "Communication and mentoring. Good at bringing people together.",
+      "abilities": [
+        { "id": "mentor", "name": "Mentor", "description": "Ends up in social situations more often.",
+          "modifiers": [{ "type": "selection_weight", "factor": 1.4, "categories": ["social", "family"] }] },
+        { "id": "respected", "name": "Respected", "description": "Reputation damage is softened.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "reputation", "direction": "loss", "factor": 0.75 }] },
+        { "id": "modest_pay", "name": "Modest pay", "description": "Starts with less money.",
+          "modifiers": [{ "type": "start_bonus", "attribute": "money", "amount": -10 }] }
+      ],
+      "strengths": ["Calms conflicts and mediates", "Reputation is hard to damage"],
+      "weaknesses": ["Little money to fall back on"]
+    },
+    {
+      "id": "mechanic",
+      "name": "Mechanic",
+      "description": "Vehicles and machinery. Practical, tough, often paid in cash.",
+      "abilities": [
+        { "id": "hands_on", "name": "Hands on", "description": "Runs into vehicle and machinery problems more often.",
+          "modifiers": [{ "type": "selection_weight", "factor": 2, "tags": ["vehicle"] }] },
+        { "id": "tough", "name": "Tough", "description": "Takes less health damage overall.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "health", "direction": "loss", "factor": 0.85 }] },
+        { "id": "cash_jobs", "name": "Cash jobs", "description": "Earns more from side work.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "money", "direction": "gain", "factor": 1.2, "categories": ["financial", "everyday"] }] }
+      ],
+      "strengths": ["Fixes vehicles and machines", "Physically resilient"],
+      "weaknesses": ["Little influence on reputation-heavy situations"]
+    },
+    {
+      "id": "lawyer",
+      "name": "Lawyer",
+      "description": "Legal knowledge and negotiation. Sees the legal consequences others miss.",
+      "abilities": [
+        { "id": "legal_shield", "name": "Legal shield", "description": "Career setbacks hurt less.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "career", "direction": "loss", "factor": 0.7 }] },
+        { "id": "negotiator", "name": "Negotiator", "description": "Gets more out of financial deals.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "money", "direction": "gain", "factor": 1.2, "categories": ["financial"] }] },
+        { "id": "shark_image", "name": "Shark image", "description": "Rich, but not universally liked.",
+          "modifiers": [{ "type": "start_bonus", "attribute": "money", "amount": 15 }, { "type": "start_bonus", "attribute": "reputation", "amount": -10 }] }
+      ],
+      "strengths": ["Recognises legal exposure", "Strong in negotiations"],
+      "weaknesses": ["Starts with lower reputation"]
+    },
+    {
+      "id": "psychologist",
+      "name": "Psychologist",
+      "description": "Emotional intelligence. Reads people and keeps a level head.",
+      "abilities": [
+        { "id": "emotional_resilience", "name": "Emotional resilience", "description": "Mental damage is greatly reduced.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "mental", "direction": "loss", "factor": 0.6 }] },
+        { "id": "reads_people", "name": "Reads people", "description": "Drawn into relationship situations more often.",
+          "modifiers": [{ "type": "selection_weight", "factor": 1.4, "categories": ["relationships", "social"] }] }
+      ],
+      "strengths": ["Senses lies and hidden distress", "Stays stable under pressure"],
+      "weaknesses": ["Average income", "No physical or technical advantages"]
+    },
+    {
+      "id": "journalist",
+      "name": "Journalist",
+      "description": "Information gathering. Finds out secrets — and makes enemies doing it.",
+      "abilities": [
+        { "id": "nose_for_news", "name": "Nose for news", "description": "Stumbles onto secrets more often.",
+          "modifiers": [{ "type": "selection_weight", "factor": 1.8, "tags": ["secret"] }] },
+        { "id": "public_voice", "name": "Public voice", "description": "Reputation gains are amplified — and so are losses.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "reputation", "direction": "gain", "factor": 1.3 },
+                        { "type": "effect_multiplier", "attribute": "reputation", "direction": "loss", "factor": 1.2 }] }
+      ],
+      "strengths": ["Uncovers hidden information", "Can make or break reputations"],
+      "weaknesses": ["Reputation is volatile"]
+    },
+    {
+      "id": "entrepreneur",
+      "name": "Entrepreneur",
+      "description": "Business and financial decisions. High stakes, high rewards.",
+      "abilities": [
+        { "id": "capital", "name": "Capital", "description": "Starts with more money.",
+          "modifiers": [{ "type": "start_bonus", "attribute": "money", "amount": 20 }] },
+        { "id": "high_stakes", "name": "High stakes", "description": "Financial gains and losses are both bigger.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "money", "direction": "gain", "factor": 1.3, "categories": ["financial"] },
+                        { "type": "effect_multiplier", "attribute": "money", "direction": "loss", "factor": 1.3, "categories": ["financial"] }] },
+        { "id": "always_working", "name": "Always working", "description": "Career pressure weighs on the mind.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "mental", "direction": "loss", "factor": 1.2, "categories": ["career"] }] }
+      ],
+      "strengths": ["Money to help others — or to buy influence", "Structures deals others cannot"],
+      "weaknesses": ["Financial swings are large", "Career stress"]
+    },
+    {
+      "id": "civilian",
+      "name": "Civilian",
+      "description": "General-purpose choices. No special training, but no special burdens either.",
+      "abilities": [
+        { "id": "adaptable", "name": "Adaptable", "description": "Starts in a better mental condition.",
+          "modifiers": [{ "type": "start_bonus", "attribute": "mental", "amount": 10 }] },
+        { "id": "low_profile", "name": "Low profile", "description": "Reputation damage is softened.",
+          "modifiers": [{ "type": "effect_multiplier", "attribute": "reputation", "direction": "loss", "factor": 0.8 }] },
+        { "id": "everyday_life", "name": "Everyday life", "description": "Mostly ordinary situations.",
+          "modifiers": [{ "type": "selection_weight", "factor": 1.3, "categories": ["everyday"] }] }
+      ],
+      "strengths": ["Balanced and mentally stable", "Rarely a target"],
+      "weaknesses": ["No expert knowledge in emergencies"]
+    }
+  ]
+}

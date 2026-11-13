@@ -2,7 +2,7 @@
 
 Verzija 1 · 13. studenog 2026. · odnosi se na [Game Development Package v1.0](spec/00_OVERVIEW.md)
 
-Ovaj dokument je odgovor glavnog developera na specifikaciju: što je u njoj nedosljedno ili nedorečeno, kako to predlažem riješiti, kakva je arhitektura i kojim redom se gradi. Koncept igre ne mijenjam. Svaki prijedlog koji zadire u dizajn označen je s **[ODLUKA]** i čeka potvrdu vlasnika. Do potvrde vrijedi preporučena opcija.
+Ovaj dokument je odgovor glavnog developera na specifikaciju: što je u njoj nedosljedno ili nedorečeno, kako to predlažem riješiti, kakva je arhitektura i kojim redom se gradi. Koncept igre ne mijenjam. Prijedlozi koji zadiru u dizajn označeni su s **[ODLUKA]**. Vlasnik je sve odluke (D1–D5) potvrdio 13. studenog 2026., u preporučenom obliku.
 
 ---
 
@@ -90,6 +90,8 @@ Odnos A→B je smjeran: `affinity` (-100..100), `trust` (0..100), simetrična `t
 Karijera (`content/careers.json`): 2–3 pasivne sposobnosti (modifikatori percepcije i efekata, npr. liječnik ima -50 % zdravstvene štete u Health eventima i vidi zdravstveni rizik), 1–2 posebna izbora koji se pojavljuju samo toj karijeri, oznake kompatibilnosti s eventima, jake i slabe strane.
 
 ### 3.4 Shema eventa (skica, v1)
+
+> Mjerodavan, implementiran format je u [`EVENT_FORMAT.md`](EVENT_FORMAT.md). Skica ispod je izvorni prijedlog.
 
 ```jsonc
 {
@@ -181,12 +183,12 @@ M1–M3 zajedno su prvi igrivi prototip (samo botovi). M4 i M5 se mogu djelomič
 - **Tempo.** Ako je eventa premalo, igrač čeka; ako ih je previše, nema vremena čitati. Brojke za tempo su u konfiguraciji, a podešavaju se u M5 i M8.
 - **Balans karijera.** Posebni izbori lako postanu dominantni. Mjeri se kroz `lifeScore` po karijeri u batch simulaciji.
 
-## 7. Odluke koje čekaju vlasnika
+## 7. Odluke vlasnika (potvrđene 13. 11. 2026.)
 
-| ID | Pitanje | Preporuka |
+| ID | Pitanje | Odluka |
 |---|---|---|
-| D1 | Teku li eventi paralelno (svaki lik u svom eventu) ili jedan po jedan za cijelu sesiju? | paralelno |
-| D2 | Smiju li eventi spominjati NPC-ove (likove koji nisu igrači)? | da, samo kao narativni (bez stanja i odluka) |
-| D3 | Smiju li neki likovi počinjati s postojećim odnosom (kolege, obitelj, partner)? | da, generirano iz seeda |
-| D4 | Frontend: Vite + React SPA umjesto Next.js? | Vite (jednostavnije, jedan proces) |
-| D5 | Jezik tekstova u igri? | engleski |
+| D1 | Teku li eventi paralelno (svaki lik u svom eventu) ili jedan po jedan za cijelu sesiju? | ✅ paralelno |
+| D2 | Smiju li eventi spominjati NPC-ove (likove koji nisu igrači)? | ✅ da, samo narativni (bez stanja i odluka) |
+| D3 | Smiju li neki likovi počinjati s postojećim odnosom (kolege, obitelj, partner)? | ✅ da, generirano iz seeda |
+| D4 | Frontend: Vite + React SPA umjesto Next.js? | ✅ Vite + React |
+| D5 | Jezik tekstova u igri? | ✅ engleski |

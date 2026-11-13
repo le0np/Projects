@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "id": "career_coworker_mistake",
+  "version": 1,
+  "title": "A Coworker Needs Help",
+  "category": "career",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 8,
+  "cooldown": { "maxPerSession": 2, "maxPerCharacter": 1 },
+  "tags": ["secret"],
+  "roles": {
+    "requester": { "count": 1, "description": "Made the mistake", "conditions": { "fact": "employed" } },
+    "witness": { "count": 1, "description": "Saw what happened",
+      "conditions": { "all": [
+        { "fact": "employed" },
+        { "relation": { "to": "role:requester", "typeIn": ["colleague", "friend", "acquaintance"] } }
+      ] } }
+  },
+  "text": {
+    "public": "Something went badly wrong at work. {requester} asks {witness} to confirm their version of the incident.",
+    "private": {
+      "requester": "You know you made the mistake. You have already hinted to the manager that someone else was responsible.",
+      "witness": "You saw what actually happened: it was {requester}'s mistake."
+    }
+  },
+  "choices": {
+    "requester": [
+      { "id": "ask_cover", "label": "Ask {witness} to back your story", "tags": ["lie", "avoid_responsibility"],
+        "perceived": { "career": 1, "risk": 1, "relation": { "witness": -1 } } },
+      { "id": "confess", "label": "Admit the mistake to your manager", "tags": ["truth", "take_responsibility"],
+        "perceived": { "career": -1, "reputation": 1 } },
+      { "id": "say_nothing", "label": "Say nothing and hope it blows over", "tags": ["ignore", "avoid_responsibility"],
+        "default": true, "perceived": { "risk": 1, "mental": -1 } }
+    ],
+    "witness": [
+      { "id": "protect", "label": "Back their story", "tags": ["lie", "help"],
+        "perceived": { "risk": 1, "relation": { "requester": 1 } } },
+      { "id": "truth", "label": "Tell the manager what really happened", "tags": ["truth"],
+        "perceived": { "reputation": 1, "relation": { "requester": -2 } } },
+      { "id": "stay_out", "label": "Stay out of it", "tags": ["ignore"], "default": true,
+        "perceived": { "relation": { "requester": -1 } } },
+      { "id": "legal_angle", "label": "Explain the legal exposure and help draft an honest statement",
+        "tags": ["help", "negotiate"], "careers": ["lawyer"],
+        "perceived": { "reputation": 1, "relation": { "requester": 1 } },
+        "effects": [{ "type": "attr", "target": "self", "delta": { "reputation": 3 } }] }
+    ]
+  },
+  "outcomes": [
+    { "id": "confessed", "when": { "chose": "confess", "role": "requester" }, "revealChoices": true,
+      "effects": [
+        { "type": "attr", "target": "role:requester", "delta": { "career": -5, "reputation": 5 } },
+        { "type": "relation", "from": "role:witness", "to": "role:requester", "trust": 10 }
+      ],
+      "text": { "requester": "Your manager is disappointed, but respects your honesty.",
+                "witness": "{requester} owned up before you had to say anything." } },
+    { "id": "exposed", "when": { "chose": "truth", "role": "witness" }, "important": true,
+      "effects": [
+        { "type": "attr", "target": "role:requester", "delta": { "career": -15, "reputation": -10 } },
+        { "type": "fact", "target": "role:requester", "key": "exposed_mistake" },
+        { "type": "relation", "from": "role:requester", "to": "role:witness", "affinity": -25, "trust": -20 }
+      ],
+      "followUps": [
+        { "event": "career_retaliation", "delaySeconds": [60, 150], "chance": 0.7,
+          "roles": { "aggressor": "role:requester", "target": "role:witness" } }
+      ],
+      "text": { "requester": "The manager knows. You have a good idea who told them.",
+                "witness": "You told the truth. {requester} has not looked at you since." } },
+    { "id": "lawyered", "when": { "chose": "legal_angle", "role": "witness" },
+      "effects": [
+        { "type": "attr", "target": "role:requester", "delta": { "career": -5 } },
+        { "type": "relation", "from": "role:requester", "to": "role:witness", "affinity": 15, "trust": 10 }
+      ],
+      "text": { "requester": "With {witness}'s help the statement is honest but careful. The damage is limited.",
+                "witness": "You helped {requester} limit the damage without lying." } },
+    { "id": "cover_discovered", "when": { "all": [
+        { "chose": "ask_cover", "role": "requester" }, { "chose": "protect", "role": "witness" } ] },
+      "chance": 0.25, "important": true, "revealChoices": true,
+      "effects": [
+        { "type": "attr", "target": "role:requester", "delta": { "career": -15, "reputation": -10 } },
+        { "type": "attr", "target": "role:witness", "delta": { "career": -8, "reputation": -10 } },
+        { "type": "fact", "target": "role:requester", "key": "exposed_mistake" }
+      ],
+      "text": { "requester": "Security footage contradicts your story — and {witness}'s.",
+                "witness": "The footage shows you lied for {requester}." } },
+    { "id": "covered", "when": { "all": [
+        { "chose": "ask_cover", "role": "requester" }, { "chose": "protect", "role": "witness" } ] },
+      "effects": [
+        { "type": "fact", "target": "role:witness", "key": "covered_for", "about": "role:requester" },
+        { "type": "relation", "from": "role:requester", "to": "role:witness", "affinity": 20, "trust": 15 },
+        { "type": "attr", "target": "role:witness", "delta": { "mental": -3 } }
+      ],
+      "text": { "requester": "{witness} backed you up. The matter is closed — for now.",
+                "witness": "You backed {requester}'s story. It worked." } },
+    { "id": "unresolved",
+      "effects": [{ "type": "attr", "target": "role:requester", "delta": { "mental": -5 } }],
+      "text": { "requester": "Nothing is decided. The uncertainty keeps you up at night.",
+                "witness": "You kept your distance. The office is tense." } }
+  ]
+}
