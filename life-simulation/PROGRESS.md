@@ -4,7 +4,26 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-Gotovi su M1–M6. Postoji kompletna simulacija samo s botovima (57 eventa, statistika, replay) i multiplayer server: registracija, lobby, matchmaking s popunom botovima, WebSocket igra, reconnect, PostgreSQL ili PGlite. Nedostaje web klijent (M7).
+**MVP je funkcionalno kompletan (M1–M7).** Igra se igra u browseru na desktopu i mobitelu, s ljudima i botovima zajedno; sesije samo s botovima rade bez nadzora. Svi kriteriji prihvaćanja iz specifikacije su ispunjeni i provjereni (tablica niže). Preostaje M8: balansiranje s pravim igračima.
+
+### Kriteriji prihvaćanja (00_OVERVIEW)
+
+| Kriterij | Stanje | Kako je provjereno |
+|---|---|---|
+| Registracija i ulazak u lobby | ✅ | server test (auth), e2e u browseru |
+| Izbor karijere | ✅ | e2e (lobby → Doctor) |
+| Matchmaking stvara sesiju s botovima | ✅ | server test (2 čovjeka + 2 bota), e2e (1 čovjek + 3 bota) |
+| Sesija samo s botovima | ✅ | `npm run sim`, batch od 500 sesija, testovi u `sim` |
+| Dinamički odabir eventa | ✅ | direktor s težinama i uvjetima; 57 eventa, ponavljanje 7 % |
+| Različite privatne informacije | ✅ | engine test „information hiding“, uloge `aware: false` |
+| Odluke botova prema osobnosti | ✅ | testovi u `bots`; batch izvještaj po arhetipovima |
+| Trenutne i odgođene posljedice | ✅ | efekti ishoda + nastavci s odgodom (8 lanaca) |
+| Prošli eventi utječu na buduće | ✅ | činjenice, odnosi i povijest u uvjetima; lanci |
+| Različiti završeci sesije | ✅ | `time_limit`, `story_resolved`, `all_ended`; 14 oznaka ishoda |
+| Smrt moguća, ne obavezna | ✅ | smrt u 31 % sesija (batch); test „death is possible but not mandatory“ |
+| Life Recap | ✅ | engine test, ekran u browseru |
+| Pregled cijelog loga sesije | ✅ | `/api/sessions/:id/log`, gumb u recapu, `sim --json`, replay |
+| Radi u modernom browseru na desktopu i mobitelu | ✅ | e2e: Chromium 1280×800 i iPhone 13, bez horizontalnog skrolanja i grešaka u konzoli |
 
 ## Napravljeno 13. studenog 2026.
 
@@ -187,6 +206,22 @@ Gotovi su M1–M6. Postoji kompletna simulacija samo s botovima (57 eventa, stat
   Test sesije prolazi i na PGliteu i na pravom PostgreSQL-u 16 (`TEST_DATABASE_URL`).
 - Ispravljena greška u testu, važna i za klijent: poruka poslana odmah pri spajanju može stići prije nego klijent doda slušatelja. Test zato sprema sve poruke od prvog trenutka.
 
+### M7: web klijent (`packages/web`)
+
+- **Arhitektura:**
+  - Vite + React 19 SPA, a izgrađen klijent poslužuje sam server (`@fastify/static`, SPA fallback); `npm run start` izgradi i pokrene sve;
+  - u razvoju `npm run web:dev` s proxyjem na server.
+- **Ekrani:**
+  - prijava i registracija;
+  - lobby: avatar, statistika, broj igrača online i aktivnih sesija, izbor karijere s opisom sposobnosti, jakih i slabih strana, matchmaking s odbrojavanjem do popune botovima, prijašnji životi s recapom;
+  - igra: sat sesije, atributi, event s javnim i privatnim tekstom („Only you know“), odbrojavanje, izbori s percipiranim posljedicama i uvidom karijere, poseban izbor označen kao „Your expertise“, zadani izbor naveden unaprijed, ishod s otkrivenim tuđim izborima i promjenama vlastitih atributa, priča dosad, ljudi s tipom odnosa, javni feed, banner za spectator nakon kraja priče;
+  - Life Recap s gumbom za cijeli log sesije.
+- **Pravednost:** čovjek vidi iste percipirane posljedice kao bot. Nepoznate posljedice se ne prikazuju ni jednima ni drugima.
+- **Ponovno spajanje:** klijent se automatski vraća u sesiju iz `game:state`.
+- **Stil:** tokeni za svijetli i tamni način, mobile-first, vidljiv fokus i ARIA uloge (tab, radio, meter, live regije).
+- **E2E (`npm run e2e`):** pravi server (8× ubrzan, PGlite u memoriji) + Chromium, na desktopu (1280×800) i na iPhoneu 13. Prolazi registraciju, izbor karijere, matchmaking s botovima, cijelu sesiju, Life Recap, log, povratak u lobby i prijašnje živote, uz provjeru da nema horizontalnog skrolanja ni grešaka u konzoli.
+- Pregledom snimki zaslona uočen je i ispravljen prikaz ID-a karijere (`police_officer`) umjesto imena.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:
@@ -198,6 +233,8 @@ Provedeno 13. studenog 2026.:
 | `npm test` | 84/84 testova prolazi |
 | `TEST_DATABASE_URL=… npx vitest run packages/server` | 4/4 na PostgreSQL 16 (privremeni lokalni klaster); u bazi: sesija `completed`, 40 odluka igrača i 1 default (dok je igrač bio odspojen), 4 rezultata |
 | `npm run server` + curl | health, registracija, validacijske poruke, karijere rade |
+| `npm run typecheck` (uključuje web) i `npm run web:build` | čisto; bundle 88 kB gzip |
+| `npm run e2e` | ✓ desktop (12 odluka) i ✓ iPhone 13 (11 odluka): cijela sesija, recap, log, lobby |
 | `npm run sim:batch -- --sessions 500 --seed m4` | 500 sesija; replay 3/3 identičan; izvještaj u `docs/reports/m4.report.md` |
 | `npm run sim -- --seed demo --explain` | sesija sa 6 botova, 10 eventa, 1 nastavak; odluke su u skladu s osobnostima (npr. principijelan bot posuđuje novac i oprašta dug, manipulator laže i izbjegava vjerovnika) |
 | Ručno: CLI na pokvarenoj kopiji sadržaja | izlazni kod 1; prijavljuje neispravan JSON i nepostojeći nastavak |
@@ -206,20 +243,25 @@ Provedeno 13. studenog 2026.:
 
 - Oko 40 % zakazanih nastavaka ne stigne se aktivirati jer im rok pada nakon kraja sesije (`session_ended`). To su odgođene posljedice koje se „dogode poslije“. U Life Recapu se još ne prikazuju.
 - Pojedini eventi su rijetki jer ovise o prethodnim događajima (kriza veze, istraga nesreće); to je namjerno.
-- Botovi odlučuju u dijelu roka, pa je tempo u simulaciji gušći nego što će biti s ljudima.
+- Botovi odlučuju u dijelu roka, pa je tempo u simulaciji gušći nego što će biti s ljudima. Tempo (rokovi, odmor između eventa) treba podesiti s pravim igračima.
+- Nakon kraja sesije log otkriva sve tuđe odluke. To je namjerno „otkrivanje“ nakon igre, ali vlasnik možda želi drukčije.
+- Restart servera prekida sesije u tijeku (označe se kao `cancelled`).
+- Nema prijevoda sučelja; tekstovi igre su na engleskom (odluka D5).
 - Engineer, teacher, mechanic, psychologist, journalist i civilian još nemaju poseban izbor ni u jednom eventu (dolazi s M4).
 - Kad Zod `union` padne (uvjeti), poruka greške prikazuje grananje koje je stiglo najdublje. Ponekad je zato manje jasna od poruka za efekte.
 
 ## Sljedeći koraci
 
-1. M7, paket `web` (Vite + React), koji poslužuje server:
-   - izbornik, registracija i prijava, lobby s profilom i statistikom, izbor karijere, matchmaking;
-   - ekran eventa s izborima i odbrojavanjem, feed i spectator, Life Recap;
-   - responzivno sučelje; Playwright test na desktopu i mobilnom viewportu.
-2. M8: balansiranje s ljudima, prikaz neaktiviranih odgođenih posljedica u Life Recapu, nastavak sesije nakon restarta servera.
+1. M8 (closed beta):
+   - igranje s pravim ljudima i podešavanje rokova i odmora;
+   - analitika iz baze (`session_results`, `decisions`);
+   - balans karijera i smrtnosti prema stvarnim odlukama.
+2. Prikaz neaktiviranih odgođenih posljedica u Life Recapu („što bi se dogodilo poslije“).
+3. Nastavak sesije nakon restarta servera (replay iz loga i odluka u bazi).
+4. Po želji vlasnika: trajno sjećanje botova među sesijama (02 §7, faza nakon MVP-a) i LLM proširenje za botove (02 §2, opcionalno).
 
 ## Handoff za novi chat
 
 1. Projekt je u `life-simulation/`. Prvo pročitati `docs/IMPLEMENTATION_PLAN.md` i `docs/EVENT_FORMAT.md`, a za detalje `docs/spec/`.
-2. `cd life-simulation && npm install && npm run check` (typecheck, validacija sadržaja, testovi); `npm run sim -- --explain` za sesiju samo s botovima; `npm run server` za multiplayer server.
+2. `cd life-simulation && npm install && npm run check` (typecheck, validacija sadržaja, testovi); `npm run sim -- --explain` za sesiju samo s botovima; `npm run start` za igru u browseru na http://localhost:3000; `npm run e2e` za browser test.
 3. Granice: engine bez I/O i bez stvarnog sata; `bots` ovisi samo o `core` tipovima, nikad o `engine`; sadržaj eventa je JSON u `packages/content`, nikad u kodu; ne mijenjati koncept igre bez dogovora s vlasnikom.

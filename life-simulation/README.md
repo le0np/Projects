@@ -2,7 +2,7 @@
 
 Kratka (5–10 min) multiplayer društvena simulacija života u browseru. Igrači i botovi s različitim karijerama prolaze kroz svakodnevne situacije i odlučuju jedni o drugima kroz unaprijed zadane izbore. Prva verzija radi samo s botovima.
 
-**Status:** 🚧 u izradi. Gotovi su simulacija samo s botovima (M1–M5) i multiplayer server (M6): registracija, lobby, matchmaking s popunom botovima, WebSocket igra, reconnect i PostgreSQL. Slijedi web klijent (M7).
+**Status:** 🚧 u izradi. MVP je funkcionalno kompletan (M1–M7): igra u browseru za ljude i botove, simulacija samo s botovima, statistika i replay. Slijedi balansiranje s pravim igračima (M8).
 
 ## Pokretanje
 
@@ -16,8 +16,13 @@ npm test             # automatski testovi (Vitest)
 npm run check        # typecheck + validate + test
 npm run sim          # jedna sesija samo s botovima: log, profili botova, Life Recap
 npm run sim:batch    # 200 sesija → statistika i balansni izvještaj u sim-output/
-npm run server       # multiplayer server na :3000 (bez .env: ugrađeni PGlite u ./data/pglite)
+npm run start        # izgradi web klijent i pokrene server → otvori http://localhost:3000
+npm run server       # samo server na :3000 (bez .env: ugrađeni PGlite u ./data/pglite)
+npm run web:dev      # razvoj klijenta s hot reloadom na :5173 (uz pokrenut server)
+npm run e2e          # browser test (Chromium/Playwright) na desktopu i mobitelu; prije toga npm run web:build
 ```
+
+Za brzi probni krug: `TIME_SCALE=6 FILL_AFTER_SECONDS=2 npm run start`. Sesija od 8 minuta tada traje oko 80 sekundi, a botovi popune prazna mjesta nakon 2 sekunde.
 
 Server s pravim PostgreSQL-om: kopiraj `.env.example` u `.env` i postavi `DATABASE_URL=postgresql://user:pass@host:5432/lifesim`. Migracije se izvrše same pri pokretanju. `TIME_SCALE=10` ubrzava sesije za demo.
 
@@ -48,6 +53,13 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
 - Validator koji hvata nedostajuće izbore, neispravne uvjete, pokvarene nastavke, nemoguće zahtjeve za sudionike i konfliktne ishode, s točnom putanjom do greške.
 - 10 karijera s pasivnim sposobnostima i posebnim izborima te 57 eventa u svim kategorijama, uz lance poput preporuka → unaprjeđenje → dilema šefa ili nesreća s bijegom → istraga.
 - Deterministički PRNG s neovisnim tokovima, virtualni sat i red timera, jezik uvjeta s evaluatorom.
+- Igru u browseru (desktop i mobitel):
+  - prijava i registracija;
+  - lobby s avatarom, statistikom, brojem igrača online i prijašnjim životima;
+  - izbor karijere s opisom sposobnosti; matchmaking s odbrojavanjem do popune botovima;
+  - event s javnim i privatnim tekstom, odbrojavanjem i izborima koji pokazuju percipirane posljedice (isto što vide botovi), uz posebne izbore karijere;
+  - ishodi, ljudi i odnosi, javni feed, spectator nakon smrti;
+  - Life Recap i cijeli log sesije.
 - Multiplayer server: registracija i prijava, profil sa statistikom i zadnjim životima, lobby (broj igrača online), matchmaking koji nakon kratkog čekanja popunjava mjesta botovima, igra preko WebSocketa, reconnect, javni feed za spectator mode, logovi sesija, PostgreSQL.
 - Batch simulaciju stotina sesija sa statistikom (smrtnost, karijere, arhetipovi, izbori, ishodi, ponavljanje, nastavci, tempo) i replay sesije iz loga.
 - Botove s osobnošću (10 osobina, 10 arhetipova), skrivenim motivima i sjećanjem sesije. Odlučuju preko bodovanja korisnosti i kontrolirane slučajnosti, a vide isto što bi vidio čovjek.
@@ -63,6 +75,7 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
 - **Uvjeti su deklarativni JSON** (bez `eval`), pa ih validator može u potpunosti provjeriti.
 - **Botovi su rule-based s težinama** (bez vanjskog AI API-ja): brzo, besplatno, ponovljivo i objašnjivo. Tablica „oznaka izbora × osobina“ i težine su konfiguracija, ne kod.
 - **Ishodi su poredani i primjenjuje se prvi koji odgovara**, uz opcionalnu vjerojatnost. To je jednostavno za pisanje, a pokriva kombinacije odluka i neizvjesnost.
+- **Klijent** je Vite + React SPA (odluka D4) koji poslužuje sam server, pa je sve na jednoj adresi i pokreće se jednom naredbom. Klijent samo prikazuje i šalje izbore; sve se računa na serveru.
 - **Server** je modularni monolit: Fastify za HTTP, Socket.IO za realtime. Engine radi u memoriji; u bazu idu korisnici, profili, odluke, rezultati i cijeli log sesije. Odluke o bazi su u planu, §8.
 - Odluke vlasnika: eventi teku paralelno, NPC-ovi su samo narativni, neki likovi počinju s postojećim odnosom, frontend je Vite + React, a tekstovi igre su na engleskom.
 
@@ -82,7 +95,8 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
 │   ├── engine/                # sesija, direktor, razrješenje, nastavci, log, Life Recap
 │   ├── bots/                  # osobnost, arhetipovi, motivi, sjećanje, bodovanje
 │   ├── sim/                   # sesije samo s botovima, batch, statistika, replay, CLI
-│   └── server/                # Fastify + Socket.IO, auth, lobby, matchmaking, PostgreSQL/PGlite
+│   ├── server/                # Fastify + Socket.IO, auth, lobby, matchmaking, PostgreSQL/PGlite
+│   └── web/                   # Vite + React klijent (lobby, igra, Life Recap) + e2e test
 │       ├── data/              # careers.json, facts.json, events/*.json
 │       ├── src/
 │       └── test/
@@ -91,7 +105,6 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
 └── vitest.config.ts
 ```
 
-Planirani paket: `web` (M7).
 
 ## Moguća poboljšanja
 

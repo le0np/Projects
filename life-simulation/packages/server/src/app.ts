@@ -4,6 +4,7 @@
  * HTTP:   register, login, logout, profile, careers, lobby info, session logs.
  * Socket: lobby presence, matchmaking, game notices, decisions, reconnect/resume.
  */
+import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { Server as SocketServer, type Socket } from "socket.io";
 import { z } from "zod";
@@ -197,6 +198,15 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
     if (!log) return reply.code(409).send({ error: "session_still_running" });
     return { log, text: formatLog(log) };
   });
+
+  // ------------------------------------------------------------------ web client (single-page app)
+
+  if (config.webDist) {
+    await http.register(fastifyStatic, { root: config.webDist });
+    http.setNotFoundHandler((req, reply) =>
+      req.url.startsWith("/api/") || req.url.startsWith("/socket.io/") ? reply.code(404).send({ error: "not_found" }) : reply.sendFile("index.html"),
+    );
+  }
 
   // ------------------------------------------------------------------ Socket.IO
 
