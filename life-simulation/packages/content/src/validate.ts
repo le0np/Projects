@@ -285,6 +285,7 @@ function checkEvent(ev: EventDefinition, reg: Registry, report: Report): void {
       report("error", path, `choices for unknown role "${role}"`);
       continue;
     }
+    if (ev.roles[role]!.aware === false) report("error", path, `role "${role}" is unaware and cannot have choices`);
     if (list.length < 2) report("error", path, "a deciding role needs at least two choices");
     const defaults = list.filter((c) => c.default);
     if (defaults.length !== 1) report("error", path, `exactly one default choice required, found ${defaults.length}`);

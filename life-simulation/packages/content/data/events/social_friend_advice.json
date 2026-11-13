@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1, "id": "social_friend_advice", "version": 1, "title": "Should I Quit?",
+  "category": "social", "trigger": "director", "importance": "multi", "weight": 7,
+  "cooldown": { "maxPerCharacter": 1 },
+  "roles": {
+    "seeker": { "count": 1, "conditions": { "fact": "employed" } },
+    "advisor": { "count": 1, "conditions": { "relation": { "to": "role:seeker", "typeIn": ["friend", "acquaintance", "family", "partner", "colleague"] } } }
+  },
+  "text": {
+    "public": "{seeker} asks {advisor} for advice: they are thinking of quitting their job to start their own business.",
+    "private": {
+      "seeker": "You have savings for three months. You are scared, but also excited.",
+      "advisor": "You think the business idea is weak, but {seeker} looks happier than you have seen them in a while."
+    }
+  },
+  "choices": {
+    "seeker": [
+      { "id": "all_in", "label": "You have already decided — you just want support", "tags": ["risk"], "perceived": { "career": 1, "money": -1, "risk": 2 } },
+      { "id": "open", "label": "Share your doubts openly", "tags": ["truth"], "default": true }
+    ],
+    "advisor": [
+      { "id": "encourage", "label": "Encourage them to go for it", "tags": ["help"], "perceived": { "relation": { "seeker": 1 } } },
+      { "id": "honest", "label": "Tell them honestly the idea is weak", "tags": ["truth"], "perceived": { "relation": { "seeker": -1 } } },
+      { "id": "think_through", "label": "Help them work out what they really want", "tags": ["help", "truth"], "careers": ["psychologist", "teacher"],
+        "perceived": { "relation": { "seeker": 1 } } },
+      { "id": "business_plan", "label": "Go through the numbers with them", "tags": ["help", "negotiate"], "careers": ["entrepreneur", "lawyer"],
+        "perceived": { "relation": { "seeker": 1 } } },
+      { "id": "noncommittal", "label": "Say \"it's your call\"", "tags": ["ignore"], "default": true }
+    ]
+  },
+  "outcomes": [
+    { "id": "clarity", "when": { "any": [ { "chose": "think_through", "role": "advisor" }, { "chose": "business_plan", "role": "advisor" } ] },
+      "effects": [
+        { "type": "attr", "target": "role:seeker", "delta": { "mental": 8, "career": 4 } },
+        { "type": "relation", "from": "role:seeker", "to": "role:advisor", "affinity": 20, "trust": 20 }
+      ],
+      "text": { "seeker": "With {advisor}'s help you find a smarter plan: start the business on the side first.", "advisor": "You help {seeker} find a plan that might actually work." } },
+    { "id": "leap_failed", "when": { "all": [ { "chose": "all_in", "role": "seeker" }, { "chose": "encourage", "role": "advisor" } ] }, "chance": 0.5, "important": true,
+      "effects": [
+        { "type": "attr", "target": "role:seeker", "delta": { "money": -15, "career": -10, "mental": -8 } },
+        { "type": "relation", "from": "role:seeker", "to": "role:advisor", "trust": -10 }
+      ],
+      "text": { "seeker": "You quit. Three months later, the savings are gone.", "advisor": "{seeker} quit. It is not going well." } },
+    { "id": "leap_worked", "when": { "all": [ { "chose": "all_in", "role": "seeker" }, { "chose": "encourage", "role": "advisor" } ] }, "important": true,
+      "effects": [
+        { "type": "attr", "target": "role:seeker", "delta": { "money": 8, "career": 12, "mental": 8 } },
+        { "type": "relation", "from": "role:seeker", "to": "role:advisor", "affinity": 20, "trust": 10 }
+      ],
+      "text": { "seeker": "You quit — and the first customers arrive. {advisor} believed in you.", "advisor": "{seeker}'s gamble pays off." } },
+    { "id": "stung", "when": { "chose": "honest", "role": "advisor" },
+      "effects": [
+        { "type": "relation", "from": "role:seeker", "to": "role:advisor", "affinity": -10, "trust": 10 },
+        { "type": "attr", "target": "role:seeker", "delta": { "mental": -3 } }
+      ],
+      "text": { "seeker": "{advisor}'s honesty stings. But maybe they are right.", "advisor": "{seeker} did not like what you said." } },
+    { "id": "unsure", "effects": [{ "type": "attr", "target": "role:seeker", "delta": { "mental": -2 } }],
+      "text": { "seeker": "You are no closer to a decision.", "advisor": "{seeker} leaves still unsure." } }
+  ]
+}

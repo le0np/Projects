@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1, "id": "social_rumor_confrontation", "version": 1, "title": "Who Started It?",
+  "category": "social", "trigger": "followup_only", "importance": "multi",
+  "cooldown": { "maxPerSession": 2 },
+  "roles": { "victim": { "count": 1 }, "source": { "count": 1 } },
+  "text": {
+    "public": "{victim} finds out that the rumours came from {source}.",
+    "private": { "victim": "Half the town is talking about you. It started with {source}.", "source": "{victim} is walking straight towards you." }
+  },
+  "choices": {
+    "victim": [
+      { "id": "confront", "label": "Confront {source} in front of everyone", "tags": ["threaten"], "perceived": { "reputation": 1, "relation": { "source": -2 } } },
+      { "id": "private_talk", "label": "Ask for a private word", "tags": ["negotiate"] },
+      { "id": "legal_letter", "label": "Send a formal letter about defamation", "tags": ["threaten", "negotiate"], "careers": ["lawyer"],
+        "perceived": { "reputation": 1, "money": 1, "relation": { "source": -2 } } },
+      { "id": "let_it_go", "label": "Let it go — it will blow over", "tags": ["ignore"], "default": true, "perceived": { "mental": -1 } }
+    ],
+    "source": [
+      { "id": "apologize", "label": "Apologise", "tags": ["apologize", "take_responsibility"], "perceived": { "reputation": -1, "relation": { "victim": 1 } } },
+      { "id": "deny", "label": "Deny everything", "tags": ["lie", "avoid_responsibility"], "perceived": { "risk": 1 } },
+      { "id": "double_down", "label": "Say it is all true and you would say it again", "tags": ["threaten"], "perceived": { "relation": { "victim": -2 } } },
+      { "id": "avoid", "label": "Leave before they reach you", "tags": ["ignore", "avoid_responsibility"], "default": true }
+    ]
+  },
+  "outcomes": [
+    { "id": "lawyered", "when": { "chose": "legal_letter", "role": "victim" }, "important": true,
+      "effects": [
+        { "type": "attr", "target": "role:source", "delta": { "money": -12, "reputation": -8 } },
+        { "type": "attr", "target": "role:victim", "delta": { "reputation": 8, "money": 6 } },
+        { "type": "relation", "from": "role:source", "to": "role:victim", "setType": "enemy", "affinity": -20, "mutual": true }
+      ],
+      "text": { "victim": "{source} has to publish a retraction and pay costs.", "source": "A lawyer's letter. Retraction and costs. Expensive gossip." } },
+    { "id": "made_peace", "when": { "chose": "apologize", "role": "source" }, "revealChoices": true,
+      "effects": [
+        { "type": "attr", "target": "role:victim", "delta": { "reputation": 5, "mental": 4 } },
+        { "type": "relation", "from": "role:victim", "to": "role:source", "affinity": 15, "trust": 5, "mutual": true }
+      ],
+      "text": { "victim": "{source} apologises and promises to set the record straight.", "source": "You apologise. It is humbling, but the air clears." } },
+    { "id": "public_fight", "when": { "all": [ { "chose": "confront", "role": "victim" }, { "chose": "avoid", "role": "source", "count": "none" } ] }, "revealChoices": true,
+      "effects": [
+        { "type": "attr", "target": "role:victim", "delta": { "mental": -5 } },
+        { "type": "attr", "target": "role:source", "delta": { "reputation": -6, "mental": -5 } },
+        { "type": "relation", "from": "role:victim", "to": "role:source", "setType": "enemy", "affinity": -25, "mutual": true }
+      ],
+      "text": { "victim": "A shouting match in the street. At least everyone knows your side now.", "source": "{victim} humiliates you in public." } },
+    { "id": "cold", "when": { "chose": "private_talk", "role": "victim" },
+      "effects": [{ "type": "relation", "from": "role:victim", "to": "role:source", "setType": "rival", "affinity": -10, "mutual": true }],
+      "text": { "victim": "The conversation goes nowhere, but {source} knows you know.", "source": "{victim} knows. Things will be cold between you." } },
+    { "id": "festers", "effects": [{ "type": "attr", "target": "role:victim", "delta": { "mental": -5 } }, { "type": "relation", "from": "role:victim", "to": "role:source", "affinity": -15 }],
+      "text": { "victim": "You say nothing. It eats at you.", "source": "{victim} never brings it up." } }
+  ]
+}

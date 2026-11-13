@@ -195,6 +195,11 @@ export const RoleSchema = z.strictObject({
   careers: z.array(Id).min(1).optional(),
   /** Evaluated with `self` = the candidate. May reference only roles declared earlier. */
   conditions: ConditionSchema.optional(),
+  /**
+   * false = the character is involved without knowing it (gossiped about, overheard):
+   * no notice when the event starts, only the outcome text afterwards. Such roles cannot decide.
+   */
+  aware: z.boolean().optional(),
 });
 export type Role = z.infer<typeof RoleSchema>;
 

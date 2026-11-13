@@ -581,7 +581,10 @@ export class Session {
       parentInstanceId: parentId,
       deadlineAt,
     });
-    for (const c of participants) this.onNotice(c, { kind: "event", t: this.now(), view: this.view(c, inst) });
+    for (const c of participants) {
+      if (ev.roles[roleOf.get(c) as string]?.aware === false) continue; // involved without knowing it
+      this.onNotice(c, { kind: "event", t: this.now(), view: this.view(c, inst) });
+    }
     return inst;
   }
 

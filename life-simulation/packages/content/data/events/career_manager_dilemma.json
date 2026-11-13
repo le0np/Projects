@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1, "id": "career_manager_dilemma", "version": 1, "title": "Your Report's Mistake",
+  "category": "career", "trigger": "followup_only", "importance": "important",
+  "cooldown": { "maxPerSession": 2 },
+  "roles": { "manager": { "count": 1 }, "report": { "count": 1 } },
+  "conditions": { "fact": "manager_of", "of": "role:manager", "about": "role:report" },
+  "text": {
+    "public": "{report} made an expensive mistake on a client project. {manager}, their manager, has to answer to the director.",
+    "private": {
+      "manager": "The director wants a name. You remember how you and {report} got here.",
+      "report": "It really was your mistake. Your new manager decides what happens next."
+    }
+  },
+  "choices": {
+    "manager": [
+      { "id": "protect", "label": "Take the blame as team lead", "tags": ["sacrifice", "take_responsibility"], "perceived": { "career": -1, "relation": { "report": 2 } } },
+      { "id": "fair", "label": "Report it honestly but argue for a second chance", "tags": ["truth", "help"], "perceived": { "relation": { "report": 1 } } },
+      { "id": "scapegoat", "label": "Hand {report} over to the director", "tags": ["avoid_responsibility"], "perceived": { "career": 1, "relation": { "report": -2 } } },
+      { "id": "retaliate", "label": "Use it to get rid of {report} for good", "tags": ["threaten"], "perceived": { "relation": { "report": -2 }, "risk": 1 } },
+      { "id": "stall", "label": "Hope the director forgets about it", "tags": ["ignore"], "default": true, "perceived": { "risk": 1 } }
+    ],
+    "report": [
+      { "id": "own_it", "label": "Go to the director yourself", "tags": ["take_responsibility", "truth"], "perceived": { "career": -1, "reputation": 1 } },
+      { "id": "plead", "label": "Ask {manager} to cover for you", "tags": ["negotiate"], "perceived": { "relation": { "manager": -1 } } },
+      { "id": "blame_system", "label": "Blame the new software", "tags": ["lie", "avoid_responsibility"], "default": true, "perceived": { "risk": 1 } }
+    ]
+  },
+  "outcomes": [
+    { "id": "fired", "when": { "chose": "retaliate", "role": "manager" }, "important": true, "revealChoices": true,
+      "effects": [
+        { "type": "attr", "target": "role:report", "delta": { "career": -25, "money": -10, "mental": -12 } },
+        { "type": "fact", "target": "role:report", "key": "employed", "remove": true },
+        { "type": "fact", "target": "role:manager", "key": "manager_of", "about": "role:report", "remove": true },
+        { "type": "relation", "from": "role:report", "to": "role:manager", "setType": "enemy", "affinity": -50, "trust": -40 }
+      ],
+      "text": { "manager": "{report} is fired. Whatever you owed them, it is over.", "report": "{manager} makes sure you are fired. After everything." } },
+    { "id": "shielded", "when": { "chose": "protect", "role": "manager" }, "important": true, "revealChoices": true,
+      "effects": [
+        { "type": "attr", "target": "role:manager", "delta": { "career": -8 } },
+        { "type": "relation", "from": "role:report", "to": "role:manager", "setType": "friend", "affinity": 35, "trust": 30 }
+      ],
+      "text": { "manager": "You take the hit. The director is not pleased, but your team saw what you did.", "report": "{manager} took the blame for you. You will not forget that." } },
+    { "id": "second_chance", "when": { "any": [ { "chose": "fair", "role": "manager" }, { "chose": "own_it", "role": "report" } ] },
+      "effects": [
+        { "type": "attr", "target": "role:report", "delta": { "career": -6, "reputation": 3 } },
+        { "type": "relation", "from": "role:report", "to": "role:manager", "trust": 15 }
+      ],
+      "text": { "manager": "It is handled honestly. {report} keeps their job, with a warning.", "report": "A formal warning — but you keep your job." } },
+    { "id": "scapegoated", "when": { "chose": "scapegoat", "role": "manager" }, "important": true,
+      "effects": [
+        { "type": "attr", "target": "role:report", "delta": { "career": -15, "mental": -8 } },
+        { "type": "attr", "target": "role:manager", "delta": { "career": 3 } },
+        { "type": "relation", "from": "role:report", "to": "role:manager", "affinity": -30, "trust": -30 }
+      ],
+      "text": { "manager": "You give the director a name. Your record stays clean.", "report": "{manager} threw you under the bus." } },
+    { "id": "lie_unravels", "when": { "chose": "blame_system", "role": "report" }, "chance": 0.5,
+      "effects": [
+        { "type": "attr", "target": "role:report", "delta": { "career": -10, "reputation": -8 } },
+        { "type": "attr", "target": "role:manager", "delta": { "career": -4 } }
+      ],
+      "text": { "manager": "IT proves the software was fine. Your team looks bad.", "report": "IT proves the software was fine." } },
+    { "id": "blows_over", "effects": [{ "type": "attr", "target": "role:manager", "delta": { "mental": -4 } }, { "type": "attr", "target": "role:report", "delta": { "mental": -4 } }],
+      "text": { "manager": "The director moves on — for now.", "report": "Nobody mentions it again. You do not sleep well, though." } }
+  ]
+}

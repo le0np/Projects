@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1, "id": "social_party_invitation", "version": 1, "title": "The House Party",
+  "category": "social", "trigger": "director", "importance": "multi", "weight": 8,
+  "cooldown": { "maxPerSession": 2, "maxPerCharacter": 1 },
+  "roles": { "host": { "count": 1, "conditions": { "attr": "money", "gte": 25 } }, "guest": { "count": [1, 2] } },
+  "text": {
+    "public": "{host} is throwing a party and invites {guest}.",
+    "private": {
+      "host": "You barely know anyone in this town. You really want this to go well.",
+      "guest": "You had planned a quiet night in."
+    }
+  },
+  "choices": {
+    "host": [
+      { "id": "go_big", "label": "Go big: food, drinks, music", "tags": ["sacrifice"], "perceived": { "money": -1, "reputation": 1 },
+        "effects": [{ "type": "attr", "target": "self", "delta": { "money": -8 } }] },
+      { "id": "keep_simple", "label": "Keep it simple", "tags": ["ignore"], "default": true }
+    ],
+    "guest": [
+      { "id": "go", "label": "Go, and bring something", "tags": ["help"], "perceived": { "relation": { "host": 1 }, "money": -1 },
+        "effects": [{ "type": "attr", "target": "self", "delta": { "money": -2 } }, { "type": "relation", "from": "role:host", "to": "self", "affinity": 10 }] },
+      { "id": "excuse", "label": "Make up an excuse", "tags": ["lie"], "perceived": { "relation": { "host": -1 } } },
+      { "id": "no_reply", "label": "Leave the message unanswered", "tags": ["ignore"], "default": true, "perceived": { "relation": { "host": -1 } } }
+    ]
+  },
+  "outcomes": [
+    { "id": "great_party", "when": { "all": [ { "chose": "go_big", "role": "host" }, { "chose": "go", "role": "guest" } ] }, "revealChoices": true,
+      "effects": [
+        { "type": "relation", "from": "role:host", "to": "role:guest", "affinity": 20, "trust": 5, "mutual": true },
+        { "type": "attr", "target": "role:host", "delta": { "mental": 8, "reputation": 4 } },
+        { "type": "attr", "target": "role:guest", "delta": { "mental": 5, "health": -2 } }
+      ],
+      "text": { "host": "The party is a success. People talk about it for days.", "guest": "Great night. You are glad you went." } },
+    { "id": "cosy", "when": { "chose": "go", "role": "guest" }, "revealChoices": true,
+      "effects": [
+        { "type": "relation", "from": "role:host", "to": "role:guest", "affinity": 15, "mutual": true },
+        { "type": "attr", "target": "role:host", "delta": { "mental": 5 } }
+      ],
+      "text": { "host": "A small group, but good conversation.", "guest": "A relaxed evening with {host}." } },
+    { "id": "empty_room", "when": { "chose": "go_big", "role": "host" }, "revealChoices": true,
+      "effects": [{ "type": "attr", "target": "role:host", "delta": { "mental": -10 } }, { "type": "relation", "from": "role:host", "to": "role:guest", "affinity": -10 }],
+      "text": { "host": "Food for twenty. Nobody you invited came.", "guest": "You hear later that {host}'s party was nearly empty." } },
+    { "id": "quiet_night", "effects": [{ "type": "attr", "target": "role:host", "delta": { "mental": -4 } }],
+      "text": { "host": "Nobody turns up. You eat crisps alone.", "guest": "A quiet night in." } }
+  ]
+}

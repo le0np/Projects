@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1, "id": "everyday_wrong_change", "version": 1, "title": "Too Much Change",
+  "category": "everyday", "trigger": "director", "importance": "simple", "weight": 6,
+  "cooldown": { "maxPerCharacter": 1 },
+  "roles": { "shopper": { "count": 1 } },
+  "text": {
+    "public": "{shopper} is paying at a busy supermarket.",
+    "private": { "shopper": "The young cashier gives you far too much change. They look exhausted." }
+  },
+  "choices": {
+    "shopper": [
+      { "id": "point_out", "label": "Point out the mistake", "tags": ["truth", "help"], "perceived": { "mental": 1 } },
+      { "id": "pocket", "label": "Pocket it quickly", "tags": ["lie"], "perceived": { "money": 1 } },
+      { "id": "not_count", "label": "Leave without counting", "tags": ["ignore"], "default": true }
+    ]
+  },
+  "outcomes": [
+    { "id": "thanked", "when": { "chose": "point_out", "role": "shopper" },
+      "effects": [{ "type": "attr", "target": "role:shopper", "delta": { "mental": 3, "reputation": 1 } }],
+      "text": { "shopper": "The cashier would have had to pay it out of their own wages. They thank you twice." } },
+    { "id": "cashier_blamed", "when": { "chose": "pocket", "role": "shopper" }, "chance": 0.3,
+      "effects": [{ "type": "attr", "target": "role:shopper", "delta": { "money": 4, "mental": -6 } }],
+      "text": { "shopper": "On your way out you hear the manager shouting at the cashier about a missing amount." } },
+    { "id": "pocketed", "when": { "chose": "pocket", "role": "shopper" },
+      "effects": [{ "type": "attr", "target": "role:shopper", "delta": { "money": 4 } }],
+      "text": { "shopper": "A small win." } },
+    { "id": "unnoticed", "effects": [{ "type": "attr", "target": "role:shopper", "delta": { "money": 4 } }],
+      "text": { "shopper": "Later you notice your wallet is fuller than it should be." } }
+  ]
+}

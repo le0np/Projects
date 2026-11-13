@@ -150,6 +150,10 @@ describe("validator catches", () => {
     );
   });
 
+  it("unaware roles cannot decide", () => {
+    expectError(mutate("health_collapse_street", (ev) => (ev.roles.bystander.aware = false)), "is unaware and cannot have choices");
+  });
+
   it("recap tags for the `about` character only on pair facts", () => {
     expectError(
       mutate(null, (_ev, raw) => ((raw.facts.data as any).facts[0].recap = { about: "saved_another" })),

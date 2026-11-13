@@ -108,6 +108,31 @@ describe("bot-only sessions with random decisions (invariants over many seeds)",
 });
 
 describe("information hiding", () => {
+  it("unaware participants are not told about the event, only about its outcome", () => {
+    const content = buildContent([
+      event({
+        id: "talk",
+        roles: { subject: { count: 1, aware: false }, talker: { count: 1 } },
+        cooldown: { maxPerSession: 1 },
+        choices: { talker: [{ id: "gossip", label: "Gossip", tags: ["threaten"] }, { id: "no", label: "No", tags: ["ignore"], default: true }] },
+        outcomes: [{ id: "done", effects: [{ type: "attr", target: "role:subject", delta: { reputation: -5 } }], text: { subject: "People look at you oddly." } }],
+      }),
+    ]);
+    const seen: { id: string; n: Notice }[] = [];
+    const r = runSession({
+      content,
+      config: { seed: "unaware" },
+      participants: ["mechanic", "mechanic"].map((career) => ({ career, isBot: true, controller: scripted(() => "gossip") })),
+      onNotice: (id, n) => seen.push({ id, n }),
+    });
+    const subject = entries(r, "event_started")[0]!.bindings.subject![0]!;
+    const mine = seen.filter((s) => s.id === subject).map((s) => s.n);
+    expect(mine.some((n) => n.kind === "event")).toBe(false);
+    const resolved = mine.find((n) => n.kind === "resolved") as Extract<Notice, { kind: "resolved" }>;
+    expect(resolved.outcomeText).toBe("People look at you oddly.");
+    expect(resolved.selfChanges).toEqual({ reputation: -5 });
+  });
+
   it("each participant sees only their own private information", () => {
     const seen: { id: string; n: Notice }[] = [];
     // Force the coworker event: two colleagues, only that event enabled.

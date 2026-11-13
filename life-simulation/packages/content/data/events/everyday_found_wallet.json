@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1, "id": "everyday_found_wallet", "version": 1, "title": "A Wallet on the Pavement",
+  "category": "everyday", "trigger": "director", "importance": "simple", "weight": 8,
+  "cooldown": { "maxPerCharacter": 1, "maxPerSession": 2 },
+  "roles": { "finder": { "count": 1 } },
+  "text": {
+    "public": "{finder} finds a wallet on the pavement.",
+    "private": { "finder": "There is a lot of cash inside and an ID card with an address. Nobody is watching." }
+  },
+  "choices": {
+    "finder": [
+      { "id": "return", "label": "Return it to the address on the ID", "tags": ["help", "truth"], "perceived": { "mental": 1, "reputation": 1 } },
+      { "id": "keep_cash", "label": "Keep the cash and drop the wallet in a mailbox", "tags": ["lie"], "perceived": { "money": 2, "risk": 1 } },
+      { "id": "trace", "label": "Log it properly and trace the owner yourself", "tags": ["help", "truth"], "careers": ["police_officer"],
+        "perceived": { "reputation": 1, "career": 1 } },
+      { "id": "leave", "label": "Leave it where it is", "tags": ["ignore"], "default": true }
+    ]
+  },
+  "outcomes": [
+    { "id": "rewarded", "when": { "chose": "return", "role": "finder" }, "chance": 0.4,
+      "effects": [{ "type": "attr", "target": "role:finder", "delta": { "money": 8, "mental": 5, "reputation": 3 } }],
+      "text": { "finder": "The owner nearly cries with relief and insists on giving you a reward." } },
+    { "id": "returned", "when": { "chose": "return", "role": "finder" },
+      "effects": [{ "type": "attr", "target": "role:finder", "delta": { "mental": 5, "reputation": 2 } }],
+      "text": { "finder": "The owner thanks you at the door. It feels good." } },
+    { "id": "traced", "when": { "chose": "trace", "role": "finder" },
+      "effects": [{ "type": "attr", "target": "role:finder", "delta": { "reputation": 6, "career": 3 } }],
+      "text": { "finder": "You track down the owner within the hour. Your sergeant hears about it." } },
+    { "id": "caught", "when": { "chose": "keep_cash", "role": "finder" }, "chance": 0.2, "important": true,
+      "effects": [{ "type": "attr", "target": "role:finder", "delta": { "money": 5, "reputation": -12, "mental": -6 } }],
+      "text": { "finder": "A shop camera caught you emptying the wallet. Word gets around." } },
+    { "id": "kept", "when": { "chose": "keep_cash", "role": "finder" },
+      "effects": [{ "type": "attr", "target": "role:finder", "delta": { "money": 10, "mental": -3 } }],
+      "text": { "finder": "Easy money. You try not to think about the photo on the ID." } },
+    { "id": "left", "text": { "finder": "You walk on. Someone else will deal with it." } }
+  ]
+}
