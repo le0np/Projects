@@ -248,6 +248,9 @@ function checkEvent(ev: EventDefinition, reg: Registry, report: Report): void {
 
   // Roles
   const minTotal = roleNames.reduce((sum, r) => sum + countRange(ev.roles[r]!.count)[0], 0);
+  if (roleNames.some((r) => ev.roles[r]!.aware === false) && !ev.hidden) {
+    report("error", "hidden", "an event with unaware roles must be hidden, or its public text would tell them");
+  }
   if (minTotal > SESSION_LIMITS.maxParticipants) {
     report("error", "roles", `needs at least ${minTotal} participants, a session has at most ${SESSION_LIMITS.maxParticipants}`);
   }

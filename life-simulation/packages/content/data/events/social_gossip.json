@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1, "id": "social_gossip", "version": 1, "title": "Have You Heard?",
-  "category": "social", "trigger": "director", "importance": "multi", "weight": 7,
+  "category": "social", "trigger": "director", "hidden": true, "importance": "multi", "weight": 7,
   "cooldown": { "maxPerSession": 2 }, "tags": ["secret"],
   "roles": {
     "target": { "count": 1, "aware": false, "description": "Talked about; not present" },

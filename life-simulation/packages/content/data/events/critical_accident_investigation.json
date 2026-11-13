@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1, "id": "critical_accident_investigation", "version": 1, "title": "The Investigation",
-  "category": "critical", "trigger": "followup_only", "importance": "important",
+  "category": "critical", "trigger": "followup_only", "hidden": true, "importance": "important",
   "cooldown": { "maxPerSession": 1 },
   "roles": {
     "suspect": { "count": 1 },

@@ -44,6 +44,10 @@ export interface ParticipantSpec {
   isBot: boolean;
 }
 
+export type PublicEntry =
+  | { kind: "event"; t: number; instanceId: string; title: string; text: string; participants: ParticipantInfo[] }
+  | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string };
+
 export type SubmitResult = { ok: true } | { ok: false; reason: string };
 
 export interface SessionStats {
@@ -119,6 +123,8 @@ export class Session {
   };
   /** Delivery of per-character messages; set by the host. */
   onNotice: (characterId: string, notice: Notice) => void = () => {};
+  /** Public feed for everyone in the session, including spectators (hidden events never appear). */
+  onPublic: (entry: PublicEntry) => void = () => {};
 
   private _state: SessionState = "initializing";
   private endReason?: EndReason;
@@ -581,6 +587,16 @@ export class Session {
       parentInstanceId: parentId,
       deadlineAt,
     });
+    if (!ev.hidden) {
+      this.onPublic({
+        kind: "event",
+        t: this.now(),
+        instanceId: id,
+        title: this.interpolate(ev.title, bindings),
+        text: this.interpolate(ev.text.public, bindings),
+        participants: participants.map((c) => ({ characterId: c, name: this.char(c).name, role: roleOf.get(c) as string })),
+      });
+    }
     for (const c of participants) {
       if (ev.roles[roleOf.get(c) as string]?.aware === false) continue; // involved without knowing it
       this.onNotice(c, { kind: "event", t: this.now(), view: this.view(c, inst) });
@@ -797,6 +813,7 @@ export class Session {
       if (ch.kind === "status" && ch.status !== "active") {
         this.log.push({ t: this.now(), type: "character_ended", characterId: ch.characterId, status: ch.status, cause: ch.cause });
         this.onNotice(ch.characterId, { kind: "ended", t: this.now(), status: ch.status, cause: ch.cause });
+        this.onPublic({ kind: "ended", t: this.now(), characterId: ch.characterId, name: this.char(ch.characterId).name, status: ch.status, cause: ch.cause });
       }
     }
   }

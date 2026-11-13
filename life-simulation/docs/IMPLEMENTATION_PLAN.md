@@ -192,3 +192,19 @@ M1–M3 zajedno su prvi igrivi prototip (samo botovi). M4 i M5 se mogu djelomič
 | D3 | Smiju li neki likovi počinjati s postojećim odnosom (kolege, obitelj, partner)? | ✅ da, generirano iz seeda |
 | D4 | Frontend: Vite + React SPA umjesto Next.js? | ✅ Vite + React |
 | D5 | Jezik tekstova u igri? | ✅ engleski |
+
+## 8. Odluke donesene tijekom implementacije
+
+Ove odluke nisu mijenjale koncept igre. Zapisane su ovdje jer odstupaju od doslovne specifikacije ili je dopunjuju.
+
+| Tema | Odluka | Zašto |
+|---|---|---|
+| Baza (05) | Logički model je sveden na 9 tablica. `Characters` + `BotProfiles` + `SessionParticipants` → `session_participants`. `Events` → `content_versions` (cijeli validirani sadržaj po hashu). `SessionEvents`, `EventParticipants`, `Consequences`, `Relationships` i `CharacterHistory` izvode se iz domenskog loga (`session_logs`). | Spec traži „avoid storing unnecessary duplicate data“ i „support deterministic replay“. Log + verzija sadržaja + odluke su dovoljni za replay; duple tablice bi se mogle razići s logom. `decisions` ima PK (sesija, event, lik), tj. „at most once“ i u bazi. |
+| PostgreSQL u razvoju | Bez `DATABASE_URL` server koristi PGlite (PostgreSQL u WebAssemblyju, unutar procesa); s `DATABASE_URL` koristi pravi PostgreSQL. SQL i migracije su isti. | Pokretanje bez ikakve pripreme; testovi su provjereni i na PostgreSQL 16. |
+| Lozinke | scrypt iz `node:crypto` | Bez nativnih ovisnosti (bcrypt/argon2 traže kompilaciju). |
+| Prijava | Nasumični bearer token, u bazi se čuva samo njegov SHA-256 hash, rok 30 dana; odjava ga briše | Jednostavnije od JWT-a i omogućuje opoziv. |
+| Uloge `aware: false` | Lik je uključen u event (o njemu se trača, prisluškuju ga) bez obavijesti; dobije samo tekst ishoda. Takav event mora biti `hidden`. | Skrivene informacije iz GDD-a; bez ovoga bi lik iz poruke ili javnog teksta saznao tajnu. |
+| Javni feed | Neskriveni eventi i krajevi priča šalju se svima u sesiji, pa i likovima čija je priča završila (spectator). | Spectator mode iz GDD §3. |
+| Odspojeni igrač | Mjesto u sesiji ostaje; za njegove odluke vrijedi default kad istekne rok; pri ponovnom spajanju dobiva cijelo stanje. Odspojeni igrač se miče iz reda za matchmaking. | 04 §5: „configurable timeout and default decision policy“. Rok eventa je ujedno i timeout. |
+| Restart servera | Sesije koje su bile u tijeku označe se kao `cancelled` (`server_restart`). | Stanje sesije je u memoriji. Nastavak nakon restarta (replay iz loga) moguć je kasnije, ali nije potreban za MVP. |
+| Ubrzanje vremena | `TIME_SCALE` ubrzava sesiju za demo i testove; engine to ne zna (vidi samo `Clock`). | Testovi cijele multiplayer sesije traju nekoliko sekundi. |

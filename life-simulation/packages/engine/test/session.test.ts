@@ -112,6 +112,7 @@ describe("information hiding", () => {
     const content = buildContent([
       event({
         id: "talk",
+        hidden: true,
         roles: { subject: { count: 1, aware: false }, talker: { count: 1 } },
         cooldown: { maxPerSession: 1 },
         choices: { talker: [{ id: "gossip", label: "Gossip", tags: ["threaten"] }, { id: "no", label: "No", tags: ["ignore"], default: true }] },

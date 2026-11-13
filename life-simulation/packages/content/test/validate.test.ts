@@ -163,6 +163,7 @@ describe("validator catches", () => {
 
   it("unaware roles cannot decide", () => {
     expectError(mutate("health_collapse_street", (ev) => (ev.roles.bystander.aware = false)), "is unaware and cannot have choices");
+    expectError(mutate("social_gossip", (ev) => delete ev.hidden), "must be hidden");
   });
 
   it("recap tags for the `about` character only on pair facts", () => {

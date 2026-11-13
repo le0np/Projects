@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-Gotovi su M1–M5. Sesija samo s botovima traje punih 5–10 minuta i ima 57 eventa iz svih kategorija, lance, posebne izbore za svaku karijeru, smrt kao moguć (ne obavezan) ishod i razrješenje priče. Batch statistika i replay rade. Sljedeći je M6 (server: auth, lobby, matchmaking, WebSocket).
+Gotovi su M1–M6. Postoji kompletna simulacija samo s botovima (57 eventa, statistika, replay) i multiplayer server: registracija, lobby, matchmaking s popunom botovima, WebSocket igra, reconnect, PostgreSQL ili PGlite. Nedostaje web klijent (M7).
 
 ## Napravljeno 13. studenog 2026.
 
@@ -162,6 +162,31 @@ Gotovi su M1–M5. Sesija samo s botovima traje punih 5–10 minuta i ima 57 eve
      - karijere i arhetipovi u razumnom rasponu.
 - Odmor između eventa produljen je s 4–12 s na 6–15 s, jer ljudski igrač mora stići pročitati ishod. Ovo je parametar za podešavanje u M8.
 
+### M6: multiplayer server (`packages/server`)
+
+- **HTTP (Fastify):** registracija (validacija preko Zoda), prijava korisničkim imenom ili emailom, odjava, profil (statistika i zadnjih 5 Life Recapa), avatar, karijere, lobby, log sesije (samo za sudionike, kao JSON i kao čitljiv tekst), health.
+- **Socket.IO:**
+  - autentifikacija tokenom, praćenje tko je online, broj igrača u lobbyju;
+  - matchmaking: `match:find` i `match:cancel`;
+  - igra: `game:decide` (s potvrdom), `game:notice`, `game:feed`, `game:ended`;
+  - ponovno spajanje: `game:state` odmah pri spajanju i `game:resume` na zahtjev.
+- **`LiveSession`:**
+  - engine radi u stvarnom vremenu (`TIME_SCALE` ga može ubrzati); botovi i ljudi koriste isto `submitDecision`;
+  - za odspojenog igrača primjenjuje se default kad istekne rok;
+  - snapshot za ponovno spajanje sadrži trenutnu ponudu, povijest i feed.
+- **Matchmaker:** sesija kreće kad je u redu `MAX_HUMANS` igrača ili nakon `FILL_AFTER_SECONDS`; ostala mjesta do `SESSION_SIZE` popunjavaju botovi. Odspojeni igrač se miče iz reda.
+- **Baza:**
+  - migracija `001_init.sql` s 9 tablica (odluke o modelu su u planu, §8);
+  - driver `pg` za PostgreSQL ili PGlite bez ikakve pripreme;
+  - pri pokretanju se sesije prekinute restartom označe kao `cancelled`.
+- **Engine:** dodan javni feed (`onPublic`). Validator zahtijeva da event s ulogama `aware: false` bude `hidden`; to je popravljeno u `social_gossip` i `critical_accident_investigation`, jer bi inače javni tekst otkrio trač samoj meti.
+- **Testovi:**
+  - auth (registracija, duplikati, neispravan unos, prijava, odjava, socket bez tokena);
+  - cijela sesija s 2 čovjeka i 2 bota preko pravih WebSocket klijenata, 30× ubrzano, uključujući odspajanje i ponovno spajanje drugog igrača te provjeru baze (status, odluke, rezultati, profil, log, zabrana pristupa logu strancu);
+  - matchmaker.
+  Test sesije prolazi i na PGliteu i na pravom PostgreSQL-u 16 (`TEST_DATABASE_URL`).
+- Ispravljena greška u testu, važna i za klijent: poruka poslana odmah pri spajanju može stići prije nego klijent doda slušatelja. Test zato sprema sve poruke od prvog trenutka.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:
@@ -170,7 +195,9 @@ Provedeno 13. studenog 2026.:
 | --- | --- |
 | `npm run typecheck` | prolazi |
 | `npm run validate` | 57 eventa, 0 grešaka, 0 upozorenja; hash sadržaja `8554608747611859` |
-| `npm test` | 80/80 testova prolazi |
+| `npm test` | 85/85 testova prolazi |
+| `TEST_DATABASE_URL=… npx vitest run packages/server` | 4/4 na PostgreSQL 16 (privremeni lokalni klaster); u bazi: sesija `completed`, 40 odluka igrača i 1 default (dok je igrač bio odspojen), 4 rezultata |
+| `npm run server` + curl | health, registracija, validacijske poruke, karijere rade |
 | `npm run sim:batch -- --sessions 500 --seed m4` | 500 sesija; replay 3/3 identičan; izvještaj u `docs/reports/m4.report.md` |
 | `npm run sim -- --seed demo --explain` | sesija sa 6 botova, 10 eventa, 1 nastavak; odluke su u skladu s osobnostima (npr. principijelan bot posuđuje novac i oprašta dug, manipulator laže i izbjegava vjerovnika) |
 | Ručno: CLI na pokvarenoj kopiji sadržaja | izlazni kod 1; prijavljuje neispravan JSON i nepostojeći nastavak |
@@ -185,17 +212,14 @@ Provedeno 13. studenog 2026.:
 
 ## Sljedeći koraci
 
-1. M6, paket `server`:
-   - Fastify + Socket.IO;
-   - registracija i prijava (hash lozinke), lobby, profil;
-   - matchmaking s popunom botovima;
-   - ljudski kontroler preko WebSocketa, timeout i default za odspojene, reconnect;
-   - PostgreSQL za korisnike, profile, rezultate i logove sesija.
-2. M7: web klijent (Vite + React).
-3. M8: balansiranje s ljudima; prikaz neaktiviranih odgođenih posljedica u Life Recapu.
+1. M7, paket `web` (Vite + React), koji poslužuje server:
+   - izbornik, registracija i prijava, lobby s profilom i statistikom, izbor karijere, matchmaking;
+   - ekran eventa s izborima i odbrojavanjem, feed i spectator, Life Recap;
+   - responzivno sučelje; Playwright test na desktopu i mobilnom viewportu.
+2. M8: balansiranje s ljudima, prikaz neaktiviranih odgođenih posljedica u Life Recapu, nastavak sesije nakon restarta servera.
 
 ## Handoff za novi chat
 
 1. Projekt je u `life-simulation/`. Prvo pročitati `docs/IMPLEMENTATION_PLAN.md` i `docs/EVENT_FORMAT.md`, a za detalje `docs/spec/`.
-2. `cd life-simulation && npm install && npm run check` (typecheck, validacija sadržaja, testovi); `npm run sim -- --explain` za sesiju samo s botovima.
+2. `cd life-simulation && npm install && npm run check` (typecheck, validacija sadržaja, testovi); `npm run sim -- --explain` za sesiju samo s botovima; `npm run server` za multiplayer server.
 3. Granice: engine bez I/O i bez stvarnog sata; `bots` ovisi samo o `core` tipovima, nikad o `engine`; sadržaj eventa je JSON u `packages/content`, nikad u kodu; ne mijenjati koncept igre bez dogovora s vlasnikom.
