@@ -66,6 +66,17 @@ export function startTraining(state, moveId) {
   return { ok: true };
 }
 
+// Test version only: skip the countdown and raise a move by one level right away.
+export function instantLevelUp(state, moveId) {
+  if (!state.test) return { ok: false, reason: 'Samo u testnoj verziji.' };
+  if (!MOVE_BY_ID[moveId]) return { ok: false, reason: 'Nepoznat potez.' };
+  const lvl = effectiveLevel(state, moveId);
+  if (lvl >= MAX_LEVEL) return { ok: false, reason: 'Potez je na najvišoj razini.' };
+  state.levels[moveId] = lvl + 1;
+  if (state.training?.moveId === moveId) state.training = null;
+  return { ok: true, level: lvl + 1 };
+}
+
 export function startActivity(state, type, rng) {
   const def = ACTIVITIES[type];
   if (!def) return { ok: false, reason: 'Nepoznata aktivnost.' };

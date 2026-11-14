@@ -79,13 +79,16 @@ Dizajn: `docs/superpowers/specs/2026-11-14-round2-step1-fight-rules-design.md`, 
 - Cijeli log borbe sa scrollom, rundom i satom. Bodovi su razloženi (npr. „Flower sweep 2 + mount 4”). U logu su i ponuđene opcije (točne s ✔) i tvoj izbor. Gumb „Kopiraj log” kopira sve s rezultatom.
 - Simulacija: igrač s 75 % točnih odabira pobjeđuje u oko 60 % sparinga.
 
+### Tipka za trenutno učenje (test)
+- Svaki potez u klubu u testnoj verziji ima tipku „⚡ +1” koja odmah podigne potez za jednu razinu, bez čekanja (do razine 10). Ako taj potez trenutno trenira, trening se poništi jer je razina već dobivena.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 14. studenog 2026.:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` | 58/58 prolazi |
+| `npm test` | 60/60 prolazi |
 | `npm start` | server odgovara 200 na `/` i module |
 | Playwright e2e (1100 px) | trening uz 10x završi, sparing odigran do rezultata, reload zadrži napredak, 0 grešaka u konzoli |
 | Playwright mobitel (iPhone 13) | nema horizontalnog scrolla ni u karijeri ni u borbi |

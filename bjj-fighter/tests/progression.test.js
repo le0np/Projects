@@ -165,3 +165,23 @@ test('competition needs at least one attack, one defense and one control move', 
   s.levels.mount = 1;
   assert.deepEqual(competitionReady(s), { ok: true, missing: [] });
 });
+
+import { instantLevelUp } from '../src/engine/progression.js';
+
+test('test mode can level a move up instantly, one level per click, up to the max', () => {
+  const s = createState({ test: true, now: 0 });
+  assert.equal(instantLevelUp(s, 'armbar').ok, true);
+  assert.equal(effectiveLevel(s, 'armbar'), 2);
+  startTraining(s, 'armbar');
+  instantLevelUp(s, 'armbar');
+  assert.equal(effectiveLevel(s, 'armbar'), 3);
+  assert.equal(s.training, null);
+  s.levels.armbar = MAX_LEVEL;
+  assert.equal(instantLevelUp(s, 'armbar').ok, false);
+});
+
+test('instant level up is not available outside test mode', () => {
+  const s = createState({ test: false, now: 0 });
+  assert.equal(instantLevelUp(s, 'armbar').ok, false);
+  assert.equal(effectiveLevel(s, 'armbar'), 0);
+});

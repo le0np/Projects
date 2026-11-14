@@ -13,7 +13,7 @@ Treba samo [Node.js](https://nodejs.org) 20 ili noviji, bez instalacije paketa.
 ```bash
 cd bjj-fighter
 npm start          # server na http://localhost:8080
-npm test           # testovi pravila igre (58 testova)
+npm test           # testovi pravila igre (60 testova)
 ```
 
 Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `index.html` ne radi jer preglednici ne učitavaju JavaScript module s `file://`. Radi i bilo koji statički server, npr. `python3 -m http.server 8080` u ovoj mapi.
@@ -50,6 +50,7 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
   - ubrzanje vremena 1–10x (vrijedi za treninge, aktivnosti i sat borbe)
   - „Sve otključano”: svi potezi su barem na razini 1 i svi se mogu trenirati
   - izbor pojasa, +500 € i brisanje napretka
+  - u klubu tipka „⚡ +1” uz svaki potez: odmah jedna razina više, bez odbrojavanja
 
 Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena, uz zadnje odabrano ubrzanje.
 

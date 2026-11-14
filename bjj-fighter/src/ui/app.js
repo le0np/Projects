@@ -3,7 +3,7 @@ import { BELTS, BELT_NAMES, CATEGORIES, MOVES, MOVE_BY_ID } from '../data/moves.
 import { POSITIONS } from '../data/positions.js';
 import {
   createState, learnTime, effectiveLevel, canTrain, startTraining, startActivity, advance, setSpeed,
-  rollCompetitionLearn, promotionStatus, promote, serialize, deserialize, competitionReady, ACTIVITIES, MAX_LEVEL,
+  rollCompetitionLearn, instantLevelUp, promotionStatus, promote, serialize, deserialize, competitionReady, ACTIVITIES, MAX_LEVEL,
 } from '../engine/progression.js';
 import { createFight, stepFight, chooseOption, formatLog, logLine, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
 import { makeOpponent, fighterFromState, averageLevel } from '../engine/opponent.js';
@@ -105,7 +105,7 @@ function renderClub() {
       const locked = !check.ok && lvl === 0 && !state.training;
       html += `<div class="move${training ? ' training' : ''}${locked ? ' locked' : ''}">
         <div><span class="beltdot" style="background:${BELT_COLORS[m.belt]}" title="${BELT_NAMES[m.belt]} pojas"></span><span class="name">${esc(m.name)}</span>${pips(lvl)}</div>
-        <button data-train="${m.id}" ${check.ok ? '' : `disabled title="${esc(check.reason)}"`}>${lvl === 0 ? 'Nauči' : 'Treniraj'}</button>
+        <div class="move-btns">${state.test && lvl < MAX_LEVEL ? `<button class="instant" data-instant="${m.id}" title="Test: odmah +1 razina">⚡ +1</button>` : ''}<button data-train="${m.id}" ${check.ok ? '' : `disabled title="${esc(check.reason)}"`}>${lvl === 0 ? 'Nauči' : 'Treniraj'}</button></div>
         <div class="desc">${esc(m.desc)}</div>
         <div class="meta">${training ? 'Trening u tijeku' : next === null ? 'Najviša razina' : `${lvl === 0 ? 'Učenje' : `Razina ${lvl + 1}`}: ${fmtTime(next)}`}${locked ? ` · ${esc(check.reason)}` : ''}</div>
       </div>`;
@@ -211,7 +211,10 @@ $('career').addEventListener('click', (ev) => {
   const t = ev.target.closest('button');
   if (!t || t.disabled) return;
   handleEvents(advance(state, Date.now()));
-  if (t.dataset.train) {
+  if (t.dataset.instant) {
+    const r = instantLevelUp(state, t.dataset.instant);
+    if (!r.ok) toast(r.reason);
+  } else if (t.dataset.train) {
     const r = startTraining(state, t.dataset.train);
     if (!r.ok) toast(r.reason);
   } else if (t.dataset.activity) {
