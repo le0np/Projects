@@ -177,7 +177,10 @@ export function createRenderer(canvas) {
     state.camInit = true;
     state.camX += (cx - state.camX) * k;
     state.camY += (cy - state.camY) * k;
-    const zoom = slowmo ? 2.15 : 1.9;
+    const fit = Math.min(W * 0.62 / (Math.max(...xs) - Math.min(...xs) + 40), H * 0.5 / (Math.max(...ys) - Math.min(...ys) + 40));
+    const want = Math.min(2.1, fit) * (slowmo ? 1.08 : 1);
+    state.zoom = state.zoom ? state.zoom + (want - state.zoom) * k : want;
+    const zoom = state.zoom;
     background();
     ctx.save();
     ctx.translate(W / 2, H * 0.58);
