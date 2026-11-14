@@ -6,6 +6,7 @@ Radionica za projekte: ja zamislim ideju, Claude je napravi. Svaki projekt živi
 
 | Projekt | Opis | Tehnologije | Status |
 | ------- | ---- | ----------- | ------ |
+| [bjj-fighter](bjj-fighter) | No-gi BJJ karijera u browseru: potezi se uče na timer, borbe protiv AI-a s usporenim kritičnim trenucima i 5 opcija | HTML, CSS, JavaScript (Canvas 2D) | 🚧 u izradi (testna verzija) |
 | [dev-farm](dev-farm) | 2D farma za browser: farmer, kvaliteta uroda, štand, tržnica u gradu, izumi i navodnjavanje | HTML, CSS, JavaScript | 🚧 u izradi |
 | [life-simulation](life-simulation) | Kratka multiplayer simulacija života u browseru: karijere, odnosi, tajne i odluke o drugima; ljudi i botovi s osobnošću | TypeScript, React, Fastify, Socket.IO, PostgreSQL | 🚧 u izradi (MVP gotov) |
 | [pixel-runner](pixel-runner) | Endless runner: skači preko puževa i muha | Python, Pygame | ✅ gotovo |
@@ -20,6 +21,7 @@ Statusi: 💡 ideja · 🚧 u izradi · ✅ gotovo · 🧊 pauzirano
 ├── CLAUDE.md            # pravila kojih se Claude drži u ovom repou
 ├── IDEJE.md             # ideje koje čekaju na red
 ├── _template/           # predlošci README.md i PROGRESS.md za novi projekt
+├── bjj-fighter/
 ├── dev-farm/            # jedan projekt = jedna mapa
 ├── life-simulation/
 └── pixel-runner/
