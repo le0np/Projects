@@ -6,7 +6,7 @@ import {
 } from '../src/engine/fight.js';
 import { makeOpponent, fighterFromState } from '../src/engine/opponent.js';
 import { createState } from '../src/engine/progression.js';
-import { ACTIONS, ACTION_BY_ID, OPPORTUNITY_MISTAKES } from '../src/data/positions.js';
+import { ACTIONS, ACTION_BY_ID, OPPORTUNITY_MISTAKES, MISTAKES } from '../src/data/positions.js';
 import { mulberry32 } from '../src/engine/rng.js';
 
 const empty = (name) => ({ name, belt: 'white', levels: {} });
@@ -152,7 +152,7 @@ function simulate(seed, chooser) {
   return f;
 }
 
-test('a good player sees about 8-12 critical moments per fight', () => {
+test('a good player sees about 4-8 critical moments per fight', () => {
   const good = (f, rng) => {
     const right = f.critical.options.map((o, i) => (o.correct ? i : -1)).filter((i) => i >= 0);
     return right[Math.floor(rng() * right.length)];
@@ -160,7 +160,7 @@ test('a good player sees about 8-12 critical moments per fight', () => {
   let total = 0;
   for (let i = 0; i < 200; i++) total += simulate(i + 1, good).criticalCount;
   const avg = total / 200;
-  assert.ok(avg >= 8 && avg <= 12, `average ${avg}`);
+  assert.ok(avg >= 4 && avg <= 8, `average ${avg}`);
 });
 
 test('random choices always reach a result', () => {
@@ -301,7 +301,7 @@ test('an opponent blunder when the player knows no attack gives an advantage ins
   assert.equal(f.score.p.adv, 1);
 });
 
-test('the player decides in about 30 % of exchanges', () => {
+test('the player decides in about 10 % of exchanges', () => {
   let crit = 0, ex = 0;
   for (let i = 0; i < 150; i++) {
     const rng = mulberry32(300 + i);
@@ -313,7 +313,7 @@ test('the player decides in about 30 % of exchanges', () => {
     }
     crit += f.criticalCount; ex += f.history.length;
   }
-  assert.ok(crit / ex >= 0.25 && crit / ex <= 0.35, `share ${crit / ex}`);
+  assert.ok(crit / ex >= 0.07 && crit / ex <= 0.15, `share ${crit / ex}`);
 });
 
 test('the log spells out how points add up and carries round and clock', () => {
@@ -416,4 +416,27 @@ test('standing techniques are never offered on the ground and ground ones never 
       }
     }
   }
+});
+
+// ---- competition pace ----
+test('a wrong answer to a submission is sometimes survived, with an advantage for the attacker', () => {
+  const f = idle();
+  f.pos = 'mount'; f.playerTop = false;
+  startDefense(f, 'armbar_m');
+  f.rng = () => 0.99; // the submission does not land this time
+  chooseOption(f, f.critical.options.findIndex((o) => !o.correct && MISTAKES[o.mistakeId].effect === 'threat'));
+  assert.equal(f.ended, null);
+  assert.equal(f.score.o.adv, 1);
+});
+
+test('most automatic exchanges between equal fighters go through', () => {
+  let ok = 0, all = 0;
+  for (let i = 0; i < 100; i++) {
+    const f = simulate(4000 + i, (g) => g.critical.options.findIndex((o) => o.correct));
+    for (const l of f.log) {
+      if (/ne prolazi \(napad/.test(l.text)) all++;
+      else if (/^(Ti|\S+ \S+): [^—]+\.$/.test(l.text)) { ok++; all++; }
+    }
+  }
+  assert.ok(ok / all >= 0.5, `success share ${ok / all}`);
 });

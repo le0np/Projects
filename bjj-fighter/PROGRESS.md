@@ -101,17 +101,26 @@ Dizajn: `docs/superpowers/specs/2026-11-14-round2-step1-fight-rules-design.md`, 
 - Ako igrač ne zna nijednu obranu ili nema nijedan drugi naučeni potez za tu situaciju, odluke nema: napad se odigra prema razinama, a log napiše „ne znaš obranu” i šansu.
 - Zbog toga kartica može biti manje od 5 (najmanje 2).
 
+### Natjecateljski tempo (manje odluka, više razmjena)
+Vlasnik: previše odluka, borci se previše negiraju; cilj je stil turnira poput ADCC-a, CJI-ja, UFC BJJ-a i Flo Grapplinga.
+- Razmjene svakih 4–7 s (prije 6–9 s), a između dvije odluke prođe najmanje 20 s borbe.
+- Odluka se traži u oko 10 % razmjena (prije 30 %): protivnikov sweep, prolaz ili rušenje 12 %, njegov submission 60 %, tvoja prilika 10 %, njegova greška 40 % (inače +1 prednost).
+- Automatske razmjene češće prolaze: pozicijski potez kod jednakih razina 60 % (prije 30 %), +7 postotnih bodova po razini razlike, 25–90 %. Submission sam od sebe rijetko uspije (5 %, +3 po razini, najviše 30 %), a borci ga rjeđe biraju.
+- Tvoj submission iz prilike: 20 % kod jednakih razina (prije 35 %), +5 po razini.
+- Kriva obrana od submissiona završi borbu u 60 % slučajeva. Inače se izvučeš, a protivnik dobije prednost. Bez odgovora i dalje tapkaš.
+- Simulacija 300 sparinga (igrač bira točno u 75 % slučajeva): ~6 odluka i ~58 razmjena po borbi, ~22 uspjela poteza prema ~17 obranjenih, ~35 bodova ukupno, ~69 % borbi završi submissionom, prosječno 5,4 min, ~60 % pobjeda.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 14. studenog 2026.:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` | 65/65 prolazi |
+| `npm test` | 70/70 prolazi |
 | `npm start` | server odgovara 200 na `/` i module |
 | Playwright e2e (1100 px) | trening uz 10x završi, sparing odigran do rezultata, reload zadrži napredak, 0 grešaka u konzoli |
 | Playwright mobitel (iPhone 13) | nema horizontalnog scrolla ni u karijeri ni u borbi |
-| Simulacija 300 borbi | igrač koji bira dobro: ~9,7 kritičnih trenutaka po borbi, ~62 % pobjeda |
+| Simulacija 300 sparinga | ~6 odluka po borbi (~11 % razmjena), ~60 % pobjeda uz 75 % točnih odabira |
 
 ## Poznata ograničenja
 

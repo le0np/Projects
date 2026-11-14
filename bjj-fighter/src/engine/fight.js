@@ -13,11 +13,16 @@ export const CRITICAL_TIME_LIMIT = 20; // real seconds, enforced by the UI; long
 const KIND_POINTS = { takedown: 2, sweep: 2, pass: 3 };
 const POSITION_POINTS = { kneeOnBelly: 2, mount: 4, back: 4 };
 const STEP = 0.25;
-const EXCHANGE_MIN = 6;
+// Competition pace (ADCC / CJI / UFC BJJ): frequent exchanges, most of them play out on their own,
+// and the player decides only in a few key moments per fight.
+const EXCHANGE_MIN = 4;
 const EXCHANGE_SPREAD = 3;
-const CRITICAL_COOLDOWN = 6;
-const P_DEFENSE_CRITICAL = 0.3;
-const P_OPPORTUNITY_CRITICAL = 0.25;
+const CRITICAL_COOLDOWN = 20; // game seconds between two decisions
+const P_DEFENSE_CRITICAL = 0.12; // opponent's sweep, pass, takedown... becomes a decision
+const P_SUB_CRITICAL = 0.6; // opponent's submission attempt becomes a decision
+const P_OPPORTUNITY_CRITICAL = 0.1;
+const P_BLUNDER_CRITICAL = 0.4; // opponent's mistake becomes your decision, otherwise an advantage
+const P_WRONG_SUB_LANDS = 0.6; // a wrong answer to a submission finishes it this often
 const FAST_BONUS = 0.1;
 const BELT_ERROR = { white: 0.25, blue: 0.18, purple: 0.12, brown: 0.08, black: 0.05 };
 const KIND_LABEL = { takedown: 'rušenje', sweep: 'sweep', pass: 'prolaz garda' };
@@ -36,7 +41,7 @@ export function fighterErrorChance(fighter) {
 }
 
 export const pct = (p) => `${Math.round(p * 100)} %`;
-const KIND_WEIGHT = { sub: 0.6, sweep: 1.5, pass: 1.5, takedown: 1.5, transition: 1.2, escape: 2, pull: 0.3 };
+const KIND_WEIGHT = { sub: 0.4, sweep: 1.5, pass: 1.5, takedown: 1.5, transition: 1.2, escape: 2, pull: 0.3 };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const other = (who) => (who === 'p' ? 'o' : 'p');
@@ -131,7 +136,7 @@ function runAction(f, who, action, success, why = '') {
 
 function autoChance(f, who, action) {
   const diff = lvl(f, who, action.move) - bestDefense(f, other(who), action);
-  return action.kind === 'sub' ? clamp(0.06 + 0.04 * diff, 0.02, 0.4) : clamp(0.3 + 0.06 * diff, 0.05, 0.8);
+  return action.kind === 'sub' ? clamp(0.05 + 0.03 * diff, 0.02, 0.3) : clamp(0.6 + 0.07 * diff, 0.25, 0.9);
 }
 
 function chooseAction(f, who) {
@@ -154,7 +159,8 @@ export function opponentBlunder(f, action, chance = errorChance(f.opponent.belt,
   const move = MOVE_BY_ID[action.move];
   f.lastAction = { seq: ++f.seq, who: 'o', actionId: action.id, success: false };
   say(f, `${f.opponent.name} griješi: ${move.name} mu ne sjeda (šansa greške ${pct(chance)}).`, 'o');
-  if (!startOpportunity(f, `${f.opponent.name} je pogriješio — prilika!`)) addAdvantage(f, 'p', `greška protivnika: ${move.name}`);
+  if (canCritical(f) && f.rng() < P_BLUNDER_CRITICAL && startOpportunity(f, `${f.opponent.name} je pogriješio — prilika!`)) return;
+  addAdvantage(f, 'p', `greška protivnika: ${move.name}`);
 }
 
 // One exchange: the fighter whose turn it is acts, then the turn passes to the other one.
@@ -173,16 +179,10 @@ function exchange(f) {
     say(f, `Ti: ${MOVE_BY_ID[action.move].name} — greška u izvedbi, ne prolazi (šansa greške ${pct(err)}).`, 'p');
     return;
   }
-  if (who === 'o' && action.defenses.length) {
-    if (action.kind === 'sub' || (canCritical(f) && f.rng() < P_DEFENSE_CRITICAL)) {
-      opponentAttack(f, action);
-      return;
-    }
-  }
+  if (who === 'o' && action.defenses.length && canCritical(f)
+    && f.rng() < (action.kind === 'sub' ? P_SUB_CRITICAL : P_DEFENSE_CRITICAL) && startDefense(f, action.id)) return;
   if (who === 'p' && canCritical(f) && f.rng() < P_OPPORTUNITY_CRITICAL && startOpportunity(f)) return;
-  const chance = autoChance(f, who, action);
-  const why = `napad razine ${lvl(f, who, action.move)} protiv obrane razine ${bestDefense(f, other(who), action)}, šansa ${pct(chance)}`;
-  runAction(f, who, action, f.rng() < chance, why);
+  autoAction(f, who, action);
 }
 
 function openCritical(f, critical) {
@@ -266,13 +266,18 @@ export function startDefense(f, actionId) {
   return true;
 }
 
+// An attack that plays out on its own, decided by the levels of the attack and the best defense.
+function autoAction(f, who, action) {
+  const chance = autoChance(f, who, action);
+  const def = bestDefense(f, other(who), action);
+  const unknown = who === 'o' && !def && action.defenses.length ? ' (ne znaš obranu)' : '';
+  const why = `napad razine ${lvl(f, who, action.move)} protiv obrane razine ${def}${unknown}, šansa ${pct(chance)}`;
+  runAction(f, who, action, f.rng() < chance, why);
+}
+
 // The opponent attacks; the player decides if they can, otherwise the attack plays out on levels.
 function opponentAttack(f, action) {
-  if (startDefense(f, action.id)) return;
-  const chance = autoChance(f, 'o', action);
-  const def = bestDefense(f, 'p', action);
-  const why = `napad razine ${lvl(f, 'o', action.move)} protiv tvoje obrane razine ${def}${def ? '' : ' (ne znaš obranu)'}, šansa ${pct(chance)}`;
-  runAction(f, 'o', action, f.rng() < chance, why);
+  if (!startDefense(f, action.id)) autoAction(f, 'o', action);
 }
 
 // The player has a chance to attack from the current position. Returns false when no real attack is known,
@@ -289,13 +294,18 @@ export function startOpportunity(f, text = `Prilika! (${POSITIONS[f.pos].name})`
   return true;
 }
 
-function applyMistake(f, mk, threatAction) {
+function applyMistake(f, mk, threatAction, wrongChoice = false) {
   switch (mk.effect) {
     case 'tap':
       finish(f, 'o', 'sub', threatAction ? MOVE_BY_ID[threatAction.move].name : 'submission');
       return;
     case 'threat':
-      if (threatAction) runAction(f, 'o', threatAction, true);
+      if (threatAction?.kind === 'sub' && wrongChoice && f.rng() >= P_WRONG_SUB_LANDS) {
+        // A wrong defense against a submission is usually fatal, but at this level people survive it sometimes.
+        say(f, `${MOVE_BY_ID[threatAction.move].name} je bio duboko, ali u zadnji tren si se izvukao.`, 'p');
+        addAdvantage(f, 'o', `skoro ${MOVE_BY_ID[threatAction.move].name}`);
+        escapeAfterDefense(f);
+      } else if (threatAction) runAction(f, 'o', threatAction, true);
       else addAdvantage(f, 'o', 'nisi reagirao');
       return;
     case 'pos':
@@ -339,7 +349,7 @@ export function chooseOption(f, index, { fast = false } = {}) {
   if (c.kind === 'defense') {
     const threat = ACTION_BY_ID[c.actionId];
     if (!opt) { say(f, 'Nisi reagirao na vrijeme!', 'o'); applyMistake(f, { effect: 'threat' }, threat); return; }
-    if (!opt.correct) { say(f, `${opt.label} ovdje ne pomaže.`, 'p'); applyMistake(f, MISTAKES[opt.mistakeId], threat); return; }
+    if (!opt.correct) { say(f, `${opt.label} ovdje ne pomaže.`, 'p'); applyMistake(f, MISTAKES[opt.mistakeId], threat, true); return; }
     const mine = lvl(f, 'p', opt.moveId);
     const theirs = lvl(f, 'o', threat.move);
     Object.assign(f.lastResult, { myLevel: mine, theirLevel: theirs, theirMove: MOVE_BY_ID[threat.move].name });
@@ -368,7 +378,7 @@ export function chooseOption(f, index, { fast = false } = {}) {
   const action = ACTION_BY_ID[opt.actionId];
   const mine = lvl(f, 'p', action.move);
   const theirs = bestDefense(f, 'o', action);
-  const p = (action.kind === 'sub' ? clamp(0.35 + 0.06 * (mine - theirs), 0.15, 0.75) : clamp(0.6 + 0.06 * (mine - theirs), 0.25, 0.92)) + bonus;
+  const p = (action.kind === 'sub' ? clamp(0.2 + 0.05 * (mine - theirs), 0.08, 0.55) : clamp(0.6 + 0.06 * (mine - theirs), 0.25, 0.92)) + bonus;
   const success = f.rng() < p;
   Object.assign(f.lastResult, { success, myLevel: mine, theirLevel: theirs, chance: Math.min(1, p) });
   if (!success) say(f, `Dobar izbor, ali ${f.opponent.name} te nadjačao: tvoj ${MOVE_BY_ID[action.move].name} razina ${mine} protiv njegove obrane razine ${theirs} (šansa je bila ${pct(p)}).`, 'o');
