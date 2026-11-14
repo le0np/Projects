@@ -18,5 +18,5 @@ Ključna mehanika: u kritičnim trenucima borbe vrijeme se uspori i igrač dobij
 - dobra odluka → prednost u poziciji, KO, submission, bodovi
 - loša odluka → gubitak pozicije, poraz (KO/submission protivnika), negativni bodovi
 
-Vještine lika vjerojatno utječu na to koje se opcije nude i koliko su uspješne.
+Mogućnost za razmotriti: vještine lika utječu na to koje se opcije nude i koliko su uspješne.
 
