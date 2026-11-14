@@ -324,6 +324,12 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
   - popravak: e2e pokreće server u vlastitoj grupi procesa i gasi cijelu grupu, a odbija krenuti ako je port zauzet;
   - nakon popravka e2e prolazi na stvarnom kodu, na desktopu i na mobitelu.
 
+### Popravak: datoteke sadržaja koje nisu bile u gitu (15. studenog 2026.)
+
+- Pravilo `data/` u `.gitignore`, namijenjeno lokalnoj bazi, hvatalo je i `packages/content/data/`. Zato `map.json`, `upheavals.json`, `mischief.json` i 10 novih eventa nikad nisu bili commitani, a na vlasnikovom računalu server se nije mogao pokrenuti.
+- Pravilo je sada `/data/` (samo baza u korijenu projekta), a datoteke su commitane.
+- **Nova provjera prije završetka posla:** svjež `git clone` s GitHuba u scratchpad, pa `npm install`, `validate`, testovi, build i pokretanje servera. Prošlo je: 67 eventa, 97/97 testova, server poslužuje mapu.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:
