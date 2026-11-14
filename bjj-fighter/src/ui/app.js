@@ -1,6 +1,6 @@
 // UI: screens, game loop, saving. All rules live in src/engine; this file only wires them to the DOM.
 import { BELTS, BELT_NAMES, CATEGORIES, MOVES, MOVE_BY_ID } from '../data/moves.js';
-import { POSITIONS } from '../data/positions.js';
+import { POSITIONS, ACTION_BY_ID } from '../data/positions.js';
 import {
   createState, learnTime, effectiveLevel, canTrain, startTraining, startActivity, advance, setSpeed,
   rollCompetitionLearn, recordFight, instantLevelUp, promotionStatus, promote, serialize, deserialize, competitionReady, ACTIVITIES, MAX_LEVEL,
@@ -10,7 +10,7 @@ import { createFight, stepFight, chooseOption, formatLog, logLine, fighterErrorC
 import { makeSparPartner, makeCompetitor, fighterFromState } from '../engine/opponent.js';
 import { createRenderer } from '../render/renderer2d.js';
 import { tickCriticalTimer } from './criticalTimer.js';
-import { energySegments } from './fightFx.js';
+import { energySegments, createFxMemo, nextFxEvents } from './fightFx.js';
 
 const SAVE_KEY = 'bjj-fighter-save-v1';
 const SPAR_REWARD = 10;
@@ -299,7 +299,8 @@ function openFight(mode, stage) {
   // Sparring: a random partner from the gym (white to blue belt). Competition: your belt, typical skill for it.
   const opponent = mode === 'spar' ? makeSparPartner(rng) : makeCompetitor(state.belt, stage, rng);
   const fight = createFight(me, opponent, rng);
-  fightCtx = { fight, mode, stage, timer: null, feedbackUntil: 0, logLen: -1, critSeq: -1, done: false };
+  fightCtx = { fight, mode, stage, timer: null, feedbackUntil: 0, logLen: -1, critSeq: -1, done: false, fx: createFxMemo(fight) };
+  $('fx').innerHTML = '';
   $('career').hidden = true;
   $('fight').hidden = false;
   $('result').hidden = true;
@@ -483,6 +484,37 @@ function finishFight(f) {
   $('result-next').addEventListener('click', () => (next !== null ? openFight('comp', next) : closeFight()));
 }
 
+// ---------- fight effects (banners, score badges, shake) ----------
+// Each effect removes itself when its CSS animation ends; the timeout covers animations that never run.
+function addFx(el, ms) {
+  const done = () => el.remove();
+  el.addEventListener('animationend', done, { once: true });
+  setTimeout(done, ms);
+  $('fx').appendChild(el);
+}
+
+function showBanner({ who, text, shake }) {
+  $('fx').querySelector('.fx-banner')?.remove();
+  const el = document.createElement('div');
+  el.className = `fx-banner ${who}`;
+  el.innerHTML = `<span>${esc(text)}</span>`;
+  addFx(el, 2000);
+  if (shake) {
+    const stage = document.querySelector('#fight .stage');
+    stage.classList.remove('shake');
+    void stage.offsetWidth; // restart the animation if it is still running
+    stage.classList.add('shake');
+    setTimeout(() => stage.classList.remove('shake'), 350);
+  }
+}
+
+function showBadge({ who, pts }) {
+  const el = document.createElement('div');
+  el.className = `fx-badge ${who}`;
+  el.textContent = `+${pts}`;
+  addFx(el, 2200);
+}
+
 // ---------- main loop ----------
 let lastFrame = performance.now();
 let lastUi = 0;
@@ -505,6 +537,9 @@ function frame(now) {
       }
     }
     renderer.draw(f, dtReal, { slowmo: !!f.critical, mode: fightCtx.mode });
+    const fx = nextFxEvents(fightCtx.fx, f, ACTION_BY_ID);
+    fightCtx.fx = fx.memo;
+    for (const ev of fx.events) (ev.type === 'banner' ? showBanner : showBadge)(ev);
     renderScore(f);
     renderLog(f);
     renderCritical(f);
