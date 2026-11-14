@@ -1,6 +1,6 @@
 // Fight simulation. Works in game seconds; the UI converts real time with CLOCK_SPEED.
 // Pure logic: the renderer only reads `pos`, `playerTop`, `critical`, `lastAction`.
-import { MOVES, MOVE_BY_ID } from '../data/moves.js';
+import { MOVES, MOVE_BY_ID, MOVE_CLASS } from '../data/moves.js';
 import { POSITIONS, ACTIONS, ACTION_BY_ID, MISTAKES, OPPORTUNITY_MISTAKES, GENERIC_MISTAKES, actionsFor } from '../data/positions.js';
 import { pick, shuffle } from './rng.js';
 
@@ -13,11 +13,20 @@ export const CRITICAL_TIME_LIMIT = 20; // real seconds, enforced by the UI; long
 const KIND_POINTS = { takedown: 2, sweep: 2, pass: 3 };
 const POSITION_POINTS = { kneeOnBelly: 2, mount: 4, back: 4 };
 const STEP = 0.25;
-const EXCHANGE_MIN = 4;
-const EXCHANGE_SPREAD = 4;
-const CRITICAL_COOLDOWN = 15;
-const P_DEFENSE_CRITICAL = 0.35;
-const P_OPPORTUNITY_CRITICAL = 0.3;
+const EXCHANGE_MIN = 6;
+const EXCHANGE_SPREAD = 3;
+const CRITICAL_COOLDOWN = 6;
+const P_DEFENSE_CRITICAL = 0.3;
+const P_OPPORTUNITY_CRITICAL = 0.25;
+const FAST_BONUS = 0.1;
+const BELT_ERROR = { white: 0.25, blue: 0.18, purple: 0.12, brown: 0.08, black: 0.05 };
+const KIND_LABEL = { takedown: 'rušenje', sweep: 'sweep', pass: 'prolaz garda' };
+const POSITION_LABEL = { kneeOnBelly: 'knee on belly', mount: 'mount', back: 'leđa' };
+
+// Chance that a fighter botches a move: lower for higher belts and better-trained moves.
+export function errorChance(belt, level) {
+  return Math.max(0.02, BELT_ERROR[belt] - 0.015 * Math.max(0, level - 1));
+}
 const KIND_WEIGHT = { sub: 0.6, sweep: 1.5, pass: 1.5, takedown: 1.5, transition: 1.2, escape: 2, pull: 0.3 };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -31,6 +40,8 @@ export function createFight(player, opponent, rng) {
     score: { p: { pts: 0, adv: 0, pen: 0 }, o: { pts: 0, adv: 0, pen: 0 } },
     pending: null,
     nextExchange: 2,
+    turn: rng() < 0.5 ? 'p' : 'o',
+    history: [],
     critical: null,
     criticalCount: 0,
     lastCriticalAt: -Infinity,
@@ -65,7 +76,7 @@ function finish(f, winner, method, detail) {
   say(f, method === 'sub' ? `${fighter(f, winner).name} pobjeđuje submissionom (${detail})!` : `Kraj borbe: ${fighter(f, winner).name} pobjeđuje (${detail}).`, winner);
 }
 
-export function applyTransition(f, who, kind, to) {
+export function applyTransition(f, who, kind, to, label = KIND_LABEL[kind]) {
   if (f.pending) {
     f.score[f.pending.who].adv += 1; // near-score that was not held
     f.pending = null;
@@ -73,8 +84,11 @@ export function applyTransition(f, who, kind, to) {
   f.pos = to.pos;
   f.playerTop = to.pos === 'standing' ? null : (who === 'p') === to.actorTop;
   const scoring = POSITIONS[to.pos].scoring;
-  const pts = (KIND_POINTS[kind] ?? 0) + (to.actorTop && scoring ? POSITION_POINTS[scoring] : 0);
-  if (pts > 0) f.pending = { who, pts, at: f.clock };
+  const parts = [];
+  if (KIND_POINTS[kind]) parts.push([label, KIND_POINTS[kind]]);
+  if (to.actorTop && scoring) parts.push([POSITION_LABEL[scoring], POSITION_POINTS[scoring]]);
+  const pts = parts.reduce((sum, [, n]) => sum + n, 0);
+  if (pts > 0) f.pending = { who, pts, at: f.clock, why: parts.map(([l, n]) => `${l} ${n}`).join(' + ') };
   f.seq += 1;
 }
 
@@ -91,7 +105,7 @@ function runAction(f, who, action, success) {
     return;
   }
   say(f, `${fighter(f, who).name}: ${move.name}.`, who);
-  applyTransition(f, who, action.kind, action.to);
+  applyTransition(f, who, action.kind, action.to, move.name);
 }
 
 function autoChance(f, who, action) {
@@ -114,10 +128,32 @@ function chooseAction(f, who) {
 
 const canCritical = (f) => f.elapsed - f.lastCriticalAt >= CRITICAL_COOLDOWN;
 
+// The opponent botched a move: it fails and the player gets a chance to punish it.
+export function opponentBlunder(f, action) {
+  const move = MOVE_BY_ID[action.move];
+  f.lastAction = { seq: ++f.seq, who: 'o', actionId: action.id, success: false };
+  say(f, `${f.opponent.name} griješi: ${move.name} mu ne sjeda.`, 'o');
+  if (!startOpportunity(f, `${f.opponent.name} je pogriješio — prilika!`)) {
+    f.score.p.adv += 1;
+    say(f, 'Prednost za tebe.', 'p');
+  }
+}
+
+// One exchange: the fighter whose turn it is acts, then the turn passes to the other one.
 function exchange(f) {
-  const who = f.rng() < 0.5 ? 'p' : 'o';
+  const who = f.turn;
+  f.turn = other(who);
   const action = chooseAction(f, who);
+  const entry = { who, actionId: action?.id ?? null, error: false };
+  f.history.push(entry);
   if (!action) return;
+  if (f.rng() < errorChance(fighter(f, who).belt, lvl(f, who, action.move))) {
+    entry.error = true;
+    if (who === 'o') { opponentBlunder(f, action); return; }
+    f.lastAction = { seq: ++f.seq, who, actionId: action.id, success: false };
+    say(f, `Ti: ${MOVE_BY_ID[action.move].name} — greška u izvedbi, ne prolazi.`, 'p');
+    return;
+  }
   if (who === 'o' && action.defenses.length) {
     if (action.kind === 'sub' || (canCritical(f) && f.rng() < P_DEFENSE_CRITICAL)) {
       startDefense(f, action.id);
@@ -137,7 +173,7 @@ function openCritical(f, critical) {
 
 // Every option is a real technique. Wrong ones are techniques that do not work from this spot;
 // choosing one triggers one of the situation's typical mistakes (`MISTAKES` effects).
-const option = (moveId, extra) => ({ label: MOVE_BY_ID[moveId].name, detail: MOVE_BY_ID[moveId].desc, moveId, ...extra });
+const option = (moveId, extra) => ({ label: MOVE_BY_ID[moveId].name, detail: MOVE_BY_ID[moveId].desc, cls: MOVE_CLASS[moveId], moveId, ...extra });
 
 const MOVES_BY_ROLE = {};
 for (const a of ACTIONS) (MOVES_BY_ROLE[a.role] ??= new Set()).add(a.move);
@@ -188,7 +224,7 @@ export function startDefense(f, actionId) {
 
 // The player has a chance to attack from the current position. Returns false when no real attack is known,
 // so a critical moment never consists of wrong answers only.
-export function startOpportunity(f) {
+export function startOpportunity(f, text = `Prilika! (${POSITIONS[f.pos].name})`) {
   const role = roleOf(f, 'p');
   const known = shuffle(f.rng, actionsFor(f.pos, role).filter((a) => lvl(f, 'p', a.move) > 0 && a.kind !== 'pull'));
   if (!known.length) return false;
@@ -196,7 +232,7 @@ export function startOpportunity(f) {
   const correct = known.slice(0, count).map((a) => option(a.move, { correct: true, actionId: a.id }));
   openCritical(f, {
     kind: 'opportunity',
-    text: `Prilika! (${POSITIONS[f.pos].name})`,
+    text,
     options: fillOptions(f, correct, attackDecoys(role), OPPORTUNITY_MISTAKES[`${f.pos}:${role}`] ?? []),
   });
   return true;
@@ -241,7 +277,8 @@ function escapeAfterDefense(f) {
   }
 }
 
-export function chooseOption(f, index) {
+export function chooseOption(f, index, { fast = false } = {}) {
+  const bonus = fast ? FAST_BONUS : 0;
   const c = f.critical;
   if (!c) return;
   f.critical = null;
@@ -254,7 +291,7 @@ export function chooseOption(f, index) {
     const mine = lvl(f, 'p', opt.moveId);
     const theirs = lvl(f, 'o', threat.move);
     Object.assign(f.lastResult, { myLevel: mine, theirLevel: theirs, theirMove: MOVE_BY_ID[threat.move].name });
-    const p = clamp(0.8 + 0.05 * (mine - theirs), 0.5, 0.97);
+    const p = clamp(0.8 + 0.05 * (mine - theirs), 0.5, 0.97) + bonus;
     if (f.rng() < p) {
       f.lastResult.success = true;
       f.lastAction = { seq: ++f.seq, who: 'o', actionId: threat.id, success: false };
@@ -278,7 +315,7 @@ export function chooseOption(f, index) {
   const action = ACTION_BY_ID[opt.actionId];
   const mine = lvl(f, 'p', action.move);
   const theirs = bestDefense(f, 'o', action);
-  const p = action.kind === 'sub' ? clamp(0.35 + 0.06 * (mine - theirs), 0.15, 0.75) : clamp(0.6 + 0.06 * (mine - theirs), 0.25, 0.92);
+  const p = (action.kind === 'sub' ? clamp(0.35 + 0.06 * (mine - theirs), 0.15, 0.75) : clamp(0.6 + 0.06 * (mine - theirs), 0.25, 0.92)) + bonus;
   const success = f.rng() < p;
   Object.assign(f.lastResult, { success, myLevel: mine, theirLevel: theirs });
   if (!success) say(f, `Dobar izbor, ali ${f.opponent.name} se obranio: tvoj ${MOVE_BY_ID[action.move].name} razina ${mine} protiv njegove obrane razine ${theirs}.`, 'o');
@@ -314,7 +351,7 @@ export function stepFight(f, gameDt) {
     f.elapsed += h;
     if (f.pending && f.clock - f.pending.at >= HOLD_SECONDS - 1e-9) {
       f.score[f.pending.who].pts += f.pending.pts;
-      say(f, `+${f.pending.pts} boda: ${fighter(f, f.pending.who).name}`, f.pending.who);
+      say(f, `+${f.pending.pts} boda: ${fighter(f, f.pending.who).name} (${f.pending.why})`, f.pending.who);
       f.pending = null;
     }
     if (f.clock >= ROUND_SECONDS - 1e-9) {
@@ -327,4 +364,25 @@ export function stepFight(f, gameDt) {
       exchange(f);
     }
   }
+}
+
+const clockText = (clock) => {
+  const left = Math.max(0, Math.ceil(ROUND_SECONDS - clock));
+  return `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+};
+
+export function logLine(l) {
+  return `R${l.round} ${clockText(l.clock)} ${l.text}`;
+}
+
+// Whole fight as plain text, for copying into a bug report or a chat.
+export function formatLog(f) {
+  const { p, o } = f.score;
+  const head = [
+    `${f.player.name} (${f.player.belt}) vs ${f.opponent.name} (${f.opponent.belt})`,
+    `Bodovi ${p.pts}:${o.pts} · prednosti ${p.adv}:${o.adv} · kazne ${p.pen}:${o.pen}`,
+    f.ended ? `Ishod: ${f.ended.winner === 'p' ? 'pobjeda' : 'poraz'} (${f.ended.method}, ${f.ended.detail})` : 'Borba u tijeku',
+    '',
+  ];
+  return [...head, ...f.log.map(logLine)].join('\n');
 }

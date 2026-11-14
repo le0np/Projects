@@ -88,3 +88,12 @@ export const MOVES = [
 ];
 
 export const MOVE_BY_ID = Object.fromEntries(MOVES.map((mv) => [mv.id, mv]));
+
+// Colour class of each move for quick recognition in critical moments.
+export const CATEGORY_CLASS = {
+  sub: 'napad', sweep: 'napad', pass: 'napad', takedown: 'napad',
+  defense: 'obrana', escape: 'obrana',
+  top: 'kontrola', guard: 'kontrola', transition: 'kontrola',
+  movement: 'pozicija',
+};
+export const MOVE_CLASS = Object.fromEntries(MOVES.map((mv) => [mv.id, CATEGORY_CLASS[mv.category]]));

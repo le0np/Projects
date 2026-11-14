@@ -256,3 +256,89 @@ test('a decent player (right 75 % of the time) wins about half of balanced sparr
   }
   assert.ok(wins / N >= 0.45 && wins / N <= 0.8, `win rate ${wins / N}`);
 });
+
+// ---- round 2, step 1 ----
+import { errorChance, formatLog, opponentBlunder } from '../src/engine/fight.js';
+
+test('error chance depends on belt and move level', () => {
+  assert.equal(errorChance('white', 1), 0.25);
+  assert.ok(Math.abs(errorChance('blue', 3) - 0.15) < 1e-9);
+  assert.equal(errorChance('black', 10), 0.02);
+});
+
+test('initiative strictly alternates between the fighters', () => {
+  const rng = mulberry32(77);
+  const s = createState({ test: true, now: 0 });
+  const f = createFight(fighterFromState(s), makeOpponent('white', rng, 1), rng);
+  while (!f.ended && f.elapsed < 300) {
+    if (f.critical) chooseOption(f, f.critical.options.findIndex((o) => o.correct));
+    else stepFight(f, 1);
+  }
+  assert.ok(f.history.length > 10);
+  for (let i = 1; i < f.history.length; i++) assert.notEqual(f.history[i].who, f.history[i - 1].who, `turn ${i}`);
+});
+
+test('an opponent blunder gives the player a chance', () => {
+  const f = createFight({ name: 'Ti', belt: 'white', levels: { mount: 2, sideToMount: 2 } }, { name: 'On', belt: 'white', levels: { sideShrimp: 1 } }, mulberry32(2));
+  f.pos = 'sideControl'; f.playerTop = true;
+  opponentBlunder(f, ACTION_BY_ID.sideShrimp_e);
+  assert.equal(f.critical.kind, 'opportunity');
+  assert.match(f.critical.text, /pogriješio/);
+});
+
+test('an opponent blunder when the player knows no attack gives an advantage instead', () => {
+  const f = createFight(empty('Ti'), { name: 'On', belt: 'white', levels: { sideShrimp: 1 } }, mulberry32(2));
+  f.pos = 'sideControl'; f.playerTop = true;
+  opponentBlunder(f, ACTION_BY_ID.sideShrimp_e);
+  assert.equal(f.critical, null);
+  assert.equal(f.score.p.adv, 1);
+});
+
+test('the player decides in about 30 % of exchanges', () => {
+  let crit = 0, ex = 0;
+  for (let i = 0; i < 150; i++) {
+    const rng = mulberry32(300 + i);
+    const s = createState({ test: true, now: 0 });
+    const f = createFight(fighterFromState(s), makeOpponent('white', rng, 1), rng);
+    while (!f.ended) {
+      if (f.critical) chooseOption(f, f.critical.options.findIndex((o) => o.correct));
+      else stepFight(f, 1);
+    }
+    crit += f.criticalCount; ex += f.history.length;
+  }
+  assert.ok(crit / ex >= 0.25 && crit / ex <= 0.35, `share ${crit / ex}`);
+});
+
+test('the log spells out how points add up and carries round and clock', () => {
+  const f = idle();
+  applyTransition(f, 'p', 'sweep', { pos: 'mount', actorTop: true }, 'Flower sweep');
+  stepFight(f, 3.1);
+  const line = f.log.find((l) => l.text.includes('+6'));
+  assert.ok(line, 'points line');
+  assert.match(line.text, /Flower sweep 2 \+ mount 4/);
+  assert.equal(line.round, 1);
+  assert.match(formatLog(f), /R1 \d:\d\d .*\+6/);
+});
+
+test('a fast answer adds 10 percentage points', () => {
+  const setup = () => {
+    const f = createFight({ name: 'Ti', belt: 'white', levels: { armbarDefense: 1 } }, { name: 'On', belt: 'white', levels: { armbar: 1 } }, mulberry32(1));
+    f.pos = 'mount'; f.playerTop = false;
+    startDefense(f, 'armbar_m');
+    f.rng = () => 0.85; // base chance at equal levels is 0.8
+    return f;
+  };
+  const slow = setup();
+  chooseOption(slow, slow.critical.options.findIndex((o) => o.correct));
+  assert.equal(slow.lastResult.success, false);
+  const fast = setup();
+  chooseOption(fast, fast.critical.options.findIndex((o) => o.correct), { fast: true });
+  assert.equal(fast.lastResult.success, true);
+});
+
+test('every option carries a class colour group', () => {
+  const f = createFight({ name: 'Ti', belt: 'white', levels: { rnc: 3 } }, empty('On'), mulberry32(1));
+  f.pos = 'back'; f.playerTop = true;
+  startOpportunity(f);
+  for (const o of f.critical.options) assert.ok(['napad', 'obrana', 'kontrola', 'pozicija'].includes(o.cls), o.label);
+});
