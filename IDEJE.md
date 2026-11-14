@@ -18,5 +18,7 @@ Ključna mehanika: u kritičnim trenucima borbe vrijeme se uspori i igrač dobij
 - dobra odluka → prednost u poziciji, KO, submission, bodovi
 - loša odluka → gubitak pozicije, poraz (KO/submission protivnika), negativni bodovi
 
+Razvoj vještina je u stilu Clash Royalea (building strategy): treninzi i nadogradnje traju određeno stvarno vrijeme i odvijaju se dok igrač nije u igri, pa ne mora stalno igrati — navrati, pokrene trening, vrati se kad završi.
+
 Mogućnost za razmotriti: vještine lika utječu na to koje se opcije nude i koliko su uspješne.
 
