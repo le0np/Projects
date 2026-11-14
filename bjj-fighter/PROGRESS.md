@@ -115,6 +115,10 @@ Vlasnik: previše odluka, borci se previše negiraju; cilj je stil turnira poput
 - Stari save zadržava svoju postavku. Za početak od nule treba „Nova igra” ili isključiti „sve otključano”.
 - Bez naučenih poteza igrač u borbi ne napada i nema odluka (nema obrana), pa prvo treba trenirati.
 
+### Bijeli pojas griješi puno češće
+- Vlasnik: bijeli pojas treba griješiti puno više od 25 %. Šansa greške bijelog pojasa je sad 40 % na razini 1 (−1,5 postotna boda po razini iznad 1). Ostali pojasevi ostaju: plavi 18 %, ljubičasti 12 %, smeđi 8 %, crni 5 %.
+- Simulacija bijeli protiv bijelog: ~24 greške po borbi (prije ~15), ~18 uspjelih poteza, ~6–7 odluka, ~64 % pobjeda uz 75 % točnih odabira.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 14. studenog 2026.:

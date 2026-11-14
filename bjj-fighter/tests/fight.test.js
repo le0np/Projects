@@ -264,7 +264,7 @@ test('a decent player (right 75 % of the time) wins about half of balanced sparr
 import { errorChance, formatLog, opponentBlunder } from '../src/engine/fight.js';
 
 test('error chance depends on belt and move level', () => {
-  assert.equal(errorChance('white', 1), 0.25);
+  assert.equal(errorChance('white', 1), 0.4);
   assert.ok(Math.abs(errorChance('blue', 3) - 0.15) < 1e-9);
   assert.equal(errorChance('black', 10), 0.02);
 });
@@ -358,7 +358,7 @@ import { fighterErrorChance } from '../src/engine/fight.js';
 test('the fight log opens with both fighters\' error chance in percent', () => {
   const f = createFight({ name: 'Ti', belt: 'white', levels: { mount: 1 } }, { name: 'On', belt: 'purple', levels: { mount: 3 } }, mulberry32(1));
   assert.ok(Math.abs(fighterErrorChance(f.opponent) - 0.09) < 1e-9);
-  assert.match(f.log[0].text, /Ti 25 %, On 9 %/);
+  assert.match(f.log[0].text, /Ti 40 %, On 9 %/);
 });
 
 test('an opponent blunder says how likely it was', () => {

@@ -24,7 +24,7 @@ const P_OPPORTUNITY_CRITICAL = 0.1;
 const P_BLUNDER_CRITICAL = 0.4; // opponent's mistake becomes your decision, otherwise an advantage
 const P_WRONG_SUB_LANDS = 0.6; // a wrong answer to a submission finishes it this often
 const FAST_BONUS = 0.1;
-const BELT_ERROR = { white: 0.25, blue: 0.18, purple: 0.12, brown: 0.08, black: 0.05 };
+const BELT_ERROR = { white: 0.4, blue: 0.18, purple: 0.12, brown: 0.08, black: 0.05 };
 const KIND_LABEL = { takedown: 'rušenje', sweep: 'sweep', pass: 'prolaz garda' };
 const POSITION_LABEL = { kneeOnBelly: 'knee on belly', mount: 'mount', back: 'leđa' };
 
