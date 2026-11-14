@@ -90,10 +90,11 @@ export const MOVES = [
 export const MOVE_BY_ID = Object.fromEntries(MOVES.map((mv) => [mv.id, mv]));
 
 // Colour class of each move for quick recognition in critical moments.
+// Three colours on the cards: attack (submissions, passes, takedowns, moving to a better spot on top),
+// sweep, and defense (defenses, escapes, guards, basic movement).
 export const CATEGORY_CLASS = {
-  sub: 'napad', sweep: 'napad', pass: 'napad', takedown: 'napad',
-  defense: 'obrana', escape: 'obrana',
-  top: 'kontrola', guard: 'kontrola', transition: 'kontrola',
-  movement: 'pozicija',
+  sub: 'napad', pass: 'napad', takedown: 'napad', top: 'napad', transition: 'napad',
+  sweep: 'sweep',
+  defense: 'obrana', escape: 'obrana', guard: 'obrana', movement: 'obrana',
 };
 export const MOVE_CLASS = Object.fromEntries(MOVES.map((mv) => [mv.id, CATEGORY_CLASS[mv.category]]));

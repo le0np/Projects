@@ -43,3 +43,10 @@ export function makeSparPartner(rng) {
   const belt = rng() < 0.55 ? 'white' : 'blue';
   return makeOpponent(belt, rng, undefined, 0.35 + rng() * 0.55);
 }
+
+// Competition: opponents of your belt with the skill typical for that belt, a bit stronger each round
+// (quarterfinal, semifinal, final). They do not scale with your levels, so training pays off.
+const BELT_SKILL = { white: 2, blue: 4, purple: 5.5, brown: 7, black: 8.5 };
+export function makeCompetitor(belt, stage, rng) {
+  return makeOpponent(belt, rng, BELT_SKILL[belt] + stage * 0.75, 0.6 + rng() * 0.3);
+}

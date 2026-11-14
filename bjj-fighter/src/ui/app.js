@@ -6,7 +6,7 @@ import {
   rollCompetitionLearn, recordFight, instantLevelUp, promotionStatus, promote, serialize, deserialize, competitionReady, ACTIVITIES, MAX_LEVEL,
 } from '../engine/progression.js';
 import { createFight, stepFight, chooseOption, formatLog, logLine, fighterErrorChance, pct, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
-import { makeOpponent, makeSparPartner, fighterFromState, averageLevel } from '../engine/opponent.js';
+import { makeSparPartner, makeCompetitor, fighterFromState } from '../engine/opponent.js';
 import { createRenderer } from '../render/renderer2d.js';
 import { tickCriticalTimer } from './criticalTimer.js';
 
@@ -268,8 +268,8 @@ function startFightFlow(mode) {
 
 function openFight(mode, stage) {
   const me = fighterFromState(state);
-  // Sparring: a random partner from the gym (white to blue belt). Competition: built around your level.
-  const opponent = mode === 'spar' ? makeSparPartner(rng) : makeOpponent(state.belt, rng, averageLevel(me) + stage * 0.5);
+  // Sparring: a random partner from the gym (white to blue belt). Competition: your belt, typical skill for it.
+  const opponent = mode === 'spar' ? makeSparPartner(rng) : makeCompetitor(state.belt, stage, rng);
   const fight = createFight(me, opponent, rng);
   fightCtx = { fight, mode, stage, timer: null, feedbackUntil: 0, logLen: -1, critSeq: -1, done: false };
   $('career').hidden = true;
@@ -320,7 +320,7 @@ function renderCritical(f) {
     const hint = c.hint ? `<span class="hint-line">💭 Osjećaj ti govori: <b>${esc(c.options[c.hint.index].label)}</b> · pouzdanost ${pct(c.hint.accuracy)}</span>` : '';
     $('critical-text').innerHTML = `${esc(c.text)}${hint}`;
     $('critical-options').innerHTML = c.options
-      .map((o, i) => `<button data-opt="${i}" class="cls-${o.cls}${c.hint?.index === i ? ' hinted' : ''}"><span class="k">${i + 1}</span> <b>${esc(o.label)}</b>${c.hint?.index === i ? ' <span class="hint-mark">💭</span>' : ''}<small>${esc(o.detail ?? '')}</small></button>`).join('');
+      .map((o, i) => `<button data-opt="${i}" class="cls-${o.cls}${c.hint?.index === i ? ' hinted' : ''}"><span class="k">${i + 1}</span> <b>${esc(o.label)}</b>${c.hint?.index === i ? ' <span class="hint-mark">💭</span>' : ''}<span class="lvl">razina ${o.level}</span><small>${esc(o.detail ?? '')}</small></button>`).join('');
     $('critical').hidden = false;
   }
   const left = fightCtx.timer?.seq === f.criticalCount ? fightCtx.timer.left : c.timeLimit;
@@ -340,7 +340,7 @@ function choose(index) {
   let ms = 1800;
   if (!opt) { fb.textContent = 'Prekasno!'; fb.className = 'feedback bad'; }
   else if (!opt.correct) {
-    fb.textContent = r.kind === 'opportunity' ? `✘ ${opt.label} ovdje radi protivnik, ne ti.` : `✘ ${opt.label} ovdje ne pomaže.`;
+    fb.textContent = `✘ ${opt.label} ovdje ne pomaže.`;
     fb.className = 'feedback bad';
   }
   else if (r.success) { fb.textContent = `✔ ${opt.label} — uspjelo! (razina ${r.myLevel} protiv ${r.theirLevel}${fast ? ', brza odluka +10 %' : ''})`; fb.className = 'feedback good'; }

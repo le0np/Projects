@@ -1,7 +1,7 @@
 // Fight simulation. Works in game seconds; the UI converts real time with CLOCK_SPEED.
 // Pure logic: the renderer only reads `pos`, `playerTop`, `critical`, `lastAction`.
 import { MOVE_BY_ID, MOVE_CLASS } from '../data/moves.js';
-import { POSITIONS, ACTIONS, ACTION_BY_ID, MISTAKES, OPPORTUNITY_MISTAKES, GENERIC_MISTAKES, actionsFor } from '../data/positions.js';
+import { POSITIONS, ACTION_BY_ID, MISTAKES, GENERIC_MISTAKES, actionsFor } from '../data/positions.js';
 import { pick, shuffle } from './rng.js';
 
 export const ROUND_SECONDS = 180;
@@ -174,9 +174,8 @@ export function opponentBlunder(f, action, chance = errorChance(f.opponent.belt,
   const move = MOVE_BY_ID[action.move];
   f.lastAction = { seq: ++f.seq, who: 'o', actionId: action.id, success: false };
   say(f, `${f.opponent.name} griješi: ${move.name} mu ne sjeda (šansa greške ${pct(chance)}).`, 'o');
-  const where = POSITIONS[f.pos].name.toLowerCase();
   if (canCritical(f) && f.rng() < P_BLUNDER_CRITICAL
-    && startOpportunity(f, `${f.opponent.name} je zeznuo ${move.name} — kazni ga! Izaberi napad iz pozicije: ${where}.`)) return;
+    && startOpportunity(f, `${f.opponent.name} je zeznuo ${move.name} — kazni ga! ${whereText(f)[0].toUpperCase()}${whereText(f).slice(1)}, izaberi potez.`)) return;
   counter(f, 'p', move.name);
 }
 
@@ -216,7 +215,7 @@ function exchange(f) {
 }
 
 function openCritical(f, critical) {
-  f.critical = { ...critical, timeLimit: CRITICAL_TIME_LIMIT };
+  f.critical = { ...critical, options: withLevel(f, critical.options), timeLimit: CRITICAL_TIME_LIMIT };
   f.critical.hint = giveHint(f, f.critical);
   say(f, `⚡ Odluka: ${critical.text} [${critical.options.map((o) => `${o.label}${o.correct ? ' ✔' : ''}`).join(' | ')}]`);
   if (f.critical.hint) say(f, `💭 Osjećaj ti govori: ${critical.options[f.critical.hint.index].label} (pouzdanost osjećaja ${pct(f.critical.hint.accuracy)}).`, 'p');
@@ -228,19 +227,10 @@ function openCritical(f, critical) {
 // Every option is a real technique. Wrong ones are techniques that do not work from this spot;
 // choosing one triggers one of the situation's typical mistakes (`MISTAKES` effects).
 const option = (moveId, extra) => ({ label: MOVE_BY_ID[moveId].name, detail: MOVE_BY_ID[moveId].desc, cls: MOVE_CLASS[moveId], moveId, ...extra });
+const withLevel = (f, opts) => opts.map((o) => ({ ...o, level: lvl(f, 'p', o.moveId) }));
 
 const known = (f, ids) => [...new Set(ids)].filter((id) => lvl(f, 'p', id) > 0);
-const ROLE_NAME = { top: 'odozgo', bottom: 'odozdo', neutral: 'iz stava' };
 const otherRole = (role) => (role === 'top' ? 'bottom' : role === 'bottom' ? 'top' : 'neutral');
-
-// Wrong attack options: attacks (sweeps, submissions, passes, takedowns) that exist in this exact position
-// but only for the other fighter's role, e.g. a triangle when you are on top in closed guard. Never a defense,
-// an escape or a position name, which make no sense when you are asked to attack.
-function opportunityDecoys(f, pos, role) {
-  const usable = new Set(actionsFor(pos, role).map((a) => a.move));
-  const pool = actionsFor(pos, otherRole(role)).filter((a) => ['sub', 'sweep', 'pass', 'takedown'].includes(a.kind)).map((a) => a.move);
-  return known(f, pool).filter((id) => !usable.has(id));
-}
 
 // Wrong defense options: defenses against the other attacks the opponent has from this spot
 // (a guillotine defense against a triangle), plus the player's own attacks here. Never a defense
@@ -307,15 +297,21 @@ function opponentAttack(f, action) {
 
 // The player has a chance to attack from the current position. Returns false when no real attack is known,
 // so a critical moment never consists of wrong answers only.
-export function startOpportunity(f, text = `Prilika za napad! Izaberi tehniku iz pozicije: ${POSITIONS[f.pos].name.toLowerCase()}.`) {
+// Where the player is, in words: "ti si gore (mount)", "ti si dolje (leđa)", "u stavu".
+export function whereText(f) {
   const role = roleOf(f, 'p');
-  const attacks = shuffle(f.rng, actionsFor(f.pos, role).filter((a) => lvl(f, 'p', a.move) > 0 && a.kind !== 'pull'));
-  if (!attacks.length) return false;
-  const decoys = opportunityDecoys(f, f.pos, role);
-  const count = Math.min(attacks.length, decoys.length ? 1 + Math.floor(f.rng() * 3) : 5);
-  const correct = attacks.slice(0, count).map((a) => option(a.move, { correct: true, actionId: a.id }));
-  const options = fillOptions(f, correct, decoys, OPPORTUNITY_MISTAKES[`${f.pos}:${role}`] ?? []);
-  if (!options) return false;
+  if (role === 'neutral') return 'u stavu';
+  return `ti si ${role === 'top' ? 'gore' : 'dolje'} (${POSITIONS[f.pos].name.toLowerCase()})`;
+}
+
+// The player has a chance to act from the current position. The cards are exactly the techniques the
+// player knows for this spot and role (up to 5): no wrong cards, the choice is which one has the best
+// chance. With fewer than two known techniques there is nothing to choose, so it returns false.
+export function startOpportunity(f, text = `Prilika! ${whereText(f)[0].toUpperCase()}${whereText(f).slice(1)}. Izaberi potez.`) {
+  const role = roleOf(f, 'p');
+  const known = shuffle(f.rng, actionsFor(f.pos, role).filter((a) => lvl(f, 'p', a.move) > 0 && a.kind !== 'pull'));
+  if (known.length < 2) return false;
+  const options = known.slice(0, 5).map((a) => option(a.move, { correct: true, actionId: a.id }));
   openCritical(f, { kind: 'opportunity', text, options });
   return true;
 }
@@ -430,12 +426,6 @@ export function chooseOption(f, index, { fast = false } = {}) {
   }
   // opportunity
   if (!opt) { say(f, 'Propustio si priliku.', 'p'); return; }
-  if (!opt.correct) {
-    const role = roleOf(f, 'p');
-    say(f, `${opt.label} se ovdje radi ${ROLE_NAME[otherRole(role)]}, a ti si ${role === 'top' ? 'gore' : 'dolje'}.`, 'p');
-    applyMistake(f, MISTAKES[opt.mistakeId], null);
-    return;
-  }
   const action = ACTION_BY_ID[opt.actionId];
   const mine = lvl(f, 'p', action.move);
   const theirs = bestDefense(f, 'o', action);

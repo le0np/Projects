@@ -108,7 +108,9 @@ test('every defense offers 2 to 5 options with a right and a wrong one; an oppor
     assert.ok(o.length >= 2 && o.length <= 5, key);
     assert.ok(o.some((x) => x.correct), key);
   }
-  assert.deepEqual(opened, ['back:top']); // only one sensible attack from the back: no decision there
+  // No decision where the player has only one technique for the spot (e.g. only the rear naked choke from the back).
+  const single = Object.keys(OPPORTUNITY_MISTAKES).filter((k) => { const [p, r] = k.split(':'); return actionsFor(p, r).filter((a) => a.kind !== 'pull').length < 2; });
+  assert.deepEqual(opened, single);
 });
 
 test('a round ends exactly at 180 s even with a huge step, and the fight ends after round 3', () => {
@@ -181,7 +183,7 @@ test('no opportunity opens when the only known move is guard pull', () => {
 });
 
 // ---- feedback round 2 ----
-import { MOVES, MOVE_BY_ID } from '../src/data/moves.js';
+import { MOVES, MOVE_BY_ID, MOVE_CLASS } from '../src/data/moves.js';
 import { actionsFor } from '../src/data/positions.js';
 
 test('a defended submission from a bad spot escapes to half guard and stops sub attacks for 20 s', () => {
@@ -295,7 +297,7 @@ test('an opponent blunder gives the player a chance', () => {
   f.rng = () => 0; // this blunder becomes a decision
   opponentBlunder(f, ACTION_BY_ID.sideShrimp_e);
   assert.equal(f.critical.kind, 'opportunity');
-  assert.match(f.critical.text, /Shrimp.*kazni ga! Izaberi napad iz pozicije: side control/);
+  assert.match(f.critical.text, /zeznuo Shrimp.*kazni ga! Ti si gore \(side control\), izaberi potez/);
 });
 
 test('an opponent blunder the player cannot decide on is punished right away, even on instinct', () => {
@@ -363,7 +365,7 @@ test('every option carries a class colour group', () => {
   const f = createFight(kit({ armbar: 3 }), empty('On'), mulberry32(1));
   f.pos = 'mount'; f.playerTop = true;
   startOpportunity(f);
-  for (const o of f.critical.options) assert.ok(['napad', 'obrana', 'kontrola', 'pozicija'].includes(o.cls), o.label);
+  for (const o of f.critical.options) assert.ok(['napad', 'obrana', 'sweep'].includes(o.cls), o.label);
 });
 
 // ---- opponent mistakes and precise log ----
@@ -476,4 +478,51 @@ test('the hint points at the best right option when it is right, and is missing 
   const h = blue.critical.hint;
   assert.equal(blue.critical.options[h.index].moveId, 'armbarDefense');
   assert.ok(blue.log.some((l) => /Osjećaj ti govori: Obrana od armbara/.test(l.text)));
+});
+
+test('an opportunity offers only the techniques the player knows for that spot and role, each with its level', () => {
+  const f = createFight(kit({ armbar: 7 }), empty('On'), mulberry32(5), { quiet: true });
+  f.pos = 'mount'; f.playerTop = true;
+  assert.ok(startOpportunity(f));
+  const mine = new Set(actionsFor('mount', 'top').map((a) => a.move));
+  for (const o of f.critical.options) {
+    assert.ok(o.correct && mine.has(o.moveId), o.moveId);
+    assert.equal(o.level, o.moveId === 'armbar' ? 7 : 1);
+  }
+  assert.match(f.critical.text, /Ti si gore \(mount\)/);
+});
+
+test('sweeps have their own card colour', () => {
+  assert.equal(MOVE_CLASS.scissor, 'sweep');
+  assert.equal(MOVE_CLASS.armbar, 'napad');
+  assert.equal(MOVE_CLASS.armbarDefense, 'obrana');
+  assert.equal(MOVE_CLASS.closedGuard, 'obrana');
+});
+
+import { makeCompetitor } from '../src/engine/opponent.js';
+
+test('competition opponents have the skill of their belt, not of the player', () => {
+  const avg = (o) => { const l = Object.values(o.levels); return l.reduce((a, b) => a + b, 0) / l.length; };
+  const rng = mulberry32(9);
+  const white = Array.from({ length: 30 }, () => avg(makeCompetitor('white', 0, rng)));
+  const whiteFinal = Array.from({ length: 30 }, () => avg(makeCompetitor('white', 2, rng)));
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  assert.ok(mean(white) > 1.5 && mean(white) < 2.6, `white ${mean(white)}`);
+  assert.ok(mean(whiteFinal) > mean(white));
+});
+
+test('a white belt with maxed techniques beats white-belt competitors most of the time', () => {
+  let wins = 0;
+  const N = 100;
+  for (let i = 0; i < N; i++) {
+    const rng = mulberry32(7000 + i);
+    const me = { name: 'Ti', belt: 'white', levels: Object.fromEntries(MOVES.filter((m) => m.belt === 'white').map((m) => [m.id, 9])) };
+    const f = createFight(me, makeCompetitor('white', i % 3, rng), rng);
+    while (!f.ended) {
+      if (f.critical) chooseOption(f, f.critical.options.findIndex((o) => o.correct));
+      else stepFight(f, 1);
+    }
+    if (f.ended.winner === 'p') wins++;
+  }
+  assert.ok(wins / N >= 0.75, `win rate ${wins / N}`);
 });

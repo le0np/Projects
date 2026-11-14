@@ -139,13 +139,20 @@ Vlasnik: u zatvorenom gardu se nudila obrana od guillotine kao napad, a u north-
 - **Obrana:** krive opcije su obrane od drugih napada koje protivnik ima iz te pozicije (obrana od guillotine dok te hvata triangle) i tvoji potezi iz te pozicije. Nikad obrana od tvog vlastitog poteza (npr. „Zatvoreni gard” dok si ti gore).
 - **Osjećaj:** bijeli pojas nema savjet. Od plavog pojasa kartica ima redak „💭 Osjećaj ti govori: …” i označenu karticu. Savjet pokazuje karticu s najboljom šansom, ali je pouzdan samo dio vremena: plavi 55 %, ljubičasti 70 %, smeđi 82 %, crni 90 %, plus 1,5 postotna boda po prosječnoj razini ponuđenih tehnika iznad 1, najviše 97 %. Kad promaši, pokazuje nasumičnu drugu karticu. Savjet i njegova pouzdanost upisuju se u log.
 
+### Kartice samo s onim što znaš, tri boje, protivnici na turniru po pojasu
+Vlasnik: s gotovo svim vještinama na maksimumu muči se tri runde s bijelim pojasom na turniru; u poziciji s leđa nude se obrane; ponuđeno treba biti ono što igrač zna o situaciji u kojoj se nalazi; boje kartica za napad, obranu i sweep.
+- **Turnir:** protivnici više ne prate tvoju razinu, nego imaju vještinu tipičnu za tvoj pojas: bijeli oko razine 2, plavi 4, ljubičasti 5,5, smeđi 7, crni 8,5, plus 0,75 po rundi turnira (četvrtfinale, polufinale, finale), a znaju 60–90 % poteza svog pojasa. Simulacija (bijeli pojas, 75 % točnih odabira, 300 borbi po redu): svi bijeli potezi na razini 1 → 29 % pobjeda, razina 3 → 64 %, razina 5 → 89 %, razina 9 → 99 %.
+- **Prilika:** kartice su samo tehnike koje znaš za svoju poziciju i ulogu (do 5), bez krivih kartica. Biraš onu s najboljom šansom, a svaka kartica pokazuje tvoju razinu. Ako znaš manje od dvije, odluke nema i potez se odigra sam. Tekst kaže gdje si: „Prilika! Ti si dolje (leđa). Izaberi potez.”
+- **Obrana:** ostaje kao prije: točne obrane plus obrane od drugih napada iz te pozicije i tvoji potezi odatle (sve što znaš o toj situaciji).
+- **Boje kartica:** napad (crveno: submissioni, prolazi, rušenja, napredovanje gore), sweep (zeleno), obrana (plavo: obrane, bijegovi, gardovi, osnove kretanja).
+
 ## Zadnja automatizirana provjera
 
 Provedeno 14. studenog 2026.:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` | 74/74 prolazi |
+| `npm test` | 78/78 prolazi |
 | `npm start` | server odgovara 200 na `/` i module |
 | Playwright e2e (1100 px) | sparing (dvorana) i natjecanje (arena) odigrani do rezultata uz „sve otključano”, 0 grešaka u konzoli |
 | Playwright mobitel (iPhone 13) | nema horizontalnog scrolla ni u karijeri ni u borbi |

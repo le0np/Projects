@@ -32,7 +32,7 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
   - Novi potez može biti i višeg pojasa, npr. heel hook.
 - **Borbe:**
   - Sparing: uvijek u tvojoj dvorani, s nasumičnim partnerom od bijelog do plavog pojasa i nasumičnim znanjem. Pobjeda donosi 10 €.
-  - Natjecanje: kotizacija 20 €, četvrtfinale, polufinale i finale. Zlato 100 €, srebro 40 €, bronca 15 €, uz 5 % šanse da pokupiš novi potez.
+  - Natjecanje: kotizacija 20 €, četvrtfinale, polufinale i finale, protiv protivnika tvog pojasa s vještinom tipičnom za taj pojas (svaka runda malo jača). Zlato 100 €, srebro 40 €, bronca 15 €, uz 5 % šanse da pokupiš novi potez.
   - Promocija u viši pojas traži dovoljno naučenih poteza i pobjeda na natjecanjima (svaka pobijeđena borba na turniru, sparing se ne računa).
 - **Borba:**
   - Traje 3 runde po 3 minute ili do submissiona. Sat ide 3x brže od stvarnog, a testno ubrzanje ga dodatno ubrzava.
@@ -44,7 +44,7 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
   - Vrijeme se uspori i biraš jednu od 5 opcija klikom ili tipkama 1–5. Imaš 20 sekundi.
   - Ako ne odabereš ništa, to se računa kao pasivnost.
   - Kriva opcija može odmah otvoriti novu opasnost, npr. ruka unutra u gardu otvara triangle.
-- **Tijek borbe:** borci igraju potez za potez. Oba borca ponekad pogriješe, rjeđe što je pojas i razina poteza viša, a protivnikova greška tebi daje priliku. Šansa greške oba borca (u postocima) piše uz ime na semaforu i na početku loga, a log za svaki potez navodi razine, šansu i točne bodove (npr. „Scissor sweep +2, mount +4 = +6”). Tempo je natjecateljski (ADCC, CJI, UFC BJJ): razmjene idu svakih 4–7 s i većina se odigra sama prema razinama, a odluka se traži u oko 10 % razmjena (5–7 po borbi, najviše jedna u 20 s). Brz odgovor (u prvoj trećini roka) daje +10 % šanse. Opcije su obojene po klasi: napad, obrana, kontrola, pozicija. Od plavog pojasa kartica nudi i „osjećaj” (savjet koju karticu odabrati), koji je pouzdaniji što je pojas viši i razina tehnika veća.
+- **Tijek borbe:** borci igraju potez za potez. Oba borca ponekad pogriješe, rjeđe što je pojas i razina poteza viša, a protivnikova greška tebi daje priliku. Šansa greške oba borca (u postocima) piše uz ime na semaforu i na početku loga, a log za svaki potez navodi razine, šansu i točne bodove (npr. „Scissor sweep +2, mount +4 = +6”). Tempo je natjecateljski (ADCC, CJI, UFC BJJ): razmjene idu svakih 4–7 s i većina se odigra sama prema razinama, a odluka se traži u oko 10 % razmjena (5–7 po borbi, najviše jedna u 20 s). Brz odgovor (u prvoj trećini roka) daje +10 % šanse. Kartice su obojene u tri boje: napad, sweep i obrana. Kod prilike se nude samo tehnike koje znaš za svoju poziciju i ulogu, svaka s tvojom razinom. Od plavog pojasa kartica nudi i „osjećaj” (savjet koju karticu odabrati), koji je pouzdaniji što je pojas viši i razina tehnika veća.
 - **Log borbe:** cijeli log je ispod borbe. „Kopiraj log” kopira ga s rezultatom, pa ga možeš zalijepiti u chat.
 - **Test:**
   - ubrzanje vremena 1–10x (vrijedi za treninge, aktivnosti i sat borbe)
