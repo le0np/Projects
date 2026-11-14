@@ -469,5 +469,6 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) save(
 window.addEventListener('pagehide', save);
 window.addEventListener('resize', () => renderer?.resize());
 
+$('boot-hint').remove(); // the game loaded, so the 'how to start' hint is not needed
 renderAll();
 requestAnimationFrame(frame);
