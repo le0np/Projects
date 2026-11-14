@@ -11,4 +11,12 @@ Format:
 
 ---
 
-_Trenutno nema ideja na čekanju._
+## MMA / BJJ borilačka igra
+Igra u kojoj igrač gradi borca od nule: kreće kao početnik bez vještina, trenira, stječe i usavršava tehnike (udarci, rvanje, BJJ — pozicije, prijelazi, submissioni) te napreduje kroz borbe.
+
+Ključna mehanika: u kritičnim trenucima borbe vrijeme se uspori i igrač dobije ponudu od pet opcija. Jedna ili više opcija može biti točna, a jedna ili više kriva. Ishod ovisi o izboru:
+- dobra odluka → prednost u poziciji, KO, submission, bodovi
+- loša odluka → gubitak pozicije, poraz (KO/submission protivnika), negativni bodovi
+
+Vještine lika vjerojatno utječu na to koje se opcije nude i koliko su uspješne.
+
