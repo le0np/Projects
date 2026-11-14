@@ -88,13 +88,20 @@ Dizajn: `docs/superpowers/specs/2026-11-14-round2-step1-fight-rules-design.md`, 
 - Kad protivnik nadjača dobar izbor ili obrani tvoj automatski potez, log kaže „nadjačao” i navodi razine i šansu („razina 3 protiv tvoje obrane razine 1 (šansa obrane bila je 70 %)”). Isto u narančastoj poruci nakon odluke.
 - Bodovi su precizni u dva koraka: odmah „Flower sweep +2, mount +4 = +6 (boda ako zadrži 3 s)”, zatim „+6 boda: Ti (Flower sweep +2, mount +4)”. Svaka prednost ima svoj redak s razlogom („+1 prednost: Ti (skoro Knee slice)”), a kazna „+1 kazna”.
 
+### Za promociju se broje samo pobjede na natjecanjima
+
+- Uvjet „pobjede” za promociju (npr. plavi pojas: 20 poteza, 5 pobjeda) sad broji samo pobjede na natjecanjima. Svaka pobijeđena borba na turniru (četvrtfinale, polufinale, finale) vrijedi jednu pobjedu. Sparing se i dalje upisuje u ukupni omjer pobjeda i poraza, ali ne vodi do promocije.
+- Novo polje `compWins` u spremljenoj igri. Stare spremljene igre nemaju to polje, pa se izračuna iz medalja: zlato 3, srebro 2, bronca 1 pobjeda. Ispadanje u četvrtfinalu nema pobjeda, pa je izračun točan za sve završene turnire.
+- U kartici promocije piše „Pobjede na natjecanjima: X / Y”, kartica Karijera ih prikazuje posebno, a kartica Sparing kaže da se ne računa za promociju.
+- Bilježenje rezultata borbe prebačeno je u `recordFight` u `progression.js` da se može testirati bez DOM-a.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 14. studenog 2026.:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` | 63/63 prolazi |
+| `npm test` | 65/65 prolazi |
 | `npm start` | server odgovara 200 na `/` i module |
 | Playwright e2e (1100 px) | trening uz 10x završi, sparing odigran do rezultata, reload zadrži napredak, 0 grešaka u konzoli |
 | Playwright mobitel (iPhone 13) | nema horizontalnog scrolla ni u karijeri ni u borbi |
@@ -111,7 +118,7 @@ Provedeno 14. studenog 2026.:
 
 ## Sljedeći koraci
 
-1. Korak 2 drugog kruga: pobjede samo s natjecanja za promociju, granice razina po pojasu, novi seminari (instruktori 1–5 ★, 40–90 %, trening pauziran). Korak 3: stil borbe, energija, ozljede.
+1. Korak 2 drugog kruga: granice razina po pojasu, novi seminari (instruktori 1–5 ★, 40–90 %, trening pauziran). Korak 3: stil borbe, energija, ozljede.
 2. Vlasnik isproba testnu verziju i javi što treba podesiti (učestalost kritičnih trenutaka, težina, trajanja).
 2. Prava verzija: početak bez otključanih poteza, bez testnog panela.
 3. Animacije pojedinih tehnika i više poza.

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createState, learnTime, effectiveLevel, canTrain, startTraining, startActivity, advance, setSpeed,
-  rollCompetitionLearn, promotionStatus, promote, serialize, deserialize, BELT_FACTOR, MAX_LEVEL,
+  rollCompetitionLearn, recordFight, promotionStatus, promote, serialize, deserialize, BELT_FACTOR, MAX_LEVEL,
 } from '../src/engine/progression.js';
 import { MOVE_BY_ID } from '../src/data/moves.js';
 
@@ -122,9 +122,32 @@ test('promotion needs moves and wins', () => {
   assert.equal(promote(s), false);
   const st = promotionStatus(s);
   Object.keys(MOVE_BY_ID).slice(0, st.need.moves).forEach((id) => { s.levels[id] = 1; });
-  s.wins = st.need.wins;
+  s.compWins = st.need.wins;
   assert.equal(promote(s), true);
   assert.equal(s.belt, 'blue');
+});
+
+test('only competition wins count toward promotion', () => {
+  const s = createState({ test: false, now: 0 });
+  Object.keys(MOVE_BY_ID).slice(0, 20).forEach((id) => { s.levels[id] = 1; });
+  for (let i = 0; i < 10; i += 1) recordFight(s, 'spar', true);
+  recordFight(s, 'comp', false);
+  assert.equal(s.wins, 10);
+  assert.equal(s.losses, 1);
+  assert.equal(promotionStatus(s).have.wins, 0);
+  assert.equal(promote(s), false);
+  for (let i = 0; i < 5; i += 1) recordFight(s, 'comp', true);
+  assert.equal(s.wins, 15);
+  assert.equal(promotionStatus(s).have.wins, 5);
+  assert.equal(promote(s), true);
+});
+
+test('an old save without compWins rebuilds it from medals, not from sparring wins', () => {
+  const s = deserialize(JSON.stringify({ version: 1, gameTime: 0, lastReal: 0, belt: 'white', levels: {}, wins: 20, medals: { gold: 1, silver: 1, bronze: 2 } }), 0);
+  assert.equal(s.wins, 20);
+  assert.equal(s.compWins, 7);
+  const t = deserialize(JSON.stringify({ version: 1, gameTime: 0, lastReal: 0, belt: 'white', levels: {}, compWins: 4, medals: { gold: 1 } }), 0);
+  assert.equal(t.compWins, 4);
 });
 
 test('a partly valid save is repaired instead of crashing', () => {
