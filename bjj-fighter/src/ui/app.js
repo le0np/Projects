@@ -10,6 +10,7 @@ import { createFight, stepFight, chooseOption, formatLog, logLine, fighterErrorC
 import { makeSparPartner, makeCompetitor, fighterFromState } from '../engine/opponent.js';
 import { createRenderer } from '../render/renderer2d.js';
 import { tickCriticalTimer } from './criticalTimer.js';
+import { energySegments } from './fightFx.js';
 
 const SAVE_KEY = 'bjj-fighter-save-v1';
 const SPAR_REWARD = 10;
@@ -303,9 +304,14 @@ function openFight(mode, stage) {
   $('result').hidden = true;
   $('critical').hidden = true;
   $('feedback').hidden = true;
-  const body = (x) => `snaga ${x.strength ?? 1} · kondicija ${x.cardio ?? 1}`;
-  $('sb-p-name').textContent = `Ti · ${BELT_NAMES[state.belt]} · greška ${pct(fighterErrorChance(fight.player))} · ${body(fight.player)}`;
-  $('sb-o-name').textContent = `${fight.opponent.name} · ${BELT_NAMES[fight.opponent.belt]} · greška ${pct(fighterErrorChance(fight.opponent))} · ${body(fight.opponent)}`;
+  const stats = (x) => `greška ${pct(fighterErrorChance(x))} · snaga ${x.strength ?? 1} · kondicija ${x.cardio ?? 1}`;
+  for (const [w, x, name, belt] of [['p', fight.player, 'Ti', state.belt], ['o', fight.opponent, fight.opponent.name, fight.opponent.belt]]) {
+    $(`sb-${w}-name`).textContent = `${name} · ${BELT_NAMES[belt]}`;
+    $(`sb-${w}-name`).title = `${name} · ${BELT_NAMES[belt]} pojas`;
+    $(`sb-${w}-stats`).textContent = stats(x);
+    $(`sb-${w}-portrait`).style.borderColor = BELT_COLORS[belt];
+    $(`sb-${w}-portrait`).dataset.belt = belt;
+  }
   if (!renderer) renderer = createRenderer($('canvas'));
   renderer.resize();
   window.scrollTo(0, 0);
@@ -319,14 +325,15 @@ function closeFight() {
 }
 
 function renderScore(f) {
-  const s = (x) => `<b>${x.pts}</b>A ${x.adv} · K ${x.pen}`;
+  const s = (x) => `<b>${x.pts}</b><span>A ${x.adv} · K ${x.pen}</span>`;
   $('sb-p').innerHTML = s(f.score.p);
   $('sb-o').innerHTML = s(f.score.o);
   for (const w of ['p', 'o']) {
     const bar = $(`sb-${w}-en`);
     const e = f.energy[w];
-    bar.style.width = `${e}%`;
-    bar.className = e < 20 ? 'spent' : e < 50 ? 'tired' : '';
+    const seg = energySegments(e);
+    bar.className = seg.level;
+    [...bar.children].forEach((el, i) => el.classList.toggle('on', i < seg.on));
     bar.parentElement.title = `Energija ${Math.round(e)} / 100`;
   }
   const left = Math.max(0, ROUND_SECONDS - f.clock);
