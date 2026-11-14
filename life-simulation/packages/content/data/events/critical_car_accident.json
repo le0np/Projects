@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 1,
+  "id": "critical_car_accident",
+  "version": 2,
+  "title": "The Accident",
+  "category": "critical",
+  "trigger": "director",
+  "importance": "important",
+  "weight": 5,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "tags": [
+    "vehicle"
+  ],
+  "location": {
+    "at": [
+      "street"
+    ]
+  },
+  "roles": {
+    "driver": {
+      "count": 1
+    },
+    "cyclist": {
+      "count": 1
+    }
+  },
+  "conditions": {
+    "progress": {
+      "gte": 0.15
+    }
+  },
+  "text": {
+    "public": "On a dark, wet road, {driver}'s car clips {cyclist}'s bicycle.",
+    "private": {
+      "driver": "You glanced at your phone for a second. The street is empty. Nobody saw.",
+      "cyclist": "You are on the ground. Your leg will not move. You did not have lights on."
+    }
+  },
+  "choices": {
+    "driver": [
+      {
+        "id": "help",
+        "label": "Stop, call an ambulance and stay",
+        "tags": [
+          "help",
+          "take_responsibility"
+        ],
+        "perceived": {
+          "relation": {
+            "cyclist": 1
+          },
+          "career": -1
+        }
+      },
+      {
+        "id": "flee",
+        "label": "Drive away",
+        "tags": [
+          "avoid_responsibility",
+          "risk"
+        ],
+        "perceived": {
+          "risk": 2,
+          "relation": {
+            "cyclist": -2
+          }
+        }
+      },
+      {
+        "id": "first_aid",
+        "label": "Stop and treat the injury on the spot",
+        "tags": [
+          "help",
+          "take_responsibility"
+        ],
+        "careers": [
+          "doctor",
+          "police_officer"
+        ],
+        "perceived": {
+          "relation": {
+            "cyclist": 2
+          }
+        }
+      },
+      {
+        "id": "panic",
+        "label": "Sit frozen behind the wheel",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ],
+    "cyclist": [
+      {
+        "id": "admit_lights",
+        "label": "Admit you had no lights",
+        "tags": [
+          "truth"
+        ],
+        "perceived": {
+          "relation": {
+            "driver": 1
+          }
+        }
+      },
+      {
+        "id": "blame",
+        "label": "Say the driver came out of nowhere",
+        "tags": [
+          "lie"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "driver": -1
+          }
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "hit_and_run",
+      "when": {
+        "chose": "flee",
+        "role": "driver"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:cyclist",
+          "delta": {
+            "health": -30,
+            "mental": -10
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "mental": -12
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:driver",
+          "key": "fled_accident"
+        },
+        {
+          "type": "move",
+          "target": "role:cyclist",
+          "to": "hospital",
+          "staySeconds": 20
+        },
+        {
+          "type": "move",
+          "target": "role:driver",
+          "to": "home",
+          "staySeconds": 8
+        }
+      ],
+      "followUps": [
+        {
+          "event": "critical_accident_investigation",
+          "delaySeconds": [
+            40,
+            100
+          ],
+          "roles": {
+            "suspect": "role:driver",
+            "victim": "role:cyclist"
+          }
+        }
+      ],
+      "text": {
+        "driver": "You drive home with shaking hands. Nobody saw. You think.",
+        "cyclist": "The car drives off. A passer-by finds you twenty minutes later."
+      }
+    },
+    {
+      "id": "treated",
+      "when": {
+        "chose": "first_aid",
+        "role": "driver"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:cyclist",
+          "delta": {
+            "health": -12
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:cyclist",
+          "to": "role:driver",
+          "affinity": 15,
+          "trust": 15
+        },
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "reputation": 3
+          }
+        },
+        {
+          "type": "move",
+          "target": "role:cyclist",
+          "to": "hospital",
+          "staySeconds": 10
+        }
+      ],
+      "text": {
+        "driver": "You splint the leg and keep {cyclist} warm until help arrives.",
+        "cyclist": "The driver knows what they are doing. It could have been much worse."
+      }
+    },
+    {
+      "id": "stayed",
+      "when": {
+        "chose": "help",
+        "role": "driver"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:cyclist",
+          "delta": {
+            "health": -18
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "money": -8,
+            "mental": -4
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:cyclist",
+          "to": "role:driver",
+          "trust": 10
+        },
+        {
+          "type": "move",
+          "target": "role:cyclist",
+          "to": "hospital",
+          "staySeconds": 15
+        },
+        {
+          "type": "move",
+          "target": "role:driver",
+          "to": "police",
+          "staySeconds": 6
+        }
+      ],
+      "text": {
+        "driver": "Insurance, statements, a fine for the phone. But you stayed.",
+        "cyclist": "A broken leg. {driver} stayed with you until the ambulance came."
+      }
+    },
+    {
+      "id": "frozen",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:cyclist",
+          "delta": {
+            "health": -22
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "money": -8,
+            "mental": -8
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:cyclist",
+          "to": "role:driver",
+          "affinity": -15
+        },
+        {
+          "type": "move",
+          "target": "role:cyclist",
+          "to": "hospital",
+          "staySeconds": 15
+        }
+      ],
+      "text": {
+        "driver": "Others arrive and take over. You could not move.",
+        "cyclist": "The driver just sat there while strangers helped you."
+      }
+    }
+  ]
+}

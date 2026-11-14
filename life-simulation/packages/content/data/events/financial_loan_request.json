@@ -1,0 +1,281 @@
+{
+  "schemaVersion": 1,
+  "id": "financial_loan_request",
+  "version": 1,
+  "title": "Can You Lend Me Some Money?",
+  "category": "financial",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 8,
+  "cooldown": {
+    "maxPerCharacter": 1
+  },
+  "location": {
+    "at": [
+      "cafe"
+    ]
+  },
+  "roles": {
+    "borrower": {
+      "count": 1,
+      "conditions": {
+        "attr": "money",
+        "lte": 50
+      }
+    },
+    "lender": {
+      "count": 1,
+      "conditions": {
+        "all": [
+          {
+            "attr": "money",
+            "gte": 40
+          },
+          {
+            "relation": {
+              "to": "role:borrower",
+              "typeIn": [
+                "acquaintance",
+                "friend",
+                "colleague",
+                "partner",
+                "family"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "text": {
+    "public": "{borrower} asks {lender} for a loan.",
+    "private": {
+      "borrower": "The money is not for rent. You lost it at the betting shop and the people you owe are getting impatient.",
+      "lender": "You were saving this money for a holiday you have been planning for a year."
+    }
+  },
+  "choices": {
+    "borrower": [
+      {
+        "id": "honest",
+        "label": "Tell {lender} the real reason",
+        "tags": [
+          "truth"
+        ],
+        "perceived": {
+          "reputation": -1,
+          "relation": {
+            "lender": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "relation",
+            "from": "role:lender",
+            "to": "self",
+            "trust": 10
+          }
+        ]
+      },
+      {
+        "id": "rent_story",
+        "label": "Say it is for rent",
+        "tags": [
+          "lie"
+        ],
+        "perceived": {
+          "benefit": 1,
+          "risk": 1
+        }
+      },
+      {
+        "id": "change_mind",
+        "label": "Change your mind and drop it",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ],
+    "lender": [
+      {
+        "id": "lend",
+        "label": "Lend the full amount",
+        "tags": [
+          "help",
+          "sacrifice"
+        ],
+        "perceived": {
+          "money": -2,
+          "relation": {
+            "borrower": 2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -15
+            }
+          }
+        ]
+      },
+      {
+        "id": "lend_half",
+        "label": "Lend half",
+        "tags": [
+          "help",
+          "negotiate"
+        ],
+        "perceived": {
+          "money": -1,
+          "relation": {
+            "borrower": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -8
+            }
+          }
+        ]
+      },
+      {
+        "id": "contract",
+        "label": "Offer a written loan agreement with interest",
+        "tags": [
+          "negotiate"
+        ],
+        "careers": [
+          "entrepreneur",
+          "lawyer"
+        ],
+        "perceived": {
+          "money": 1,
+          "relation": {
+            "borrower": -1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -15
+            }
+          }
+        ]
+      },
+      {
+        "id": "refuse",
+        "label": "Refuse",
+        "tags": [
+          "refuse"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "borrower": -1
+          }
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "dropped",
+      "when": {
+        "chose": "change_mind",
+        "role": "borrower"
+      },
+      "text": {
+        "borrower": "You decide not to ask after all.",
+        "lender": "{borrower} changes the subject."
+      }
+    },
+    {
+      "id": "lent",
+      "when": {
+        "any": [
+          {
+            "chose": "lend",
+            "role": "lender"
+          },
+          {
+            "chose": "lend_half",
+            "role": "lender"
+          },
+          {
+            "chose": "contract",
+            "role": "lender"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:borrower",
+          "delta": {
+            "money": 12,
+            "mental": 5
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:borrower",
+          "key": "owes_money",
+          "about": "role:lender"
+        },
+        {
+          "type": "relation",
+          "from": "role:borrower",
+          "to": "role:lender",
+          "affinity": 15
+        }
+      ],
+      "followUps": [
+        {
+          "event": "financial_loan_due",
+          "delaySeconds": [
+            90,
+            180
+          ],
+          "roles": {
+            "debtor": "role:borrower",
+            "creditor": "role:lender"
+          }
+        }
+      ],
+      "text": {
+        "borrower": "{lender} helps you out. Now you owe them.",
+        "lender": "You hand over the money. {borrower} promises to pay it back soon."
+      }
+    },
+    {
+      "id": "refused",
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:borrower",
+          "to": "role:lender",
+          "affinity": -10
+        },
+        {
+          "type": "attr",
+          "target": "role:borrower",
+          "delta": {
+            "mental": -5
+          }
+        }
+      ],
+      "text": {
+        "borrower": "{lender} says no.",
+        "lender": "You keep your savings."
+      }
+    }
+  ]
+}

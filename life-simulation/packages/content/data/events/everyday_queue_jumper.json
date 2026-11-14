@@ -1,0 +1,264 @@
+{
+  "schemaVersion": 1,
+  "id": "everyday_queue_jumper",
+  "version": 1,
+  "title": "Cutting the Queue",
+  "category": "everyday",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 7,
+  "cooldown": {
+    "maxPerCharacter": 1
+  },
+  "location": {
+    "at": [
+      "shop"
+    ]
+  },
+  "roles": {
+    "jumper": {
+      "count": 1
+    },
+    "waiting": {
+      "count": 1
+    }
+  },
+  "text": {
+    "public": "At the pharmacy, {jumper} steps in front of {waiting} in a long queue.",
+    "private": {
+      "jumper": "Your child is at home with a high fever and you need the medicine now.",
+      "waiting": "You have been standing here for twenty minutes."
+    }
+  },
+  "choices": {
+    "jumper": [
+      {
+        "id": "explain",
+        "label": "Explain why you are in a hurry",
+        "tags": [
+          "truth",
+          "apologize"
+        ],
+        "perceived": {
+          "relation": {
+            "waiting": 1
+          }
+        }
+      },
+      {
+        "id": "push_in",
+        "label": "Stand your ground and avoid eye contact",
+        "tags": [
+          "avoid_responsibility"
+        ],
+        "perceived": {
+          "benefit": 1,
+          "relation": {
+            "waiting": -1
+          }
+        }
+      },
+      {
+        "id": "go_back",
+        "label": "Go to the back of the queue",
+        "tags": [
+          "take_responsibility"
+        ],
+        "default": true,
+        "perceived": {
+          "mental": -1
+        }
+      }
+    ],
+    "waiting": [
+      {
+        "id": "let_go",
+        "label": "Let it go",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      },
+      {
+        "id": "confront",
+        "label": "Tell them loudly to get to the back",
+        "tags": [
+          "threaten"
+        ],
+        "perceived": {
+          "relation": {
+            "jumper": -1
+          }
+        }
+      },
+      {
+        "id": "offer",
+        "label": "Offer them your place",
+        "tags": [
+          "help",
+          "sacrifice"
+        ],
+        "perceived": {
+          "relation": {
+            "jumper": 1
+          }
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "kindness",
+      "when": {
+        "all": [
+          {
+            "chose": "explain",
+            "role": "jumper"
+          },
+          {
+            "chose": "offer",
+            "role": "waiting"
+          }
+        ]
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:jumper",
+          "to": "role:waiting",
+          "affinity": 25,
+          "trust": 10,
+          "mutual": true
+        },
+        {
+          "type": "attr",
+          "target": "role:waiting",
+          "delta": {
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "jumper": "{waiting} waves you ahead. You will not forget it.",
+        "waiting": "Their child is sick. You are glad you let them go first."
+      }
+    },
+    {
+      "id": "scene",
+      "when": {
+        "all": [
+          {
+            "chose": "confront",
+            "role": "waiting"
+          },
+          {
+            "chose": "push_in",
+            "role": "jumper"
+          }
+        ]
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:jumper",
+          "delta": {
+            "reputation": -3,
+            "mental": -4
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:waiting",
+          "delta": {
+            "mental": -3
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:jumper",
+          "to": "role:waiting",
+          "affinity": -20,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "jumper": "{waiting} makes a scene. Everyone stares at you.",
+        "waiting": "You tell {jumper} what you think. They do not move."
+      }
+    },
+    {
+      "id": "ashamed",
+      "when": {
+        "all": [
+          {
+            "chose": "confront",
+            "role": "waiting"
+          },
+          {
+            "chose": "explain",
+            "role": "jumper"
+          }
+        ]
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:waiting",
+          "delta": {
+            "mental": -4,
+            "reputation": -2
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:jumper",
+          "to": "role:waiting",
+          "affinity": -10
+        }
+      ],
+      "text": {
+        "jumper": "{waiting} shouts at you before you finish explaining.",
+        "waiting": "Then you hear about the sick child. You wish you had kept quiet."
+      }
+    },
+    {
+      "id": "went_back",
+      "when": {
+        "chose": "go_back",
+        "role": "jumper"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:jumper",
+          "delta": {
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "jumper": "You wait your turn, checking your phone every minute.",
+        "waiting": "{jumper} goes to the back of the queue."
+      }
+    },
+    {
+      "id": "grumbled",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:waiting",
+          "delta": {
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "jumper": "You get your medicine first.",
+        "waiting": "Another five minutes. You grind your teeth."
+      }
+    }
+  ]
+}

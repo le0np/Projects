@@ -1,0 +1,14 @@
+{
+  "name": "bjj-fighter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser no-gi BJJ career game: train moves on timers, fight AI opponents with slow-motion decisions.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,604 @@
+<title>Life Town Sketch</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&display=swap">
+<style>
+/* Layout: one diorama stage (canvas + floating decision card), event log beside it, concept notes below. */
+:root {
+  --bg: #eef1ea;
+  --surface: #ffffff;
+  --ink: #1d2420;
+  --muted: #5d6a62;
+  --line: #d6ddd3;
+  --accent: #2f6f62;
+  --accent-ink: #ffffff;
+  --good: #2c7a4b;
+  --bad: #b23b3b;
+  --warn: #a86a00;
+  --private: #4b3f8f;
+  --private-soft: #ece9fb;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141917; --surface: #1d2421; --ink: #e5ebe6; --muted: #98a59d; --line: #2e3833;
+    --accent: #6cc3ad; --accent-ink: #0e1a16; --good: #6cd096; --bad: #f08a80; --warn: #f0b54e;
+    --private: #b4a9f5; --private-soft: #2a2645; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141917; --surface: #1d2421; --ink: #e5ebe6; --muted: #98a59d; --line: #2e3833;
+  --accent: #6cc3ad; --accent-ink: #0e1a16; --good: #6cd096; --bad: #f08a80; --warn: #f0b54e;
+  --private: #b4a9f5; --private-soft: #2a2645; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.2; margin: 0; text-wrap: balance; }
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 1rem; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.intro { display: grid; gap: 6px; max-width: 70ch; }
+.stage-row { display: grid; gap: 16px; }
+@media (min-width: 900px) { .stage-row { grid-template-columns: minmax(0, 1fr) 300px; } }
+.stage { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+canvas { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; cursor: pointer; touch-action: manipulation; }
+.hud { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; }
+.pill { background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.decision {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+  width: min(460px, calc(100% - 24px)); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 14px; padding: 14px; display: grid; gap: 8px; box-shadow: 0 8px 30px rgb(0 0 0 / 0.18);
+}
+.decision[hidden] { display: none; }
+.decision .where { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.decision .private { background: var(--private-soft); color: var(--private); border-radius: 8px; padding: 6px 10px; font-size: 0.88rem; }
+.timer { height: 3px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.timer > div { height: 100%; background: var(--warn); width: 100%; }
+.choices { display: grid; gap: 6px; }
+.choices button {
+  font: inherit; text-align: left; border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  border-radius: 10px; padding: 8px 12px; cursor: pointer; display: grid; gap: 3px;
+}
+.choices button:hover, .choices button:focus-visible { border-color: var(--accent); outline: none; }
+.hints { display: flex; gap: 4px; flex-wrap: wrap; }
+.hint { font-size: 0.72rem; border-radius: 999px; padding: 0 7px; background: var(--surface); border: 1px solid var(--line); }
+.hint.good { color: var(--good); } .hint.bad { color: var(--bad); } .hint.risk { color: var(--warn); }
+.side { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 8px; min-width: 0; }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 0.86rem; max-height: 320px; overflow: auto; }
+.log li { border-left: 3px solid var(--line); padding-left: 8px; }
+.log li.you { border-left-color: var(--accent); }
+.legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 0.82rem; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.options { display: grid; gap: 12px; }
+@media (min-width: 760px) { .options { grid-template-columns: repeat(3, 1fr); } }
+.option { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+.option.rec { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.tag { justify-self: start; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg); color: var(--muted); }
+.option.rec .tag { background: var(--accent); color: var(--accent-ink); }
+.option ul, .changes ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 0.9rem; }
+.changes { display: grid; gap: 10px; }
+button.reset { font: inherit; font-size: 0.85rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 4px 12px; cursor: pointer; justify-self: start; }
+@media (prefers-reduced-motion: reduce) { .timer > div { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>Mali grad, odozgo</h1>
+    <p class="muted">Skica, ne prava igra. Figurice žive dnevnu rutinu (posao, kafić, park, kuća). Kad se dogodi event, sudionici se na mjestu događaja okupe, iznad njih se pojavi „!”, a ishod se vidi na mapi: promjena atributa iznad glave i linija odnosa među figuricama. <strong>Tvoja figurica ima prsten.</strong> Klikni bilo koju zgradu i ona će otići tamo.</p>
+  </header>
+
+  <div class="stage-row">
+    <div class="stage">
+      <canvas id="map" width="768" height="512" aria-label="Pogled odozgo na mali grad s figuricama"></canvas>
+      <div class="hud"><span class="pill" id="clock">08:00</span><span class="pill" id="you-stats">Ti: Doktorica</span></div>
+      <div class="decision" id="decision" hidden>
+        <span class="where" id="d-where"></span>
+        <h3 id="d-title"></h3>
+        <p id="d-text"></p>
+        <p class="private" id="d-private"></p>
+        <div class="timer"><div id="d-timer"></div></div>
+        <div class="choices" id="d-choices"></div>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="panel">
+        <h2>Što se događa u gradu</h2>
+        <ul class="log" id="log"><li class="muted">Jutro. Grad se budi…</li></ul>
+      </div>
+      <div class="panel">
+        <h3>Mjesta</h3>
+        <div class="legend" id="legend"></div>
+        <button class="reset" id="reset">Kreni ispočetka</button>
+      </div>
+    </aside>
+  </div>
+
+  <section class="changes">
+    <h2>Kako bi kretanje utjecalo na igru: tri mogućnosti</h2>
+    <div class="options">
+      <article class="option">
+        <span class="tag">A · živi diorama</span>
+        <h3>Figurice same hodaju</h3>
+        <ul>
+          <li>Svi likovi (i tvoj) imaju automatsku dnevnu rutinu.</li>
+          <li>Eventi se događaju na mjestima; sudionici dođu tamo.</li>
+          <li>Igrač i dalje samo bira odgovore. Mapa je „pozornica”.</li>
+          <li>Najmanja promjena: engine ostaje gotovo isti.</li>
+        </ul>
+      </article>
+      <article class="option rec">
+        <span class="tag">C · preporuka</span>
+        <h3>Rutina + kamo ideš</h3>
+        <ul>
+          <li>Kao A, ali klikom na zgradu šalješ figuricu tamo (kao u skici).</li>
+          <li>Mjesto mijenja koji eventi dolaze: ured → posao, bar → svađe i flert, park → slučajni susreti.</li>
+          <li>Tko je blizu, može upasti u tvoj event (npr. prolaznik kod nesreće).</li>
+          <li>Odluke ostaju izbori (bez slobodnog chata, kako traži specifikacija).</li>
+        </ul>
+      </article>
+      <article class="option">
+        <span class="tag">B · pravi sandbox</span>
+        <h3>Upravljaš figuricom</h3>
+        <ul>
+          <li>Hodaš strelicama ili dodirom, slobodno po mapi.</li>
+          <li>Interakcije nastaju kad priđeš nekome ili nečemu.</li>
+          <li>Najviše slobode, ali najviše posla: sudari, kamera, sinkronizacija pozicija za sve igrače.</li>
+          <li>Teško stati u sesiju od 5–10 minuta bez praznog hodanja.</li>
+        </ul>
+      </article>
+    </div>
+    <div class="panel">
+      <h3>Što bi se promijenilo u postojećem kodu (za C)</h3>
+      <ul>
+        <li><strong>Engine:</strong> lik dobiva lokaciju i cilj; eventi dobivaju polje <code>locations</code> (specifikacija ih već spominje: „Location + Relationship + Situation…”); direktor bira evente prema mjestu i blizini.</li>
+        <li><strong>Server:</strong> kretanje računa server (rute između točaka), klijentu šalje samo cilj i vrijeme dolaska, pa promet ostaje malen i igra ostaje server-authoritative.</li>
+        <li><strong>Botovi:</strong> dobivaju i odluku „kamo ići” (rutina prema karijeri i osobnosti, npr. impulzivni češće u baru).</li>
+        <li><strong>Klijent:</strong> Canvas 2D (ili PixiJS) s tile mapom; postojeći ekran izbora postaje plutajući panel iznad mape, kao u skici.</li>
+        <li><strong>Sadržaj:</strong> 57 postojećih eventa ostaje; svakom se doda mjesto (ili više njih).</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const TILE = 32, COLS = 24, ROWS = 16;
+  const canvas = document.getElementById("map");
+  const ctx = canvas.getContext("2d");
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---------- town layout ----------
+  const ROAD_ROWS = [4, 11], ROAD_COLS = [5, 12, 19];
+  const PLACES = [
+    { id: "h1", kind: "home", name: "Kuća", x: 1, y: 2, w: 3, h: 2, door: [2, 4] },
+    { id: "h2", kind: "home", name: "Kuća", x: 7, y: 2, w: 3, h: 2, door: [8, 4] },
+    { id: "office", kind: "office", name: "Ured", x: 13, y: 0, w: 5, h: 4, door: [15, 4] },
+    { id: "h3", kind: "home", name: "Kuća", x: 20, y: 2, w: 3, h: 2, door: [21, 4] },
+    { id: "hospital", kind: "hospital", name: "Bolnica", x: 0, y: 5, w: 5, h: 3, door: [5, 6] },
+    { id: "h4", kind: "home", name: "Kuća", x: 1, y: 9, w: 3, h: 2, door: [2, 11] },
+    { id: "park", kind: "park", name: "Park", x: 6, y: 5, w: 6, h: 6, door: [9, 8] },
+    { id: "cafe", kind: "cafe", name: "Kafić", x: 13, y: 5, w: 4, h: 3, door: [12, 6] },
+    { id: "bar", kind: "bar", name: "Bar", x: 13, y: 9, w: 4, h: 2, door: [14, 11] },
+    { id: "police", kind: "police", name: "Policija", x: 20, y: 5, w: 4, h: 3, door: [19, 6] },
+    { id: "shop", kind: "shop", name: "Dućan", x: 20, y: 8, w: 4, h: 3, door: [19, 9] },
+    { id: "garage", kind: "garage", name: "Radiona", x: 0, y: 12, w: 4, h: 3, door: [3, 11] },
+    { id: "h5", kind: "home", name: "Kuća", x: 7, y: 12, w: 3, h: 2, door: [8, 11] },
+    { id: "h6", kind: "home", name: "Kuća", x: 14, y: 12, w: 3, h: 2, door: [15, 11] },
+    { id: "school", kind: "school", name: "Škola", x: 20, y: 12, w: 4, h: 3, door: [21, 11] },
+  ];
+  const ROOF = {
+    home: "#c97b5a", office: "#5b7896", hospital: "#e9eef0", cafe: "#b98a4a", bar: "#7a4d7a",
+    police: "#3d5a9c", shop: "#d0a63c", garage: "#7b8070", school: "#c25f4b", park: "#6f9e5a",
+  };
+  const ICON = { home: "⌂", office: "▦", hospital: "✚", cafe: "☕", bar: "♪", police: "★", shop: "€", garage: "⚙", school: "✎", park: "✿" };
+
+  const walk = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+  for (const r of ROAD_ROWS) for (let x = 0; x < COLS; x++) walk[r][x] = true;
+  for (const c of ROAD_COLS) for (let y = 0; y < ROWS; y++) walk[y][c] = true;
+  const park = PLACES.find((p) => p.id === "park");
+  for (let y = park.y; y < park.y + park.h; y++) for (let x = park.x; x < park.x + park.w; x++) walk[y][x] = true;
+  const trees = [[6, 5], [11, 5], [6, 10], [11, 10], [7, 7], [10, 9], [8, 6], [10, 6]];
+  for (const [x, y] of trees) walk[y][x] = false;
+
+  function bfs(from, to) {
+    const key = (x, y) => y * COLS + x;
+    const prev = new Map([[key(...from), null]]);
+    const q = [from];
+    while (q.length) {
+      const [x, y] = q.shift();
+      if (x === to[0] && y === to[1]) break;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS || !walk[ny][nx] || prev.has(key(nx, ny))) continue;
+        prev.set(key(nx, ny), [x, y]);
+        q.push([nx, ny]);
+      }
+    }
+    if (!prev.has(key(...to))) return [];
+    const path = [];
+    for (let p = to; p; p = prev.get(key(...p))) path.unshift(p);
+    return path.slice(1);
+  }
+
+  // ---------- people ----------
+  const COLORS = ["#2f6f62", "#d06c4a", "#4a78c9", "#b3487f", "#c69b2a", "#6a5acd"];
+  const PEOPLE_DEF = [
+    { name: "Ti", career: "Doktorica", work: "hospital", home: "h1", you: true },
+    { name: "Ben", career: "Odvjetnik", work: "office", home: "h2" },
+    { name: "Ana", career: "Novinarka", work: "office", home: "h3" },
+    { name: "Luka", career: "Mehaničar", work: "garage", home: "h4" },
+    { name: "Maja", career: "Učiteljica", work: "school", home: "h5" },
+    { name: "Viktor", career: "Policajac", work: "police", home: "h6" },
+  ];
+  const place = (id) => PLACES.find((p) => p.id === id);
+  let people, events, logItems, clockMin, pendingYou, nextEventIn, floaters, links;
+
+  function reset() {
+    people = PEOPLE_DEF.map((d, i) => {
+      const [x, y] = place(d.home).door;
+      return { ...d, color: COLORS[i], x, y, path: [], wait: 0.5 + i * 0.4, event: null, target: null, stats: { health: 70, money: 50, mood: 65 } };
+    });
+    events = [];
+    logItems = [];
+    floaters = [];
+    links = [];
+    clockMin = 8 * 60;
+    pendingYou = null;
+    nextEventIn = 3;
+    document.getElementById("log").innerHTML = '<li class="muted">Jutro. Grad se budi…</li>';
+    document.getElementById("decision").hidden = true;
+  }
+
+  function goTo(p, placeId, spot) {
+    const target = spot ?? place(placeId).door;
+    p.target = placeId;
+    p.path = bfs([Math.round(p.x), Math.round(p.y)], target);
+  }
+
+  function routine(p) {
+    const r = Math.random();
+    const options = r < 0.4 ? p.work : r < 0.6 ? "cafe" : r < 0.75 ? "park" : r < 0.85 ? "shop" : r < 0.92 ? "bar" : p.home;
+    const spot = options === "park" ? randomParkTile() : undefined;
+    goTo(p, options, spot);
+  }
+
+  function randomParkTile() {
+    for (let i = 0; i < 30; i++) {
+      const x = park.x + 1 + Math.floor(Math.random() * (park.w - 2));
+      const y = park.y + 1 + Math.floor(Math.random() * (park.h - 2));
+      if (walk[y][x]) return [x, y];
+    }
+    return park.door;
+  }
+
+  // ---------- events (sketch versions of real content) ----------
+  const TEMPLATES = [
+    { at: "cafe", title: "Can You Lend Me Some Money?", n: 2, text: (a, b) => `${a} pita ${b} za pozajmicu.`,
+      private: "Novac ti treba za kockarski dug, ne za stanarinu.",
+      choices: [["Posudi cijeli iznos", [["€ ↓↓", "bad"], ["odnos ↑↑", "good"]]], ["Posudi pola", [["€ ↓", "bad"], ["odnos ↑", "good"]]], ["Odbij", [["odnos ↓", "bad"]]]] },
+    { at: "office", title: "A Coworker Needs Help", n: 2, text: (a, b) => `${a} traži od ${b} da potvrdi njegovu verziju incidenta.`,
+      private: "Vidjela si što se stvarno dogodilo.",
+      choices: [["Potvrdi njegovu priču", [["odnos ↑", "good"], ["rizik", "risk"]]], ["Reci istinu", [["ugled ↑", "good"], ["odnos ↓↓", "bad"]]], ["Ne miješaj se", []]] },
+    { at: "park", title: "A Lost Child", n: 1, text: (a) => `${a} nailazi na dijete koje samo plače.`,
+      private: "Ljudi prolaze ne gledajući.",
+      choices: [["Ostani s djetetom i nazovi policiju", [["um ↑", "good"]]], ["Odvedi ga zaštitaru", [["rizik", "risk"]]], ["Nastavi dalje", []]] },
+    { at: "bar", title: "Karaoke Night", n: 2, text: (a, b) => `${a} se kladi da ${b} neće smjeti zapjevati.`,
+      private: "Nisi pjevala pred ljudima od škole.",
+      choices: [["Uzmi mikrofon", [["um ↑", "good"], ["rizik", "risk"]]], ["Plati rundu", [["€ ↓", "bad"]]]] },
+    { at: "shop", title: "Too Much Change", n: 1, text: (a) => `${a} plaća na blagajni.`,
+      private: "Blagajnik ti je vratio previše novca.",
+      choices: [["Upozori na grešku", [["um ↑", "good"]]], ["Brzo spremi novac", [["€ ↑", "good"]]]] },
+    { at: "street", title: "Collapse on the Street", n: 2, text: (a, b) => `${a} se sruši na pločniku. ${b} je dva koraka dalje.`,
+      private: "Puls je slab, ali postoji. Masaža srca ovdje može naškoditi.",
+      choices: [["Provjeri dišne putove i puls (tvoja struka)", [["ugled ↑", "good"], ["odnos ↑↑", "good"]], true], ["Nazovi hitnu", [["odnos ↑", "good"]]], ["Prođi dalje", []]] },
+  ];
+
+  function spawnEvent() {
+    const free = people.filter((p) => !p.event);
+    const t = TEMPLATES[Math.floor(Math.random() * TEMPLATES.length)];
+    if (free.length < t.n) return;
+    let spot, loc;
+    if (t.at === "street") {
+      const roads = [];
+      for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if ((ROAD_ROWS.includes(y) || ROAD_COLS.includes(x)) && walk[y][x]) roads.push([x, y]);
+      spot = roads[Math.floor(Math.random() * roads.length)];
+      loc = { name: "Ulica", door: spot };
+    } else {
+      loc = place(t.at);
+      spot = t.at === "park" ? randomParkTile() : loc.door;
+    }
+    // Nearest free people are drawn in: location matters.
+    const ranked = free
+      .map((p) => ({ p, d: Math.abs(p.x - spot[0]) + Math.abs(p.y - spot[1]) + (p.you ? -4 : 0) * (Math.random() < 0.5 ? 1 : 0) }))
+      .sort((a, b) => a.d - b.d)
+      .slice(0, t.n)
+      .map((r) => r.p);
+    const ev = { t, spot, loc, who: ranked, state: "gathering", timer: 0 };
+    for (const [i, p] of ranked.entries()) {
+      p.event = ev;
+      const s = [spot[0] + (i === 1 ? (walk[spot[1]][spot[0] + 1] ? 1 : -1) : 0), spot[1]];
+      goTo(p, t.at, walk[s[1]] && walk[s[1]][s[0]] ? s : spot);
+    }
+    events.push(ev);
+  }
+
+  function startEvent(ev) {
+    ev.state = "active";
+    ev.timer = 0;
+    const names = ev.who.map((p) => p.name);
+    const youIn = ev.who.find((p) => p.you);
+    addLog(`<strong>${ev.loc.name}:</strong> ${ev.t.title}${/[?!.]$/.test(ev.t.title) ? "" : "."} ${ev.t.text(...names)}`, !!youIn);
+    if (youIn) openDecision(ev);
+  }
+
+  function resolveEvent(ev, choiceIndex) {
+    ev.state = "done";
+    const good = choiceIndex === 0 ? Math.random() < 0.75 : Math.random() < 0.5;
+    const effects = [
+      ["€ −8", "bad"], ["€ +10", "good"], ["❤ −10", "bad"], ["um +5", "good"], ["ugled +4", "good"], ["um −5", "bad"],
+    ];
+    for (const p of ev.who) {
+      const e = effects[Math.floor(Math.random() * effects.length)];
+      floaters.push({ x: p.x, y: p.y, text: e[0], tone: e[1], age: 0 });
+      p.event = null;
+      p.wait = 1.5 + Math.random() * 2;
+    }
+    if (ev.who.length > 1) links.push({ a: ev.who[0], b: ev.who[1], good, age: 0 });
+    const rel = ev.who.length > 1 ? (good ? " Odnos se poboljšao." : " Odnos se pogoršao.") : "";
+    addLog(`↳ ${ev.t.title} razriješen.${rel}`, ev.who.some((p) => p.you));
+    events = events.filter((e) => e !== ev);
+  }
+
+  // ---------- decision panel ----------
+  const dPanel = document.getElementById("decision");
+  function openDecision(ev) {
+    pendingYou = { ev, left: 12 };
+    document.getElementById("d-where").textContent = `${ev.loc.name} · ${ev.who.map((p) => p.name).join(", ")}`;
+    document.getElementById("d-title").textContent = ev.t.title;
+    document.getElementById("d-text").textContent = ev.t.text(...ev.who.map((p) => p.name));
+    document.getElementById("d-private").textContent = "Samo ti znaš: " + ev.t.private;
+    const box = document.getElementById("d-choices");
+    box.innerHTML = "";
+    ev.t.choices.forEach(([label, hints], i) => {
+      const b = document.createElement("button");
+      b.innerHTML = `<span>${label}</span><span class="hints">${hints.map(([h, tone]) => `<span class="hint ${tone}">${h}</span>`).join("")}</span>`;
+      b.addEventListener("click", () => choose(i));
+      box.appendChild(b);
+    });
+    dPanel.hidden = false;
+  }
+  function choose(i) {
+    if (!pendingYou) return;
+    const ev = pendingYou.ev;
+    pendingYou = null;
+    dPanel.hidden = true;
+    resolveEvent(ev, i);
+  }
+
+  function addLog(html, you) {
+    logItems.unshift({ html, you, time: clockLabel() });
+    logItems = logItems.slice(0, 14);
+    document.getElementById("log").innerHTML = logItems
+      .map((l) => `<li class="${l.you ? "you" : ""}"><span class="muted">${l.time}</span> ${l.html}</li>`)
+      .join("");
+  }
+  function clockLabel() {
+    const h = Math.floor(clockMin / 60) % 24, m = Math.floor(clockMin % 60);
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+
+  // ---------- input ----------
+  canvas.addEventListener("click", (e) => {
+    const r = canvas.getBoundingClientRect();
+    const tx = Math.floor(((e.clientX - r.left) / r.width) * COLS);
+    const ty = Math.floor(((e.clientY - r.top) / r.height) * ROWS);
+    const hit = PLACES.find((p) => tx >= p.x && tx < p.x + p.w && ty >= p.y && ty < p.y + p.h);
+    const you = people.find((p) => p.you);
+    if (!hit || you.event) return;
+    goTo(you, hit.id, hit.id === "park" ? randomParkTile() : undefined);
+    you.wait = 6;
+    addLog(`Krećeš prema: <strong>${hit.name}</strong>.`, true);
+  });
+  document.getElementById("reset").addEventListener("click", reset);
+
+  document.getElementById("legend").innerHTML = [
+    ["office", "Ured"], ["hospital", "Bolnica"], ["cafe", "Kafić"], ["bar", "Bar"], ["park", "Park"],
+    ["police", "Policija"], ["shop", "Dućan"], ["garage", "Radiona"], ["school", "Škola"], ["home", "Kuće"],
+  ].map(([k, n]) => `<span><span class="sw" style="background:${ROOF[k]}"></span>${ICON[k]} ${n}</span>`).join("");
+
+  // ---------- simulation ----------
+  const SPEED = 2.4;
+  function update(dt) {
+    clockMin += dt * 6;
+    document.getElementById("clock").textContent = clockLabel();
+    const you = people.find((p) => p.you);
+    document.getElementById("you-stats").textContent = `Ti · Doktorica`;
+
+    for (const p of people) {
+      if (p.path.length) {
+        const [tx, ty] = p.path[0];
+        const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
+        const step = SPEED * dt;
+        if (d <= step) { p.x = tx; p.y = ty; p.path.shift(); }
+        else { p.x += (dx / d) * step; p.y += (dy / d) * step; }
+      } else if (!p.event) {
+        p.wait -= dt;
+        if (p.wait <= 0) { routine(p); p.wait = 2 + Math.random() * 4; }
+      }
+    }
+    for (const ev of [...events]) {
+      if (ev.state === "gathering" && ev.who.every((p) => p.path.length === 0)) startEvent(ev);
+      else if (ev.state === "active" && !ev.who.some((p) => p.you)) {
+        ev.timer += dt;
+        if (ev.timer > 3.5) resolveEvent(ev, Math.floor(Math.random() * ev.t.choices.length));
+      }
+    }
+    if (pendingYou) {
+      pendingYou.left -= dt;
+      document.getElementById("d-timer").style.width = `${Math.max(0, pendingYou.left / 12) * 100}%`;
+      if (pendingYou.left <= 0) choose(pendingYou.ev.t.choices.length - 1);
+    }
+    nextEventIn -= dt;
+    if (nextEventIn <= 0 && events.length < 2) { spawnEvent(); nextEventIn = 5 + Math.random() * 4; }
+    for (const f of floaters) f.age += dt;
+    floaters = floaters.filter((f) => f.age < 2.2);
+    for (const l of links) l.age += dt;
+    links = links.filter((l) => l.age < 3);
+  }
+
+  // ---------- drawing ----------
+  let theme = {};
+  function readTheme() {
+    const cs = getComputedStyle(document.documentElement);
+    const dark = cs.colorScheme.includes("dark");
+    theme = dark
+      ? { grass: "#1f2e25", grass2: "#22342a", road: "#2c312e", line: "#4a514c", ink: "#e5ebe6", shadow: "rgba(0,0,0,.35)", night: true, good: "#6cd096", bad: "#f08a80", accent: "#6cc3ad", label: "rgba(20,25,23,.85)" }
+      : { grass: "#cfe0c3", grass2: "#c6d9b9", road: "#d9d3c7", line: "#f5f1e8", ink: "#1d2420", shadow: "rgba(0,0,0,.18)", night: false, good: "#2c7a4b", bad: "#b23b3b", accent: "#2f6f62", label: "rgba(255,255,255,.9)" };
+  }
+  readTheme();
+  setInterval(readTheme, 1000);
+
+  function setupCanvas() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = COLS * TILE * dpr;
+    canvas.height = ROWS * TILE * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  setupCanvas();
+
+  function draw(time) {
+    ctx.clearRect(0, 0, COLS * TILE, ROWS * TILE);
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      ctx.fillStyle = (x + y) % 2 ? theme.grass : theme.grass2;
+      ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+    }
+    // park
+    ctx.fillStyle = theme.night ? "#264232" : "#b9d6a6";
+    ctx.fillRect(park.x * TILE, park.y * TILE, park.w * TILE, park.h * TILE);
+    // roads
+    ctx.fillStyle = theme.road;
+    for (const r of ROAD_ROWS) ctx.fillRect(0, r * TILE, COLS * TILE, TILE);
+    for (const c of ROAD_COLS) ctx.fillRect(c * TILE, 0, TILE, ROWS * TILE);
+    ctx.strokeStyle = theme.line;
+    ctx.setLineDash([8, 8]);
+    ctx.lineWidth = 2;
+    for (const r of ROAD_ROWS) { ctx.beginPath(); ctx.moveTo(0, r * TILE + 16); ctx.lineTo(COLS * TILE, r * TILE + 16); ctx.stroke(); }
+    for (const c of ROAD_COLS) { ctx.beginPath(); ctx.moveTo(c * TILE + 16, 0); ctx.lineTo(c * TILE + 16, ROWS * TILE); ctx.stroke(); }
+    ctx.setLineDash([]);
+    // trees
+    for (const [x, y] of trees) {
+      ctx.fillStyle = theme.shadow;
+      ctx.beginPath(); ctx.arc(x * TILE + 18, y * TILE + 19, 12, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = theme.night ? "#2f5a3c" : "#5f9b52";
+      ctx.beginPath(); ctx.arc(x * TILE + 16, y * TILE + 16, 12, 0, Math.PI * 2); ctx.fill();
+    }
+    // buildings
+    for (const p of PLACES) {
+      if (p.kind === "park") continue;
+      const X = p.x * TILE + 3, Y = p.y * TILE + 3, W = p.w * TILE - 6, H = p.h * TILE - 6;
+      ctx.fillStyle = theme.shadow;
+      ctx.fillRect(X + 4, Y + 5, W, H);
+      ctx.fillStyle = ROOF[p.kind];
+      ctx.fillRect(X, Y, W, H);
+      ctx.fillStyle = "rgba(255,255,255,.18)";
+      ctx.fillRect(X, Y, W, H / 2);
+      if (theme.night) {
+        ctx.fillStyle = "#ffd86b";
+        for (let i = 0; i < p.w; i++) if ((i * 7 + p.x) % 3 !== 0) ctx.fillRect(X + 8 + i * TILE * 0.9, Y + H - 9, 6, 4);
+      }
+      ctx.fillStyle = p.kind === "hospital" ? "#c0392b" : "rgba(255,255,255,.95)";
+      ctx.font = "600 15px Inter, system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(ICON[p.kind], X + W / 2, Y + H / 2 - (p.kind === "home" ? 0 : 6));
+      if (p.kind !== "home") {
+        ctx.font = "600 10px Inter, system-ui, sans-serif";
+        ctx.fillText(p.name.toUpperCase(), X + W / 2, Y + H / 2 + 10);
+      }
+    }
+    // relationship links after an event
+    for (const l of links) {
+      ctx.globalAlpha = 1 - l.age / 3;
+      ctx.strokeStyle = l.good ? theme.good : theme.bad;
+      ctx.lineWidth = 3;
+      ctx.setLineDash(l.good ? [] : [5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(l.a.x * TILE + 16, l.a.y * TILE + 16);
+      ctx.lineTo(l.b.x * TILE + 16, l.b.y * TILE + 16);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+    // event markers
+    for (const ev of events) {
+      if (ev.state !== "active") continue;
+      const [x, y] = ev.spot;
+      const pulse = reduceMotion ? 0 : Math.sin(time / 200) * 3;
+      ctx.strokeStyle = "#e0a100";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x * TILE + 16, y * TILE + 16, 22 + pulse, 0, Math.PI * 2); ctx.stroke();
+    }
+    // people
+    for (const p of [...people].sort((a, b) => a.y - b.y)) {
+      const cx = p.x * TILE + 16, cy = p.y * TILE + 16;
+      const bob = p.path.length && !reduceMotion ? Math.sin(time / 90 + p.x) * 1.5 : 0;
+      ctx.fillStyle = theme.shadow;
+      ctx.beginPath(); ctx.ellipse(cx, cy + 9, 8, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+      if (p.you) {
+        ctx.strokeStyle = theme.accent; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(cx, cy + 1, 13, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(cx, cy + 3 + bob, 7.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#f2d3b6";
+      ctx.beginPath(); ctx.arc(cx, cy - 5 + bob, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.font = "600 10px Inter, system-ui, sans-serif";
+      ctx.textAlign = "center";
+      const w = ctx.measureText(p.name).width + 8;
+      ctx.fillStyle = theme.label;
+      ctx.fillRect(cx - w / 2, cy - 24, w, 13);
+      ctx.fillStyle = theme.ink;
+      ctx.fillText(p.name, cx, cy - 17);
+      if (p.event && p.event.state === "active") {
+        ctx.fillStyle = "#e0a100";
+        ctx.beginPath(); ctx.arc(cx + 11, cy - 26, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#1d1d1d";
+        ctx.font = "700 11px Inter, system-ui, sans-serif";
+        ctx.fillText("!", cx + 11, cy - 25.5);
+      }
+    }
+    // floating results
+    for (const f of floaters) {
+      ctx.globalAlpha = Math.max(0, 1 - f.age / 2.2);
+      ctx.font = "700 12px Inter, system-ui, sans-serif";
+      ctx.fillStyle = f.tone === "good" ? theme.good : theme.bad;
+      ctx.fillText(f.text, f.x * TILE + 16, f.y * TILE - 30 - f.age * 14);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Static first frame, then animate.
+  reset();
+  for (let i = 0; i < 40; i++) update(0.1);
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    update(dt);
+    draw(now);
+    requestAnimationFrame(loop);
+  }
+  draw(performance.now());
+  requestAnimationFrame(loop);
+})();
+</script>

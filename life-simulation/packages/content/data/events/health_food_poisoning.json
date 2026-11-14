@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "id": "health_food_poisoning",
+  "version": 2,
+  "title": "The Leftovers",
+  "category": "health",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "home"
+    ],
+    "of": "role:cook"
+  },
+  "roles": {
+    "cook": {
+      "count": 1
+    },
+    "guest": {
+      "count": [
+        1,
+        2
+      ]
+    }
+  },
+  "text": {
+    "public": "{cook} serves {guest} a chicken dish at a small dinner.",
+    "private": {
+      "cook": "The chicken was three days past its date. It smelled fine.",
+      "guest": "The chicken tastes a little odd."
+    }
+  },
+  "choices": {
+    "cook": [
+      {
+        "id": "warn",
+        "label": "Mention the date — just in case",
+        "tags": [
+          "truth"
+        ],
+        "perceived": {
+          "reputation": -1
+        }
+      },
+      {
+        "id": "say_nothing",
+        "label": "Say nothing",
+        "tags": [
+          "lie"
+        ],
+        "default": true,
+        "perceived": {
+          "risk": 1
+        }
+      }
+    ],
+    "guest": [
+      {
+        "id": "eat",
+        "label": "Eat it — it would be rude not to",
+        "tags": [
+          "risk"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "cook": 1
+          },
+          "risk": 1
+        }
+      },
+      {
+        "id": "leave_it",
+        "label": "Push it around the plate",
+        "tags": [
+          "ignore"
+        ],
+        "perceived": {
+          "relation": {
+            "cook": -1
+          }
+        }
+      },
+      {
+        "id": "check",
+        "label": "Ask casually where the chicken is from",
+        "tags": [
+          "truth"
+        ],
+        "careers": [
+          "doctor"
+        ],
+        "perceived": {
+          "health": 1
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "avoided",
+      "when": {
+        "any": [
+          {
+            "chose": "warn",
+            "role": "cook"
+          },
+          {
+            "chose": "check",
+            "role": "guest"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:guest",
+          "to": "role:cook",
+          "trust": 5
+        }
+      ],
+      "text": {
+        "cook": "Everyone switches to pasta. Crisis avoided.",
+        "guest": "Pasta instead. Probably wise."
+      }
+    },
+    {
+      "id": "poisoned",
+      "when": {
+        "chose": "eat",
+        "role": "guest"
+      },
+      "chance": 0.6,
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:guest",
+          "delta": {
+            "health": -18,
+            "career": -3
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:cook",
+          "delta": {
+            "health": -12,
+            "mental": -5
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:guest",
+          "to": "role:cook",
+          "affinity": -10
+        },
+        {
+          "type": "move",
+          "target": "role:guest",
+          "to": "home",
+          "staySeconds": 10
+        },
+        {
+          "type": "move",
+          "target": "role:cook",
+          "to": "home",
+          "staySeconds": 10
+        }
+      ],
+      "text": {
+        "cook": "Three days of food poisoning — for you and your guests.",
+        "guest": "Three days of food poisoning. You know whose kitchen it came from."
+      }
+    },
+    {
+      "id": "fine",
+      "text": {
+        "cook": "Everyone survives the evening.",
+        "guest": "A pleasant dinner."
+      }
+    }
+  ]
+}

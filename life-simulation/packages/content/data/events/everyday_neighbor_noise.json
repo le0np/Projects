@@ -1,0 +1,271 @@
+{
+  "schemaVersion": 1,
+  "id": "everyday_neighbor_noise",
+  "version": 1,
+  "title": "Loud Music Next Door",
+  "category": "everyday",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 7,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "home"
+    ],
+    "of": "role:neighbor"
+  },
+  "roles": {
+    "neighbor": {
+      "count": 1
+    },
+    "complainer": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:neighbor",
+          "typeIn": [
+            "stranger",
+            "acquaintance",
+            "rival",
+            "colleague"
+          ]
+        }
+      }
+    }
+  },
+  "text": {
+    "public": "Late at night, music from {neighbor}'s flat keeps {complainer} awake.",
+    "private": {
+      "neighbor": "It is your birthday and your friends are over.",
+      "complainer": "You have an early start tomorrow."
+    }
+  },
+  "choices": {
+    "complainer": [
+      {
+        "id": "knock",
+        "label": "Knock and ask politely",
+        "tags": [
+          "negotiate"
+        ],
+        "perceived": {
+          "relation": {
+            "neighbor": 0
+          }
+        }
+      },
+      {
+        "id": "police",
+        "label": "Call the police with a noise complaint",
+        "tags": [
+          "threaten"
+        ],
+        "perceived": {
+          "relation": {
+            "neighbor": -2
+          }
+        }
+      },
+      {
+        "id": "cake",
+        "label": "Bring earplugs for yourself and a slice of cake for them",
+        "tags": [
+          "help",
+          "negotiate"
+        ],
+        "careers": [
+          "civilian",
+          "teacher"
+        ],
+        "perceived": {
+          "relation": {
+            "neighbor": 2
+          }
+        }
+      },
+      {
+        "id": "endure",
+        "label": "Put a pillow over your head",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "mental": -1,
+          "health": -1
+        }
+      }
+    ],
+    "neighbor": [
+      {
+        "id": "turn_down",
+        "label": "Turn the music down at midnight",
+        "tags": [
+          "apologize"
+        ],
+        "perceived": {
+          "mental": -1
+        }
+      },
+      {
+        "id": "invite",
+        "label": "Invite the neighbours to join",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "complainer": 1
+          }
+        }
+      },
+      {
+        "id": "keep_going",
+        "label": "Keep the party going",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "mental": 1,
+          "risk": 1
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "new_friends",
+      "when": {
+        "all": [
+          {
+            "chose": "invite",
+            "role": "neighbor"
+          },
+          {
+            "any": [
+              {
+                "chose": "knock",
+                "role": "complainer"
+              },
+              {
+                "chose": "cake",
+                "role": "complainer"
+              }
+            ]
+          }
+        ]
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:complainer",
+          "to": "role:neighbor",
+          "affinity": 25,
+          "trust": 10,
+          "mutual": true
+        },
+        {
+          "type": "attr",
+          "target": "role:complainer",
+          "delta": {
+            "mental": 4,
+            "health": -2
+          }
+        }
+      ],
+      "text": {
+        "complainer": "You came to complain and stayed until two. Worth it.",
+        "neighbor": "{complainer} turns out to be great company."
+      }
+    },
+    {
+      "id": "cake_diplomacy",
+      "when": {
+        "chose": "cake",
+        "role": "complainer"
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:neighbor",
+          "to": "role:complainer",
+          "affinity": 20,
+          "trust": 10
+        }
+      ],
+      "text": {
+        "complainer": "{neighbor} is touched and turns the music down.",
+        "neighbor": "Your neighbour brought cake. You feel a bit guilty."
+      }
+    },
+    {
+      "id": "police_came",
+      "when": {
+        "chose": "police",
+        "role": "complainer"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:neighbor",
+          "delta": {
+            "reputation": -5,
+            "mental": -5
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:neighbor",
+          "to": "role:complainer",
+          "affinity": -25,
+          "trust": -10
+        }
+      ],
+      "text": {
+        "complainer": "The police end the party. The building is quiet — and cold towards you.",
+        "neighbor": "Police at your birthday. You can guess who called."
+      }
+    },
+    {
+      "id": "sorted",
+      "when": {
+        "chose": "turn_down",
+        "role": "neighbor"
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:complainer",
+          "to": "role:neighbor",
+          "affinity": 5
+        }
+      ],
+      "text": {
+        "complainer": "The music stops at midnight.",
+        "neighbor": "You turn it down. Your friends complain."
+      }
+    },
+    {
+      "id": "sleepless",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:complainer",
+          "delta": {
+            "mental": -6,
+            "health": -2
+          }
+        }
+      ],
+      "text": {
+        "complainer": "You get three hours of sleep.",
+        "neighbor": "Best birthday in years."
+      }
+    }
+  ]
+}

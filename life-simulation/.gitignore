@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+sim-output/
+*.log
+.env
+/data/

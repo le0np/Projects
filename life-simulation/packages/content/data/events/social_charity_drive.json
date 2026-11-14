@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 1,
+  "id": "social_charity_drive",
+  "version": 1,
+  "title": "The Charity Drive",
+  "category": "social",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "school",
+      "shop"
+    ]
+  },
+  "roles": {
+    "organizer": {
+      "count": 1
+    },
+    "donor": {
+      "count": [
+        1,
+        2
+      ]
+    }
+  },
+  "text": {
+    "public": "{organizer} is collecting money for the local children's hospital and asks {donor} to give.",
+    "private": {
+      "organizer": "Your own finances are tight this month. Nobody checks how much you hand in.",
+      "donor": "Money is tight, but it is for sick children."
+    }
+  },
+  "choices": {
+    "organizer": [
+      {
+        "id": "honest",
+        "label": "Hand in every cent",
+        "tags": [
+          "truth",
+          "help"
+        ],
+        "perceived": {
+          "reputation": 1
+        }
+      },
+      {
+        "id": "skim",
+        "label": "Keep a small cut for \"expenses\"",
+        "tags": [
+          "lie"
+        ],
+        "perceived": {
+          "money": 1,
+          "risk": 1
+        }
+      },
+      {
+        "id": "guilt",
+        "label": "Push hard, mention who else gave",
+        "tags": [
+          "threaten"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "donor": -1
+          }
+        }
+      }
+    ],
+    "donor": [
+      {
+        "id": "big",
+        "label": "Give generously",
+        "tags": [
+          "help",
+          "sacrifice"
+        ],
+        "perceived": {
+          "money": -2,
+          "reputation": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -10,
+              "mental": 4
+            }
+          }
+        ]
+      },
+      {
+        "id": "small",
+        "label": "Give a little",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "money": -1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -3,
+              "mental": 2
+            }
+          }
+        ]
+      },
+      {
+        "id": "class",
+        "label": "Get your pupils to run a bake sale for it",
+        "tags": [
+          "help"
+        ],
+        "careers": [
+          "teacher"
+        ],
+        "perceived": {
+          "reputation": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "reputation": 5,
+              "mental": 3
+            }
+          }
+        ]
+      },
+      {
+        "id": "decline",
+        "label": "Decline politely",
+        "tags": [
+          "refuse"
+        ],
+        "default": true
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "skim_found",
+      "when": {
+        "chose": "skim",
+        "role": "organizer"
+      },
+      "chance": 0.3,
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:organizer",
+          "delta": {
+            "reputation": -18,
+            "money": 4
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:organizer",
+          "key": "public_scandal"
+        },
+        {
+          "type": "relation",
+          "from": "role:donor",
+          "to": "role:organizer",
+          "trust": -30,
+          "affinity": -20
+        }
+      ],
+      "text": {
+        "organizer": "The hospital's accountant notices the numbers do not add up. It is in the newsletter.",
+        "donor": "You read that {organizer} skimmed the charity money."
+      }
+    },
+    {
+      "id": "skimmed",
+      "when": {
+        "chose": "skim",
+        "role": "organizer"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:organizer",
+          "delta": {
+            "money": 6,
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "organizer": "Nobody notices the difference.",
+        "donor": "{organizer} thanks you for your contribution."
+      }
+    },
+    {
+      "id": "success",
+      "when": {
+        "any": [
+          {
+            "chose": "big",
+            "role": "donor"
+          },
+          {
+            "chose": "class",
+            "role": "donor"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:organizer",
+          "delta": {
+            "reputation": 5,
+            "mental": 4
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:organizer",
+          "to": "role:donor",
+          "affinity": 15,
+          "trust": 10
+        }
+      ],
+      "text": {
+        "organizer": "The drive beats its target. The hospital sends a thank-you card.",
+        "donor": "Your name is on the thank-you board at the hospital."
+      }
+    },
+    {
+      "id": "modest",
+      "text": {
+        "organizer": "A modest sum. Better than nothing.",
+        "donor": "You go back to your day."
+      }
+    }
+  ]
+}

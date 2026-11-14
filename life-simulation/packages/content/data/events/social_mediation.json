@@ -1,0 +1,402 @@
+{
+  "schemaVersion": 1,
+  "id": "social_mediation",
+  "version": 1,
+  "title": "The Fence Dispute",
+  "category": "social",
+  "trigger": "director",
+  "importance": "important",
+  "weight": 5,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "home"
+    ],
+    "of": "role:owner_a"
+  },
+  "roles": {
+    "owner_a": {
+      "count": 1
+    },
+    "owner_b": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:owner_a",
+          "typeIn": [
+            "stranger",
+            "acquaintance",
+            "rival",
+            "enemy",
+            "colleague"
+          ]
+        }
+      }
+    },
+    "mediator": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:owner_a",
+          "typeIn": [
+            "stranger",
+            "acquaintance",
+            "friend",
+            "colleague"
+          ]
+        }
+      }
+    }
+  },
+  "text": {
+    "public": "{owner_a} and {owner_b} are fighting over where the fence between their gardens should stand. They ask {mediator} to settle it.",
+    "private": {
+      "owner_a": "Your grandfather built that fence. It is on the right line — you think.",
+      "owner_b": "The land registry map says the fence is a metre onto your land.",
+      "mediator": "You can see both of them expect you to take their side."
+    }
+  },
+  "choices": {
+    "owner_a": [
+      {
+        "id": "compromise",
+        "label": "Offer to split the difference",
+        "tags": [
+          "negotiate"
+        ],
+        "perceived": {
+          "relation": {
+            "owner_b": 1
+          }
+        }
+      },
+      {
+        "id": "hold",
+        "label": "Refuse to move the fence an inch",
+        "tags": [
+          "refuse"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "owner_b": -1
+          }
+        }
+      },
+      {
+        "id": "escalate",
+        "label": "Threaten to take it to court",
+        "tags": [
+          "threaten"
+        ],
+        "perceived": {
+          "relation": {
+            "owner_b": -2
+          },
+          "money": -1
+        }
+      }
+    ],
+    "owner_b": [
+      {
+        "id": "compromise",
+        "label": "Offer to split the difference",
+        "tags": [
+          "negotiate"
+        ],
+        "perceived": {
+          "relation": {
+            "owner_a": 1
+          }
+        }
+      },
+      {
+        "id": "show_map",
+        "label": "Show the land registry map",
+        "tags": [
+          "truth"
+        ],
+        "perceived": {
+          "relation": {
+            "owner_a": -1
+          }
+        }
+      },
+      {
+        "id": "hold",
+        "label": "Demand the full metre back",
+        "tags": [
+          "refuse"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "owner_a": -1
+          }
+        }
+      }
+    ],
+    "mediator": [
+      {
+        "id": "side_a",
+        "label": "Side with {owner_a}",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "owner_a": 1,
+            "owner_b": -2
+          }
+        }
+      },
+      {
+        "id": "side_b",
+        "label": "Side with {owner_b}",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "owner_a": -2,
+            "owner_b": 1
+          }
+        }
+      },
+      {
+        "id": "agreement",
+        "label": "Draft a written agreement both can sign",
+        "tags": [
+          "negotiate",
+          "help"
+        ],
+        "careers": [
+          "lawyer",
+          "teacher",
+          "psychologist"
+        ],
+        "perceived": {
+          "reputation": 1,
+          "relation": {
+            "owner_a": 1,
+            "owner_b": 1
+          }
+        }
+      },
+      {
+        "id": "neutral",
+        "label": "Stay neutral and let them talk",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "signed",
+      "when": {
+        "chose": "agreement",
+        "role": "mediator"
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:owner_a",
+          "to": "role:owner_b",
+          "affinity": 20,
+          "mutual": true
+        },
+        {
+          "type": "relation",
+          "from": "role:owner_a",
+          "to": "role:mediator",
+          "affinity": 15,
+          "trust": 15
+        },
+        {
+          "type": "relation",
+          "from": "role:owner_b",
+          "to": "role:mediator",
+          "affinity": 15,
+          "trust": 15
+        },
+        {
+          "type": "attr",
+          "target": "role:mediator",
+          "delta": {
+            "reputation": 6
+          }
+        }
+      ],
+      "text": {
+        "owner_a": "{mediator} finds a solution you can both live with.",
+        "owner_b": "{mediator} finds a solution you can both live with.",
+        "mediator": "Both sign. You may have just ended a feud."
+      }
+    },
+    {
+      "id": "handshake",
+      "when": {
+        "all": [
+          {
+            "chose": "compromise",
+            "role": "owner_a"
+          },
+          {
+            "chose": "compromise",
+            "role": "owner_b"
+          }
+        ]
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:owner_a",
+          "to": "role:owner_b",
+          "affinity": 20,
+          "trust": 10,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "owner_a": "You meet in the middle and shake hands.",
+        "owner_b": "You meet in the middle and shake hands.",
+        "mediator": "They sort it out themselves. You barely had to speak."
+      }
+    },
+    {
+      "id": "court",
+      "when": {
+        "chose": "escalate",
+        "role": "owner_a"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:owner_a",
+          "delta": {
+            "money": -12,
+            "mental": -6
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:owner_b",
+          "delta": {
+            "money": -6,
+            "mental": -6
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:owner_a",
+          "to": "role:owner_b",
+          "setType": "enemy",
+          "affinity": -25,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "owner_a": "Lawyers, letters, costs. The fence is still where it was.",
+        "owner_b": "{owner_a} takes you to court over a metre of grass.",
+        "mediator": "It ends in court. Nobody listened to you."
+      }
+    },
+    {
+      "id": "took_side_a",
+      "when": {
+        "chose": "side_a",
+        "role": "mediator"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:owner_b",
+          "to": "role:mediator",
+          "affinity": -20,
+          "trust": -15
+        },
+        {
+          "type": "relation",
+          "from": "role:owner_a",
+          "to": "role:mediator",
+          "affinity": 15
+        },
+        {
+          "type": "attr",
+          "target": "role:owner_b",
+          "delta": {
+            "mental": -5
+          }
+        }
+      ],
+      "text": {
+        "owner_a": "{mediator} agrees with you.",
+        "owner_b": "{mediator} sided with {owner_a}. So much for neutrality.",
+        "mediator": "You side with {owner_a}. {owner_b} will not forget it."
+      }
+    },
+    {
+      "id": "took_side_b",
+      "when": {
+        "chose": "side_b",
+        "role": "mediator"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:owner_a",
+          "to": "role:mediator",
+          "affinity": -20,
+          "trust": -15
+        },
+        {
+          "type": "relation",
+          "from": "role:owner_b",
+          "to": "role:mediator",
+          "affinity": 15
+        },
+        {
+          "type": "attr",
+          "target": "role:owner_a",
+          "delta": {
+            "mental": -5
+          }
+        }
+      ],
+      "text": {
+        "owner_a": "{mediator} sided with {owner_b}. So much for neutrality.",
+        "owner_b": "{mediator} agrees with you — and the map.",
+        "mediator": "You side with {owner_b}. {owner_a} will not forget it."
+      }
+    },
+    {
+      "id": "stalemate",
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:owner_a",
+          "to": "role:owner_b",
+          "setType": "rival",
+          "affinity": -10,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "owner_a": "Nothing is settled.",
+        "owner_b": "Nothing is settled.",
+        "mediator": "They go home angrier than they came."
+      }
+    }
+  ]
+}

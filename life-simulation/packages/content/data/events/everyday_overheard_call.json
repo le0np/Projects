@@ -1,0 +1,279 @@
+{
+  "schemaVersion": 1,
+  "id": "everyday_overheard_call",
+  "version": 1,
+  "title": "Thin Walls",
+  "category": "everyday",
+  "trigger": "director",
+  "hidden": true,
+  "importance": "multi",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 2,
+    "maxPerCharacter": 1
+  },
+  "tags": [
+    "secret"
+  ],
+  "location": {
+    "at": [
+      "work"
+    ],
+    "of": "role:caller"
+  },
+  "roles": {
+    "caller": {
+      "count": 1,
+      "aware": false,
+      "description": "Does not know they are overheard",
+      "conditions": {
+        "fact": "employed"
+      }
+    },
+    "listener": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:caller",
+          "typeIn": [
+            "colleague",
+            "acquaintance",
+            "friend",
+            "rival"
+          ]
+        }
+      }
+    }
+  },
+  "text": {
+    "public": "{caller} takes a phone call in the next room.",
+    "private": {
+      "listener": "Through the thin wall you hear {caller} admit to taking money from the office fund."
+    }
+  },
+  "choices": {
+    "listener": [
+      {
+        "id": "confront",
+        "label": "Talk to {caller} privately",
+        "tags": [
+          "truth",
+          "negotiate"
+        ],
+        "perceived": {
+          "relation": {
+            "caller": 0
+          }
+        }
+      },
+      {
+        "id": "report",
+        "label": "Report it to management",
+        "tags": [
+          "truth"
+        ],
+        "perceived": {
+          "reputation": 1,
+          "relation": {
+            "caller": -2
+          }
+        }
+      },
+      {
+        "id": "blackmail",
+        "label": "Hint that you know — and that silence has a price",
+        "tags": [
+          "threaten",
+          "lie"
+        ],
+        "perceived": {
+          "money": 2,
+          "risk": 1,
+          "relation": {
+            "caller": -2
+          }
+        }
+      },
+      {
+        "id": "investigate",
+        "label": "Quietly dig deeper before deciding anything",
+        "tags": [
+          "risk"
+        ],
+        "careers": [
+          "journalist"
+        ],
+        "perceived": {
+          "career": 1
+        }
+      },
+      {
+        "id": "keep_quiet",
+        "label": "Keep it to yourself — for now",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "reported",
+      "when": {
+        "chose": "report",
+        "role": "listener"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:caller",
+          "delta": {
+            "career": -12,
+            "reputation": -10
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:listener",
+          "delta": {
+            "reputation": 4
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:caller",
+          "key": "exposed_mistake"
+        },
+        {
+          "type": "relation",
+          "from": "role:caller",
+          "to": "role:listener",
+          "affinity": -25,
+          "trust": -20
+        }
+      ],
+      "text": {
+        "caller": "Management knows about the money. Someone must have heard you.",
+        "listener": "You report what you heard. {caller} is called in the next morning."
+      }
+    },
+    {
+      "id": "blackmailed",
+      "when": {
+        "chose": "blackmail",
+        "role": "listener"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:caller",
+          "delta": {
+            "money": -10,
+            "mental": -8
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:listener",
+          "delta": {
+            "money": 10
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:listener",
+          "key": "knows_secret",
+          "about": "role:caller"
+        },
+        {
+          "type": "relation",
+          "from": "role:caller",
+          "to": "role:listener",
+          "setType": "enemy",
+          "affinity": -40,
+          "trust": -30
+        }
+      ],
+      "text": {
+        "caller": "{listener} knows. Paying them is cheaper than losing your job — for now.",
+        "listener": "{caller} pays. You know you have made an enemy."
+      }
+    },
+    {
+      "id": "confronted",
+      "when": {
+        "chose": "confront",
+        "role": "listener"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:caller",
+          "delta": {
+            "mental": -5
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:listener",
+          "key": "knows_secret",
+          "about": "role:caller"
+        },
+        {
+          "type": "relation",
+          "from": "role:caller",
+          "to": "role:listener",
+          "trust": 10
+        }
+      ],
+      "text": {
+        "caller": "{listener} heard everything, but gives you a chance to put the money back.",
+        "listener": "{caller} goes pale, then promises to return the money."
+      }
+    },
+    {
+      "id": "investigated",
+      "when": {
+        "chose": "investigate",
+        "role": "listener"
+      },
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:listener",
+          "key": "knows_secret",
+          "about": "role:caller"
+        },
+        {
+          "type": "attr",
+          "target": "role:listener",
+          "delta": {
+            "career": 3
+          }
+        }
+      ],
+      "text": {
+        "caller": "Just an ordinary day.",
+        "listener": "A few records later you have the whole story. It could be a scoop — or leverage."
+      }
+    },
+    {
+      "id": "kept_quiet",
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:listener",
+          "key": "knows_secret",
+          "about": "role:caller"
+        }
+      ],
+      "text": {
+        "caller": "Just an ordinary day.",
+        "listener": "You say nothing. But you will not forget it."
+      }
+    }
+  ]
+}

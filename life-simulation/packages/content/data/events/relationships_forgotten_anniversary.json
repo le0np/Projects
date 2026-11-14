@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "id": "relationships_forgotten_anniversary",
+  "version": 1,
+  "title": "The Anniversary",
+  "category": "relationships",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "home"
+    ],
+    "of": "role:waiting"
+  },
+  "roles": {
+    "forgetter": {
+      "count": 1
+    },
+    "waiting": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:forgetter",
+          "typeIn": [
+            "partner"
+          ]
+        }
+      }
+    }
+  },
+  "text": {
+    "public": "It is {forgetter} and {waiting}'s anniversary.",
+    "private": {
+      "forgetter": "You forgot. It is 7 pm.",
+      "waiting": "You booked a table at your favourite restaurant months ago."
+    }
+  },
+  "choices": {
+    "forgetter": [
+      {
+        "id": "admit",
+        "label": "Admit you forgot and apologise",
+        "tags": [
+          "truth",
+          "apologize"
+        ],
+        "perceived": {
+          "relation": {
+            "waiting": 0
+          }
+        }
+      },
+      {
+        "id": "fake",
+        "label": "Rush out for flowers and pretend you planned it",
+        "tags": [
+          "lie"
+        ],
+        "perceived": {
+          "relation": {
+            "waiting": 1
+          },
+          "risk": 1,
+          "money": -1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -4
+            }
+          }
+        ]
+      },
+      {
+        "id": "act_normal",
+        "label": "Act as if it is a normal Tuesday",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "waiting": -2
+          }
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "caught",
+      "when": {
+        "chose": "fake",
+        "role": "forgetter"
+      },
+      "chance": 0.4,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:waiting",
+          "to": "role:forgetter",
+          "affinity": -15,
+          "trust": -15
+        }
+      ],
+      "text": {
+        "forgetter": "The price tag from the petrol station is still on the flowers.",
+        "waiting": "Petrol station flowers. They forgot — and lied about it."
+      }
+    },
+    {
+      "id": "saved",
+      "when": {
+        "chose": "fake",
+        "role": "forgetter"
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:waiting",
+          "to": "role:forgetter",
+          "affinity": 10
+        }
+      ],
+      "text": {
+        "forgetter": "Flowers and a smile. Saved.",
+        "waiting": "Flowers! They remembered."
+      }
+    },
+    {
+      "id": "forgiven",
+      "when": {
+        "chose": "admit",
+        "role": "forgetter"
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:waiting",
+          "to": "role:forgetter",
+          "affinity": -5,
+          "trust": 5
+        }
+      ],
+      "text": {
+        "forgetter": "Disappointment, then a laugh. You still go to dinner.",
+        "waiting": "They forgot, but at least they were honest."
+      }
+    },
+    {
+      "id": "hurt",
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:waiting",
+          "to": "role:forgetter",
+          "affinity": -20
+        },
+        {
+          "type": "attr",
+          "target": "role:waiting",
+          "delta": {
+            "mental": -6
+          }
+        }
+      ],
+      "text": {
+        "forgetter": "Your partner goes to bed early without saying why.",
+        "waiting": "You eat at the restaurant alone."
+      }
+    }
+  ]
+}
