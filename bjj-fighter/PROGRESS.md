@@ -154,22 +154,35 @@ Vlasnik: uz vještinu tehnike u jednadžbu ulaze snaga i kondicija. Odabrano: no
 - **Protivnici:** snaga i kondicija prema pojasu (bijeli oko 2, plavi 3,5, ljubičasti 5, smeđi 6, crni 7, ±1). Na turniru +0,5 po rundi, a sparing partneri imaju 1–5. Na semaforu piše snaga i kondicija oba borca, a na početku loga redak „Snaga: … · kondicija: …”.
 - Simulacija (bijeli pojas, sve bijele tehnike na razini 4, turnir, 300 borbi): snaga i kondicija 1 → 60 % pobjeda, umoran u 74 % borbi; 3/3 → 78 %; 6/6 → 96 %; snaga 3 i kondicija 8 → 85 %; snaga 8 i kondicija 3 → 97 %.
 
+### Grafika, korak 1: HUD borbe i efekti
+Vlasnik: dok traje testiranje, raditi na grafici. Stil treba biti blizak MMA Manageru (stilizirani 3D likovi, efekti, veliki portreti), ali ne kopija. Likovi ne smiju biti zdepasti, a krajnji proizvod je 3D, ne 2D lutke ni stickmani. Za 3D likove odabrana je opcija A: besplatan CC0 humanoidni model, koji se kasnije može zamijeniti AI-generiranim ili naručenim.
+- Redoslijed grafičkog kruga: 1) HUD i efekti, 2) 3D borba (Three.js, CC0 model, poze iz igre na kosturu), 3) klub kao izometrijska dvorana. Novi 2D borci su preskočeni jer bi se bacili kad stigne 3D.
+- Dizajn: `docs/superpowers/specs/2026-11-14-hud-effects-design.md`, plan: `docs/superpowers/plans/2026-11-14-hud-effects.md`.
+- **Semafor** je TV traka unutar slike borbe: portret (silueta dok ne stigne 3D model) u okviru boje pojasa, ime i pojas, sitni red „greška · snaga · kondicija”, veliki bodovi s A/K, energija u 10 segmenata (zelena, žuta ispod 50, crvena ispod 20) i nagnuta jantarna pločica s rundom, fazom turnira i satom. Na mobitelu je sažet (manji portret, bez sitnog reda i oznake pozicije).
+- **Kartice kritičnog trenutka:** obojeno zaglavlje po klasi (napad, obrana, sweep) s brojem tipke, naziv tehnike, razina u 10 točkica i opis. Kartica koju predlaže osjećaj ima zlatni okvir koji pulsira i oznaku „💭 osjećaj”. Traka odbrojavanja pocrveni u zadnjoj trećini.
+- **Efekti:** uspješna tehnika daje nagnuti natpis koji preleti preko slike (TAKEDOWN!, SWEEP!, PROLAZ!, MOUNT!, LEĐA!, a završni submission TAP!), jantarni za tebe, crveni za protivnika. Kad se bodovi stvarno upišu, uz semafor iskoči zelena značka „+N”. Rušenje i sweep kratko protresu sliku. Uz smanjeno kretanje u sustavu efekti se samo pojave i nestanu, bez tresenja.
+- Logika efekata je u `src/ui/fightFx.js` (čiste funkcije, 9 novih testova), pa HUD i efekti ostaju isti kad stigne 3D renderer.
+- Font Barlow Condensed (SIL OFL) spremljen u `assets/fonts/`, bez vanjskog učitavanja. `server.js` poslužuje `.woff2` i `.txt`.
+- Engine i 2D renderer nisu mijenjani.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 14. studenog 2026.:
+Provedeno 14. studenog 2026. (nakon HUD-a i efekata):
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` | 83/83 prolazi |
-| `npm start` | server odgovara 200 na `/` i module |
-| Playwright e2e (1100 px) | sparing (dvorana) i natjecanje (arena) odigrani do rezultata uz „sve otključano”, 0 grešaka u konzoli |
-| Playwright mobitel (iPhone 13) | nema horizontalnog scrolla ni u karijeri ni u borbi |
-| Simulacija 300 sparinga | ~6 odluka po borbi (~11 % razmjena), ~60 % pobjeda uz 75 % točnih odabira |
+| `npm test` | 92/92 prolazi |
+| `npm start` | server odgovara, font se učitava (`document.fonts.check` za Barlow Condensed 800 italic) |
+| Playwright e2e (1100 px) | sparing (dvorana) i natjecanje (arena) odigrani do rezultata uz „sve otključano”, svi natpisi iz dopuštenog popisa, značke s točnim bodovima, sloj efekata prazan nakon borbe, 0 grešaka u konzoli |
+| Playwright smanjeno kretanje | natpisi i značke se pojavljuju, slika se nikad ne trese |
+| Playwright mobitel (iPhone 13) | nema horizontalnog scrolla u borbi ni s dugim imenom protivnika (ime završava s „…”), kartice jedna ispod druge, tipka 1 bira opciju |
 
 ## Poznata ograničenja
 
 - Postoji samo testna verzija (testni panel, ubrzanje, ⚡ +1).
-- Animacije su po vrsti tehnike (rušenje, sweep, prolaz, bijeg, submission), ne za svaku tehniku posebno. Poze su ključne poze po poziciji, 2D.
+- Animacije su po vrsti tehnike (rušenje, sweep, prolaz, bijeg, submission), ne za svaku tehniku posebno. Poze su ključne poze po poziciji, 2D. Borci su još stare 2D figure dok ne stigne 3D.
+- Portreti na semaforu su siluete dok ne stigne 3D model.
+- Prasak na mjestu kontakta nije napravljen jer ovisi o položaju boraca, dolazi s 3D-om.
 - Reload usred borbe prekida borbu bez upisa rezultata.
 - Dok je uključeno „sve otključano”, igrač zna sve poteze pa se nude svi potezi iz pozicije.
 - Igrač bez poteza bori se samo na instinkt (male šanse); nema upozorenja prije sparinga.
@@ -178,16 +191,18 @@ Provedeno 14. studenog 2026.:
 
 ## Sljedeći koraci
 
+1. Grafika, korak 2: 3D borba (Three.js, besplatan CC0 humanoidni model, poze iz igre na kosturu, prijelazi, kamera), prvo kratki dizajn s vlasnikom. Zatim korak 3: klub kao izometrijska dvorana.
 1. Korak 2 drugog kruga: granice razina po pojasu, novi seminari (instruktori 1–5 ★, 40–90 %, trening pauziran). Korak 3: stil borbe, energija, ozljede.
 2. Vlasnik isproba testnu verziju i javi što treba podesiti (učestalost kritičnih trenutaka, težina, trajanja).
 2. Prava verzija: početak bez otključanih poteza, bez testnog panela.
-3. Animacije pojedinih tehnika i više poza (npr. zasebne poze za trokut, armbar, leg lockove).
+3. Animacije pojedinih tehnika i više poza (npr. zasebne poze za trokut, armbar, leg lockove), u 3D-u.
 4. Klub koji se nadograđuje, karijera, ozljede.
 
 ## Handoff za novi chat
 
 1. Kod je u `bjj-fighter/` na grani `dev`. Prvo pročitaj `README.md`, `docs/KONCEPT.md` i ovaj dokument.
 2. Pokretanje: `npm start` (http://localhost:8080). Testovi: `npm test`. Poze: `tools/poses.html`.
+   - Smjer grafike: krajnji proizvod je 3D, blizak stilu MMA Managera, s atletskim (ne zdepastim) proporcijama. HUD i efekti su HTML preko canvasa (`src/ui/fightFx.js` + `style.css`) i ne ovise o rendereru.
 3. Granice arhitekture:
    - `src/engine` i `src/data` ne smiju dirati DOM.
    - Renderer samo čita stanje borbe.

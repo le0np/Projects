@@ -13,7 +13,7 @@ Treba samo [Node.js](https://nodejs.org) 20 ili noviji, bez instalacije paketa.
 ```bash
 cd bjj-fighter
 npm start          # server na http://localhost:8080
-npm test           # testovi pravila igre (60 testova)
+npm test           # testovi pravila igre i efekata (92 testa)
 ```
 
 Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `index.html` ne radi jer preglednici ne učitavaju JavaScript module s `file://`. Radi i bilo koji statički server, npr. `python3 -m http.server 8080` u ovoj mapi.
@@ -46,6 +46,7 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
   - Ako ne odabereš ništa, to se računa kao pasivnost.
   - Kriva opcija može odmah otvoriti novu opasnost, npr. ruka unutra u gardu otvara triangle.
 - **Tijek borbe:** borci igraju potez za potez. Oba borca ponekad pogriješe, rjeđe što je pojas i razina poteza viša, a protivnikova greška tebi daje priliku. Šansa greške oba borca (u postocima) piše uz ime na semaforu i na početku loga, a log za svaki potez navodi razine, šansu i točne bodove (npr. „Scissor sweep +2, mount +4 = +6”). Tempo je natjecateljski (ADCC, CJI, UFC BJJ): razmjene idu svakih 4–7 s i većina se odigra sama prema razinama, a odluka se traži u oko 10 % razmjena (5–7 po borbi, najviše jedna u 20 s). Brz odgovor (u prvoj trećini roka) daje +10 % šanse. Kartice su obojene u tri boje: napad, sweep i obrana. Kod prilike se nude samo tehnike koje znaš za svoju poziciju i ulogu, svaka s tvojom razinom. Od plavog pojasa kartica nudi i „osjećaj” (savjet koju karticu odabrati), koji je pouzdaniji što je pojas viši i razina tehnika veća.
+- **Semafor i efekti:** semafor je TV traka preko slike borbe: portret u okviru boje pojasa, ime, bodovi, A/K, energija u 10 segmenata i sat na jantarnoj pločici. Uspješna tehnika dobiva natpis preko slike (TAKEDOWN!, SWEEP!, PROLAZ!, MOUNT!, LEĐA!, a submission TAP!), upisani bodovi značku „+2” uz semafor, a rušenje i sweep kratko protresu sliku. Uz smanjeno kretanje u sustavu efekti se samo pojave i nestanu.
 - **Log borbe:** cijeli log je ispod borbe. „Kopiraj log” kopira ga s rezultatom, pa ga možeš zalijepiti u chat.
 - **Test:**
   - ubrzanje vremena 1–10x (vrijedi za treninge, aktivnosti i sat borbe)
@@ -62,6 +63,7 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 - **Pozicije su graf.** Svaka akcija (`src/data/positions.js`) ima potez, poziciju, ulogu (gore, dolje ili stojeći), ciljnu poziciju, obrane i tipične greške. Kritični trenutak slaže do 5 opcija samo od poteza koje igrač zna: točnih obrana ili napada i drugih poteza iz iste pozicije (ili susjedne), nikad stojećih tehnika na podu. Ako igrač ne zna obranu, odluke nema i napad se riješi po razinama.
 - **Uspjeh ovisi o razinama.** Šansa raste s razinom tvog poteza u odnosu na najbolju obranu protivnika, uz slučajnost. Konstante su podešene simulacijom: igrač koji bira dobro ima prosječno oko 10 kritičnih trenutaka po borbi i pobjeđuje u oko 60 % borbi protiv bijelog pojasa.
 - **Sva slučajnost u engineu ide kroz zadani `rng`**, pa su testovi deterministični.
+- **HUD i efekti su HTML preko canvasa**, ne dio crteža. Logiku „što prikazati” (`src/ui/fightFx.js`) čini skup čistih funkcija nad stanjem borbe, pa HUD i efekti ostaju isti kad 2D prikaz zamijeni 3D. Font je Barlow Condensed (SIL OFL, `assets/fonts/OFL.txt`) spremljen u projekt, pa igra radi bez interneta.
 - **Borci** su 2D figure sa zglobovima u rashguardu i šorcu: igrač je plavi, protivnik crveni. Svaka pozicija ima ključnu pozu, a između njih se glatko prelazi. Kamera prati borce, a slow-motion i zatamnjenje rubova označavaju kritični trenutak.
 
 ## Struktura
@@ -78,8 +80,10 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 │   ├── engine/opponent.js    # AI protivnici i igrač kao borac
 │   ├── engine/rng.js         # seedable slučajnost
 │   ├── render/               # Canvas 2D prikaz (poze, renderer)
-│   └── ui/app.js             # ekrani, petlja igre, localStorage
+│   ├── ui/app.js             # ekrani, petlja igre, localStorage
+│   └── ui/fightFx.js         # natpisi, značke s bodovima i energija za HUD (bez DOM-a)
 ├── tests/                    # node --test
+├── assets/fonts/             # Barlow Condensed (woff2) i licenca OFL
 ├── tools/poses.html          # pregled svih poza
 └── docs/                     # koncept, dizajn i plan izrade
 ```
@@ -87,6 +91,6 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 ## Moguća poboljšanja
 
 - Prava (ne-testna) verzija bez testnog panela, s početnim stanjem bez naučenih poteza.
-- Kondicija i umor kao dio borbe.
-- Više poza i animacija za same tehnike (sada se tehnika vidi kao udar prema protivniku i prijelaz u novu poziciju).
+- 3D borba u stilu bliskom MMA Manageru: Three.js i besplatan humanoidni model, poze iz igre na kosturu modela. Portreti na semaforu tada postaju prikaz glave modela.
+- Klub kao izometrijska dvorana sa stanicama za trening i odbrojavanjem iznad njih.
 - Klub koji se nadograđuje, karijera s rang-listom, MMA, PvP i računi.
