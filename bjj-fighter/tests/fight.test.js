@@ -141,7 +141,7 @@ test('stepFight does not advance while a critical moment is open', () => {
 
 function simulate(seed, chooser) {
   const rng = mulberry32(seed);
-  const s = createState({ test: true, now: 0 });
+  const s = { ...createState({ test: true, now: 0 }), unlockAll: true };
   const f = createFight(fighterFromState(s), makeOpponent('white', rng), rng);
   let guard = 0;
   while (!f.ended && guard++ < 10_000) {
@@ -245,7 +245,7 @@ test('a decent player (right 75 % of the time) wins about half of balanced sparr
   const N = 300;
   for (let i = 0; i < N; i++) {
     const rng = mulberry32(5000 + i);
-    const s = createState({ test: true, now: 0 });
+    const s = { ...createState({ test: true, now: 0 }), unlockAll: true };
     const f = createFight(fighterFromState(s), makeOpponent('white', rng, 1), rng);
     while (!f.ended) {
       if (f.critical) {
@@ -273,7 +273,7 @@ test('initiative strictly alternates between the fighters', () => {
   let longest = 0;
   for (let seed = 77; seed < 87; seed++) {
     const rng = mulberry32(seed);
-    const s = createState({ test: true, now: 0 });
+    const s = { ...createState({ test: true, now: 0 }), unlockAll: true };
     const f = createFight(fighterFromState(s), makeOpponent('white', rng, 1), rng);
     while (!f.ended && f.elapsed < 300) {
       if (f.critical) chooseOption(f, f.critical.options.findIndex((o) => o.correct));
@@ -305,7 +305,7 @@ test('the player decides in about 10 % of exchanges', () => {
   let crit = 0, ex = 0;
   for (let i = 0; i < 150; i++) {
     const rng = mulberry32(300 + i);
-    const s = createState({ test: true, now: 0 });
+    const s = { ...createState({ test: true, now: 0 }), unlockAll: true };
     const f = createFight(fighterFromState(s), makeOpponent('white', rng, 1), rng);
     while (!f.ended) {
       if (f.critical) chooseOption(f, f.critical.options.findIndex((o) => o.correct));
@@ -373,7 +373,7 @@ test('when the opponent overpowers a good choice the log gives levels and the ch
   let seen = false;
   for (let seed = 1; seed < 400 && !seen; seed++) {
     const rng = mulberry32(seed);
-    const s = createState({ test: true, now: 0 });
+    const s = { ...createState({ test: true, now: 0 }), unlockAll: true };
     const f = createFight(fighterFromState(s), makeOpponent('white', rng, 4), rng);
     while (!f.ended && !seen) {
       if (f.critical) chooseOption(f, f.critical.options.findIndex((o) => o.correct));

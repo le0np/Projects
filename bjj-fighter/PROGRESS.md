@@ -110,13 +110,18 @@ Vlasnik: previše odluka, borci se previše negiraju; cilj je stil turnira poput
 - Kriva obrana od submissiona završi borbu u 60 % slučajeva. Inače se izvučeš, a protivnik dobije prednost. Bez odgovora i dalje tapkaš.
 - Simulacija 300 sparinga (igrač bira točno u 75 % slučajeva): ~6 odluka i ~58 razmjena po borbi, ~22 uspjela poteza prema ~17 obranjenih, ~35 bodova ukupno, ~69 % borbi završi submissionom, prosječno 5,4 min, ~60 % pobjeda.
 
+### Nova igra počinje od nule
+- Vlasnik ne želi da igrač od početka ima razinu 1 u svim vještinama. Nova igra sad počinje bez ijednog poteza, a „sve otključano” u testnom panelu je isključeno (može se uključiti).
+- Stari save zadržava svoju postavku. Za početak od nule treba „Nova igra” ili isključiti „sve otključano”.
+- Bez naučenih poteza igrač u borbi ne napada i nema odluka (nema obrana), pa prvo treba trenirati.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 14. studenog 2026.:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` | 70/70 prolazi |
+| `npm test` | 71/71 prolazi |
 | `npm start` | server odgovara 200 na `/` i module |
 | Playwright e2e (1100 px) | trening uz 10x završi, sparing odigran do rezultata, reload zadrži napredak, 0 grešaka u konzoli |
 | Playwright mobitel (iPhone 13) | nema horizontalnog scrolla ni u karijeri ni u borbi |
@@ -124,10 +129,11 @@ Provedeno 14. studenog 2026.:
 
 ## Poznata ograničenja
 
-- Postoji samo testna verzija: nova igra uvijek počinje s uključenim „sve otključano”.
+- Postoji samo testna verzija (testni panel, ubrzanje, ⚡ +1).
 - Tehnike nemaju vlastite animacije. Vidi se udar prema protivniku i prijelaz u novu pozu.
 - Reload usred borbe prekida borbu bez upisa rezultata.
-- Dok je uključeno „sve otključano”, igrač zna sve poteze pa se nude svi potezi iz pozicije. Filtriranje po naučenim potezima vidi se tek kad se to isključi.
+- Dok je uključeno „sve otključano”, igrač zna sve poteze pa se nude svi potezi iz pozicije.
+- Igrač bez poteza nema što raditi u borbi; nema upozorenja prije sparinga.
 - Nema kondicije ni umora.
 - Nakon ponovnog otvaranja igre nema obavijesti o treningu ili aktivnosti koji su završili dok je igra bila zatvorena.
 

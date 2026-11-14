@@ -24,7 +24,7 @@ export function createState({ test = true, now = 0 } = {}) {
     gameTime: 0,
     lastReal: now,
     speed: 1,
-    unlockAll: test,
+    unlockAll: false, // new game starts from zero; the test panel can still unlock everything
     belt: 'white',
     money: test ? 500 : 100,
     levels: {},

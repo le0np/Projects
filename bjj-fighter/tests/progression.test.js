@@ -84,8 +84,15 @@ test('seminar costs money and is refused without it', () => {
   assert.equal(startActivity(s, 'seminar', fixed(0.5)).ok, false);
 });
 
+test('a new game starts from zero: no move is known', () => {
+  const s = createState({ test: true, now: 0 });
+  assert.equal(s.unlockAll, false);
+  assert.equal(effectiveLevel(s, 'shrimp'), 0);
+});
+
 test('unlockAll makes every move at least level 1', () => {
   const s = createState({ test: true, now: 0 });
+  s.unlockAll = true;
   assert.equal(effectiveLevel(s, 'heelHook'), 1);
   s.unlockAll = false;
   assert.equal(effectiveLevel(s, 'heelHook'), 0);
@@ -194,10 +201,10 @@ import { instantLevelUp } from '../src/engine/progression.js';
 test('test mode can level a move up instantly, one level per click, up to the max', () => {
   const s = createState({ test: true, now: 0 });
   assert.equal(instantLevelUp(s, 'armbar').ok, true);
-  assert.equal(effectiveLevel(s, 'armbar'), 2);
+  assert.equal(effectiveLevel(s, 'armbar'), 1); // a new game starts from zero
   startTraining(s, 'armbar');
   instantLevelUp(s, 'armbar');
-  assert.equal(effectiveLevel(s, 'armbar'), 3);
+  assert.equal(effectiveLevel(s, 'armbar'), 2);
   assert.equal(s.training, null);
   s.levels.armbar = MAX_LEVEL;
   assert.equal(instantLevelUp(s, 'armbar').ok, false);
