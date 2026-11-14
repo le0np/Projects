@@ -45,13 +45,16 @@ Prijedlozi:
 
 Mogućnost za razmotriti: vještine lika utječu na to koje se opcije nude i koliko su uspješne.
 
-Učenje svakog sljedećeg poteza traje 2x duže od prethodnog, kao u drugim igrama tog tipa. Prvi potez traje nekoliko sekundi, a kasniji minute, sate, pa i dane. U testnoj verziji isti sustav radi s vremenom ubrzanim do 10x.
+Svaki potez ima razine. Novi potez se nauči brzo (razina 1 traje od nekoliko sekundi do minute), a svaka sljedeća razina istog poteza traje 2x duže od prethodne, kao u drugim igrama tog tipa. Usavršavanje poteza tako s vremenom traje minute, sate, pa i dane.
+
+Što je pojas viši, borac brže uči nove poteze (iskusniji borac lakše pohvata novu tehniku). Prijedlog za trajanje učenja u odnosu na bijeli pojas: bijeli 100 %, plavi 85 %, ljubičasti 70 %, smeđi 55 %, crni 40 %. U testnoj verziji isti sustav radi s vremenom ubrzanim do 10x.
 
 Potezi su ograničeni po pojasevima, ali ne strogo:
 - redovnim treningom u klubu igrač uči poteze svog pojasa
 - novi potez, pa i onaj višeg pojasa, može se naučiti i izvan redovnog treninga:
   - na **seminaru**: 90 % šanse
   - na **open matu**: 10–20 % šanse
+  - na **natjecanju**: 5 % šanse (npr. pokupi ga od protivnika)
 
 ### Prva vještina: osnove BJJ-a (bijeli pojas, no-gi)
 Osnovni potezi koje bi bijeli pojas morao znati. Popis je sastavljen prema uobičajenim programima za bijeli pojas, prilagođen za no-gi.
