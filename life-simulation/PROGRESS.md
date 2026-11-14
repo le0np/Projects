@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-**MVP je funkcionalno kompletan (M1–M7).** Vlasnik je 14.–15. studenog 2026. dopunio koncept (`docs/spec/08_CONCEPT_V2.md`): grad gledan odozgo, vrijeme i starenje od 18 godina, kaos (gradski preokreti, smicalice, efekt leptira), humorističan ton i likovi u stilu B3. Rad se nastavlja po planu za koncept v2 (`docs/IMPLEMENTATION_PLAN.md` §9). **M8 (vrijeme i dob) i M9 (grad i rutina) su gotovi**; sljedeći je M10 (kaos).
+**MVP je funkcionalno kompletan (M1–M7).** Vlasnik je 14.–15. studenog 2026. dopunio koncept (`docs/spec/08_CONCEPT_V2.md`): grad gledan odozgo, vrijeme i starenje od 18 godina, kaos (gradski preokreti, smicalice, efekt leptira), humorističan ton i likovi u stilu B3. Rad se nastavlja po planu za koncept v2 (`docs/IMPLEMENTATION_PLAN.md` §9). **M8 (vrijeme i dob), M9 (grad i rutina) i M10 (kaos) su gotovi**; sljedeći je M11 (prikaz: diorama i likovi B3).
 
 ### Kriteriji prihvaćanja (00_OVERVIEW)
 
@@ -285,6 +285,27 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
   - po sesiji oko 500 rutinskih kretanja i 110 dolazaka na evente;
   - 21 event po liku, 48 % vremena u eventima, smrtnost 4,3 %.
 
+### M10: kaos
+
+- **Gradski preokreti** (`upheavals.json`: oluja, gripa, pad burze, festival, nestanak struje):
+  - 2–3 po sesiji, raspoređeni po sredini sesije, svaki najviše jednom;
+  - svakog lika pogode s vlastitom vjerojatnošću i porukom („A flying wheelie bin hits you.”);
+  - dok traju, vrijedi činjenica grada koja otključava 5 novih eventa (×4 težina): stablo na autu, „pacijent nula”, panična prodaja (s nastavkom), natjecanje u pitama, svijeće u mraku.
+- **Smicalice** (`mischief.json`: trač, anonimna pritužba šefu, ispuhane gume, ukradena ideja):
+  - svaki lik ima 2 po sesiji; čovjek ih šalje kroz `game:mischief`, a bot nakon eventa prema osobnosti (sebičnost i agresivnost više, empatija manje, zamjerka bira metu);
+  - posljedica je skriveni nastavak u kojem je krivac `aware: false`; žrtva ga može otkriti (`found_out`), a Life Recap otkriva sve (`secrets`).
+- **Efekt leptira:** vjerojatnost nastavaka ×1.25 (`chaos.followUpBoost`).
+- **Popravljena curenja tajne** (otkrivena pisanjem testova):
+  - žrtva je vidjela krivca na popisu sudionika;
+  - zajednički event ih je pretvarao u „poznanike”, što je vidljivo na popisu ljudi;
+  - krivac je bio „zauzet” dok je trajao event žrtve, pa je 851 smicalica propala.
+  Uloge `aware: false` sada nisu vidljive drugima, ne mijenjaju odnose i ne zaključavaju lika.
+- **Web (privremeno, do M11):** traka s aktivnim preokretom, kartica „Pranks” (meta i smicalica, broj preostalih), „Secrets revealed” u recapu.
+- **Testovi:** preokret (učinak na sve, trajanje, otključani eventi), smicalice (naboji, neispravna meta, tajnost, recap), botovi koriste smicalice i replay ih ponavlja, 2–3 preokreta po sesiji.
+- **Batch (200 sesija):**
+  - 2,5 preokreta i 5,1 smicalica po sesiji; 93 % smicalica stigne do žrtve; zahvaćeno je 53 % likova;
+  - smrtnost 4,9 %; izvještaj je u `docs/reports/m10.report.md`.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:
@@ -292,8 +313,8 @@ Provedeno 13. studenog 2026.:
 | Provjera | Rezultat |
 | --- | --- |
 | `npm run typecheck` | prolazi |
-| `npm run validate` | 57 eventa, 0 grešaka, 0 upozorenja; hash sadržaja `8554608747611859` |
-| `npm test` | 94/94 testova prolazi |
+| `npm run validate` | 67 eventa, 0 grešaka, 0 upozorenja |
+| `npm test` | 97/97 testova prolazi |
 | `TEST_DATABASE_URL=… npx vitest run packages/server` | 4/4 na PostgreSQL 16 (privremeni lokalni klaster); u bazi: sesija `completed`, 40 odluka igrača i 1 default (dok je igrač bio odspojen), 4 rezultata |
 | `npm run server` + curl | health, registracija, validacijske poruke, karijere rade |
 | `npm run typecheck` (uključuje web) i `npm run web:build` | čisto; bundle 88 kB gzip |
@@ -315,7 +336,7 @@ Provedeno 13. studenog 2026.:
 
 ## Sljedeći koraci
 
-1. ~~M8 Vrijeme i dob~~ → ~~M9 Grad i rutina~~ (gotovo) → M10 Kaos → M11 Prikaz → M12 Sadržaj → M13 Balans (plan §9).
+1. ~~M8 Vrijeme i dob~~ → ~~M9 Grad i rutina~~ → ~~M10 Kaos~~ (gotovo) → M10 Kaos → M11 Prikaz → M12 Sadržaj → M13 Balans (plan §9).
 
 ## Handoff za novi chat
 

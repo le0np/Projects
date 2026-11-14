@@ -16,10 +16,12 @@ import {
   calendarAt,
   manhattan,
   type LocationKind,
+  type MischiefState,
   type PlaceKind,
   type TilePos,
   TimerQueue,
   evaluate,
+  walkCondition,
   type Attribute,
   type CharacterView,
   type Choice,
@@ -54,6 +56,7 @@ export type PublicEntry =
   | { kind: "event"; t: number; instanceId: string; title: string; text: string; participants: ParticipantInfo[] }
   | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
   | { kind: "season"; t: number; year: number; season: string }
+  | { kind: "upheaval"; t: number; id: string; title: string; text: string; active: boolean }
   | { kind: "move"; t: number; characterId: string; from: TilePos; path: TilePos[]; departAt: number; msPerTile: number; to: string | null };
 
 export type SubmitResult = { ok: true } | { ok: false; reason: string };
@@ -111,7 +114,14 @@ interface PendingFollowUp {
   condition?: Condition;
 }
 
-type Timer = { kind: "deadline"; instanceId: string } | { kind: "offer"; instanceId: string } | { kind: "tick" } | { kind: "end" } | { kind: "season" };
+type Timer =
+  | { kind: "deadline"; instanceId: string }
+  | { kind: "offer"; instanceId: string }
+  | { kind: "tick" }
+  | { kind: "end" }
+  | { kind: "season" }
+  | { kind: "upheaval"; id: string }
+  | { kind: "upheaval_end"; id: string };
 
 const LEISURE: PlaceKind[] = ["cafe", "park", "shop", "bar", "home"];
 
@@ -171,6 +181,11 @@ export class Session {
   private readonly rngSelect: Rng;
   private readonly rngOutcome: Rng;
   private readonly rngTiming: Rng;
+  private readonly rngChaos: Rng;
+  private readonly mischiefUsed = new Map<string, number>();
+  private mischiefSeq = 0;
+  /** Session facts each event refers to (events tied to an upheaval get a boost while it lasts). */
+  private readonly eventSessionFacts = new Map<string, Set<string>>();
 
   constructor(content: ContentBundle, config: SessionConfig, participants: readonly ParticipantSpec[], clock: Clock) {
     if (participants.length < 1 || participants.length > 8) {
@@ -185,10 +200,18 @@ export class Session {
     this.rngSelect = root.fork("selection");
     this.rngOutcome = root.fork("outcomes");
     this.rngTiming = root.fork("timing");
+    this.rngChaos = root.fork("chaos");
     this.directorEvents = [...content.events.values()]
       .filter((e) => e.trigger === "director" && e.weight > 0)
       .sort((a, b) => a.id.localeCompare(b.id));
     this.createCharacters(participants);
+    for (const ev of content.events.values()) {
+      const facts = new Set<string>();
+      const scan = (c?: Condition) => c && walkCondition(c, (n) => "sessionFact" in n && (n.present ?? true) && facts.add(n.sessionFact));
+      scan(ev.conditions);
+      for (const role of Object.values(ev.roles)) scan(role.conditions);
+      if (facts.size) this.eventSessionFacts.set(ev.id, facts);
+    }
   }
 
   get state(): SessionState {
@@ -229,6 +252,7 @@ export class Session {
     this._state = "active";
     this.timers.push(this.config.durationSeconds * MS, { kind: "end" });
     this.scheduleNextSeason();
+    this.scheduleUpheavals();
     for (const id of this.order) this.scheduleTick(this.char(id).availableAt);
   }
 
@@ -250,6 +274,12 @@ export class Session {
           break;
         case "offer":
           this.offer(timer.instanceId);
+          break;
+        case "upheaval":
+          this.onUpheaval(timer.id);
+          break;
+        case "upheaval_end":
+          this.endUpheaval(timer.id);
           break;
         case "end":
           this.accepting = false;
@@ -290,6 +320,111 @@ export class Session {
       }
     }
     this.scheduleNextSeason();
+  }
+
+  // ================================================================== chaos (concept v2 §5)
+
+  /** 2–3 town-wide upheavals, spread over the middle of the session, never the same twice. */
+  private scheduleUpheavals(): void {
+    const pool = [...this.content.upheavals.values()].filter((u) => u.weight > 0);
+    if (pool.length === 0) return;
+    const [lo, hi] = this.config.chaos.upheavals;
+    const count = Math.min(pool.length, this.rngChaos.int(lo, hi));
+    const span = this.config.durationSeconds * MS;
+    for (let k = 0; k < count; k++) {
+      const pick = this.rngChaos.weighted(pool, (u) => u.weight)!;
+      pool.splice(pool.indexOf(pick), 1);
+      const at = span * (0.12 + ((k + this.rngChaos.range(0.15, 0.85)) / count) * 0.76);
+      this.timers.push(Math.round(at), { kind: "upheaval", id: pick.id });
+    }
+  }
+
+  private onUpheaval(id: string): void {
+    const u = this.content.upheavals.get(id);
+    if (!u) return;
+    this.sessionFacts.add(u.sessionFact);
+    const changes: Change[] = [];
+    for (const cid of this.order) {
+      const c = this.char(cid);
+      if (c.status !== "active") continue;
+      const personal: string[] = [];
+      const selfChanges: Partial<Record<Attribute, number>> = {};
+      for (const e of u.effects) {
+        if (!this.rngChaos.chance(e.chance)) continue;
+        personal.push(e.text);
+        for (const [a, d] of Object.entries(e.delta) as [Attribute, number][]) {
+          const before = c.attrs[a];
+          c.attrs[a] = clampAttr(before + d);
+          const delta = c.attrs[a] - before;
+          if (delta === 0) continue;
+          selfChanges[a] = (selfChanges[a] ?? 0) + delta;
+          changes.push({ kind: "attr", characterId: cid, attribute: a, delta, value: c.attrs[a] });
+        }
+      }
+      this.onNotice(cid, { kind: "upheaval", t: this.now(), id: u.id, title: u.title, text: u.text, personal, selfChanges });
+    }
+    this.log.push({ t: this.now(), type: "upheaval_started", upheavalId: u.id, title: u.title, changes });
+    this.onPublic({ kind: "upheaval", t: this.now(), id: u.id, title: u.title, text: u.text, active: true });
+    for (const cid of this.order) {
+      const c = this.char(cid);
+      if (c.status === "active" && c.busyWith === null && c.attrs.health <= 0) {
+        const death: Change[] = [];
+        this.setStatus(c, "dead", `Did not survive ${u.title.toLowerCase()}`, death);
+        this.log.push({ t: this.now(), type: "character_ended", characterId: cid, status: "dead", cause: c.cause ?? "" });
+        this.onNotice(cid, { kind: "ended", t: this.now(), status: "dead", cause: c.cause ?? "" });
+      }
+    }
+    this.timers.push(this.now() + u.durationSeconds * MS, { kind: "upheaval_end", id: u.id });
+    this.fillIdle();
+  }
+
+  private endUpheaval(id: string): void {
+    const u = this.content.upheavals.get(id);
+    if (!u) return;
+    this.sessionFacts.delete(u.sessionFact);
+    this.log.push({ t: this.now(), type: "upheaval_ended", upheavalId: id });
+    this.onPublic({ kind: "upheaval", t: this.now(), id, title: u.title, text: u.text, active: false });
+  }
+
+  /** What a character can still play. */
+  mischiefState(characterId: string): MischiefState {
+    return {
+      charges: Math.max(0, this.config.chaos.mischiefCharges - (this.mischiefUsed.get(characterId) ?? 0)),
+      options: [...this.content.mischief.values()].map((m) => ({ id: m.id, label: m.label, description: m.description })),
+    };
+  }
+
+  /**
+   * A player-initiated prank (concept v2 §5). The victim gets the consequence later as a hidden
+   * follow-up event in which the culprit is an unaware role; only the Life Recap reveals who did it.
+   */
+  mischief(characterId: string, mischiefId: string, targetId: string): SubmitResult {
+    const reject = (reason: string): SubmitResult => {
+      this.log.push({ t: this.now(), type: "mischief_rejected", characterId, targetId, mischiefId, reason });
+      return { ok: false, reason };
+    };
+    if (this._state !== "active" || !this.accepting) return reject("session is not active");
+    const def = this.content.mischief.get(mischiefId);
+    if (!def) return reject("unknown prank");
+    const actor = this.characters.get(characterId);
+    const target = this.characters.get(targetId);
+    if (!actor || actor.status !== "active") return reject("you cannot play pranks now");
+    if (!target || target.status !== "active" || targetId === characterId) return reject("invalid target");
+    if (this.mischiefState(characterId).charges <= 0) return reject("no pranks left");
+    if (def.targetCondition && !evaluate(def.targetCondition, makeContext(this.world, {}, targetId))) return reject("this prank does not work on them");
+    this.mischiefUsed.set(characterId, (this.mischiefUsed.get(characterId) ?? 0) + 1);
+    const [d0, d1] = def.delaySeconds === undefined ? [5, 15] : typeof def.delaySeconds === "number" ? [def.delaySeconds, def.delaySeconds] : def.delaySeconds;
+    const dueAt = this.now() + Math.round(this.rngChaos.range(d0, d1 + 1e-9) * MS);
+    const source = `M${++this.mischiefSeq}`;
+    const preset = { victim: [targetId], culprit: [characterId] };
+    this.pending.push({ seq: ++this.pendingSeq, dueAt, eventId: def.event, preset, sourceInstanceId: source, sourceBindings: preset });
+    this.pending.sort((a, b) => a.dueAt - b.dueAt || a.seq - b.seq);
+    this.scheduleTick(dueAt);
+    (this.tracking.get(characterId) as CharacterTracking).played.push({ mischief: def.label, on: targetId });
+    (this.tracking.get(targetId) as CharacterTracking).suffered.push({ mischief: def.label, by: characterId });
+    this.stats.followUpsScheduled++;
+    this.log.push({ t: this.now(), type: "mischief", characterId, targetId, mischiefId, dueAt });
+    return { ok: true };
   }
 
   private age(id: string): number {
@@ -405,7 +540,7 @@ export class Session {
       ch.pos = [...home.door] as TilePos;
       ch.work = (this.content.map.nearest(career.workplace, ch.pos) ?? home).id;
       this.order.push(id);
-      this.tracking.set(id, { keyMoments: [], influence: new Map(), startTypes: new Map() });
+      this.tracking.set(id, { keyMoments: [], influence: new Map(), startTypes: new Map(), played: [], suffered: [] });
     });
   }
 
@@ -730,6 +865,8 @@ export class Session {
     const others = Object.values(bindings).flat().filter((id) => id !== anchor);
     if (others.some((o) => this.relations.get(anchor, o).type !== "stranger")) w *= 1.5;
     if (ev.category === "critical") w *= 0.4 + this.progress();
+    const tied = this.eventSessionFacts.get(ev.id);
+    if (tied && [...tied].some((f) => this.sessionFacts.has(f))) w *= 4;
     const here = this.placeAt(this.posOf(anchor));
     const herePlace = here ? this.content.map.place(here) : undefined;
     if (herePlace && ev.location?.at.includes(herePlace.kind)) w *= 1.5;
@@ -745,8 +882,11 @@ export class Session {
       }
       const ev = this.content.events.get(p.eventId) as EventDefinition;
       const mapped = Object.values(p.preset).flat();
+      const mustBeFree = Object.entries(p.preset)
+        .filter(([role]) => !this.isUnaware(ev, role))
+        .flatMap(([, ids]) => ids);
       const drop = (reason: string) => this.dropFollowUp(p, reason);
-      if (mapped.some((id) => this.char(id).status !== "active")) {
+      if (mustBeFree.some((id) => this.char(id).status !== "active")) {
         drop("participant_unavailable");
         continue;
       }
@@ -759,7 +899,7 @@ export class Session {
         continue;
       }
       const expired = this.now() - p.dueAt > this.config.followUpMaxWaitSeconds * MS;
-      if (mapped.some((id) => !this.isFree(id))) {
+      if (mustBeFree.some((id) => !this.isFree(id))) {
         if (expired) drop("participants_busy");
         else keep.push(p);
         continue;
@@ -822,10 +962,12 @@ export class Session {
 
     for (const c of participants) {
       const ch = this.char(c);
+      inst.offered.set(c, this.visibleChoices(inst, c));
+      // Someone who does not know they are involved keeps living their life (and may be in another event).
+      if (this.isUnaware(ev, roleOf.get(c))) continue;
       ch.busyWith = id;
       ch.stayUntil = 0;
       ch.seen.set(ev.id, (ch.seen.get(ev.id) ?? 0) + 1);
-      inst.offered.set(c, this.visibleChoices(inst, c));
     }
     inst.startedAt = this.gather(inst);
     inst.deadlineAt = inst.startedAt + duration;
@@ -895,11 +1037,21 @@ export class Session {
       });
   }
 
+  private isUnaware(ev: EventDefinition, role: string | undefined): boolean {
+    return role !== undefined && ev.roles[role]?.aware === false;
+  }
+
+  /** Participants `viewer` may know about: unaware ones are hidden from everyone but themselves. */
+  private visibleParticipants(inst: Instance, viewer: string): string[] {
+    return inst.participants.filter((c) => c === viewer || inst.ev.roles[inst.roleOf.get(c) as string]?.aware !== false);
+  }
+
   /** The projection a character is allowed to see (BOT_SYSTEM §8). */
   private view(characterId: string, inst: Instance): CharacterView {
     const self = this.char(characterId);
     const role = inst.roleOf.get(characterId) as string;
-    const participants: ParticipantInfo[] = inst.participants.map((c) => ({
+    // People who do not know they are involved (the prankster, the person gossiped about) stay invisible.
+    const participants: ParticipantInfo[] = this.visibleParticipants(inst, characterId).map((c) => ({
       characterId: c,
       name: this.char(c).name,
       role: inst.roleOf.get(c) as string,
@@ -941,6 +1093,7 @@ export class Session {
           return { id, name: o.name, career: o.career.id, status: o.status, relation: { type: r.type, affinity: r.affinity, trust: r.trust } };
         }),
       offer,
+      mischief: this.mischiefState(characterId),
     };
   }
 
@@ -969,7 +1122,9 @@ export class Session {
     for (const effect of outcome.effects ?? []) this.applyEffect(effect, inst, changes);
 
     // 3. Taking part together makes people acquainted.
-    for (const a of inst.participants) for (const b of inst.participants) if (a < b) this.relations.meet(a, b, inst.id);
+    // (People who do not know they were involved do not "meet": that would give the secret away.)
+    const met = inst.participants.filter((c) => !this.isUnaware(ev, inst.roleOf.get(c)));
+    for (const a of met) for (const b of met) if (a < b) this.relations.meet(a, b, inst.id);
 
     // 4. Health or mental condition at zero ends the story.
     for (const id of inst.participants) {
@@ -981,7 +1136,7 @@ export class Session {
 
     // 5. Follow-ups.
     for (const fu of outcome.followUps ?? []) {
-      if (fu.chance !== undefined && !this.rngOutcome.chance(fu.chance)) continue;
+      if (fu.chance !== undefined && !this.rngOutcome.chance(Math.min(1, fu.chance * this.config.chaos.followUpBoost))) continue;
       const [d0, d1] = fu.delaySeconds === undefined ? [0, 0] : typeof fu.delaySeconds === "number" ? [fu.delaySeconds, fu.delaySeconds] : fu.delaySeconds;
       const dueAt = this.now() + Math.round(this.rngTiming.range(d0, d1 + 1e-9) * MS);
       const preset: Record<string, string[]> = {};
@@ -1040,6 +1195,21 @@ export class Session {
         }
       }
 
+      if (this.isUnaware(ev, role)) {
+        this.onNotice(id, {
+          kind: "resolved",
+          t: this.now(),
+          instanceId: inst.id,
+          eventId: ev.id,
+          title: this.interpolate(ev.title, inst.bindings),
+          role,
+          participants: this.visibleParticipants(inst, id).map((p) => ({ characterId: p, name: this.char(p).name, role: inst.roleOf.get(p) as string })),
+          revealed: [],
+          ...(text ? { outcomeText: text } : {}),
+          selfChanges,
+        });
+        continue;
+      }
       c.busyWith = null;
       c.lastCategory = ev.category;
       c.eventsCompleted++;
@@ -1056,7 +1226,7 @@ export class Session {
         eventId: ev.id,
         title: this.interpolate(ev.title, inst.bindings),
         role,
-        participants: inst.participants.map((p) => ({ characterId: p, name: this.char(p).name, role: inst.roleOf.get(p) as string })),
+        participants: this.visibleParticipants(inst, id).map((p) => ({ characterId: p, name: this.char(p).name, role: inst.roleOf.get(p) as string })),
         ...(choice && decision
           ? { myChoice: { id: choice.id, label: this.interpolate(choice.label, inst.bindings), tags: [...choice.tags], defaulted: decision.defaulted } }
           : {}),

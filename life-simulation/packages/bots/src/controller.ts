@@ -21,6 +21,8 @@ export class BotController implements Controller {
   /** Every decision with its utility breakdown, for debugging and balance analysis. */
   readonly traces: DecisionTrace[] = [];
   private selfId: string | undefined;
+  private lastView: CharacterView | undefined;
+  private playedSinceView = 0;
 
   constructor(
     readonly profile: BotProfile,
@@ -30,6 +32,8 @@ export class BotController implements Controller {
 
   decide(view: CharacterView): Decision | null {
     this.selfId = view.self.id;
+    this.lastView = view;
+    this.playedSinceView = 0;
     this.bindMotiveTargets(view);
     const scores = scoreChoices(view, this.profile, this.memory, this.weights);
     const temperature = this.weights.temperatureBase + this.weights.temperatureSpan * (this.profile.personality.impulsiveness / 100);
@@ -48,6 +52,25 @@ export class BotController implements Controller {
       temperature,
     });
     return { choiceId: chosen.choiceId, thinkMs: this.thinkTime(view) };
+  }
+
+  /**
+   * Pranks (concept v2 §5): selfish and aggressive bots play more, empathetic ones less;
+   * a grudge makes it much more likely and picks the target.
+   */
+  planMischief(): { mischiefId: string; targetId: string } | null {
+    const v = this.lastView;
+    if (!v || v.mischief.charges - this.playedSinceView <= 0 || v.mischief.options.length === 0) return null;
+    const p = this.profile.personality;
+    const alive = v.others.filter((o) => o.status === "active");
+    if (alive.length === 0) return null;
+    const grudge = this.memory.grudges(10).find((id) => alive.some((o) => o.id === id));
+    const rival = alive.find((o) => o.relation.type === "rival" || o.relation.type === "enemy")?.id;
+    const chance = 0.015 + (p.selfishness / 100) * 0.04 + (p.aggression / 100) * 0.03 - (p.empathy / 100) * 0.03 + (grudge || rival ? 0.08 : 0);
+    if (!this.rng.chance(chance)) return null;
+    const targetId = grudge ?? rival ?? this.rng.pick(alive).id;
+    this.playedSinceView++;
+    return { mischiefId: this.rng.pick(v.mischief.options).id, targetId };
   }
 
   /** Free time follows personality: impulsive and aggressive → bar, cautious → home/park, social → café. */

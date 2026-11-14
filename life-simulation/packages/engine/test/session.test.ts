@@ -66,7 +66,9 @@ describe("bot-only sessions with random decisions (invariants over many seeds)",
       const ended = new Set<string>();
       for (const e of r.log) {
         if (e.type === "event_started") {
-          for (const id of Object.values(e.bindings).flat()) {
+          const def = shipped.events.get(e.eventId)!;
+          const aware = Object.entries(e.bindings).filter(([role]) => def.roles[role]?.aware !== false);
+          for (const id of aware.flatMap(([, ids]) => ids)) {
             expect(busy.has(id), `${id} double-booked at ${e.t}`).toBe(false);
             expect(ended.has(id), `${id} got an event after their story ended`).toBe(false);
             busy.set(id, e.instanceId);
@@ -612,5 +614,95 @@ describe("positionAt", () => {
     expect(positionAt(c, 1260)).toEqual([1, 0]);
     expect(positionAt(c, 1600)).toEqual([2, 0]);
     expect(positionAt(c, 5000)).toEqual([3, 0]);
+  });
+});
+
+describe("chaos (concept v2 §5)", () => {
+  const stormy = event({
+    id: "stormy",
+    conditions: { sessionFact: "storm" },
+    roles: { me: { count: 1 } },
+    cooldown: { maxPerSession: 1 },
+    choices: { me: [{ id: "a", label: "A", tags: ["help"] }, { id: "b", label: "B", tags: ["ignore"], default: true }] },
+    outcomes: [{ id: "done" }],
+  });
+  const storm = { id: "storm", title: "The Storm", text: "Wind!", sessionFact: "storm", durationSeconds: 20, effects: [{ chance: 1, delta: { money: -5 }, text: "Roof gone." }] };
+  const prankEvent = event({
+    id: "prank_hit",
+    trigger: "followup_only",
+    hidden: true,
+    roles: { victim: { count: 1 }, culprit: { count: 1, aware: false } },
+    choices: { victim: [{ id: "shrug", label: "Shrug", tags: ["ignore"], default: true }, { id: "dig", label: "Dig", tags: ["truth"] }] },
+    outcomes: [{ id: "hit", effects: [{ type: "attr", target: "role:victim", delta: { mental: -5 } }], text: { victim: "Someone got you.", culprit: "It worked." } }],
+  });
+  const prank = { id: "tyres", label: "Let tyres down", description: "Petty.", event: "prank_hit", delaySeconds: 3 };
+
+  it("upheavals hit everyone, set a town fact for a while and unlock their events", () => {
+    const seen: Notice[] = [];
+    const r = runSession({
+      content: buildContent([stormy], { upheavals: [storm] }),
+      config: { seed: "storm", durationSeconds: 120, chaos: { upheavals: [1, 1], mischiefCharges: 2, followUpBoost: 1 } },
+      participants: ["mechanic", "teacher"].map((career) => ({ career, isBot: true, controller: scripted(pickDefault) })),
+      onNotice: (_id, n) => seen.push(n),
+    });
+    const started = entries(r, "upheaval_started");
+    const ended = entries(r, "upheaval_ended");
+    expect(started).toHaveLength(1);
+    expect(ended[0]!.t - started[0]!.t).toBe(20_000);
+    expect(started[0]!.changes.filter((c) => c.kind === "attr" && c.attribute === "money")).toHaveLength(2);
+    expect(seen.filter((n) => n.kind === "upheaval")).toHaveLength(2);
+    const stormEvents = entries(r, "event_started").filter((e) => e.eventId === "stormy");
+    expect(stormEvents.length).toBeGreaterThan(0);
+    for (const e of stormEvents) expect(e.t >= started[0]!.t && e.t <= ended[0]!.t).toBe(true);
+  });
+
+  it("pranks are secret: the victim suffers later without the culprit's name, the recap reveals it", () => {
+    const content = buildContent([prankEvent, stormy], { mischief: [prank] });
+    const clock = new VirtualClock();
+    const session = new Session(content, resolveConfig({ seed: "prank", initialDelaySeconds: [0, 0] }), [
+      { career: "civilian", isBot: true },
+      { career: "teacher", isBot: true },
+      { career: "doctor", isBot: true },
+    ], clock);
+    const notices: { id: string; n: Notice }[] = [];
+    session.onNotice = (id, n) => notices.push({ id, n });
+    session.start();
+    expect(session.mischief("c1", "tyres", "c1")).toEqual({ ok: false, reason: "invalid target" });
+    expect(session.mischief("c1", "nope", "c2")).toEqual({ ok: false, reason: "unknown prank" });
+    expect(session.mischief("c1", "tyres", "c2")).toEqual({ ok: true });
+    expect(session.mischief("c1", "tyres", "c3")).toEqual({ ok: true });
+    expect(session.mischief("c1", "tyres", "c2")).toEqual({ ok: false, reason: "no pranks left" });
+    expect(session.mischiefState("c1").charges).toBe(0);
+    // run until the prank lands and resolves
+    for (let i = 0; i < 400 && session.state === "active"; i++) {
+      clock.advanceTo(session.nextWakeAt() ?? clock.now() + 1000);
+      session.processTimers();
+    }
+    const victimOffer = notices.find((x) => x.id === "c2" && x.n.kind === "event")?.n as Extract<Notice, { kind: "event" }> | undefined;
+    expect(victimOffer?.view.offer.eventId).toBe("prank_hit");
+    // Nothing the victim sees names or lists the culprit.
+    expect(victimOffer!.view.offer.participants.map((p) => p.characterId)).toEqual(["c2"]);
+    const victimResolved = notices.find((x) => x.id === "c2" && x.n.kind === "resolved")!.n as Extract<Notice, { kind: "resolved" }>;
+    expect(victimResolved.participants.map((p) => p.characterId)).toEqual(["c2"]);
+    const culpritName = (session.log[0] as LogEntryOf<"session_started">).characters.find((c) => c.id === "c1")!.name;
+    const later = notices.filter((x) => x.id === "c2" && x.n.kind === "event").map((x) => (x.n as Extract<Notice, { kind: "event" }>).view);
+    for (const v of later) expect(v.others.find((o) => o.id === "c1")!.relation.type).toBe("stranger");
+    expect(JSON.stringify(victimOffer!.view.offer)).not.toContain(culpritName);
+    expect(notices.some((x) => x.id === "c1" && x.n.kind === "event")).toBe(false); // the culprit is not told
+    session.cancel();
+    const recaps = session.result().recaps;
+    expect(recaps.find((c) => c.characterId === "c1")!.secrets.played).toHaveLength(2);
+    expect(recaps.find((c) => c.characterId === "c2")!.secrets.suffered[0]).toMatchObject({ mischief: "Let tyres down" });
+  });
+
+  it("bots play pranks in bot-only sessions and replays include them", async () => {
+    const { runBatch, replaySession } = await import("@lifesim/sim");
+    const shippedRuns = runBatch({ content: shipped, seed: "pranks", sessions: 10, players: [6, 8] });
+    const pranks = shippedRuns.flatMap((r) => r.result.log.filter((e) => e.type === "mischief"));
+    expect(pranks.length).toBeGreaterThan(3);
+    const ups = shippedRuns.map((r) => r.result.log.filter((e) => e.type === "upheaval_started").length);
+    for (const n of ups) expect(n === 2 || n === 3).toBe(true);
+    const withPrank = shippedRuns.find((r) => r.result.log.some((e) => e.type === "mischief"))!;
+    expect(replaySession(shipped, withPrank.result.log).identical).toBe(true);
   });
 });

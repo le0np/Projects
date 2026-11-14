@@ -11,6 +11,10 @@ import {
   EventSchema,
   FactsFileSchema,
   MapSchema,
+  MischiefFileSchema,
+  UpheavalsFileSchema,
+  type Mischief,
+  type Upheaval,
   PLACE_KINDS,
   TownMap,
   SESSION_LIMITS,
@@ -47,6 +51,8 @@ export interface RawContent {
   careers: RawFile;
   facts: RawFile;
   map: RawFile;
+  upheavals: RawFile;
+  mischief: RawFile;
   events: RawFile[];
 }
 
@@ -55,6 +61,8 @@ export interface ContentBundle {
   facts: ReadonlyMap<string, Fact>;
   events: ReadonlyMap<string, EventDefinition>;
   map: TownMap;
+  upheavals: ReadonlyMap<string, Upheaval>;
+  mischief: ReadonlyMap<string, Mischief>;
   /** sha256 of the raw content; recorded in session logs for replay. */
   hash: string;
 }
@@ -118,6 +126,8 @@ interface Registry {
   factsSet: Set<string>;
   /** All follow-up edges: source event id → target event ids (reachability). */
   followUpEdges: Map<string, Set<string>>;
+  /** Events started by players (mischief), reachable without a director event. */
+  followUpTargets: Set<string>;
   /** Careers that have at least one special choice. */
   careersWithSpecials: Set<string>;
   /** Follow-up edges that fire immediately and unconditionally (loop detection). */
@@ -146,6 +156,7 @@ export function validateContent(raw: RawContent): ValidationResult {
     factsChecked: new Set(),
     factsSet: new Set(),
     followUpEdges: new Map(),
+    followUpTargets: new Set(),
     careersWithSpecials: new Set(),
     immediateEdges: new Map(),
     placeKinds: null,
@@ -233,6 +244,43 @@ export function validateContent(raw: RawContent): ValidationResult {
 
   for (const { file, event } of parsed) checkEvent(event, reg, reporter(file));
 
+  // --- chaos: upheavals and mischief
+  const upheavals = new Map<string, Upheaval>();
+  const upParsed = UpheavalsFileSchema.safeParse(raw.upheavals.data);
+  if (!upParsed.success) formatZodIssues(upParsed.error, raw.upheavals.file, issues);
+  else {
+    const report = reporter(raw.upheavals.file);
+    upParsed.data.upheavals.forEach((u, i) => {
+      if (upheavals.has(u.id)) report("error", `upheavals[${i}].id`, `duplicate upheaval id "${u.id}"`);
+      upheavals.set(u.id, u);
+      reg.factsSet.add(u.sessionFact);
+      checkFactUse(u.sessionFact, false, `upheavals[${i}].sessionFact`, reg, report, true);
+    });
+  }
+  const mischief = new Map<string, Mischief>();
+  const misParsed = MischiefFileSchema.safeParse(raw.mischief.data);
+  if (!misParsed.success) formatZodIssues(misParsed.error, raw.mischief.file, issues);
+  else {
+    const report = reporter(raw.mischief.file);
+    misParsed.data.mischief.forEach((m, i) => {
+      const path = `mischief[${i}]`;
+      if (mischief.has(m.id)) report("error", `${path}.id`, `duplicate mischief id "${m.id}"`);
+      mischief.set(m.id, m);
+      if (m.targetCondition) checkCondition(m.targetCondition, `${path}.targetCondition`, reg, report, { roles: new Set(), allowSelf: true, allowSession: false });
+      const ev = reg.events.get(m.event);
+      if (!ev) return report("error", `${path}.event`, `unknown event "${m.event}"`);
+      reg.followUpTargets.add(m.event);
+      const victim = ev.roles.victim;
+      const culprit = ev.roles.culprit;
+      if (!victim || !culprit) report("error", `${path}.event`, `"${m.event}" needs roles "victim" and "culprit"`);
+      else {
+        if (victim.count !== 1 || culprit.count !== 1) report("error", `${path}.event`, "victim and culprit roles must have count 1");
+        if (culprit.aware !== false) report("error", `${path}.event`, "the culprit role must be unaware (the prank stays secret)");
+      }
+      if (ev.trigger !== "followup_only" || !ev.hidden) report("error", `${path}.event`, `"${m.event}" must be followup_only and hidden`);
+    });
+  }
+
   // --- global checks
   const report = reporter("content");
   const reachable = reachableFromDirector(reg);
@@ -261,14 +309,14 @@ export function validateContent(raw: RawContent): ValidationResult {
     issues,
     bundle: hasErrors
       ? null
-      : { careers: reg.careers, facts: reg.facts, events: reg.events, map: town as TownMap, hash: hashContent(raw) },
+      : { careers: reg.careers, facts: reg.facts, events: reg.events, map: town as TownMap, upheavals, mischief, hash: hashContent(raw) },
   };
 }
 
 export function hashContent(raw: RawContent): string {
   const events = [...raw.events].sort((a, b) => a.file.localeCompare(b.file)).map((e) => e.data);
   return createHash("sha256")
-    .update(JSON.stringify([raw.careers.data, raw.facts.data, raw.map.data, events]))
+    .update(JSON.stringify([raw.careers.data, raw.facts.data, raw.map.data, raw.upheavals.data, raw.mischief.data, events]))
     .digest("hex")
     .slice(0, 16);
 }
@@ -562,6 +610,7 @@ function checkFollowUp(source: EventDefinition, fu: FollowUp, path: string, reg:
 function reachableFromDirector(reg: Registry): Set<string> {
   const seen = new Set<string>();
   const queue = [...reg.events.values()].filter((e) => e.trigger === "director").map((e) => e.id);
+  queue.push(...reg.followUpTargets);
   while (queue.length > 0) {
     const id = queue.pop() as string;
     if (seen.has(id)) continue;

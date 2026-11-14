@@ -45,6 +45,11 @@ export type LogEntry = { t: number } & (
   | { type: "character_ended"; characterId: string; status: Status; cause: string }
   /** Someone starts walking somewhere (routine, to an event, sent by an effect or a status). */
   | { type: "moved"; characterId: string; from: TilePos; to: TilePos; placeId: string | null; arriveAt: number; reason: "routine" | "event" | "effect" | "status" }
+  | { type: "upheaval_started"; upheavalId: string; title: string; changes: Change[] }
+  | { type: "upheaval_ended"; upheavalId: string }
+  /** A secret prank (revealed only in the Life Recap). */
+  | { type: "mischief"; characterId: string; targetId: string; mischiefId: string; dueAt: number }
+  | { type: "mischief_rejected"; characterId: string; targetId: string; mischiefId: string; reason: string }
   /** Free-time choice (a decision too: replays need it). */
   | { type: "leisure"; characterId: string; kind: string }
   /** A new season (and at spring, a new year: everyone is a year older). */
@@ -115,6 +120,18 @@ export function formatLog(log: readonly LogEntry[]): string {
         if (e.reason === "effect" || e.reason === "status") lines.push(`${at} - ${name(e.characterId)} goes to ${e.placeId ?? "the street"}`);
         break;
       case "leisure":
+        break;
+      case "upheaval_started":
+        lines.push(`${at} - TOWN: ${e.title}`);
+        for (const c of e.changes) if (c.kind === "attr") lines.push(`        ${name(c.characterId)} ${c.attribute} ${c.delta > 0 ? "+" : ""}${c.delta} → ${c.value}`);
+        break;
+      case "upheaval_ended":
+        lines.push(`${at} - TOWN: ${e.upheavalId} is over`);
+        break;
+      case "mischief":
+        lines.push(`${at} - (secret) ${name(e.characterId)} plays "${e.mischiefId}" on ${name(e.targetId)}`);
+        break;
+      case "mischief_rejected":
         break;
       case "season_changed":
         lines.push(`${at} - ${e.season === "spring" ? `Year ${e.year + 1} begins. ` : ""}It is ${e.season}.`);

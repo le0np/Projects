@@ -9,6 +9,7 @@ function view(choices: { id: string; tags: ChoiceTag[]; perceived?: Perceived }[
     now: 10_000,
     sessionProgress: 0.2,
     calendar: { year: 1, season: "summer" },
+    mischief: { charges: 2, options: [{ id: "rumour", label: "Start a rumour", description: "" }] },
     self: { id: "me", name: "Me", career: "civilian", age: 19, attrs: { health: 70, mental: 70, money: 50, reputation: 50, career: 50 }, status: "active", facts: [] },
     others: [
       { id: "you", name: "You", career: "teacher", status: "active", relation: { type: "acquaintance", affinity: opts.otherAffinity ?? 0, trust: 50 } },

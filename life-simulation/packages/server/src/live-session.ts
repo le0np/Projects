@@ -110,6 +110,15 @@ export class LiveSession {
     return result;
   }
 
+  /** A human plays a prank. */
+  mischief(userId: string, mischiefId: string, targetId: string): SubmitResult {
+    const seat = this.humans.get(userId);
+    if (!seat) return { ok: false, reason: "not a player in this session" };
+    const result = this.session.mischief(seat.characterId, mischiefId, targetId);
+    this.afterChange();
+    return result;
+  }
+
   /** Everything a (re)connecting player needs to render the game. */
   snapshot(userId: string) {
     const seat = this.humans.get(userId);
@@ -122,6 +131,7 @@ export class LiveSession {
       timeScale: this.timeScale,
       roster: this.roster.map(({ userId: _u, ...r }) => r),
       positions: this.session.positions(),
+      mischief: seat ? this.session.mischiefState(seat.characterId) : null,
       homes: this.roster.map((r) => ({ characterId: r.characterId, home: this.homeOf(r.characterId) })),
       pending: seat?.pending ?? null,
       history: seat?.history ?? [],
@@ -157,6 +167,18 @@ export class LiveSession {
           this.botTimers.add(handle);
         }
       }
+      if (notice.kind === "resolved") {
+        const plan = bot.planMischief();
+        if (plan) {
+          const handle = setTimeout(() => {
+            this.botTimers.delete(handle);
+            if (this.finished) return;
+            this.session.mischief(characterId, plan.mischiefId, plan.targetId);
+            this.afterChange();
+          }, 1200 / this.timeScale);
+          this.botTimers.add(handle);
+        }
+      }
       return;
     }
     const seat = [...this.humans.values()].find((h) => h.characterId === characterId);
@@ -166,6 +188,7 @@ export class LiveSession {
     seat.history.push(notice);
     if (seat.history.length > HISTORY_LIMIT) seat.history.shift();
     this.events.toUser(seat.userId, notice.kind === "session_completed" ? "game:ended" : "game:notice", notice);
+    if (notice.kind === "resolved") this.events.toUser(seat.userId, "game:mischief_state", this.session.mischiefState(characterId));
   }
 
   /** Persist new decisions, re-arm the engine timer, detect the end. */

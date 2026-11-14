@@ -19,7 +19,13 @@ export interface RunOptions {
   participants: ParticipantSetup[];
   /** Optional hook for every notice (e.g. tests asserting on what characters see). */
   onNotice?: (characterId: string, notice: Notice) => void;
+  /** Pranks to play at fixed times (replays). */
+  mischief?: { t: number; characterId: string; mischiefId: string; targetId: string }[];
 }
+
+type Submission =
+  | { kind: "decision"; characterId: string; instanceId: string; choiceId: string }
+  | { kind: "mischief"; characterId: string; mischiefId: string; targetId: string };
 
 export function runSession(opts: RunOptions): SessionResult {
   const clock = new VirtualClock();
@@ -27,7 +33,8 @@ export function runSession(opts: RunOptions): SessionResult {
   const ids = opts.participants.map((p, i) => p.id ?? `c${i + 1}`);
   const session = new Session(opts.content, config, opts.participants.map((p, i) => ({ ...p, id: ids[i] })), clock);
   const controllers = new Map(opts.participants.map((p, i) => [ids[i] as string, p.controller]));
-  const submissions = new TimerQueue<{ characterId: string; instanceId: string; choiceId: string }>();
+  const submissions = new TimerQueue<Submission>();
+  for (const m of opts.mischief ?? []) submissions.push(m.t, { kind: "mischief", characterId: m.characterId, mischiefId: m.mischiefId, targetId: m.targetId });
 
   session.onNotice = (characterId, notice) => {
     opts.onNotice?.(characterId, notice);
@@ -38,11 +45,16 @@ export function runSession(opts: RunOptions): SessionResult {
       const d = ctrl.decide(notice.view);
       if (d) {
         submissions.push(clock.now() + Math.max(0, Math.round(d.thinkMs)), {
+          kind: "decision",
           characterId,
           instanceId: notice.view.offer.instanceId,
           choiceId: d.choiceId,
         });
       }
+    }
+    if (notice.kind === "resolved" && ctrl.planMischief) {
+      const plan = ctrl.planMischief();
+      if (plan) submissions.push(clock.now() + 1200, { kind: "mischief", characterId, ...plan });
     }
   };
 
@@ -57,7 +69,10 @@ export function runSession(opts: RunOptions): SessionResult {
     if (t === undefined) throw new Error("session stalled: nothing scheduled");
     clock.advanceTo(t);
     // Decisions arriving exactly at a deadline still count.
-    for (const s of submissions.popDue(t)) session.submitDecision(s.characterId, s.instanceId, s.choiceId);
+    for (const s of submissions.popDue(t)) {
+      if (s.kind === "decision") session.submitDecision(s.characterId, s.instanceId, s.choiceId);
+      else session.mischief(s.characterId, s.mischiefId, s.targetId);
+    }
     session.processTimers();
   }
   return session.result();

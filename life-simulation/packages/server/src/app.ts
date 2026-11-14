@@ -35,6 +35,7 @@ const LoginBody = z.object({ login: z.string().min(1), password: z.string().min(
 const AvatarBody = z.object({ avatar: z.string().regex(/^[a-z0-9_-]{1,32}$/) });
 const FindMatch = z.object({ career: z.string() });
 const Decide = z.object({ sessionId: z.string(), instanceId: z.string(), choiceId: z.string() });
+const Prank = z.object({ sessionId: z.string(), mischiefId: z.string(), targetId: z.string() });
 
 type Ack = (response: unknown) => void;
 
@@ -254,6 +255,15 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
       const s = liveByUser.get(user.id);
       if (!s || s.id !== body.data.sessionId) return ack({ ok: false, reason: "not in this session" });
       ack(s.submit(user.id, body.data.instanceId, body.data.choiceId));
+    });
+
+    socket.on("game:mischief", (raw: unknown, ack: Ack = () => {}) => {
+      const body = Prank.safeParse(raw);
+      if (!body.success) return ack({ ok: false, reason: "invalid request" });
+      const s = liveByUser.get(user.id);
+      if (!s || s.id !== body.data.sessionId) return ack({ ok: false, reason: "not in this session" });
+      const result = s.mischief(user.id, body.data.mischiefId, body.data.targetId);
+      ack({ ...result, state: s.session.mischiefState(s.humans.get(user.id)!.characterId) });
     });
 
     socket.on("game:resume", (_raw: unknown, ack: Ack = () => {}) => {

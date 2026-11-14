@@ -10,6 +10,7 @@ export type PublicEntry =
   | { kind: "event"; t: number; instanceId: string; title: string; text: string; participants: ParticipantInfo[] }
   | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
   | { kind: "season"; t: number; year: number; season: string }
+  | { kind: "upheaval"; t: number; id: string; title: string; text: string; active: boolean }
   | { kind: "move"; t: number; characterId: string; from: [number, number]; path: [number, number][]; departAt: number; msPerTile: number; to: string | null };
 
 export interface Snapshot {
@@ -23,6 +24,7 @@ export interface Snapshot {
   pending: OfferView | null;
   history: Notice[];
   feed: PublicEntry[];
+  mischief?: { charges: number; options: { id: string; label: string; description: string }[] } | null;
 }
 
 export interface MatchStatus {
@@ -53,6 +55,9 @@ export interface GameState {
   others: OtherCharacterView[];
   ended?: { status: string; cause: string };
   recap?: LifeRecap;
+  /** Upheaval currently hitting the town, if any. */
+  upheaval?: { title: string; text: string } | null;
+  mischief?: Snapshot["mischief"];
 }
 
 export interface Lobby {
@@ -81,6 +86,11 @@ function stateFromSnapshot(s: Snapshot): GameState {
     ageBase: lastView ? { age: lastView.self.age, year: lastView.calendar.year } : undefined,
     others: lastView?.others ?? [],
     ...(ended ? { ended: { status: ended.status, cause: ended.cause } } : {}),
+    upheaval: (() => {
+      const last = [...s.feed].reverse().find((f): f is Extract<PublicEntry, { kind: "upheaval" }> => f.kind === "upheaval");
+      return last?.active ? { title: last.title, text: last.text } : null;
+    })(),
+    mischief: s.mischief,
   };
 }
 
@@ -116,7 +126,12 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
       setGame((g) =>
         !g || entry.kind === "move" // positions are for the map view (M11), not the news feed
           ? g
-          : { ...g, feed: [...g.feed, entry].slice(-50), ...(entry.kind === "season" ? { calendar: { year: entry.year, season: entry.season } } : {}) },
+          : {
+              ...g,
+              feed: [...g.feed, entry].slice(-50),
+              ...(entry.kind === "season" ? { calendar: { year: entry.year, season: entry.season } } : {}),
+              ...(entry.kind === "upheaval" ? { upheaval: entry.active ? { title: entry.title, text: entry.text } : null } : {}),
+            },
       ),
     );
 
@@ -152,9 +167,15 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
           };
         }
         if (n.kind === "ended") return { ...g, history, ended: { status: n.status, cause: n.cause }, pending: null };
+        if (n.kind === "upheaval") {
+          const attrs = g.attrs ? { ...g.attrs } : undefined;
+          if (attrs) for (const [a, d] of Object.entries(n.selfChanges) as [Attribute, number][]) attrs[a] = Math.max(0, Math.min(100, attrs[a] + d));
+          return { ...g, history, attrs };
+        }
         return { ...g, history };
       }),
     );
+    socket.on("game:mischief_state", (m: GameState["mischief"]) => setGame((g) => (g ? { ...g, mischief: m } : g)));
     socket.on("game:ended", (n: Notice) => {
       if (n.kind === "session_completed") setGame((g) => (g ? { ...g, pending: null, recap: n.recap } : g));
     });
@@ -193,7 +214,19 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
     [game?.pending, game?.sessionId],
   );
 
+  const playMischief = useCallback(
+    async (mischiefId: string, targetId: string) => {
+      if (!game) return;
+      const res = (await socketRef.current?.emitWithAck("game:mischief", { sessionId: game.sessionId, mischiefId, targetId })) as
+        | { ok: boolean; reason?: string; state?: GameState["mischief"] }
+        | undefined;
+      if (res?.state) setGame((g) => (g ? { ...g, mischief: res.state } : g));
+      return res;
+    },
+    [game],
+  );
+
   const leaveGame = useCallback(() => setGame(null), []);
 
-  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, leaveGame };
+  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, playMischief, leaveGame };
 }

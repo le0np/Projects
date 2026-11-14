@@ -90,6 +90,23 @@ export function RecapView({ recap }: { recap: LifeRecap }) {
           </ul>
         </>
       )}
+      {recap.secrets && (recap.secrets.played.length > 0 || recap.secrets.suffered.length > 0) && (
+        <>
+          <h2>Secrets revealed</h2>
+          <ul className="plain">
+            {recap.secrets.played.map((p, i) => (
+              <li key={`p-${i}`}>
+                You secretly played <strong>{p.mischief}</strong> on {p.on}.
+              </li>
+            ))}
+            {recap.secrets.suffered.map((p, i) => (
+              <li key={`s-${i}`} className="bad">
+                <strong>{p.by}</strong> was behind “{p.mischief}”.
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {recap.influencedBy.length > 0 && (
         <>
           <h2>People who shaped your life</h2>

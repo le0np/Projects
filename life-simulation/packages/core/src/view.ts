@@ -79,6 +79,13 @@ export interface CharacterView {
   self: SelfView;
   others: OtherCharacterView[];
   offer: OfferView;
+  /** Pranks this character can still play (concept v2 §5). */
+  mischief: MischiefState;
+}
+
+export interface MischiefState {
+  charges: number;
+  options: { id: string; label: string; description: string }[];
 }
 
 export interface RevealedChoice {
@@ -108,6 +115,8 @@ export type Notice =
       selfChanges: Partial<Record<Attribute, number>>;
     }
   | { kind: "ended"; t: number; status: Status; cause: string }
+  /** A town-wide upheaval and what it did to you. */
+  | { kind: "upheaval"; t: number; id: string; title: string; text: string; personal: string[]; selfChanges: Partial<Record<Attribute, number>> }
   | { kind: "session_completed"; t: number; recap: LifeRecap };
 
 export const OUTCOME_TAGS = [
@@ -156,6 +165,8 @@ export interface LifeRecap {
   relationshipsGained: { characterId: string; name: string; type: RelationType }[];
   relationshipsLost: { characterId: string; name: string; from: RelationType; to: RelationType }[];
   influencedBy: { characterId: string; name: string; events: number; impact: number }[];
+  /** Revealed at the end: pranks this character played, and pranks played on them. */
+  secrets: { played: { mischief: string; on: string }[]; suffered: { mischief: string; by: string }[] };
   /** Internal balancing metric; not shown to players as a "win". */
   lifeScore: number;
 }
@@ -174,6 +185,8 @@ export interface Controller {
   /** Return null to not decide (the deadline default will apply). */
   decide(view: CharacterView): Decision | null;
   observe?(notice: Notice): void;
+  /** Optionally play a prank after an event (bots). The host asks after each resolved event. */
+  planMischief?(): { mischiefId: string; targetId: string } | null;
   /** Passive play: where to spend free time (a place kind from `options`). Undefined = no preference. */
   chooseLeisure?(options: readonly string[]): string | undefined;
 }

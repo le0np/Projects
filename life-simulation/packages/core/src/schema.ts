@@ -320,3 +320,37 @@ export const FactSchema = z.strictObject({
 });
 export type Fact = z.infer<typeof FactSchema>;
 export const FactsFileSchema = z.strictObject({ facts: z.array(FactSchema).min(1) });
+
+// ---------------------------------------------------------------- chaos (concept v2 §5)
+
+/** A town-wide upheaval: storm, flu, market crash… Sets a session fact for a while and hits everyone. */
+export const UpheavalSchema = z.strictObject({
+  id: Id,
+  title: NonEmptyText,
+  /** Announcement everyone sees. */
+  text: NonEmptyText,
+  /** Session fact that is set while the upheaval lasts (events can require it). */
+  sessionFact: Id,
+  durationSeconds: z.number().min(5).max(120),
+  /** Immediate effect on every active character, each with its own chance. */
+  effects: z
+    .array(z.strictObject({ chance: Probability, delta: z.partialRecord(Attribute, Delta), text: NonEmptyText }))
+    .default([]),
+  weight: z.number().min(0).default(10),
+});
+export type Upheaval = z.infer<typeof UpheavalSchema>;
+export const UpheavalsFileSchema = z.strictObject({ upheavals: z.array(UpheavalSchema) });
+
+/** A secret prank a player can play on someone; its consequence arrives later as a follow-up event. */
+export const MischiefSchema = z.strictObject({
+  id: Id,
+  label: NonEmptyText,
+  description: NonEmptyText,
+  /** Follow-up event; must have roles "victim" and "culprit" (the culprit role is unaware). */
+  event: Id,
+  delaySeconds: Delay.optional(),
+  /** Who can be targeted, evaluated with `self` = the target. */
+  targetCondition: ConditionSchema.optional(),
+});
+export type Mischief = z.infer<typeof MischiefSchema>;
+export const MischiefFileSchema = z.strictObject({ mischief: z.array(MischiefSchema) });

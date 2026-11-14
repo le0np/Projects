@@ -18,9 +18,10 @@ interface Props {
   game: GameState;
   connected: boolean;
   decide: (choiceId: string) => Promise<{ ok: boolean; reason?: string } | undefined>;
+  playMischief: (mischiefId: string, targetId: string) => Promise<{ ok: boolean; reason?: string } | undefined>;
 }
 
-export function GameScreen({ game, connected, decide }: Props) {
+export function GameScreen({ game, connected, decide, playMischief }: Props) {
   const now = useNow();
   const me = game.roster.find((r) => r.characterId === game.characterId);
   const sessionTime = game.sync.sessionTime + (now - game.sync.wall) * game.timeScale;
@@ -52,6 +53,12 @@ export function GameScreen({ game, connected, decide }: Props) {
         </div>
         {game.attrs && <Attributes attrs={game.attrs} />}
       </header>
+
+      {game.upheaval && (
+        <div className="banner upheaval" role="status">
+          <strong>{game.upheaval.title}</strong> — {game.upheaval.text}
+        </div>
+      )}
 
       {game.ended && (
         <div className="banner" role="status">
@@ -106,6 +113,7 @@ export function GameScreen({ game, connected, decide }: Props) {
                 })}
             </ul>
           </div>
+          {game.mischief && !game.ended && <Pranks game={game} play={playMischief} />}
           <div className="card">
             <h2>Around town</h2>
             <ul className="feed" aria-live="polite">
@@ -126,6 +134,47 @@ export function GameScreen({ game, connected, decide }: Props) {
         </aside>
       </div>
     </main>
+  );
+}
+
+function Pranks({ game, play }: { game: GameState; play: Props["playMischief"] }) {
+  const targets = game.roster.filter((r) => r.characterId !== game.characterId && (game.others.find((o) => o.id === r.characterId)?.status ?? "active") === "active");
+  const [target, setTarget] = useState(targets[0]?.characterId ?? "");
+  const [msg, setMsg] = useState<string | null>(null);
+  const m = game.mischief!;
+  return (
+    <div className="card pranks">
+      <h2>
+        Pranks <span className="muted small">· {m.charges} left · secret until the end</span>
+      </h2>
+      <label className="small muted" htmlFor="prank-target">
+        Victim
+      </label>
+      <select id="prank-target" value={target} onChange={(e) => setTarget(e.target.value)}>
+        {targets.map((t) => (
+          <option key={t.characterId} value={t.characterId}>
+            {t.name}
+          </option>
+        ))}
+      </select>
+      <div className="prank-list">
+        {m.options.map((o) => (
+          <button
+            key={o.id}
+            className="ghost prank"
+            title={o.description}
+            disabled={m.charges <= 0 || !target}
+            onClick={async () => {
+              const r = await play(o.id, target);
+              setMsg(r?.ok ? "Done. They will never know… until the recap." : `Not possible: ${r?.reason ?? "try again"}`);
+            }}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {msg && <p className="small muted" aria-live="polite">{msg}</p>}
+    </div>
   );
 }
 

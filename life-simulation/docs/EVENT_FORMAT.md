@@ -12,6 +12,16 @@ Sadržaj se nalazi u `packages/content/data/`:
 
 Nakon svake izmjene pokreni `npm run validate`.
 
+## Datoteke uz evente (koncept v2)
+
+| Datoteka | Sadržaj |
+|---|---|
+| `map.json` | mapa grada: veličina, ceste (`rows`, `cols`), blokirane pločice, mjesta (`kind`, pravokutnik, `door`, `walkable`) |
+| `upheavals.json` | gradski preokreti: najava, `sessionFact` koji vrijedi `durationSeconds`, trenutni efekti na svakog lika (svaki s vlastitom vjerojatnošću) |
+| `mischief.json` | smicalice: naziv i opis za igrača, event posljedice (`victim`, `culprit`), odgoda, uvjet za metu |
+
+Karijera u `careers.json` ima `workplace` (vrsta mjesta gdje radi).
+
 ## Struktura eventa
 
 ```jsonc
@@ -28,6 +38,7 @@ Nakon svake izmjene pokreni `npm run validate`.
   "weight": 8,                   // osnovna težina odabira (zadano 10)
   "cooldown": { "maxPerSession": 2, "maxPerCharacter": 1, "minGapSeconds": 60 },
   "tags": ["secret"],            // slobodne oznake; karijere ih koriste u selection_weight
+  "location": { "at": ["cafe", "street"], "of": "role:a" },  // gdje se događa (koncept v2)
   "roles": { ... },
   "conditions": { ... },         // uvjet aktivacije nad svim ulogama (bez "self")
   "text": { "public": "...", "private": { "<uloga>": "..." } },
@@ -35,6 +46,10 @@ Nakon svake izmjene pokreni `npm run validate`.
   "outcomes": [ ... ]
 }
 ```
+
+### Mjesto (koncept v2)
+
+`location.at` je popis opcija: vrsta mjesta s mape (`cafe`, `office`…), `home` ili `work` lika iz `of`, `street` (ulica u blizini) ili `here` (gdje lik upravo jest). Engine bira opciju najbližu liku iz `of` (zadano je prvi član prve uloge). Sudionici prvo dođu na mjesto, tek onda vide izbore. Bez `location` vrijedi `here`.
 
 ### Uloge
 
@@ -111,6 +126,7 @@ Zadnji ishod mora biti bezuvjetan (bez `when` i bez `chance`). Ishod bez oba pri
 | `attr` | `target`, `delta` (health, mental, money, reputation, career; ±100) | `{ "type": "attr", "target": "role:patient", "delta": { "health": -10 } }` |
 | `relation` | `from`, `to`, `affinity`, `trust`, `setType`, `mutual` | `{ "type": "relation", "from": "role:a", "to": "role:b", "affinity": -20, "mutual": true }` |
 | `fact` | `target`, `key`, `about` (za pair), `remove` | `{ "type": "fact", "target": "role:borrower", "key": "owes_money", "about": "role:lender" }` |
+| `move` | `target`, `to` (vrsta mjesta, `home`, `work`, `street`), `staySeconds` | `{ "type": "move", "target": "role:patient", "to": "hospital", "staySeconds": 10 }` |
 | `status` | `target`, `status`, `cause` | `{ "type": "status", "target": "role:patient", "status": "dead", "cause": "..." }` |
 
 Sposobnosti karijere (`effect_multiplier`) skaliraju `attr` efekte lika koji ih prima.
@@ -141,6 +157,8 @@ Sposobnosti karijere (`effect_multiplier`) skaliraju `attr` efekte lika koji ih 
 | činjenica sesije | `{ "sessionFact": "storm" }` |
 | odnos (smjeran) | `{ "relation": { "from": "self", "to": "role:x", "typeIn": ["friend"], "affinityGte": 20, "trustLte": 50 } }` |
 | viđen event | `{ "seenEvent": "career_coworker_mistake", "present": false }` |
+| dob | `{ "age": { "gte": 25 }, "of": "role:x" }` |
+| godišnje doba | `{ "seasonIn": ["winter"] }` |
 | napredak sesije | `{ "progress": { "gte": 0.5 } }` (0..1) |
 | odluke (samo u ishodima) | `{ "chose": "truth", "role": "witness", "count": "any" }` |
 
@@ -156,3 +174,8 @@ Sposobnosti karijere (`effect_multiplier`) skaliraju `attr` efekte lika koji ih 
 - **Sudionici:** zbroj minimalnih brojeva ≤ 8; uvjeti s nemogućim granicama.
 - **Nastavci:** postojeći event, ispravno mapiranje uloga, kardinalnost, beskonačne trenutne petlje.
 - **Upozorenja:** `followup_only` event nedostižan iz direktorskih eventa; činjenica provjeravana a nikad postavljena; registrirana a nekorištena činjenica; karijera bez posebnog izbora.
+
+## Kaos (koncept v2 §5)
+
+- **Preokret** postavi `sessionFact` dok traje. Eventi s uvjetom `{ "sessionFact": "storm" }` tada su četiri puta vjerojatniji.
+- **Smicalica** pokreće skriveni nastavak s ulogama `victim` (zna da se nešto događa) i `culprit` (`aware: false`). Validator to provjerava. Krivac se žrtvi ne prikazuje ni u tekstu, ni na popisu sudionika, ni kroz promjenu odnosa. Otkriva se tek ako ishod to izričito kaže (npr. `found_out` s `{culprit}` u tekstu) ili u Life Recapu.

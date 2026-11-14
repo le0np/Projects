@@ -1,20 +1,111 @@
 {
   "facts": [
-    { "key": "employed", "scope": "character", "description": "Has a job. Set at creation for every career.", "setAtInit": true },
-    { "key": "exposed_mistake", "scope": "character", "description": "A serious work mistake of this character became known." },
-    { "key": "covered_for", "scope": "pair", "description": "This character lied to protect the other one." },
-    { "key": "owes_money", "scope": "pair", "description": "This character owes money to the other one." },
-    { "key": "saved_by", "scope": "pair", "description": "The other character saved this character's life.",
-      "recap": { "about": "saved_another" } },
-    { "key": "owes_favor", "scope": "pair", "description": "The other character helped this one get a job; a favour is owed." },
-    { "key": "manager_of", "scope": "pair", "description": "This character is the other one's manager." },
-    { "key": "promoted", "scope": "character", "description": "Was promoted during the session.", "recap": { "holder": "career_advancement" } },
-    { "key": "knows_secret", "scope": "pair", "description": "This character knows a compromising secret about the other one." },
-    { "key": "fled_accident", "scope": "character", "description": "Left the scene of an accident they caused." },
-    { "key": "ignored_symptoms", "scope": "character", "description": "Ignored warning signs of a serious health problem." },
-    { "key": "business_partner", "scope": "pair", "description": "The two characters run a business together." },
-    { "key": "burned_out", "scope": "character", "description": "Exhausted; stress has piled up." },
-    { "key": "public_scandal", "scope": "character", "description": "Became the subject of a public scandal." },
-    { "key": "suspects_partner", "scope": "pair", "description": "This character suspects their partner of hiding something." }
+    {
+      "key": "employed",
+      "scope": "character",
+      "description": "Has a job. Set at creation for every career.",
+      "setAtInit": true
+    },
+    {
+      "key": "exposed_mistake",
+      "scope": "character",
+      "description": "A serious work mistake of this character became known."
+    },
+    {
+      "key": "covered_for",
+      "scope": "pair",
+      "description": "This character lied to protect the other one."
+    },
+    {
+      "key": "owes_money",
+      "scope": "pair",
+      "description": "This character owes money to the other one."
+    },
+    {
+      "key": "saved_by",
+      "scope": "pair",
+      "description": "The other character saved this character's life.",
+      "recap": {
+        "about": "saved_another"
+      }
+    },
+    {
+      "key": "owes_favor",
+      "scope": "pair",
+      "description": "The other character helped this one get a job; a favour is owed."
+    },
+    {
+      "key": "manager_of",
+      "scope": "pair",
+      "description": "This character is the other one's manager."
+    },
+    {
+      "key": "promoted",
+      "scope": "character",
+      "description": "Was promoted during the session.",
+      "recap": {
+        "holder": "career_advancement"
+      }
+    },
+    {
+      "key": "knows_secret",
+      "scope": "pair",
+      "description": "This character knows a compromising secret about the other one."
+    },
+    {
+      "key": "fled_accident",
+      "scope": "character",
+      "description": "Left the scene of an accident they caused."
+    },
+    {
+      "key": "ignored_symptoms",
+      "scope": "character",
+      "description": "Ignored warning signs of a serious health problem."
+    },
+    {
+      "key": "business_partner",
+      "scope": "pair",
+      "description": "The two characters run a business together."
+    },
+    {
+      "key": "burned_out",
+      "scope": "character",
+      "description": "Exhausted; stress has piled up."
+    },
+    {
+      "key": "public_scandal",
+      "scope": "character",
+      "description": "Became the subject of a public scandal."
+    },
+    {
+      "key": "suspects_partner",
+      "scope": "pair",
+      "description": "This character suspects their partner of hiding something."
+    },
+    {
+      "key": "storm",
+      "scope": "session",
+      "description": "A storm is raging over the town."
+    },
+    {
+      "key": "flu",
+      "scope": "session",
+      "description": "Flu season: half the town is sneezing."
+    },
+    {
+      "key": "market_crash",
+      "scope": "session",
+      "description": "The stock market has crashed."
+    },
+    {
+      "key": "festival",
+      "scope": "session",
+      "description": "The town festival is on."
+    },
+    {
+      "key": "blackout",
+      "scope": "session",
+      "description": "The town has no electricity."
+    }
   ]
 }

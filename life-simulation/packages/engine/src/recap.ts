@@ -7,6 +7,8 @@ export interface CharacterTracking {
   /** Other character id → events in which they decided and this character's attributes changed. */
   influence: Map<string, { events: number; impact: number }>;
   startTypes: Map<string, RelationType>;
+  played: { mischief: string; on: string }[];
+  suffered: { mischief: string; by: string }[];
 }
 
 const POSITIVE = new Set<RelationType>(["friend", "partner", "family"]);
@@ -98,6 +100,10 @@ export function computeRecaps(input: {
       relationshipsGained: gained,
       relationshipsLost: lost,
       influencedBy,
+      secrets: {
+        played: track.played.map((p) => ({ mischief: p.mischief, on: byId.get(p.on)?.name ?? p.on })),
+        suffered: track.suffered.map((p) => ({ mischief: p.mischief, by: byId.get(p.by)?.name ?? p.by })),
+      },
       lifeScore,
     };
   });
@@ -117,6 +123,8 @@ export function formatRecap(r: LifeRecap): string {
   }
   if (r.relationshipsGained.length) lines.push(`  Gained: ${r.relationshipsGained.map((g) => `${g.name} (${g.type})`).join(", ")}`);
   if (r.relationshipsLost.length) lines.push(`  Lost: ${r.relationshipsLost.map((l) => `${l.name} (${l.from}→${l.to})`).join(", ")}`);
+  for (const p of r.secrets.played) lines.push(`  Secretly played "${p.mischief}" on ${p.on}`);
+  for (const p of r.secrets.suffered) lines.push(`  Was pranked with "${p.mischief}" by ${p.by}`);
   if (r.influencedBy.length) lines.push(`  Influenced by: ${r.influencedBy.map((i) => `${i.name} (${i.events}×)`).join(", ")}`);
   return lines.join("\n");
 }

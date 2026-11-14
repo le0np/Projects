@@ -9,5 +9,8 @@
   "dependencies": {
     "@lifesim/core": "0.1.0",
     "@lifesim/content": "0.1.0"
+  },
+  "devDependencies": {
+    "@lifesim/sim": "0.1.0"
   }
 }

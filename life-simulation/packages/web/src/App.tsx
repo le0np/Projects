@@ -20,6 +20,6 @@ export function App() {
 
   if (!token) return <AuthScreen onAuthenticated={login} />;
   if (game.game?.recap) return <RecapScreen recap={game.game.recap} sessionId={game.game.sessionId} token={token} onBack={game.leaveGame} />;
-  if (game.game) return <GameScreen game={game.game} decide={game.decide} connected={game.connected} />;
+  if (game.game) return <GameScreen game={game.game} decide={game.decide} playMischief={game.playMischief} connected={game.connected} />;
   return <LobbyScreen token={token} onLogout={logout} {...game} />;
 }

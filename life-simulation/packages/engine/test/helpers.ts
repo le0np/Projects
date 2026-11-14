@@ -3,12 +3,17 @@ import { readContentDir, validateContent, type ContentBundle } from "@lifesim/co
 import type { Controller, Decision } from "../src";
 
 /** Builds a validated bundle from the shipped careers/facts plus the given events. */
-export function buildContent(events: Record<string, unknown>[]): ContentBundle {
+export function buildContent(
+  events: Record<string, unknown>[],
+  chaos: { upheavals?: Record<string, unknown>[]; mischief?: Record<string, unknown>[] } = {},
+): ContentBundle {
   const { raw } = readContentDir();
   const { bundle, issues } = validateContent({
     careers: raw.careers,
     facts: raw.facts,
     map: raw.map,
+    upheavals: { file: "upheavals.json", data: { upheavals: chaos.upheavals ?? [] } },
+    mischief: { file: "mischief.json", data: { mischief: chaos.mischief ?? [] } },
     events: events.map((e) => ({ file: `${e.id as string}.json`, data: e })),
   });
   if (!bundle) {

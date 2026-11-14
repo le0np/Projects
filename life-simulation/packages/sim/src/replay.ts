@@ -22,6 +22,7 @@ export function replaySession(content: ContentBundle, log: readonly LogEntry[]):
   }
   const decisions = new Map<string, LogEntryOf<"decision">>();
   const leisure = new Map<string, string[]>();
+  const mischief = log.filter((e): e is LogEntryOf<"mischief"> | LogEntryOf<"mischief_rejected"> => e.type === "mischief" || e.type === "mischief_rejected");
   for (const e of log) {
     if (e.type === "decision" && e.source === "player") decisions.set(`${e.instanceId}/${e.characterId}`, e);
     if (e.type === "leisure") leisure.set(e.characterId, [...(leisure.get(e.characterId) ?? []), e.kind]);
@@ -30,6 +31,7 @@ export function replaySession(content: ContentBundle, log: readonly LogEntry[]):
   const result = runSession({
     content,
     config: start.config,
+    mischief: mischief.map((m) => ({ t: m.t, characterId: m.characterId, mischiefId: m.mischiefId, targetId: m.targetId })),
     participants: start.characters.map((c) => {
       const controller: Controller = {
         decide(view) {

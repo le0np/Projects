@@ -23,6 +23,8 @@ export interface SessionConfig {
   startAge: number;
   /** From this age on, health drops by `healthPerYear` at every new year. */
   aging: { fromAge: number; healthPerYear: number };
+  /** Chaos (concept v2 §5): upheavals per session, pranks per character, follow-up chance multiplier. */
+  chaos: { upheavals: [number, number]; mischiefCharges: number; followUpBoost: number };
   /** Movement on the town map (concept v2 §2). */
   walkTilesPerSecond: number;
   /**
@@ -49,6 +51,7 @@ export const DEFAULT_CONFIG: Omit<SessionConfig, "seed"> = {
   baseAttributes: { health: 75, mental: 70, money: 50, reputation: 50, career: 50 },
   attributeVariation: 8,
   startingRelationships: { colleaguePairRatio: 0.25, familyChance: 0.3, partnerChance: 0.25 },
+  chaos: { upheavals: [2, 3], mischiefCharges: 2, followUpBoost: 1.25 },
   walkTilesPerSecond: 4,
   routine: { night: 0.15, workEnd: 0.6, leisureStaySeconds: [3, 8] },
   yearSeconds: 30,
@@ -65,5 +68,6 @@ export function resolveConfig(partial: Partial<SessionConfig> & { seed: string }
     startingRelationships: { ...DEFAULT_CONFIG.startingRelationships, ...partial.startingRelationships },
     aging: { ...DEFAULT_CONFIG.aging, ...partial.aging },
     routine: { ...DEFAULT_CONFIG.routine, ...partial.routine },
+    chaos: { ...DEFAULT_CONFIG.chaos, ...partial.chaos },
   };
 }
