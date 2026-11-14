@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Attribute, Notice, OfferView } from "@lifesim/core";
 import { ATTR_LABELS, RELATION_LABELS, careerName, clock, hints } from "../format";
+import { Town } from "../town/Town";
 import type { GameState } from "../useGame";
 
 const SEASON_LABELS: Record<string, string> = { spring: "🌱 Spring", summer: "☀ Summer", autumn: "🍂 Autumn", winter: "❄ Winter" };
@@ -68,15 +69,18 @@ export function GameScreen({ game, connected, decide, playMischief }: Props) {
 
       <div className="game-grid">
         <section className="stage">
-          {game.pending ? (
-            <EventCard offer={game.pending} game={game} now={now} decide={decide} />
-          ) : lastResolved ? (
-            <OutcomeCard notice={lastResolved} waiting={!game.ended} />
-          ) : (
-            <div className="card quiet">
-              <p className="muted">Life goes on. Something will happen soon…</p>
-            </div>
-          )}
+          <div className="town-wrap">
+            <Town game={game} />
+            {game.pending ? (
+              <div className="overlay">
+                <EventCard offer={game.pending} game={game} now={now} decide={decide} />
+              </div>
+            ) : lastResolved && sessionTime - lastResolved.t < 7000 * game.timeScale ? (
+              <div className="overlay toast">
+                <OutcomeCard notice={lastResolved} waiting={false} />
+              </div>
+            ) : null}
+          </div>
 
           {recentOutcomes.length > 1 && (
             <div className="card">

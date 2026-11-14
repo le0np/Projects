@@ -53,6 +53,7 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
 - Validator koji hvata nedostajuće izbore, neispravne uvjete, pokvarene nastavke, nemoguće zahtjeve za sudionike i konfliktne ishode, s točnom putanjom do greške.
 - 10 karijera s pasivnim sposobnostima i posebnim izborima te 57 eventa u svim kategorijama, uz lance poput preporuka → unaprjeđenje → dilema šefa ili nesreća s bijegom → istraga.
 - Deterministički PRNG s neovisnim tokovima, virtualni sat i red timera, jezik uvjeta s evaluatorom.
+- Grad gledan odozgo s animiranim likovima (stil B3) koji žive rutinu, smjenu godišnjih doba, gradske preokrete i tajne smicalice (koncept v2, `docs/spec/08_CONCEPT_V2.md`).
 - Igru u browseru (desktop i mobitel):
   - prijava i registracija;
   - lobby s avatarom, statistikom, brojem igrača online i prijašnjim životima;

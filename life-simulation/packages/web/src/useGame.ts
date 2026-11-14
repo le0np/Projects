@@ -13,6 +13,11 @@ export type PublicEntry =
   | { kind: "upheaval"; t: number; id: string; title: string; text: string; active: boolean }
   | { kind: "move"; t: number; characterId: string; from: [number, number]; path: [number, number][]; departAt: number; msPerTile: number; to: string | null };
 
+export interface Walk {
+  pos: [number, number];
+  trip: { from: [number, number]; path: [number, number][]; departAt: number; msPerTile: number } | null;
+}
+
 export interface Snapshot {
   sessionId: string;
   characterId?: string;
@@ -24,6 +29,7 @@ export interface Snapshot {
   pending: OfferView | null;
   history: Notice[];
   feed: PublicEntry[];
+  positions?: { characterId: string; pos: [number, number]; trip: Walk["trip"]; status: string }[];
   mischief?: { charges: number; options: { id: string; label: string; description: string }[] } | null;
 }
 
@@ -57,6 +63,8 @@ export interface GameState {
   recap?: LifeRecap;
   /** Upheaval currently hitting the town, if any. */
   upheaval?: { title: string; text: string } | null;
+  /** Where everyone is walking (server-computed routes; the client only animates them). */
+  walks: Record<string, Walk>;
   mischief?: Snapshot["mischief"];
 }
 
@@ -91,6 +99,7 @@ function stateFromSnapshot(s: Snapshot): GameState {
       return last?.active ? { title: last.title, text: last.text } : null;
     })(),
     mischief: s.mischief,
+    walks: Object.fromEntries((s.positions ?? []).map((p) => [p.characterId, { pos: p.pos, trip: p.trip }])),
   };
 }
 
@@ -124,9 +133,20 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
 
     socket.on("game:feed", (entry: PublicEntry) =>
       setGame((g) =>
-        !g || entry.kind === "move" // positions are for the map view (M11), not the news feed
+        !g
           ? g
-          : {
+          : entry.kind === "move" // positions feed the map, not the news list
+            ? {
+                ...g,
+                walks: {
+                  ...g.walks,
+                  [entry.characterId]: {
+                    pos: entry.path[entry.path.length - 1] ?? entry.from,
+                    trip: { from: entry.from, path: entry.path, departAt: entry.departAt, msPerTile: entry.msPerTile },
+                  },
+                },
+              }
+            : {
               ...g,
               feed: [...g.feed, entry].slice(-50),
               ...(entry.kind === "season" ? { calendar: { year: entry.year, season: entry.season } } : {}),

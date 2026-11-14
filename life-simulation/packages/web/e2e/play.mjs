@@ -25,7 +25,17 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const SHOTS = process.env.SCREENSHOTS;
 if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 
+// Refuse to run against a server that is already listening (it would be old code).
+try {
+  await fetch(`${BASE}/api/health`);
+  console.error(`✗ port ${PORT} is already in use — stop the old server first`);
+  process.exit(1);
+} catch {
+  // nothing listening: good
+}
+
 const server = spawn("npx", ["tsx", "packages/server/src/main.ts"], {
+  detached: true, // own process group, so we can stop npx, tsx and node together
   cwd: root,
   env: {
     ...process.env,
@@ -59,7 +69,9 @@ async function playOnce(browser, label, contextOptions) {
   const context = await browser.newContext(contextOptions);
   const page = await context.newPage();
   const errors = [];
-  page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+  page.on("console", (m) => m.type() === "error" && errors.push(`${m.text()} @ ${JSON.stringify(m.location())}`));
+  page.on("requestfailed", (r) => errors.push(`request failed: ${r.url()} ${r.failure()?.errorText}`));
+  page.on("response", (r) => r.status() >= 400 && errors.push(`HTTP ${r.status()} ${r.url()}`));
   page.on("pageerror", (e) => errors.push(String(e)));
   const user = `e2e_${label}_${Date.now() % 100000}`;
 
@@ -124,6 +136,10 @@ try {
   console.error(`✗ ${err instanceof Error ? err.message : err}`);
   exitCode = 1;
 } finally {
-  server.kill();
+  try {
+    process.kill(-server.pid, "SIGTERM"); // the whole group: npx → tsx → node
+  } catch {
+    server.kill();
+  }
 }
 process.exit(exitCode);

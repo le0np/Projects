@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-**MVP je funkcionalno kompletan (M1–M7).** Vlasnik je 14.–15. studenog 2026. dopunio koncept (`docs/spec/08_CONCEPT_V2.md`): grad gledan odozgo, vrijeme i starenje od 18 godina, kaos (gradski preokreti, smicalice, efekt leptira), humorističan ton i likovi u stilu B3. Rad se nastavlja po planu za koncept v2 (`docs/IMPLEMENTATION_PLAN.md` §9). **M8 (vrijeme i dob), M9 (grad i rutina) i M10 (kaos) su gotovi**; sljedeći je M11 (prikaz: diorama i likovi B3).
+**MVP je funkcionalno kompletan (M1–M7).** Vlasnik je 14.–15. studenog 2026. dopunio koncept (`docs/spec/08_CONCEPT_V2.md`): grad gledan odozgo, vrijeme i starenje od 18 godina, kaos (gradski preokreti, smicalice, efekt leptira), humorističan ton i likovi u stilu B3. Rad se nastavlja po planu za koncept v2 (`docs/IMPLEMENTATION_PLAN.md` §9). **M8 (vrijeme i dob), M9 (grad i rutina), M10 (kaos) i M11 (prikaz grada i likova B3) su gotovi**; sljedeći je M12 (sadržaj u humorističnom tonu).
 
 ### Kriteriji prihvaćanja (00_OVERVIEW)
 
@@ -306,6 +306,24 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
   - 2,5 preokreta i 5,1 smicalica po sesiji; 93 % smicalica stigne do žrtve; zahvaćeno je 53 % likova;
   - smrtnost 4,9 %; izvještaj je u `docs/reports/m10.report.md`.
 
+### M11: prikaz grada i likova B3
+
+- `web/src/town/renderer.ts`:
+  - **mapa po godišnjim dobima:** boja trave i drveća, proljetni cvjetovi, jesensko lišće, snijeg na krovovima i tlu; prozori svijetle u tamnom načinu;
+  - **likovi u stilu B3** iz odobrene skice: oči kao lukovi, debele obrve, velika usta, obrub u boji lika;
+  - odjeća ovisi o karijeri (kuta, kapa, kombinezon, kravata, kaciga, naočale), a koža i kosa su stalne po liku; sijede s godinama, a umrli i zatvoreni su blijedi s „x” očima.
+- `web/src/town/Town.tsx`:
+  - canvas koji crta grad s animacijom od 8 sličica u sekundi;
+  - likovi hodaju po rutama koje računa server, a klijent ih samo interpolira;
+  - „!” iznad sudionika eventa; promjene tvojih atributa iskoče iznad glave; tvoj lik ima prsten i zeleno ime.
+- **Ekran igre:** mapa je u sredini, panel s izborima je u desnom dijelu mape (na mobitelu ispod nje), a ishod se kratko prikaže u kutu mape. Ljudi, smicalice i vijesti su sa strane.
+- **Važno otkriće u e2e:**
+  - zaustavljanje servera ugasilo je samo `npx`, a stari server je ostao raditi na portu 3399;
+  - zato su **e2e provjere za M9 i M10 zapravo išle protiv starog servera** (iz vremena M8);
+  - unit i integracijski testovi to ne pogađa, jer pokreću vlastiti server;
+  - popravak: e2e pokreće server u vlastitoj grupi procesa i gasi cijelu grupu, a odbija krenuti ako je port zauzet;
+  - nakon popravka e2e prolazi na stvarnom kodu, na desktopu i na mobitelu.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:
@@ -318,7 +336,7 @@ Provedeno 13. studenog 2026.:
 | `TEST_DATABASE_URL=… npx vitest run packages/server` | 4/4 na PostgreSQL 16 (privremeni lokalni klaster); u bazi: sesija `completed`, 40 odluka igrača i 1 default (dok je igrač bio odspojen), 4 rezultata |
 | `npm run server` + curl | health, registracija, validacijske poruke, karijere rade |
 | `npm run typecheck` (uključuje web) i `npm run web:build` | čisto; bundle 88 kB gzip |
-| `npm run e2e` | ✓ desktop (12 odluka) i ✓ iPhone 13 (11 odluka): cijela sesija, recap, log, lobby |
+| `npm run e2e` | ✓ desktop i ✓ iPhone 13 (s gradom i likovima B3): cijela sesija, recap, log, lobby; server se nakon testa gasi |
 | `npm run sim:batch -- --sessions 500 --seed m4` | 500 sesija; replay 3/3 identičan; izvještaj u `docs/reports/m4.report.md` |
 | `npm run sim -- --seed demo --explain` | sesija sa 6 botova, 10 eventa, 1 nastavak; odluke su u skladu s osobnostima (npr. principijelan bot posuđuje novac i oprašta dug, manipulator laže i izbjegava vjerovnika) |
 | Ručno: CLI na pokvarenoj kopiji sadržaja | izlazni kod 1; prijavljuje neispravan JSON i nepostojeći nastavak |
@@ -336,7 +354,7 @@ Provedeno 13. studenog 2026.:
 
 ## Sljedeći koraci
 
-1. ~~M8 Vrijeme i dob~~ → ~~M9 Grad i rutina~~ → ~~M10 Kaos~~ (gotovo) → M10 Kaos → M11 Prikaz → M12 Sadržaj → M13 Balans (plan §9).
+1. ~~M8 Vrijeme i dob~~ → ~~M9 Grad i rutina~~ → ~~M10 Kaos~~ → ~~M11 Prikaz~~ (gotovo) → M10 Kaos → M11 Prikaz → M12 Sadržaj → M13 Balans (plan §9).
 
 ## Handoff za novi chat
 
