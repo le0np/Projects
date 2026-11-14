@@ -31,7 +31,7 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
   - Open mat: besplatan, 1 min, 10–20 % šanse.
   - Novi potez može biti i višeg pojasa, npr. heel hook.
 - **Borbe:**
-  - Sparing: pobjeda donosi 10 €.
+  - Sparing: uvijek u tvojoj dvorani, s nasumičnim partnerom od bijelog do plavog pojasa i nasumičnim znanjem. Pobjeda donosi 10 €.
   - Natjecanje: kotizacija 20 €, četvrtfinale, polufinale i finale. Zlato 100 €, srebro 40 €, bronca 15 €, uz 5 % šanse da pokupiš novi potez.
   - Promocija u viši pojas traži dovoljno naučenih poteza i pobjeda na natjecanjima (svaka pobijeđena borba na turniru, sparing se ne računa).
 - **Borba:**

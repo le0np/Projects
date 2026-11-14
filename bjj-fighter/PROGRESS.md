@@ -119,25 +119,38 @@ Vlasnik: previše odluka, borci se previše negiraju; cilj je stil turnira poput
 - Vlasnik: bijeli pojas treba griješiti puno više od 25 %. Šansa greške bijelog pojasa je sad 40 % na razini 1 (−1,5 postotna boda po razini iznad 1). Ostali pojasevi ostaju: plavi 18 %, ljubičasti 12 %, smeđi 8 %, crni 5 %.
 - Simulacija bijeli protiv bijelog: ~24 greške po borbi (prije ~15), ~18 uspjelih poteza, ~6–7 odluka, ~64 % pobjeda uz 75 % točnih odabira.
 
+### Povratne informacije 14. 11. navečer: greške, sparing partneri, grafika, zaglavljena borba
+Vlasnik: bijeli pojas griješi barem 60 %, bijeli i plavi rade puno grešaka koje se smanjuju razinom; više dinamike; sparing je u dvorani s nasumičnim partnerima od bijelog do plavog pojasa; poruka „pogriješio je — prilika” ne kaže za što; očekuje se bolja grafika; testni sparing je zaglavio do druge runde.
+- **Greške:** na razini 1 bijeli 60 %, plavi 42 %, ljubičasti 25 %, smeđi 13 %, crni 6 %. Svaka razina iznad 1 množi šansu s 0,88 (bijeli: razina 3 → 46 %, razina 5 → 36 %, razina 10 → 19 %), najmanje 2 %.
+- **Dinamika:** kad netko pogriješi, drugi u pola slučajeva odmah kontrira pozicijskim potezom (+10 % šanse, bez submissiona). Za tvoju grešku kontrira protivnik, za njegovu ti (odluka u 25 % slučajeva, inače automatski).
+- **Zaglavljena borba:** uzrok je bio što nijedan borac nije znao nijedan potez iz pozicije (npr. ti dolje u mountu bez bijega, protivnik bez napada iz mounta), pa se do kraja runde ništa nije događalo. Sad borac bez naučenog poteza radi na instinkt (bijeg, sweep, prolaz ili rušenje razine 0, nikad submission), a log piše „bez naučene tehnike, na instinkt”.
+- **Prilika nakon greške:** tekst kaže što se dogodilo i što napraviti: „Marko je zeznuo Kimura — kazni ga! Izaberi napad iz pozicije: zatvoreni gard.” Obična prilika: „Prilika za napad! Izaberi tehniku iz pozicije: …”.
+- **Kartice:** krive opcije su samo iz iste pozicije (potezi druge strane i obrane te pozicije), više ne iz susjednih. Prije se znao ponuditi rear naked choke iz zatvorenog garda.
+- **Sparing partneri:** uvijek u dvorani, nasumičan partner: 55 % bijeli, 45 % plavi pojas, razine tipične za pojas (bijeli 1–3, plavi 3–5), a zna nasumičan dio poteza svog pojasa (35–90 %).
+- **Odluke:** između dvije odluke najmanje 30 s borbe. ~6 odluka po borbi (~7 % razmjena).
+- **Grafika:** sparing u dvorani (prozori, transparenti kluba, stalak s pojasevima, parovi koji treniraju u pozadini, plavi tatami), natjecanje u areni (publika, reflektori, crna strunjača). Borci se stalno gibaju (stav, njihanje, borba za hvat), napadi imaju animaciju po vrsti (rušenje nisko naprijed, sweep diže kukove, prolaz gura oko nogu, bijeg je shrimp unazad, submission stiskanje, a napadnuti se otima), promašaj se vidi kao posrtanje, a prijelaz pozicije kao kratki scramble. Iznad borca izleti ime tehnike (zeleno ✔, crveno ✘, žuto … dok se čeka odluka), a na dnu slike ide komentar zadnja dva retka loga.
+- Favicon (nema više 404 u konzoli).
+- Simulacija 300 sparinga (sve otključano, 75 % točnih odabira): ~81 razmjena, ~6 odluka, ~26 uspjelih poteza, ~37 grešaka, ~45 bodova ukupno, ~61 % submissiona, prosječno 6 min, ~52 % pobjeda. Fuzz 3000 borbi s nasumičnim potezima: nijedna ne zastane ni ne pukne.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 14. studenog 2026.:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` | 71/71 prolazi |
+| `npm test` | 72/72 prolazi |
 | `npm start` | server odgovara 200 na `/` i module |
-| Playwright e2e (1100 px) | trening uz 10x završi, sparing odigran do rezultata, reload zadrži napredak, 0 grešaka u konzoli |
+| Playwright e2e (1100 px) | sparing (dvorana) i natjecanje (arena) odigrani do rezultata uz „sve otključano”, 0 grešaka u konzoli |
 | Playwright mobitel (iPhone 13) | nema horizontalnog scrolla ni u karijeri ni u borbi |
 | Simulacija 300 sparinga | ~6 odluka po borbi (~11 % razmjena), ~60 % pobjeda uz 75 % točnih odabira |
 
 ## Poznata ograničenja
 
 - Postoji samo testna verzija (testni panel, ubrzanje, ⚡ +1).
-- Tehnike nemaju vlastite animacije. Vidi se udar prema protivniku i prijelaz u novu pozu.
+- Animacije su po vrsti tehnike (rušenje, sweep, prolaz, bijeg, submission), ne za svaku tehniku posebno. Poze su ključne poze po poziciji, 2D.
 - Reload usred borbe prekida borbu bez upisa rezultata.
 - Dok je uključeno „sve otključano”, igrač zna sve poteze pa se nude svi potezi iz pozicije.
-- Igrač bez poteza nema što raditi u borbi; nema upozorenja prije sparinga.
+- Igrač bez poteza bori se samo na instinkt (male šanse); nema upozorenja prije sparinga.
 - Nema kondicije ni umora.
 - Nakon ponovnog otvaranja igre nema obavijesti o treningu ili aktivnosti koji su završili dok je igra bila zatvorena.
 
@@ -146,7 +159,7 @@ Provedeno 14. studenog 2026.:
 1. Korak 2 drugog kruga: granice razina po pojasu, novi seminari (instruktori 1–5 ★, 40–90 %, trening pauziran). Korak 3: stil borbe, energija, ozljede.
 2. Vlasnik isproba testnu verziju i javi što treba podesiti (učestalost kritičnih trenutaka, težina, trajanja).
 2. Prava verzija: početak bez otključanih poteza, bez testnog panela.
-3. Animacije pojedinih tehnika i više poza.
+3. Animacije pojedinih tehnika i više poza (npr. zasebne poze za trokut, armbar, leg lockove).
 4. Kondicija, klub koji se nadograđuje, karijera.
 
 ## Handoff za novi chat

@@ -17,20 +17,25 @@ const STEP = 0.25;
 // and the player decides only in a few key moments per fight.
 const EXCHANGE_MIN = 4;
 const EXCHANGE_SPREAD = 3;
-const CRITICAL_COOLDOWN = 20; // game seconds between two decisions
+const CRITICAL_COOLDOWN = 30; // game seconds between two decisions
 const P_DEFENSE_CRITICAL = 0.12; // opponent's sweep, pass, takedown... becomes a decision
 const P_SUB_CRITICAL = 0.6; // opponent's submission attempt becomes a decision
 const P_OPPORTUNITY_CRITICAL = 0.1;
-const P_BLUNDER_CRITICAL = 0.4; // opponent's mistake becomes your decision, otherwise an advantage
+const P_BLUNDER_CRITICAL = 0.25; // opponent's mistake becomes your decision, otherwise an advantage
 const P_WRONG_SUB_LANDS = 0.6; // a wrong answer to a submission finishes it this often
 const FAST_BONUS = 0.1;
-const BELT_ERROR = { white: 0.4, blue: 0.18, purple: 0.12, brown: 0.08, black: 0.05 };
+// Error chance at move level 1; every level above 1 multiplies it by ERROR_PER_LEVEL.
+// White and blue belts botch a lot; it drops with training and with the belt.
+const BELT_ERROR = { white: 0.6, blue: 0.42, purple: 0.25, brown: 0.13, black: 0.06 };
+const ERROR_PER_LEVEL = 0.88;
+const P_COUNTER = 0.5; // a botched move gives the other fighter an immediate counter this often
+const COUNTER_BONUS = 0.1; // ...with this bonus
 const KIND_LABEL = { takedown: 'rušenje', sweep: 'sweep', pass: 'prolaz garda' };
 const POSITION_LABEL = { kneeOnBelly: 'knee on belly', mount: 'mount', back: 'leđa' };
 
 // Chance that a fighter botches a move: lower for higher belts and better-trained moves.
 export function errorChance(belt, level) {
-  return Math.max(0.02, BELT_ERROR[belt] - 0.015 * Math.max(0, level - 1));
+  return Math.max(0.02, BELT_ERROR[belt] * ERROR_PER_LEVEL ** Math.max(0, level - 1));
 }
 
 // Typical error chance of a fighter (belt and average level of known moves), shown before the fight.
@@ -46,7 +51,8 @@ const KIND_WEIGHT = { sub: 0.4, sweep: 1.5, pass: 1.5, takedown: 1.5, transition
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const other = (who) => (who === 'p' ? 'o' : 'p');
 
-export function createFight(player, opponent, rng) {
+// `quiet: true` (tests only): no exchanges happen on their own.
+export function createFight(player, opponent, rng, { quiet = false } = {}) {
   const f = {
     rng, player, opponent,
     round: 1, clock: 0, elapsed: 0,
@@ -54,6 +60,7 @@ export function createFight(player, opponent, rng) {
     score: { p: { pts: 0, adv: 0, pen: 0 }, o: { pts: 0, adv: 0, pen: 0 } },
     pending: null,
     nextExchange: 2,
+    quiet,
     turn: rng() < 0.5 ? 'p' : 'o',
     history: [],
     critical: null,
@@ -130,18 +137,25 @@ function runAction(f, who, action, success, why = '') {
     finish(f, who, 'sub', move.name);
     return;
   }
-  say(f, `${fighter(f, who).name}: ${move.name}.`, who);
+  say(f, `${fighter(f, who).name}: ${move.name}${lvl(f, who, action.move) ? '' : ' (bez naučene tehnike, na instinkt)'}.`, who);
   applyTransition(f, who, action.kind, action.to, move.name);
 }
 
-function autoChance(f, who, action) {
+function autoChance(f, who, action, bonus = 0) {
   const diff = lvl(f, who, action.move) - bestDefense(f, other(who), action);
-  return action.kind === 'sub' ? clamp(0.05 + 0.03 * diff, 0.02, 0.3) : clamp(0.6 + 0.07 * diff, 0.25, 0.9);
+  return (action.kind === 'sub' ? clamp(0.05 + 0.03 * diff, 0.02, 0.3) : clamp(0.6 + 0.07 * diff, 0.25, 0.9)) + bonus;
 }
 
-function chooseAction(f, who) {
-  const subsBlocked = who === 'o' && f.elapsed < f.subCooldownUntil;
-  const options = actionsFor(f.pos, roleOf(f, who)).filter((a) => lvl(f, who, a.move) > 0 && !(subsBlocked && a.kind === 'sub'));
+// A fighter who knows nothing useful from this spot still moves on instinct: an untrained escape,
+// sweep, pass or takedown (never a submission), so nobody gets stuck in a position for a whole round.
+function instinctOptions(f, who) {
+  return actionsFor(f.pos, roleOf(f, who)).filter((a) => a.kind !== 'sub' && a.kind !== 'pull');
+}
+
+function chooseAction(f, who, { noSubs = false } = {}) {
+  const subsBlocked = noSubs || (who === 'o' && f.elapsed < f.subCooldownUntil);
+  let options = actionsFor(f.pos, roleOf(f, who)).filter((a) => lvl(f, who, a.move) > 0 && !(subsBlocked && a.kind === 'sub'));
+  if (!options.length) options = instinctOptions(f, who);
   if (!options.length) return null;
   const total = options.reduce((s, a) => s + KIND_WEIGHT[a.kind], 0);
   let r = f.rng() * total;
@@ -154,13 +168,28 @@ function chooseAction(f, who) {
 
 const canCritical = (f) => f.elapsed - f.lastCriticalAt >= CRITICAL_COOLDOWN;
 
-// The opponent botched a move: it fails and the player gets a chance to punish it.
+// The opponent botched a move: it fails and the player gets a chance to punish it,
+// sometimes as a decision, otherwise as an immediate counter that plays out on its own.
 export function opponentBlunder(f, action, chance = errorChance(f.opponent.belt, lvl(f, 'o', action.move))) {
   const move = MOVE_BY_ID[action.move];
   f.lastAction = { seq: ++f.seq, who: 'o', actionId: action.id, success: false };
   say(f, `${f.opponent.name} griješi: ${move.name} mu ne sjeda (šansa greške ${pct(chance)}).`, 'o');
-  if (canCritical(f) && f.rng() < P_BLUNDER_CRITICAL && startOpportunity(f, `${f.opponent.name} je pogriješio — prilika!`)) return;
-  addAdvantage(f, 'p', `greška protivnika: ${move.name}`);
+  const where = POSITIONS[f.pos].name.toLowerCase();
+  if (canCritical(f) && f.rng() < P_BLUNDER_CRITICAL
+    && startOpportunity(f, `${f.opponent.name} je zeznuo ${move.name} — kazni ga! Izaberi napad iz pozicije: ${where}.`)) return;
+  counter(f, 'p', move.name);
+}
+
+// After a botched move the other fighter goes straight into a positional attack (sweep, pass, takedown,
+// escape...), with a small bonus. Submissions need a set-up, so they are not counters.
+function counter(f, who, botched) {
+  if (f.rng() >= P_COUNTER) return;
+  const action = chooseAction(f, who, { noSubs: true });
+  if (!action) { addAdvantage(f, who, `greška protivnika: ${botched}`); return; }
+  f.history.push({ who, actionId: action.id, error: false, counter: true });
+  f.turn = other(who);
+  say(f, `${fighter(f, who).name} kažnjava grešku:`, who);
+  autoAction(f, who, action, COUNTER_BONUS);
 }
 
 // One exchange: the fighter whose turn it is acts, then the turn passes to the other one.
@@ -177,6 +206,7 @@ function exchange(f) {
     if (who === 'o') { opponentBlunder(f, action, err); return; }
     f.lastAction = { seq: ++f.seq, who, actionId: action.id, success: false };
     say(f, `Ti: ${MOVE_BY_ID[action.move].name} — greška u izvedbi, ne prolazi (šansa greške ${pct(err)}).`, 'p');
+    counter(f, 'o', MOVE_BY_ID[action.move].name);
     return;
   }
   if (who === 'o' && action.defenses.length && canCritical(f)
@@ -197,27 +227,15 @@ function openCritical(f, critical) {
 // choosing one triggers one of the situation's typical mistakes (`MISTAKES` effects).
 const option = (moveId, extra) => ({ label: MOVE_BY_ID[moveId].name, detail: MOVE_BY_ID[moveId].desc, cls: MOVE_CLASS[moveId], moveId, ...extra });
 
-// Positions directly connected to a ground position (one action away), standing excluded.
-const NEIGHBOURS = {};
-for (const a of ACTIONS) {
-  if (!a.to || a.from === 'standing' || a.to.pos === 'standing') continue;
-  (NEIGHBOURS[a.from] ??= new Set()).add(a.to.pos);
-  (NEIGHBOURS[a.to.pos] ??= new Set()).add(a.from);
-}
-
 const known = (f, ids) => [...new Set(ids)].filter((id) => lvl(f, 'p', id) > 0);
 const defensesAt = (pos) => ACTIONS.filter((a) => a.from === pos).flatMap((a) => a.defenses);
 
-// Wrong attack options: techniques the player knows that belong to this spot but do not work for their role
-// (the other fighter's moves here, defensive moves of this position, the same role one position over).
-// Never a standing technique on the ground or a ground technique while standing.
+// Wrong attack options: techniques the player knows that belong to this exact spot but do not work for
+// their role (the other fighter's moves here, defensive moves of this position). Nothing from other
+// positions, so no rear naked choke from closed guard and no double leg on the ground.
 function opportunityDecoys(f, pos, role) {
-  const near = NEIGHBOURS[pos] ?? new Set();
   const usable = new Set(actionsFor(pos, role).map((a) => a.move));
-  const pool = [
-    ...ACTIONS.filter((a) => (a.from === pos && a.role !== role) || (a.role === role && near.has(a.from))).map((a) => a.move),
-    ...defensesAt(pos),
-  ];
+  const pool = [...ACTIONS.filter((a) => a.from === pos && a.role !== role).map((a) => a.move), ...defensesAt(pos)];
   return known(f, pool).filter((id) => !usable.has(id));
 }
 
@@ -267,11 +285,12 @@ export function startDefense(f, actionId) {
 }
 
 // An attack that plays out on its own, decided by the levels of the attack and the best defense.
-function autoAction(f, who, action) {
-  const chance = autoChance(f, who, action);
+function autoAction(f, who, action, bonus = 0) {
+  const chance = autoChance(f, who, action, bonus);
   const def = bestDefense(f, other(who), action);
-  const unknown = who === 'o' && !def && action.defenses.length ? ' (ne znaš obranu)' : '';
-  const why = `napad razine ${lvl(f, who, action.move)} protiv obrane razine ${def}${unknown}, šansa ${pct(chance)}`;
+  const unknown = who === 'o' && !def && action.defenses.length ? ' — ne znaš obranu' : '';
+  const raw = lvl(f, who, action.move) ? '' : ', bez naučene tehnike';
+  const why = `napad razine ${lvl(f, who, action.move)} protiv obrane razine ${def}${unknown}${raw}, šansa ${pct(chance)}`;
   runAction(f, who, action, f.rng() < chance, why);
 }
 
@@ -282,7 +301,7 @@ function opponentAttack(f, action) {
 
 // The player has a chance to attack from the current position. Returns false when no real attack is known,
 // so a critical moment never consists of wrong answers only.
-export function startOpportunity(f, text = `Prilika! (${POSITIONS[f.pos].name})`) {
+export function startOpportunity(f, text = `Prilika za napad! Izaberi tehniku iz pozicije: ${POSITIONS[f.pos].name.toLowerCase()}.`) {
   const role = roleOf(f, 'p');
   const attacks = shuffle(f.rng, actionsFor(f.pos, role).filter((a) => lvl(f, 'p', a.move) > 0 && a.kind !== 'pull'));
   if (!attacks.length) return false;
@@ -422,7 +441,7 @@ export function stepFight(f, gameDt) {
       endRound(f);
       return; // the rest of the step is the break between rounds
     }
-    if (f.clock >= f.nextExchange) {
+    if (!f.quiet && f.clock >= f.nextExchange) {
       f.nextExchange = f.clock + EXCHANGE_MIN + f.rng() * EXCHANGE_SPREAD;
       exchange(f);
     }

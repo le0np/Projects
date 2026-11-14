@@ -12,8 +12,8 @@ import { mulberry32 } from '../src/engine/rng.js';
 const empty = (name) => ({ name, belt: 'white', levels: {} });
 // The player knows every technique at level 1 (as with "sve otključano"), plus any given levels.
 const kit = (levels = {}) => ({ name: 'Ti', belt: 'white', levels: { ...Object.fromEntries(ACTIONS.flatMap((a) => [a.move, ...a.defenses]).map((id) => [id, 1])), ...levels } });
-const idle = (seed = 1) => createFight(kit(), empty('On'), mulberry32(seed));
-const quiet = (seed = 1) => createFight(empty('Ti'), empty('On'), mulberry32(seed)); // nobody can act
+const idle = (seed = 1) => createFight(kit(), empty('On'), mulberry32(seed), { quiet: true });
+const quiet = (seed = 1) => createFight(empty('Ti'), empty('On'), mulberry32(seed), { quiet: true }); // nobody acts
 
 test('constants match the spec', () => {
   assert.equal(ROUND_SECONDS, 180);
@@ -257,15 +257,16 @@ test('a decent player (right 75 % of the time) wins about half of balanced sparr
     }
     if (f.ended.winner === 'p') wins++;
   }
-  assert.ok(wins / N >= 0.45 && wins / N <= 0.8, `win rate ${wins / N}`);
+  assert.ok(wins / N >= 0.4 && wins / N <= 0.8, `win rate ${wins / N}`);
 });
 
 // ---- round 2, step 1 ----
 import { errorChance, formatLog, opponentBlunder } from '../src/engine/fight.js';
 
 test('error chance depends on belt and move level', () => {
-  assert.equal(errorChance('white', 1), 0.4);
-  assert.ok(Math.abs(errorChance('blue', 3) - 0.15) < 1e-9);
+  assert.equal(errorChance('white', 1), 0.6);
+  assert.ok(Math.abs(errorChance('blue', 3) - 0.42 * 0.88 ** 2) < 1e-9);
+  assert.ok(errorChance('white', 5) < errorChance('white', 1) && errorChance('white', 5) > 0.3);
   assert.equal(errorChance('black', 10), 0.02);
 });
 
@@ -286,22 +287,32 @@ test('initiative strictly alternates between the fighters', () => {
 });
 
 test('an opponent blunder gives the player a chance', () => {
-  const f = createFight({ name: 'Ti', belt: 'white', levels: { mount: 2, sideToMount: 2 } }, { name: 'On', belt: 'white', levels: { sideShrimp: 1 } }, mulberry32(2));
+  const f = createFight({ name: 'Ti', belt: 'white', levels: { mount: 2, sideToMount: 2, shrimp: 1 } }, { name: 'On', belt: 'white', levels: { sideShrimp: 1 } }, mulberry32(2));
   f.pos = 'sideControl'; f.playerTop = true;
+  f.rng = () => 0; // this blunder becomes a decision
   opponentBlunder(f, ACTION_BY_ID.sideShrimp_e);
   assert.equal(f.critical.kind, 'opportunity');
-  assert.match(f.critical.text, /pogriješio/);
+  assert.match(f.critical.text, /Shrimp.*kazni ga! Izaberi napad iz pozicije: side control/);
 });
 
-test('an opponent blunder when the player knows no attack gives an advantage instead', () => {
-  const f = createFight(empty('Ti'), { name: 'On', belt: 'white', levels: { sideShrimp: 1 } }, mulberry32(2));
+test('an opponent blunder the player cannot decide on is punished right away, even on instinct', () => {
+  const f = createFight(empty('Ti'), { name: 'On', belt: 'white', levels: { sideShrimp: 1 } }, mulberry32(2), { quiet: true });
   f.pos = 'sideControl'; f.playerTop = true;
+  f.rng = () => 0.1; // decision would open, counter happens and lands
   opponentBlunder(f, ACTION_BY_ID.sideShrimp_e);
   assert.equal(f.critical, null);
-  assert.equal(f.score.p.adv, 1);
+  assert.ok(f.log.some((l) => /Ti kažnjava grešku/.test(l.text)));
+  assert.ok(f.log.some((l) => /bez naučene tehnike/.test(l.text)));
 });
 
-test('the player decides in about 10 % of exchanges', () => {
+test('a fighter with no move from a position still acts, so a round never freezes', () => {
+  const f = createFight(empty('Ti'), empty('On'), mulberry32(4));
+  f.pos = 'mount'; f.playerTop = false;
+  stepFight(f, 60);
+  assert.ok(f.history.filter((h) => h.actionId).length > 5);
+});
+
+test('the player decides in about 7 % of exchanges', () => {
   let crit = 0, ex = 0;
   for (let i = 0; i < 150; i++) {
     const rng = mulberry32(300 + i);
@@ -313,7 +324,7 @@ test('the player decides in about 10 % of exchanges', () => {
     }
     crit += f.criticalCount; ex += f.history.length;
   }
-  assert.ok(crit / ex >= 0.07 && crit / ex <= 0.15, `share ${crit / ex}`);
+  assert.ok(crit / ex >= 0.04 && crit / ex <= 0.12, `share ${crit / ex}`);
 });
 
 test('the log spells out how points add up and carries round and clock', () => {
@@ -357,16 +368,15 @@ import { fighterErrorChance } from '../src/engine/fight.js';
 
 test('the fight log opens with both fighters\' error chance in percent', () => {
   const f = createFight({ name: 'Ti', belt: 'white', levels: { mount: 1 } }, { name: 'On', belt: 'purple', levels: { mount: 3 } }, mulberry32(1));
-  assert.ok(Math.abs(fighterErrorChance(f.opponent) - 0.09) < 1e-9);
-  assert.match(f.log[0].text, /Ti 40 %, On 9 %/);
+  assert.ok(Math.abs(fighterErrorChance(f.opponent) - 0.25 * 0.88 ** 2) < 1e-9);
+  assert.match(f.log[0].text, /Ti 60 %, On 19 %/);
 });
 
 test('an opponent blunder says how likely it was', () => {
   const f = createFight(empty('Ti'), { name: 'On', belt: 'blue', levels: { sideShrimp: 1 } }, mulberry32(2));
   f.pos = 'sideControl'; f.playerTop = true;
   opponentBlunder(f, ACTION_BY_ID.sideShrimp_e);
-  assert.ok(f.log.some((l) => /On griješi: .*šansa greške 18 %/.test(l.text)));
-  assert.ok(f.log.some((l) => /^\+1 prednost: Ti/.test(l.text)));
+  assert.ok(f.log.some((l) => /On griješi: .*šansa greške 42 %/.test(l.text)));
 });
 
 test('when the opponent overpowers a good choice the log gives levels and the chance', () => {

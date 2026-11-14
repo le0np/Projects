@@ -22,7 +22,8 @@ export function averageLevel(fighter) {
 }
 
 // `baseLevel` (optional): opponent's moves are within one level of it, so fights are even.
-export function makeOpponent(belt, rng, baseLevel) {
+// `knowShare`: share of the belt's moves the opponent knows.
+export function makeOpponent(belt, rng, baseLevel, knowShare = 0.8) {
   const bi = BELTS.indexOf(belt);
   const levels = {};
   const level = () => (baseLevel === undefined
@@ -30,8 +31,15 @@ export function makeOpponent(belt, rng, baseLevel) {
     : Math.min(10, Math.max(1, Math.round(baseLevel) + Math.floor(rng() * 3) - 1)));
   for (const m of MOVES) {
     const mi = BELTS.indexOf(m.belt);
-    if (mi <= bi && rng() < 0.8) levels[m.id] = level();
+    if (mi <= bi && rng() < knowShare) levels[m.id] = level();
     else if (mi === bi + 1 && rng() < 0.1) levels[m.id] = baseLevel === undefined ? 1 : level();
   }
   return { name: `${pick(rng, NAMES)} ${pick(rng, SURNAMES)}`, belt, levels };
+}
+
+// Sparring in your own gym: a random training partner from white to blue belt, with a random
+// set of moves (some know a lot, some only a few) at the levels typical for their belt.
+export function makeSparPartner(rng) {
+  const belt = rng() < 0.55 ? 'white' : 'blue';
+  return makeOpponent(belt, rng, undefined, 0.35 + rng() * 0.55);
 }

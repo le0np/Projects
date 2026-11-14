@@ -6,7 +6,7 @@ import {
   rollCompetitionLearn, recordFight, instantLevelUp, promotionStatus, promote, serialize, deserialize, competitionReady, ACTIVITIES, MAX_LEVEL,
 } from '../engine/progression.js';
 import { createFight, stepFight, chooseOption, formatLog, logLine, fighterErrorChance, pct, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
-import { makeOpponent, fighterFromState, averageLevel } from '../engine/opponent.js';
+import { makeOpponent, makeSparPartner, fighterFromState, averageLevel } from '../engine/opponent.js';
 import { createRenderer } from '../render/renderer2d.js';
 import { tickCriticalTimer } from './criticalTimer.js';
 
@@ -266,12 +266,11 @@ function startFightFlow(mode) {
   openFight(mode, 0);
 }
 
-// Opponents are built around the player's average level: sparring partners a bit easier,
-// each competition round a bit harder.
 function openFight(mode, stage) {
   const me = fighterFromState(state);
-  const base = averageLevel(me) + (mode === 'spar' ? -0.5 : stage * 0.5);
-  const fight = createFight(me, makeOpponent(state.belt, rng, base), rng);
+  // Sparring: a random partner from the gym (white to blue belt). Competition: built around your level.
+  const opponent = mode === 'spar' ? makeSparPartner(rng) : makeOpponent(state.belt, rng, averageLevel(me) + stage * 0.5);
+  const fight = createFight(me, opponent, rng);
   fightCtx = { fight, mode, stage, timer: null, feedbackUntil: 0, logLen: -1, critSeq: -1, done: false };
   $('career').hidden = true;
   $('fight').hidden = false;
@@ -450,7 +449,7 @@ function frame(now) {
         stepFight(f, dtReal * CLOCK_SPEED * state.speed);
       }
     }
-    renderer.draw(f, dtReal, { slowmo: !!f.critical });
+    renderer.draw(f, dtReal, { slowmo: !!f.critical, mode: fightCtx.mode });
     renderScore(f);
     renderLog(f);
     renderCritical(f);
