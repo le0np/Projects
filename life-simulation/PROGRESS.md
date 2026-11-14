@@ -4,7 +4,18 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-**MVP je funkcionalno kompletan (M1–M7).** Vlasnik je 14.–15. studenog 2026. dopunio koncept (`docs/spec/08_CONCEPT_V2.md`): grad gledan odozgo, vrijeme i starenje od 18 godina, kaos (gradski preokreti, smicalice, efekt leptira), humorističan ton i likovi u stilu B3. Rad se nastavlja po planu za koncept v2 (`docs/IMPLEMENTATION_PLAN.md` §9). **M8 (vrijeme i dob), M9 (grad i rutina), M10 (kaos) i M11 (prikaz grada i likova B3) su gotovi**; sljedeći je M12 (sadržaj u humorističnom tonu).
+**MVP je funkcionalno kompletan (M1–M7)**, a koncept v2 je proveden do M11: grad odozgo, likovi B3, vrijeme i dob, rutina, preokreti i smicalice. Rad je **pauziran 15. studenog 2026.** na zahtjev vlasnika.
+
+### Povratna informacija vlasnika (15. 11. 2026.) — prvo riješiti ovo
+
+Vlasnik je igrao trenutnu verziju i javio:
+
+1. **Igra je previše monotona.**
+2. **Vrijeme za odgovor je prekratko.** Rokovi su 10–40 s vremena sesije; uz `TIME_SCALE=6`, kojim je vlasnik igrao, to je u stvarnosti samo 2–7 s. Treba provjeriti i rokove na normalnoj brzini (`TIME_SCALE=1`).
+3. **Smicalice su prejednostavne.** Sada je to jedan klik (meta + vrsta) i jedan skriveni event kasnije.
+4. Od ranije otvoreno: vlasnik igru **i dalje doživljava kao kartice** (tekstualni paneli dominiraju, a grad je pozadina). Postavljeno je pitanje „kad se tvom liku nešto dogodi, što bi volio vidjeti na ekranu i kako bi birao?”, a odgovor još nije stigao.
+
+Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljivijom, prije pisanja koda. Točke 1, 3 i 4 su vjerojatno isti problem: igrač samo reagira na tekst i nema razloga gledati grad. Točka 2 je brz popravak konfiguracije (rokovi i `TIME_SCALE` za demo), ali i nju treba potvrditi s vlasnikom.
 
 ### Kriteriji prihvaćanja (00_OVERVIEW)
 
@@ -360,7 +371,8 @@ Provedeno 13. studenog 2026.:
 
 ## Sljedeći koraci
 
-1. ~~M8 Vrijeme i dob~~ → ~~M9 Grad i rutina~~ → ~~M10 Kaos~~ → ~~M11 Prikaz~~ (gotovo) → M10 Kaos → M11 Prikaz → M12 Sadržaj → M13 Balans (plan §9).
+1. **Riješiti povratnu informaciju vlasnika** (gore): monotonija, prekratko vrijeme za odgovor, prejednostavne smicalice, osjećaj „kartica”. Najprije razgovor s vlasnikom, tek onda kod.
+2. Nakon toga, po planu §9: M12 Sadržaj (humorističan ton, životne faze) i M13 Balans.
 
 ## Handoff za novi chat
 
