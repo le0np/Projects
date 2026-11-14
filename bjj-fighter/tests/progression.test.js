@@ -126,3 +126,29 @@ test('promotion needs moves and wins', () => {
   assert.equal(promote(s), true);
   assert.equal(s.belt, 'blue');
 });
+
+test('a partly valid save is repaired instead of crashing', () => {
+  const partial = JSON.stringify({
+    version: 1, gameTime: 50, lastReal: 0, belt: 'blue', levels: { shrimp: 3 },
+    training: { moveId: 'nope', toLevel: 1, startedAt: 0, endsAt: 1e9 },
+    activity: { type: 'party', chance: 1, startedAt: 0, endsAt: 1e9 },
+  });
+  const s = deserialize(partial, 0);
+  assert.equal(s.gameTime, 50);
+  assert.equal(s.belt, 'blue');
+  assert.equal(s.levels.shrimp, 3);
+  assert.equal(s.speed, 1);
+  assert.deepEqual(s.medals, { gold: 0, silver: 0, bronze: 0 });
+  assert.equal(s.training, null);
+  assert.equal(s.activity, null);
+  assert.ok(Number.isFinite(s.money) && Number.isFinite(s.wins) && Number.isFinite(s.losses));
+});
+
+test('save numbers out of range are clamped or reset', () => {
+  const s = deserialize(JSON.stringify({ version: 1, gameTime: 0, lastReal: 0, belt: 'white', levels: { upa: 99, x: 2 }, speed: 50, money: 'lots', wins: -3 }), 0);
+  assert.equal(s.speed, 10);
+  assert.equal(s.money, createState().money);
+  assert.equal(s.wins, 0);
+  assert.equal(s.levels.upa, 10);
+  assert.equal(s.levels.x, undefined);
+});

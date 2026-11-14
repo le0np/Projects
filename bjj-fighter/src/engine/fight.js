@@ -122,10 +122,7 @@ function exchange(f) {
       return;
     }
   }
-  if (who === 'p' && canCritical(f) && f.rng() < P_OPPORTUNITY_CRITICAL) {
-    startOpportunity(f);
-    return;
-  }
+  if (who === 'p' && canCritical(f) && f.rng() < P_OPPORTUNITY_CRITICAL && startOpportunity(f)) return;
   runAction(f, who, action, f.rng() < autoChance(f, who, action));
 }
 
@@ -173,17 +170,20 @@ export function startDefense(f, actionId) {
   f.lastAction = { seq: f.seq, who: 'o', actionId, success: null };
 }
 
-// The player has a chance to attack from the current position.
+// The player has a chance to attack from the current position. Returns false when no real attack is known,
+// so a critical moment never consists of wrong answers only.
 export function startOpportunity(f) {
   const role = roleOf(f, 'p');
   const known = shuffle(f.rng, actionsFor(f.pos, role).filter((a) => lvl(f, 'p', a.move) > 0 && a.kind !== 'pull'));
+  if (!known.length) return false;
   const count = Math.min(known.length, 1 + Math.floor(f.rng() * 3));
-  const correct = known.slice(0, Math.max(1, count)).map((a) => ({ label: MOVE_BY_ID[a.move].desc, correct: true, moveId: a.move, actionId: a.id }));
+  const correct = known.slice(0, count).map((a) => ({ label: MOVE_BY_ID[a.move].desc, correct: true, moveId: a.move, actionId: a.id }));
   openCritical(f, {
     kind: 'opportunity',
     text: `Prilika! (${POSITIONS[f.pos].name})`,
     options: fillOptions(f, correct, OPPORTUNITY_MISTAKES[`${f.pos}:${role}`] ?? []),
   });
+  return true;
 }
 
 function applyMistake(f, mk, threatAction) {

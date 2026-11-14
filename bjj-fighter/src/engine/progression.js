@@ -144,10 +144,45 @@ function isValid(s) {
     && Number.isFinite(s.lastReal) && BELTS.includes(s.belt) && s.levels && typeof s.levels === 'object';
 }
 
+const num = (v, fallback, lo = -Infinity, hi = Infinity) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback);
+const timer = (t) => t && typeof t === 'object' && Number.isFinite(t.startedAt) && Number.isFinite(t.endsAt);
+
+// Keep what is usable from an older or hand-edited save, fill the rest with defaults.
+function repair(raw, realNow) {
+  const d = createState({ test: raw.test !== false, now: realNow });
+  const levels = {};
+  for (const [id, l] of Object.entries(raw.levels)) {
+    if (MOVE_BY_ID[id] && Number.isFinite(l) && l >= 1) levels[id] = Math.min(MAX_LEVEL, Math.floor(l));
+  }
+  const medals = { ...d.medals };
+  for (const k of Object.keys(medals)) medals[k] = Math.floor(num(raw.medals?.[k], 0, 0));
+  const tr = raw.training;
+  const ac = raw.activity;
+  return {
+    ...d,
+    test: raw.test !== false,
+    gameTime: raw.gameTime,
+    lastReal: raw.lastReal,
+    speed: Math.round(num(raw.speed, 1, 1, 10)),
+    unlockAll: typeof raw.unlockAll === 'boolean' ? raw.unlockAll : d.unlockAll,
+    belt: raw.belt,
+    money: Math.floor(num(raw.money, d.money, 0)),
+    levels,
+    wins: Math.floor(num(raw.wins, 0, 0)),
+    losses: Math.floor(num(raw.losses, 0, 0)),
+    medals,
+    training: timer(tr) && MOVE_BY_ID[tr.moveId] && Number.isInteger(tr.toLevel) && tr.toLevel >= 1 && tr.toLevel <= MAX_LEVEL
+      ? { moveId: tr.moveId, toLevel: tr.toLevel, startedAt: tr.startedAt, endsAt: tr.endsAt } : null,
+    activity: timer(ac) && ACTIVITIES[ac.type] && Number.isFinite(ac.chance)
+      ? { type: ac.type, chance: num(ac.chance, 0, 0, 1), startedAt: ac.startedAt, endsAt: ac.endsAt } : null,
+  };
+}
+
 export function deserialize(str, realNow, rng = Math.random) {
-  let s;
-  try { s = JSON.parse(str); } catch { s = null; }
-  if (!isValid(s)) return createState({ now: realNow });
+  let raw;
+  try { raw = JSON.parse(str); } catch { raw = null; }
+  if (!isValid(raw)) return createState({ now: realNow });
+  const s = repair(raw, realNow);
   advance(s, realNow, rng);
   return s;
 }

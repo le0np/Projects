@@ -155,3 +155,13 @@ test('a good player sees about 8-12 critical moments per fight', () => {
 test('random choices always reach a result', () => {
   for (let i = 0; i < 100; i++) simulate(1000 + i, (f, rng) => Math.floor(rng() * 5));
 });
+
+test('no opportunity opens when the only known move is guard pull', () => {
+  const f = createFight({ name: 'Ti', belt: 'white', levels: { guardPull: 3 } }, empty('On'), mulberry32(5));
+  assert.equal(startOpportunity(f), false);
+  assert.equal(f.critical, null);
+  for (let i = 0; i < 50 && !f.ended; i++) {
+    stepFight(f, 10);
+    if (f.critical) assert.ok(f.critical.options.some((o) => o.correct));
+  }
+});

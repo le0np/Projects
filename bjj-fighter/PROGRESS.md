@@ -46,13 +46,23 @@ Testna verzija je igriva u pregledniku, na računalu i mobitelu:
 - Protunapad iz susjedne pozicije prebacuje borbu u tu poziciju.
 - Borba se ne sprema: reload usred borbe je prekida bez upisa rezultata.
 
+### Završni pregled koda i popravci
+- Cijelu granu je pregledao neovisni recenzent. Kritičnih nalaza nije bilo.
+- Popravljena su tri važna nalaza, svaki uz test koji je prvo pao:
+  1. Djelomično pokvaren ili stari zapis u pregledniku sada se popravlja (nedostajuća polja dobiju zadane vrijednosti, neispravan trening ili aktivnost se odbaci, brojevi se ograniče). Prije je mogao srušiti igru ili tiho obrisati napredak.
+  2. Prilika u borbi otvara se samo ako igrač zna barem jedan pravi napad iz te pozicije. Prije je mogla ponuditi pet krivih opcija, npr. kad igrač zna samo guard pull.
+  3. Rok za odluku vezan je uz svaki kritični trenutak posebno (`src/ui/criticalTimer.js`). Protunapad koji se otvori u zadnjem trenutku prethodnog više ne istječe prije nego što ga igrač vidi.
+- Odgođeni sitni nalazi:
+  - Rezultat treninga ili aktivnosti koji je završio dok je igra bila zatvorena ne prikaže obavijest (napredak se ipak uračuna).
+  - Bodovi koji se još nisu „držali” 3 s na samom kraju zadnje runde ne pretvore se u prednost.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 14. studenog 2026.:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` | 38/38 prolazi |
+| `npm test` | 43/43 prolazi |
 | `npm start` | server odgovara 200 na `/` i module |
 | Playwright e2e (1100 px) | trening uz 10x završi, sparing odigran do rezultata, reload zadrži napredak, 0 grešaka u konzoli |
 | Playwright mobitel (iPhone 13) | nema horizontalnog scrolla ni u karijeri ni u borbi |
@@ -65,6 +75,7 @@ Provedeno 14. studenog 2026.:
 - Reload usred borbe prekida borbu bez upisa rezultata.
 - Opcije u kritičnim trenucima još nisu prilagođene razini igrača. Uvijek se nude sve obrane, a nepoznat potez ima malu šansu. Ostavljeno kao mogućnost iz koncepta.
 - Nema kondicije ni umora.
+- Nakon ponovnog otvaranja igre nema obavijesti o treningu ili aktivnosti koji su završili dok je igra bila zatvorena.
 
 ## Sljedeći koraci
 

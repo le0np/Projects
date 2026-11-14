@@ -8,6 +8,7 @@ import {
 import { createFight, stepFight, chooseOption, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
 import { makeOpponent, fighterFromState } from '../engine/opponent.js';
 import { createRenderer } from '../render/renderer2d.js';
+import { tickCriticalTimer } from './criticalTimer.js';
 
 const SAVE_KEY = 'bjj-fighter-save-v1';
 const SPAR_REWARD = 10;
@@ -22,7 +23,7 @@ const rng = Math.random;
 // ---------- state & saving ----------
 let state = load();
 let activeTab = 'club';
-let fightCtx = null; // { fight, mode: 'spar'|'comp', stage, timeLeft, feedbackUntil }
+let fightCtx = null; // { fight, mode: 'spar'|'comp', stage, timer, feedbackUntil }
 let renderer = null;
 
 function load() {
@@ -259,7 +260,7 @@ function startFightFlow(mode) {
 
 function openFight(mode, stage) {
   const fight = createFight(fighterFromState(state), makeOpponent(state.belt, rng), rng);
-  fightCtx = { fight, mode, stage, timeLeft: 0, feedbackUntil: 0, logLen: -1, critSeq: -1, done: false };
+  fightCtx = { fight, mode, stage, timer: null, feedbackUntil: 0, logLen: -1, critSeq: -1, done: false };
   $('career').hidden = true;
   $('fight').hidden = false;
   $('result').hidden = true;
@@ -301,13 +302,13 @@ function renderCritical(f) {
   if (!c) { $('critical').hidden = true; return; }
   if (fightCtx.critSeq !== f.criticalCount) {
     fightCtx.critSeq = f.criticalCount;
-    fightCtx.timeLeft = c.timeLimit;
     $('critical-text').textContent = c.text;
     $('critical-options').innerHTML = c.options
       .map((o, i) => `<button data-opt="${i}"><span class="k">${i + 1}</span> ${esc(o.label)}</button>`).join('');
     $('critical').hidden = false;
   }
-  $('critical-timer').style.width = `${(fightCtx.timeLeft / c.timeLimit) * 100}%`;
+  const left = fightCtx.timer?.seq === f.criticalCount ? fightCtx.timer.left : c.timeLimit;
+  $('critical-timer').style.width = `${Math.max(0, left / c.timeLimit) * 100}%`;
 }
 
 function choose(index) {
@@ -394,8 +395,9 @@ function frame(now) {
     const f = fightCtx.fight;
     if (!f.ended) {
       if (f.critical) {
-        fightCtx.timeLeft -= dtReal;
-        if (fightCtx.timeLeft <= 0) choose(null);
+        const tick = tickCriticalTimer(fightCtx.timer, f.critical, f.criticalCount, dtReal);
+        fightCtx.timer = tick.timer;
+        if (tick.expired) choose(null);
       } else {
         stepFight(f, dtReal * CLOCK_SPEED * state.speed);
       }

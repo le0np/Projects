@@ -13,7 +13,7 @@ Treba samo [Node.js](https://nodejs.org) 20 ili noviji, bez instalacije paketa.
 ```bash
 cd bjj-fighter
 npm start          # server na http://localhost:8080
-npm test           # testovi pravila igre (38 testova)
+npm test           # testovi pravila igre (43 testa)
 ```
 
 Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `index.html` ne radi jer preglednici ne učitavaju JavaScript module s `file://`. Radi i bilo koji statički server, npr. `python3 -m http.server 8080` u ovoj mapi.
