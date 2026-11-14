@@ -132,13 +132,20 @@ Vlasnik: bijeli pojas griješi barem 60 %, bijeli i plavi rade puno grešaka koj
 - Favicon (nema više 404 u konzoli).
 - Simulacija 300 sparinga (sve otključano, 75 % točnih odabira): ~81 razmjena, ~6 odluka, ~26 uspjelih poteza, ~37 grešaka, ~45 bodova ukupno, ~61 % submissiona, prosječno 6 min, ~52 % pobjeda. Fuzz 3000 borbi s nasumičnim potezima: nijedna ne zastane ni ne pukne.
 
+### Kartice prema situaciji i osjećaj (savjet) od plavog pojasa
+Vlasnik: u zatvorenom gardu se nudila obrana od guillotine kao napad, a u north-southu „North-south”, obrana od kimure i shrimp. Ideja: na niskim razinama nema savjeta, od plavog pojasa igrač dobiva savjet koji potez odabrati, a savjet je precizniji što je igrač bolji (kao podsvijest).
+- **Prilika (napad):** krive opcije su samo napadi druge strane iz iste pozicije (npr. kad si gore u zatvorenom gardu: triangle, armbar, scissor sweep). Nikad obrane, bijegovi ni imena pozicija. Ako nema takvih poteza, a znaš barem dva napada, biraš između njih (razlikuju se šansom). Ako znaš samo jedan napad i nema krive opcije, odluke nema i napad se odigra sam (npr. s leđa samo rear naked choke).
+- Kriva opcija u prilici objašnjava zašto: „Triangle se ovdje radi odozdo, a ti si gore.” (log), „✘ Triangle ovdje radi protivnik, ne ti.” (poruka).
+- **Obrana:** krive opcije su obrane od drugih napada koje protivnik ima iz te pozicije (obrana od guillotine dok te hvata triangle) i tvoji potezi iz te pozicije. Nikad obrana od tvog vlastitog poteza (npr. „Zatvoreni gard” dok si ti gore).
+- **Osjećaj:** bijeli pojas nema savjet. Od plavog pojasa kartica ima redak „💭 Osjećaj ti govori: …” i označenu karticu. Savjet pokazuje karticu s najboljom šansom, ali je pouzdan samo dio vremena: plavi 55 %, ljubičasti 70 %, smeđi 82 %, crni 90 %, plus 1,5 postotna boda po prosječnoj razini ponuđenih tehnika iznad 1, najviše 97 %. Kad promaši, pokazuje nasumičnu drugu karticu. Savjet i njegova pouzdanost upisuju se u log.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 14. studenog 2026.:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` | 72/72 prolazi |
+| `npm test` | 74/74 prolazi |
 | `npm start` | server odgovara 200 na `/` i module |
 | Playwright e2e (1100 px) | sparing (dvorana) i natjecanje (arena) odigrani do rezultata uz „sve otključano”, 0 grešaka u konzoli |
 | Playwright mobitel (iPhone 13) | nema horizontalnog scrolla ni u karijeri ni u borbi |

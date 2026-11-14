@@ -65,6 +65,7 @@ test('choosing a wrong option against a submission ends the fight by submission'
   f.pos = 'back'; f.playerTop = false;
   startDefense(f, 'rnc_b');
   const wrong = f.critical.options.findIndex((o) => !o.correct);
+  f.rng = () => 0; // the choke lands
   chooseOption(f, wrong);
   assert.deepEqual([f.ended.winner, f.ended.method], ['o', 'sub']);
 });
@@ -78,16 +79,16 @@ test('no answer in time against a submission is a tap', () => {
 });
 
 test('a successful player submission from an opportunity wins', () => {
-  const f = createFight(kit({ rnc: 10 }), empty('On'), () => 0);
-  f.pos = 'back'; f.playerTop = true;
+  const f = createFight(kit({ armbar: 10 }), empty('On'), () => 0);
+  f.pos = 'mount'; f.playerTop = true;
   startOpportunity(f);
-  const idx = f.critical.options.findIndex((o) => o.actionId === 'rnc_b');
+  const idx = f.critical.options.findIndex((o) => o.actionId === 'armbar_m');
   assert.ok(idx >= 0);
   chooseOption(f, idx);
   assert.deepEqual([f.ended.winner, f.ended.method], ['p', 'sub']);
 });
 
-test('every defense and every opportunity offers 2 to 5 options with at least one right and one wrong', () => {
+test('every defense offers 2 to 5 options with a right and a wrong one; an opportunity, when it opens, at least one right', () => {
   const everything = kit().levels;
   for (const a of ACTIONS.filter((x) => x.defenses.length)) {
     const f = createFight({ name: 'Ti', belt: 'white', levels: everything }, { name: 'On', belt: 'white', levels: everything }, mulberry32(7));
@@ -97,15 +98,17 @@ test('every defense and every opportunity offers 2 to 5 options with at least on
     assert.ok(o.length >= 2 && o.length <= 5, a.id);
     assert.ok(o.some((x) => x.correct) && o.some((x) => !x.correct), a.id);
   }
+  const opened = [];
   for (const key of Object.keys(OPPORTUNITY_MISTAKES)) {
     const [pos, role] = key.split(':');
     const f = createFight({ name: 'Ti', belt: 'white', levels: everything }, empty('On'), mulberry32(3));
     f.pos = pos; f.playerTop = role === 'neutral' ? null : role === 'top';
-    startOpportunity(f);
+    if (!startOpportunity(f)) { opened.push(key); continue; }
     const o = f.critical.options;
     assert.ok(o.length >= 2 && o.length <= 5, key);
-    assert.ok(o.some((x) => x.correct) && o.some((x) => !x.correct), key);
+    assert.ok(o.some((x) => x.correct), key);
   }
+  assert.deepEqual(opened, ['back:top']); // only one sensible attack from the back: no decision there
 });
 
 test('a round ends exactly at 180 s even with a huge step, and the fight ends after round 3', () => {
@@ -221,7 +224,7 @@ test('every option in a critical moment is a real technique name', () => {
     const [pos, role] = key.split(':');
     const f = createFight({ name: 'Ti', belt: 'white', levels: everything }, empty('On'), mulberry32(4));
     f.pos = pos; f.playerTop = role === 'neutral' ? null : role === 'top';
-    startOpportunity(f);
+    if (!startOpportunity(f)) continue;
     for (const o of f.critical.options) assert.ok(nameSet.has(o.label), `${key}: "${o.label}"`);
   }
 });
@@ -233,7 +236,7 @@ test('wrong technique options are not usable by the player from that spot', () =
     for (let seed = 1; seed < 6; seed++) {
       const f = createFight({ name: 'Ti', belt: 'white', levels: everything }, empty('On'), mulberry32(seed));
       f.pos = pos; f.playerTop = role === 'neutral' ? null : role === 'top';
-      startOpportunity(f);
+      if (!startOpportunity(f)) continue;
       const ok = usableBy(pos, role);
       for (const o of f.critical.options.filter((x) => !x.correct)) assert.ok(!ok.has(o.moveId), `${key}: ${o.moveId}`);
     }
@@ -287,7 +290,7 @@ test('initiative strictly alternates between the fighters', () => {
 });
 
 test('an opponent blunder gives the player a chance', () => {
-  const f = createFight({ name: 'Ti', belt: 'white', levels: { mount: 2, sideToMount: 2, shrimp: 1 } }, { name: 'On', belt: 'white', levels: { sideShrimp: 1 } }, mulberry32(2));
+  const f = createFight({ name: 'Ti', belt: 'white', levels: { sideToMount: 2, sideToKob: 2 } }, { name: 'On', belt: 'white', levels: { sideShrimp: 1 } }, mulberry32(2));
   f.pos = 'sideControl'; f.playerTop = true;
   f.rng = () => 0; // this blunder becomes a decision
   opponentBlunder(f, ACTION_BY_ID.sideShrimp_e);
@@ -357,8 +360,8 @@ test('a fast answer adds 10 percentage points', () => {
 });
 
 test('every option carries a class colour group', () => {
-  const f = createFight(kit({ rnc: 3 }), empty('On'), mulberry32(1));
-  f.pos = 'back'; f.playerTop = true;
+  const f = createFight(kit({ armbar: 3 }), empty('On'), mulberry32(1));
+  f.pos = 'mount'; f.playerTop = true;
   startOpportunity(f);
   for (const o of f.critical.options) assert.ok(['napad', 'obrana', 'kontrola', 'pozicija'].includes(o.cls), o.label);
 });
@@ -419,7 +422,7 @@ test('standing techniques are never offered on the ground and ground ones never 
     for (let seed = 1; seed < 6; seed++) {
       const f = createFight({ name: 'Ti', belt: 'white', levels: everything }, empty('On'), mulberry32(seed));
       f.pos = pos; f.playerTop = role === 'neutral' ? null : role === 'top';
-      startOpportunity(f);
+      if (!startOpportunity(f)) continue;
       for (const o of f.critical.options) {
         if (pos === 'standing') assert.ok(!groundOnly.has(o.moveId), `${key}: ${o.moveId}`);
         else assert.ok(!['doubleLeg', 'singleLeg', 'guardPull', 'sprawl'].includes(o.moveId), `${key}: ${o.moveId}`);
@@ -449,4 +452,28 @@ test('most automatic exchanges between equal fighters go through', () => {
     }
   }
   assert.ok(ok / all >= 0.5, `success share ${ok / all}`);
+});
+
+// ---- gut feeling (hint) from blue belt on ----
+import { hintAccuracy } from '../src/engine/fight.js';
+
+test('a white belt gets no hint, from blue belt on the hint gets more reliable with belt and level', () => {
+  assert.equal(hintAccuracy('white', 10), 0);
+  assert.ok(hintAccuracy('blue', 1) > 0.5 && hintAccuracy('blue', 1) < 0.6);
+  assert.ok(hintAccuracy('blue', 5) > hintAccuracy('blue', 1));
+  assert.ok(hintAccuracy('purple', 1) > hintAccuracy('blue', 5));
+  assert.ok(hintAccuracy('black', 10) <= 0.97);
+});
+
+test('the hint points at the best right option when it is right, and is missing for a white belt', () => {
+  const white = createFight(kit(), empty('On'), () => 0, { quiet: true });
+  white.pos = 'mount'; white.playerTop = false;
+  startDefense(white, 'armbar_m');
+  assert.equal(white.critical.hint, null);
+  const blue = createFight({ ...kit({ armbarDefense: 6 }), belt: 'blue' }, { name: 'On', belt: 'white', levels: { armbar: 1 } }, () => 0, { quiet: true });
+  blue.pos = 'mount'; blue.playerTop = false;
+  startDefense(blue, 'armbar_m');
+  const h = blue.critical.hint;
+  assert.equal(blue.critical.options[h.index].moveId, 'armbarDefense');
+  assert.ok(blue.log.some((l) => /Osjećaj ti govori: Obrana od armbara/.test(l.text)));
 });

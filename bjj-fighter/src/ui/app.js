@@ -316,9 +316,11 @@ function renderCritical(f) {
   if (!c) { $('critical').hidden = true; return; }
   if (fightCtx.critSeq !== f.criticalCount) {
     fightCtx.critSeq = f.criticalCount;
-    $('critical-text').textContent = c.text;
+    // From blue belt on: a gut feeling about the best card, not always right.
+    const hint = c.hint ? `<span class="hint-line">💭 Osjećaj ti govori: <b>${esc(c.options[c.hint.index].label)}</b> · pouzdanost ${pct(c.hint.accuracy)}</span>` : '';
+    $('critical-text').innerHTML = `${esc(c.text)}${hint}`;
     $('critical-options').innerHTML = c.options
-      .map((o, i) => `<button data-opt="${i}" class="cls-${o.cls}"><span class="k">${i + 1}</span> <b>${esc(o.label)}</b><small>${esc(o.detail ?? '')}</small></button>`).join('');
+      .map((o, i) => `<button data-opt="${i}" class="cls-${o.cls}${c.hint?.index === i ? ' hinted' : ''}"><span class="k">${i + 1}</span> <b>${esc(o.label)}</b>${c.hint?.index === i ? ' <span class="hint-mark">💭</span>' : ''}<small>${esc(o.detail ?? '')}</small></button>`).join('');
     $('critical').hidden = false;
   }
   const left = fightCtx.timer?.seq === f.criticalCount ? fightCtx.timer.left : c.timeLimit;
@@ -337,7 +339,10 @@ function choose(index) {
   const fb = $('feedback');
   let ms = 1800;
   if (!opt) { fb.textContent = 'Prekasno!'; fb.className = 'feedback bad'; }
-  else if (!opt.correct) { fb.textContent = `✘ ${opt.label} ovdje ne pomaže.`; fb.className = 'feedback bad'; }
+  else if (!opt.correct) {
+    fb.textContent = r.kind === 'opportunity' ? `✘ ${opt.label} ovdje radi protivnik, ne ti.` : `✘ ${opt.label} ovdje ne pomaže.`;
+    fb.className = 'feedback bad';
+  }
   else if (r.success) { fb.textContent = `✔ ${opt.label} — uspjelo! (razina ${r.myLevel} protiv ${r.theirLevel}${fast ? ', brza odluka +10 %' : ''})`; fb.className = 'feedback good'; }
   else {
     fb.textContent = `✔ Dobar izbor, ali ${f.opponent.name} te nadjačao: tvoja razina ${r.myLevel} protiv njegove ${r.theirLevel} (šansa ${pct(r.chance)}). Treniraj ${opt.label}!`;

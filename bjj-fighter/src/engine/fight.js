@@ -217,7 +217,9 @@ function exchange(f) {
 
 function openCritical(f, critical) {
   f.critical = { ...critical, timeLimit: CRITICAL_TIME_LIMIT };
+  f.critical.hint = giveHint(f, f.critical);
   say(f, `⚡ Odluka: ${critical.text} [${critical.options.map((o) => `${o.label}${o.correct ? ' ✔' : ''}`).join(' | ')}]`);
+  if (f.critical.hint) say(f, `💭 Osjećaj ti govori: ${critical.options[f.critical.hint.index].label} (pouzdanost osjećaja ${pct(f.critical.hint.accuracy)}).`, 'p');
   f.criticalCount += 1;
   f.lastCriticalAt = f.elapsed;
   f.seq += 1;
@@ -228,27 +230,31 @@ function openCritical(f, critical) {
 const option = (moveId, extra) => ({ label: MOVE_BY_ID[moveId].name, detail: MOVE_BY_ID[moveId].desc, cls: MOVE_CLASS[moveId], moveId, ...extra });
 
 const known = (f, ids) => [...new Set(ids)].filter((id) => lvl(f, 'p', id) > 0);
-const defensesAt = (pos) => ACTIONS.filter((a) => a.from === pos).flatMap((a) => a.defenses);
+const ROLE_NAME = { top: 'odozgo', bottom: 'odozdo', neutral: 'iz stava' };
+const otherRole = (role) => (role === 'top' ? 'bottom' : role === 'bottom' ? 'top' : 'neutral');
 
-// Wrong attack options: techniques the player knows that belong to this exact spot but do not work for
-// their role (the other fighter's moves here, defensive moves of this position). Nothing from other
-// positions, so no rear naked choke from closed guard and no double leg on the ground.
+// Wrong attack options: attacks (sweeps, submissions, passes, takedowns) that exist in this exact position
+// but only for the other fighter's role, e.g. a triangle when you are on top in closed guard. Never a defense,
+// an escape or a position name, which make no sense when you are asked to attack.
 function opportunityDecoys(f, pos, role) {
   const usable = new Set(actionsFor(pos, role).map((a) => a.move));
-  const pool = [...ACTIONS.filter((a) => a.from === pos && a.role !== role).map((a) => a.move), ...defensesAt(pos)];
+  const pool = actionsFor(pos, otherRole(role)).filter((a) => ['sub', 'sweep', 'pass', 'takedown'].includes(a.kind)).map((a) => a.move);
   return known(f, pool).filter((id) => !usable.has(id));
 }
 
-// Wrong defense options: techniques the player knows from this spot (other defenses of this position,
-// the player's own moves here) that do not stop this particular attack.
+// Wrong defense options: defenses against the other attacks the opponent has from this spot
+// (a guillotine defense against a triangle), plus the player's own attacks here. Never a defense
+// against the player's own moves (re-closing the guard while you are the one on top).
 function defenseDecoys(f, pos, role, correctIds) {
-  const pool = [...defensesAt(pos), ...actionsFor(pos, role).map((a) => a.move)];
+  const threats = actionsFor(pos, otherRole(role));
+  const pool = [...threats.flatMap((a) => a.defenses), ...actionsFor(pos, role).map((a) => a.move)];
   return known(f, pool).filter((id) => !correctIds.includes(id));
 }
 
-// null when the player knows no right answer or no wrong one: then there is nothing to decide.
+// null when there is nothing to decide: no right answer, or only one right answer and nothing wrong.
+// With several right answers and no wrong one the decision is which attack has the best chance.
 function fillOptions(f, correct, decoyIds, mistakeIds) {
-  if (!correct.length || !decoyIds.length) return null;
+  if (!correct.length || (!decoyIds.length && correct.length < 2)) return null;
   const effects = shuffle(f.rng, mistakeIds.length ? [...new Set(mistakeIds)] : GENERIC_MISTAKES);
   const wrong = shuffle(f.rng, decoyIds).slice(0, 5 - correct.length)
     .map((id, i) => option(id, { correct: false, mistakeId: effects[i % effects.length] }));
@@ -305,9 +311,10 @@ export function startOpportunity(f, text = `Prilika za napad! Izaberi tehniku iz
   const role = roleOf(f, 'p');
   const attacks = shuffle(f.rng, actionsFor(f.pos, role).filter((a) => lvl(f, 'p', a.move) > 0 && a.kind !== 'pull'));
   if (!attacks.length) return false;
-  const count = Math.min(attacks.length, 1 + Math.floor(f.rng() * 3));
+  const decoys = opportunityDecoys(f, f.pos, role);
+  const count = Math.min(attacks.length, decoys.length ? 1 + Math.floor(f.rng() * 3) : 5);
   const correct = attacks.slice(0, count).map((a) => option(a.move, { correct: true, actionId: a.id }));
-  const options = fillOptions(f, correct, opportunityDecoys(f, f.pos, role), OPPORTUNITY_MISTAKES[`${f.pos}:${role}`] ?? []);
+  const options = fillOptions(f, correct, decoys, OPPORTUNITY_MISTAKES[`${f.pos}:${role}`] ?? []);
   if (!options) return false;
   openCritical(f, { kind: 'opportunity', text, options });
   return true;
@@ -357,6 +364,36 @@ function escapeAfterDefense(f) {
   }
 }
 
+const defenseChance = (mine, theirs) => clamp(0.8 + 0.05 * (mine - theirs), 0.5, 0.97);
+const attackChance = (kind, mine, theirs) => (kind === 'sub' ? clamp(0.2 + 0.05 * (mine - theirs), 0.08, 0.55) : clamp(0.6 + 0.06 * (mine - theirs), 0.25, 0.92));
+
+// Chance that a right option works, so the hint can point at the best one.
+function optionChance(f, c, opt) {
+  if (!opt.correct) return 0;
+  if (c.kind === 'defense') return defenseChance(lvl(f, 'p', opt.moveId), lvl(f, 'o', ACTION_BY_ID[c.actionId].move));
+  const action = ACTION_BY_ID[opt.actionId];
+  return attackChance(action.kind, lvl(f, 'p', action.move), bestDefense(f, 'o', action));
+}
+
+// From blue belt on the player gets a gut feeling about which card to pick. It is not always right:
+// it gets more reliable with the belt and with the level of the techniques on offer.
+const HINT_BASE = { white: 0, blue: 0.55, purple: 0.7, brown: 0.82, black: 0.9 };
+export function hintAccuracy(belt, avgLevel) {
+  if (!HINT_BASE[belt]) return 0;
+  return Math.min(0.97, HINT_BASE[belt] + 0.015 * Math.max(0, avgLevel - 1));
+}
+
+function giveHint(f, c) {
+  const levels = c.options.map((o) => lvl(f, 'p', o.moveId)).filter((x) => x > 0);
+  const avg = levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : 1;
+  const accuracy = hintAccuracy(f.player.belt, avg);
+  if (!accuracy) return null;
+  const best = c.options.reduce((bi, o, i) => (optionChance(f, c, o) > optionChance(f, c, c.options[bi]) ? i : bi), 0);
+  if (f.rng() < accuracy) return { index: best, accuracy };
+  const others = c.options.map((_, i) => i).filter((i) => i !== best);
+  return { index: others.length ? others[Math.floor(f.rng() * others.length)] : best, accuracy };
+}
+
 export function chooseOption(f, index, { fast = false } = {}) {
   const bonus = fast ? FAST_BONUS : 0;
   const c = f.critical;
@@ -372,7 +409,7 @@ export function chooseOption(f, index, { fast = false } = {}) {
     const mine = lvl(f, 'p', opt.moveId);
     const theirs = lvl(f, 'o', threat.move);
     Object.assign(f.lastResult, { myLevel: mine, theirLevel: theirs, theirMove: MOVE_BY_ID[threat.move].name });
-    const p = clamp(0.8 + 0.05 * (mine - theirs), 0.5, 0.97) + bonus;
+    const p = defenseChance(mine, theirs) + bonus;
     f.lastResult.chance = Math.min(1, p);
     if (f.rng() < p) {
       f.lastResult.success = true;
@@ -393,11 +430,16 @@ export function chooseOption(f, index, { fast = false } = {}) {
   }
   // opportunity
   if (!opt) { say(f, 'Propustio si priliku.', 'p'); return; }
-  if (!opt.correct) { say(f, `${opt.label} odavde ne ide.`, 'p'); applyMistake(f, MISTAKES[opt.mistakeId], null); return; }
+  if (!opt.correct) {
+    const role = roleOf(f, 'p');
+    say(f, `${opt.label} se ovdje radi ${ROLE_NAME[otherRole(role)]}, a ti si ${role === 'top' ? 'gore' : 'dolje'}.`, 'p');
+    applyMistake(f, MISTAKES[opt.mistakeId], null);
+    return;
+  }
   const action = ACTION_BY_ID[opt.actionId];
   const mine = lvl(f, 'p', action.move);
   const theirs = bestDefense(f, 'o', action);
-  const p = (action.kind === 'sub' ? clamp(0.2 + 0.05 * (mine - theirs), 0.08, 0.55) : clamp(0.6 + 0.06 * (mine - theirs), 0.25, 0.92)) + bonus;
+  const p = attackChance(action.kind, mine, theirs) + bonus;
   const success = f.rng() < p;
   Object.assign(f.lastResult, { success, myLevel: mine, theirLevel: theirs, chance: Math.min(1, p) });
   if (!success) say(f, `Dobar izbor, ali ${f.opponent.name} te nadjačao: tvoj ${MOVE_BY_ID[action.move].name} razina ${mine} protiv njegove obrane razine ${theirs} (šansa je bila ${pct(p)}).`, 'o');

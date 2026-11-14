@@ -143,3 +143,8 @@ button.instant { background: var(--gold); color: #1a1a1a; padding: 9px 10px; }
 .boot-hint { background: #3a2a10; border: 1px solid var(--gold); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; line-height: 1.6; }
 .boot-hint code { background: rgba(0,0,0,0.35); padding: 1px 5px; border-radius: 4px; }
 .boot-hint a { color: var(--gold); }
+
+/* gut feeling (hint), from blue belt on */
+.critical-text .hint-line { display: block; margin-top: 4px; font-size: 13px; font-weight: 500; color: #cdb8ff; }
+.options button.hinted { box-shadow: 0 0 0 2px rgba(180,150,255,0.55) inset; }
+.options button .hint-mark { font-size: 13px; }
