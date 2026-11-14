@@ -92,15 +92,11 @@ main { max-width: 980px; margin: 0 auto; padding: 16px; }
 .feedback.bad { background: rgba(214,69,69,0.92); }
 .feedback.mixed { background: rgba(214,140,40,0.95); }
 .critical { position: absolute; inset: auto 0 0 0; padding: 10px; background: linear-gradient(transparent, rgba(5,8,18,0.9) 18%); }
-.critical-text { font-weight: 800; font-size: 17px; text-align: center; margin: 6px 0; text-shadow: 0 2px 6px #000; }
+.critical-text { font: italic 800 22px/1.2 var(--display); text-align: center; margin: 6px 0; text-shadow: 0 2px 6px #000; }
 .timer { height: 6px; background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden; margin: 0 auto 8px; max-width: 520px; }
 .timer > div { height: 100%; background: var(--gold); width: 100%; }
+.timer > div.low { background: #e0524f; }
 .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px; }
-.options button { background: rgba(35,42,61,0.95); border: 1px solid #47507a; text-align: left; font-weight: 500; font-size: 14px; padding: 8px 10px; }
-.options button:hover, .options button:focus-visible { border-color: var(--gold); outline: none; }
-.options button .k { display: inline-block; min-width: 18px; color: var(--gold); font-weight: 800; }
-.options button b { font-weight: 700; }
-.options button small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 .result { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: rgba(5,8,18,0.82); text-align: center; padding: 16px; }
 .result h2 { margin: 0; font-size: 28px; }
 .result p { margin: 0; color: var(--muted); }
@@ -108,12 +104,6 @@ main { max-width: 980px; margin: 0 auto; padding: 16px; }
 .log { flex: 1; list-style: none; margin: 0; padding: 8px 12px; background: var(--card); border-radius: var(--radius); height: 190px; overflow-y: auto; font-size: 13px; font-variant-numeric: tabular-nums; }
 .fight-actions { display: flex; flex-direction: column; gap: 8px; }
 .log-copy { position: fixed; inset: 10% 5%; width: 90%; height: 70%; z-index: 30; background: var(--card); color: var(--text); border: 1px solid var(--gold); border-radius: 10px; padding: 10px; font: 12px/1.4 ui-monospace, monospace; }
-.options button.cls-napad { border-left: 5px solid #e0524f; }
-.options button.cls-obrana { border-left: 5px solid #4b8df0; }
-.options button.cls-sweep { border-left: 5px solid #3fb27f; }
-.options button.cls-napad .k { color: #ff7b78; }
-.options button.cls-obrana .k { color: #7fb0ff; }
-.options button.cls-sweep .k { color: #6fd6a6; }
 .legend { display: flex; gap: 12px; justify-content: center; font-size: 12px; color: var(--muted); margin-bottom: 6px; flex-wrap: wrap; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
 .log li { color: var(--muted); }
@@ -138,11 +128,29 @@ button.instant { background: var(--gold); color: #1a1a1a; padding: 9px 10px; }
 .boot-hint a { color: var(--gold); }
 
 /* gut feeling (hint), from blue belt on */
-.critical-text .hint-line { display: block; margin-top: 4px; font-size: 13px; font-weight: 500; color: #cdb8ff; }
-.options button.hinted { box-shadow: 0 0 0 2px rgba(180,150,255,0.55) inset; }
-.options button .hint-mark { font-size: 13px; }
-.options button .lvl { float: right; font-size: 11px; color: var(--muted); font-weight: 600; }
+.critical-text .hint-line { display: block; margin-top: 4px; font: 500 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; color: #cdb8ff; }
 
+
+
+/* Critical moment cards */
+.options .opt { --c: #e0524f; position: relative; display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 0 0 8px; background: #1d2436; border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; box-shadow: 0 4px 0 rgba(0,0,0,0.45); font-weight: 500; font-size: 13px; transition: transform 0.12s; }
+.options .opt.cls-obrana { --c: #4b8df0; }
+.options .opt.cls-sweep { --c: #3fb27f; }
+.options .opt:hover, .options .opt:focus-visible { transform: translateY(-2px); outline: 2px solid var(--gold); outline-offset: 0; }
+.opt-head { display: flex; align-items: center; gap: 6px; background: var(--c); color: var(--ink); padding: 3px 10px; font: italic 800 13px/1.3 var(--display); text-transform: uppercase; letter-spacing: 0.05em; }
+.opt-head .k { margin-left: auto; background: var(--ink); color: #fff; border-radius: 4px; padding: 0 6px; font-style: normal; }
+.opt-head .hint-tag { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 700; }
+.opt-name { padding: 2px 10px 0; font: italic 800 20px/1.1 var(--display); color: #fff; overflow-wrap: anywhere; }
+.opt .dots { display: flex; gap: 3px; padding: 0 10px; }
+.opt .dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+.opt .dots i.on { background: var(--gold); }
+.opt small { display: block; padding: 0 10px; color: var(--muted); font-size: 12px; }
+.options .opt.hinted { border-color: var(--gold); animation: hint-glow 1.4s ease-in-out infinite; }
+@keyframes hint-glow { 50% { box-shadow: 0 4px 0 rgba(0,0,0,0.45), 0 0 18px rgba(227,179,65,0.7); } }
+@media (prefers-reduced-motion: reduce) {
+  .options .opt.hinted { animation: none; box-shadow: 0 4px 0 rgba(0,0,0,0.45), 0 0 12px rgba(227,179,65,0.6); }
+  .options .opt { transition: none; }
+}
 
 /* Fight HUD: TV-style plates on top of the picture */
 .hud { position: absolute; inset: 0 0 auto 0; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px; pointer-events: none; z-index: 2; }

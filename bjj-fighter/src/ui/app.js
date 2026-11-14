@@ -17,6 +17,7 @@ const SPAR_REWARD = 10;
 const COMP_FEE = 20;
 const COMP_STAGES = ['Četvrtfinale', 'Polufinale', 'Finale'];
 const COMP_PRIZES = { gold: 100, silver: 40, bronze: 15 };
+const CLASS_NAMES = { napad: 'Napad', obrana: 'Obrana', sweep: 'Sweep' };
 const BELT_COLORS = { white: '#f2f2f2', blue: '#2457c5', purple: '#7a3fb8', brown: '#7a4a24', black: '#000' };
 
 const $ = (id) => document.getElementById(id);
@@ -360,12 +361,20 @@ function renderCritical(f) {
     // From blue belt on: a gut feeling about the best card, not always right.
     const hint = c.hint ? `<span class="hint-line">💭 Osjećaj ti govori: <b>${esc(c.options[c.hint.index].label)}</b> · pouzdanost ${pct(c.hint.accuracy)}</span>` : '';
     $('critical-text').innerHTML = `${esc(c.text)}${hint}`;
-    $('critical-options').innerHTML = c.options
-      .map((o, i) => `<button data-opt="${i}" class="cls-${o.cls}${c.hint?.index === i ? ' hinted' : ''}"><span class="k">${i + 1}</span> <b>${esc(o.label)}</b>${c.hint?.index === i ? ' <span class="hint-mark">💭</span>' : ''}<span class="lvl">razina ${o.level}</span><small>${esc(o.detail ?? '')}</small></button>`).join('');
+    $('critical-options').innerHTML = c.options.map((o, i) => {
+      const hinted = c.hint?.index === i;
+      const dots = Array.from({ length: 10 }, (_, d) => `<i${d < o.level ? ' class="on"' : ''}></i>`).join('');
+      return `<button data-opt="${i}" class="opt cls-${o.cls}${hinted ? ' hinted' : ''}">
+        <span class="opt-head"><span>${CLASS_NAMES[o.cls] ?? o.cls}</span>${hinted ? '<span class="hint-tag">💭 osjećaj</span>' : ''}<span class="k">${i + 1}</span></span>
+        <b class="opt-name">${esc(o.label)}</b>
+        <span class="dots" title="Razina ${o.level}">${dots}</span>
+        <small>${esc(o.detail ?? '')}</small></button>`;
+    }).join('');
     $('critical').hidden = false;
   }
   const left = fightCtx.timer?.seq === f.criticalCount ? fightCtx.timer.left : c.timeLimit;
   $('critical-timer').style.width = `${Math.max(0, left / c.timeLimit) * 100}%`;
+  $('critical-timer').classList.toggle('low', left / c.timeLimit < 1 / 3);
 }
 
 function choose(index) {
