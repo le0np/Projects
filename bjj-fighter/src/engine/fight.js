@@ -1,6 +1,6 @@
 // Fight simulation. Works in game seconds; the UI converts real time with CLOCK_SPEED.
 // Pure logic: the renderer only reads `pos`, `playerTop`, `critical`, `lastAction`.
-import { MOVES, MOVE_BY_ID, MOVE_CLASS } from '../data/moves.js';
+import { MOVE_BY_ID, MOVE_CLASS } from '../data/moves.js';
 import { POSITIONS, ACTIONS, ACTION_BY_ID, MISTAKES, OPPORTUNITY_MISTAKES, GENERIC_MISTAKES, actionsFor } from '../data/positions.js';
 import { pick, shuffle } from './rng.js';
 
@@ -175,7 +175,7 @@ function exchange(f) {
   }
   if (who === 'o' && action.defenses.length) {
     if (action.kind === 'sub' || (canCritical(f) && f.rng() < P_DEFENSE_CRITICAL)) {
-      startDefense(f, action.id);
+      opponentAttack(f, action);
       return;
     }
   }
@@ -197,22 +197,40 @@ function openCritical(f, critical) {
 // choosing one triggers one of the situation's typical mistakes (`MISTAKES` effects).
 const option = (moveId, extra) => ({ label: MOVE_BY_ID[moveId].name, detail: MOVE_BY_ID[moveId].desc, cls: MOVE_CLASS[moveId], moveId, ...extra });
 
-const MOVES_BY_ROLE = {};
-for (const a of ACTIONS) (MOVES_BY_ROLE[a.role] ??= new Set()).add(a.move);
-const ATTACK_KINDS = new Set(['sub', 'sweep', 'pass', 'takedown', 'transition']);
-const DEFENSIVE_CATEGORIES = new Set(['defense', 'escape', 'movement']);
-
-function attackDecoys(role) {
-  const mine = MOVES_BY_ROLE[role];
-  return [...new Set(ACTIONS.filter((a) => ATTACK_KINDS.has(a.kind) && !mine.has(a.move)).map((a) => a.move))];
+// Positions directly connected to a ground position (one action away), standing excluded.
+const NEIGHBOURS = {};
+for (const a of ACTIONS) {
+  if (!a.to || a.from === 'standing' || a.to.pos === 'standing') continue;
+  (NEIGHBOURS[a.from] ??= new Set()).add(a.to.pos);
+  (NEIGHBOURS[a.to.pos] ??= new Set()).add(a.from);
 }
 
-function defenseDecoys(pos, role, correctIds) {
+const known = (f, ids) => [...new Set(ids)].filter((id) => lvl(f, 'p', id) > 0);
+const defensesAt = (pos) => ACTIONS.filter((a) => a.from === pos).flatMap((a) => a.defenses);
+
+// Wrong attack options: techniques the player knows that belong to this spot but do not work for their role
+// (the other fighter's moves here, defensive moves of this position, the same role one position over).
+// Never a standing technique on the ground or a ground technique while standing.
+function opportunityDecoys(f, pos, role) {
+  const near = NEIGHBOURS[pos] ?? new Set();
   const usable = new Set(actionsFor(pos, role).map((a) => a.move));
-  return MOVES.filter((m) => DEFENSIVE_CATEGORIES.has(m.category) && !correctIds.includes(m.id) && !usable.has(m.id)).map((m) => m.id);
+  const pool = [
+    ...ACTIONS.filter((a) => (a.from === pos && a.role !== role) || (a.role === role && near.has(a.from))).map((a) => a.move),
+    ...defensesAt(pos),
+  ];
+  return known(f, pool).filter((id) => !usable.has(id));
 }
 
+// Wrong defense options: techniques the player knows from this spot (other defenses of this position,
+// the player's own moves here) that do not stop this particular attack.
+function defenseDecoys(f, pos, role, correctIds) {
+  const pool = [...defensesAt(pos), ...actionsFor(pos, role).map((a) => a.move)];
+  return known(f, pool).filter((id) => !correctIds.includes(id));
+}
+
+// null when the player knows no right answer or no wrong one: then there is nothing to decide.
 function fillOptions(f, correct, decoyIds, mistakeIds) {
+  if (!correct.length || !decoyIds.length) return null;
   const effects = shuffle(f.rng, mistakeIds.length ? [...new Set(mistakeIds)] : GENERIC_MISTAKES);
   const wrong = shuffle(f.rng, decoyIds).slice(0, 5 - correct.length)
     .map((id, i) => option(id, { correct: false, mistakeId: effects[i % effects.length] }));
@@ -224,39 +242,50 @@ const THREAT_TEXT = {
   takedown: (m) => `ulazi u rušenje (${m})!`, transition: (m) => `ide u ${m}!`, escape: (m) => `pokušava pobjeći (${m})!`,
 };
 
-// The opponent attacks the player with `actionId`; the player must answer.
+// The opponent attacks the player with `actionId`; the player must answer with a defense they know.
+// Returns false (and changes nothing) when the player knows no defense or no other technique from that spot.
 export function startDefense(f, actionId) {
   const action = ACTION_BY_ID[actionId];
+  // Counters can come from a neighbouring position (e.g. an arm inside a butterfly guard → triangle).
+  const role = action.from === 'standing' ? 'neutral' : action.role === 'top' ? 'bottom' : 'top';
+  const correct = known(f, action.defenses).map((d) => option(d, { correct: true }));
+  const options = fillOptions(f, correct, defenseDecoys(f, action.from, role, action.defenses), [...action.mistakes, ...GENERIC_MISTAKES]);
+  if (!options) return false;
   if (action.from !== f.pos) {
-    // Counters can come from a neighbouring position (e.g. an arm inside a butterfly guard → triangle).
     f.pos = action.from;
     f.playerTop = action.from === 'standing' ? null : action.role === 'bottom';
     f.pending = null;
   }
-  const correct = action.defenses.map((d) => option(d, { correct: true }));
   const move = MOVE_BY_ID[action.move];
-  const role = roleOf(f, 'p');
   openCritical(f, {
     kind: 'defense', actionId,
     text: `${f.opponent.name} ${THREAT_TEXT[action.kind](move.name)}`,
-    options: fillOptions(f, correct, defenseDecoys(f.pos, role, action.defenses), [...action.mistakes, ...GENERIC_MISTAKES]),
+    options,
   });
   f.lastAction = { seq: f.seq, who: 'o', actionId, success: null };
+  return true;
+}
+
+// The opponent attacks; the player decides if they can, otherwise the attack plays out on levels.
+function opponentAttack(f, action) {
+  if (startDefense(f, action.id)) return;
+  const chance = autoChance(f, 'o', action);
+  const def = bestDefense(f, 'p', action);
+  const why = `napad razine ${lvl(f, 'o', action.move)} protiv tvoje obrane razine ${def}${def ? '' : ' (ne znaš obranu)'}, šansa ${pct(chance)}`;
+  runAction(f, 'o', action, f.rng() < chance, why);
 }
 
 // The player has a chance to attack from the current position. Returns false when no real attack is known,
 // so a critical moment never consists of wrong answers only.
 export function startOpportunity(f, text = `Prilika! (${POSITIONS[f.pos].name})`) {
   const role = roleOf(f, 'p');
-  const known = shuffle(f.rng, actionsFor(f.pos, role).filter((a) => lvl(f, 'p', a.move) > 0 && a.kind !== 'pull'));
-  if (!known.length) return false;
-  const count = Math.min(known.length, 1 + Math.floor(f.rng() * 3));
-  const correct = known.slice(0, count).map((a) => option(a.move, { correct: true, actionId: a.id }));
-  openCritical(f, {
-    kind: 'opportunity',
-    text,
-    options: fillOptions(f, correct, attackDecoys(role), OPPORTUNITY_MISTAKES[`${f.pos}:${role}`] ?? []),
-  });
+  const attacks = shuffle(f.rng, actionsFor(f.pos, role).filter((a) => lvl(f, 'p', a.move) > 0 && a.kind !== 'pull'));
+  if (!attacks.length) return false;
+  const count = Math.min(attacks.length, 1 + Math.floor(f.rng() * 3));
+  const correct = attacks.slice(0, count).map((a) => option(a.move, { correct: true, actionId: a.id }));
+  const options = fillOptions(f, correct, opportunityDecoys(f, f.pos, role), OPPORTUNITY_MISTAKES[`${f.pos}:${role}`] ?? []);
+  if (!options) return false;
+  openCritical(f, { kind: 'opportunity', text, options });
   return true;
 }
 
@@ -274,7 +303,7 @@ function applyMistake(f, mk, threatAction) {
       applyTransition(f, 'o', mk.kind, { pos: mk.to.pos, actorTop: !mk.to.selfTop });
       return;
     case 'counter':
-      startDefense(f, mk.counterAction);
+      opponentAttack(f, ACTION_BY_ID[mk.counterAction]);
       return;
     case 'penalty':
       f.score.p.pen += 1;

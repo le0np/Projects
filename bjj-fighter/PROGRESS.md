@@ -95,6 +95,12 @@ Dizajn: `docs/superpowers/specs/2026-11-14-round2-step1-fight-rules-design.md`, 
 - U kartici promocije piše „Pobjede na natjecanjima: X / Y”, kartica Karijera ih prikazuje posebno, a kartica Sparing kaže da se ne računa za promociju.
 - Bilježenje rezultata borbe prebačeno je u `recordFight` u `progression.js` da se može testirati bez DOM-a.
 
+### Kartice prema poziciji i naučenim potezima
+- Kartice u kritičnom trenutku nude samo poteze koje igrač zna (razina ≥ 1; uz „sve otključano” to su svi).
+- Krive opcije su naučeni potezi iz iste situacije: potezi druge strane u toj poziciji, obrane te pozicije i potezi iste uloge u susjednoj poziciji. Stojeće tehnike (double leg, single leg, guard pull, sprawl) se ne nude na podu, a parterne tehnike se ne nude u stavu.
+- Ako igrač ne zna nijednu obranu ili nema nijedan drugi naučeni potez za tu situaciju, odluke nema: napad se odigra prema razinama, a log napiše „ne znaš obranu” i šansu.
+- Zbog toga kartica može biti manje od 5 (najmanje 2).
+
 ## Zadnja automatizirana provjera
 
 Provedeno 14. studenog 2026.:
@@ -112,7 +118,7 @@ Provedeno 14. studenog 2026.:
 - Postoji samo testna verzija: nova igra uvijek počinje s uključenim „sve otključano”.
 - Tehnike nemaju vlastite animacije. Vidi se udar prema protivniku i prijelaz u novu pozu.
 - Reload usred borbe prekida borbu bez upisa rezultata.
-- Opcije u kritičnim trenucima još nisu prilagođene razini igrača. Uvijek se nude sve obrane, a nepoznat potez ima malu šansu. Ostavljeno kao mogućnost iz koncepta.
+- Dok je uključeno „sve otključano”, igrač zna sve poteze pa se nude svi potezi iz pozicije. Filtriranje po naučenim potezima vidi se tek kad se to isključi.
 - Nema kondicije ni umora.
 - Nakon ponovnog otvaranja igre nema obavijesti o treningu ili aktivnosti koji su završili dok je igra bila zatvorena.
 
