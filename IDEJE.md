@@ -19,7 +19,8 @@ Igra u kojoj igrač gradi borca od nule: kreće kao početnik bez vještina, tre
 - **Protivnici:** AI protivnici kroz karijeru/turnire. PvP možda kasnije.
 - **Prikaz borbe:** 2D, uz mogućnost kasnijeg prelaska na 3D. Logika borbe mora biti odvojena od prikaza da se prikaz može zamijeniti.
 - **Disciplina:** prvo BJJ, MMA kasnije. BJJ je **no-gi** varijanta (rashguard i šorc, bez hvatova za kimono).
-- **Bodovanje:** kao u pravom BJJ-u (IBJJF no-gi pravila): takedown 2, sweep 2, koljeno na trbuhu 2, prolaz garda 3, mount 4, leđa 4. Bodovi se dobivaju tek kad se pozicija zadrži 3 sekunde. Uz to postoje prednosti (advantage) i kazne. Pobjeđuje se submissionom, a ako ga nema, bodovima.
+- **Pravila:** ne slijede se striktno IBJJF pravila. Heel hookovi i ostali leg lockovi dopušteni su u svim borbama.
+- **Bodovanje:** kao u pravom BJJ-u (po uzoru na IBJJF): takedown 2, sweep 2, koljeno na trbuhu 2, prolaz garda 3, mount 4, leđa 4. Bodovi se dobivaju tek kad se pozicija zadrži 3 sekunde. Uz to postoje prednosti (advantage) i kazne. Pobjeđuje se submissionom, a ako ga nema, bodovima.
 - **Trajanje borbe:** 3 runde po 3 minute ili do submissiona.
 - **Spremanje napretka:** za sada samo u pregledniku. Račun dolazi kasnije.
 - **Izgled lika:** za sada jednostavan, ali dovoljno dobar da borbe izgledaju zanimljivo. Prilagođavanje izgleda dolazi kasnije.
@@ -31,7 +32,7 @@ Borba teče sama, ovisno o vještinama oba borca. U kritičnim trenucima (protiv
 - loša odluka → gubitak pozicije, negativni bodovi, poraz submissionom
 - (MMA kasnije: KO, nokdaun)
 
-Prijedlog: pozicije su graf (stojeći, zatvoreni gard, polugard, butterfly gard, side control, koljeno na trbuhu, mount, leđa...). Svaka ima svoje moguće akcije, prijelaze i submissione. U no-gi BJJ-u češći su guillotine, darce, rear naked choke i leg lockovi. Prema IBJJF pravilima heel hook je dopušten tek smeđem i crnom pojasu, a bijeli pojas od leg lockova smije samo ravnu polugu na stopalo (straight ankle lock). To se dobro uklapa u ograničenja po pojasevima.
+Prijedlog: pozicije su graf (stojeći, zatvoreni gard, polugard, butterfly gard, side control, koljeno na trbuhu, mount, leđa...). Svaka ima svoje moguće akcije, prijelaze i submissione. U no-gi BJJ-u češći su guillotine, darce, rear naked choke i leg lockovi. Heel hook je u borbama dopušten svima, ali kao napredna tehnika spada u poteze višeg pojasa.
 
 ### Razvoj lika
 Razvoj je u stilu Clash Royalea (building strategy): treninzi i nadogradnje traju određeno stvarno vrijeme i odvijaju se dok igrač nije u igri. Igrač ne mora stalno igrati: navrati, pokrene trening, vrati se kad završi.
@@ -44,14 +45,16 @@ Prijedlozi:
 
 Mogućnost za razmotriti: vještine lika utječu na to koje se opcije nude i koliko su uspješne.
 
-Trajanje učenja raste sa svakim sljedećim potezom i razinom, kao u drugim igrama tog tipa. Prvi potezi traju od nekoliko sekundi do minute, a kasniji minute, sate, pa i dane. U testnoj verziji isti sustav radi s vremenom ubrzanim do 10x.
+Učenje svakog sljedećeg poteza traje 2x duže od prethodnog, kao u drugim igrama tog tipa. Prvi potez traje nekoliko sekundi, a kasniji minute, sate, pa i dane. U testnoj verziji isti sustav radi s vremenom ubrzanim do 10x.
 
 Potezi su ograničeni po pojasevima, ali ne strogo:
 - redovnim treningom u klubu igrač uči poteze svog pojasa
-- na **open matu** ili **natjecanju** može nasumično naučiti i neki potez višeg pojasa (npr. vidi ga kod protivnika ili mu ga netko pokaže)
+- novi potez, pa i onaj višeg pojasa, može se naučiti i izvan redovnog treninga:
+  - na **seminaru**: 90 % šanse
+  - na **open matu**: 10–20 % šanse
 
 ### Prva vještina: osnove BJJ-a (bijeli pojas, no-gi)
-Osnovni potezi koje bi bijeli pojas morao znati. Popis je sastavljen prema uobičajenim programima za bijeli pojas, prilagođen za no-gi i IBJJF pravila za bijeli pojas.
+Osnovni potezi koje bi bijeli pojas morao znati. Popis je sastavljen prema uobičajenim programima za bijeli pojas, prilagođen za no-gi.
 
 **Kretanje i osnove**
 - shrimp (bijeg kukovima)
@@ -102,7 +105,7 @@ Osnovni potezi koje bi bijeli pojas morao znati. Popis je sastavljen prema uobi�
 - iz back controla: spuštanje ramena na pod i okretanje u gard
 - iz knee on bellyja: guranje koljena i shrimp
 
-**Submissioni (dopušteni bijelom pojasu)**
+**Submissioni**
 - rear naked choke (iz back controla)
 - guillotine (stojeći ili iz garda)
 - triangle choke (iz garda)
@@ -124,5 +127,3 @@ Jedan borac jednostavnog, ali živog 2D izgleda. Nekoliko vještina s treninzima
 
 ### Otvoreno
 - tehnologija prikaza (npr. Phaser za 2D)
-- točna krivulja trajanja učenja (npr. svaki sljedeći potez traje 1,5–2x dulje)
-- koliko često se na open matu ili natjecanju nauči nasumičan potez
