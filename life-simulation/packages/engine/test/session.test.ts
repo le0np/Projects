@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Rng, VirtualClock, type Notice } from "@lifesim/core";
 import { loadContent } from "@lifesim/content";
-import { RandomController, Session, formatLog, resolveConfig, runSession, type LogEntryOf, type SessionResult } from "../src";
+import { RandomController, Session, formatLog, positionAt, resolveConfig, runSession, type LogEntryOf, type SessionResult } from "../src";
 import { buildContent, event, pickDefault, scripted } from "./helpers";
 
 const shipped = loadContent();
@@ -507,5 +507,110 @@ describe("life calendar (concept v2)", () => {
     const s2 = entries(r2, "event_started")[0]!;
     expect(s2.t).toBeGreaterThanOrEqual(70_000); // winter of year 1: 70–80 s, age 19
     expect(s2.t).toBeLessThan(80_000);
+  });
+});
+
+describe("town: routine, gathering and movement (concept v2)", () => {
+  const never = event({
+    id: "never",
+    roles: { me: { count: 1, conditions: { attr: "health", gte: 101 } } },
+    choices: { me: [{ id: "a", label: "A", tags: ["help"] }, { id: "b", label: "B", tags: ["ignore"], default: true }] },
+    outcomes: [{ id: "done" }],
+  });
+
+  it("characters follow a routine: home at night, work in the day, free time after", () => {
+    const r = runSession({
+      content: buildContent([never]),
+      config: { seed: "routine", durationSeconds: 60, yearSeconds: 40 },
+      participants: ["doctor", "teacher", "civilian"].map((career) => ({ career, isBot: true, controller: scripted(pickDefault) })),
+    });
+    const start = entries(r, "session_started")[0]!;
+    const moves = entries(r, "moved");
+    expect(moves.length).toBeGreaterThan(10);
+    expect(moves.every((m) => m.reason === "routine")).toBe(true);
+    for (const c of start.characters) {
+      const mine = moves.filter((m) => m.characterId === c.id);
+      expect(mine.some((m) => m.placeId === c.work), `${c.career} goes to work`).toBe(true);
+      expect(mine.some((m) => m.placeId === c.home), `${c.career} goes home`).toBe(true);
+    }
+    const doctor = start.characters.find((c) => c.career === "doctor")!;
+    expect(doctor.work).toBe("hospital");
+    expect(entries(r, "leisure").length).toBeGreaterThan(0);
+  });
+
+  const cafeTalk = event({
+    id: "cafe_talk",
+    location: { at: ["cafe"] },
+    roles: { a: { count: 1 }, b: { count: 1 } },
+    cooldown: { maxPerSession: 1 },
+    choices: {
+      a: [{ id: "x", label: "X", tags: ["help"] }, { id: "y", label: "Y", tags: ["ignore"], default: true }],
+      b: [{ id: "x", label: "X", tags: ["help"] }, { id: "y", label: "Y", tags: ["ignore"], default: true }],
+    },
+    outcomes: [
+      { id: "hurt", when: { chose: "x", role: "a" }, effects: [{ type: "move", target: "role:b", to: "hospital", staySeconds: 5 }] },
+      { id: "jailed", when: { chose: "x", role: "b" }, effects: [{ type: "status", target: "role:a", status: "imprisoned", cause: "Caught" }] },
+      { id: "fine" },
+    ],
+  });
+
+  it("events happen at their place: participants walk there before the choices appear", () => {
+    const seen: { id: string; n: Notice }[] = [];
+    const r = runSession({
+      content: buildContent([cafeTalk]),
+      config: { seed: "gather" },
+      participants: ["doctor", "lawyer"].map((career) => ({ career, isBot: true, controller: scripted((v) => (v.offer.role === "a" ? "x" : "y")) })),
+      onNotice: (id, n) => seen.push({ id, n }),
+    });
+    const started = entries(r, "event_started")[0]!;
+    expect(started.place.placeId).toBe("cafe");
+    expect(started.offerAt).toBeGreaterThanOrEqual(started.t);
+    const gatherMoves = entries(r, "moved").filter((m) => m.reason === "event");
+    expect(gatherMoves.length).toBeGreaterThan(0);
+    for (const m of gatherMoves) expect(m.arriveAt).toBeLessThanOrEqual(started.offerAt);
+    for (const d of entries(r, "decision")) expect(d.t).toBeGreaterThanOrEqual(started.offerAt);
+    const offer = seen.find((s) => s.n.kind === "event")!.n as Extract<Notice, { kind: "event" }>;
+    expect(offer.view.offer.place).toMatchObject({ id: "cafe", kind: "cafe" });
+    expect(offer.t).toBe(started.offerAt);
+    // "move" effect: b is sent to hospital
+    const b = started.bindings.b![0]!;
+    expect(entries(r, "moved").some((m) => m.characterId === b && m.reason === "effect" && m.placeId === "hospital")).toBe(true);
+  });
+
+  it("refuses decisions while participants are still gathering", () => {
+    const content = buildContent([cafeTalk]);
+    const clock = new VirtualClock();
+    const session = new Session(content, resolveConfig({ seed: "early", initialDelaySeconds: [0, 0] }), [
+      { career: "doctor", isBot: true },
+      { career: "teacher", isBot: true },
+    ], clock);
+    session.start();
+    session.processTimers();
+    const started = session.log.find((e) => e.type === "event_started") as LogEntryOf<"event_started">;
+    expect(started.offerAt).toBeGreaterThan(clock.now());
+    const someone = started.bindings.a![0]!;
+    expect(session.submitDecision(someone, started.instanceId, "x")).toEqual({ ok: false, reason: "participants are still gathering" });
+  });
+
+  it("imprisoned characters are taken to the police station", () => {
+    const r = runSession({
+      content: buildContent([cafeTalk]),
+      config: { seed: "jail" },
+      participants: ["doctor", "lawyer"].map((career) => ({ career, isBot: true, controller: scripted((v) => (v.offer.role === "b" ? "x" : "y")) })),
+    });
+    const a = entries(r, "event_started")[0]!.bindings.a![0]!;
+    expect(entries(r, "moved").some((m) => m.characterId === a && m.reason === "status" && m.placeId === "police")).toBe(true);
+    expect(r.recaps.find((c) => c.characterId === a)!.finalStatus).toBe("imprisoned");
+  });
+});
+
+describe("positionAt", () => {
+  it("interpolates a trip tile by tile", () => {
+    const trip = { from: [0, 0] as [number, number], path: [[1, 0], [2, 0], [3, 0]] as [number, number][], departAt: 1000, msPerTile: 250, to: null, reason: "routine" as const };
+    const c = { pos: [3, 0] as [number, number], trip };
+    expect(positionAt(c, 900)).toEqual([0, 0]);
+    expect(positionAt(c, 1260)).toEqual([1, 0]);
+    expect(positionAt(c, 1600)).toEqual([2, 0]);
+    expect(positionAt(c, 5000)).toEqual([3, 0]);
   });
 });

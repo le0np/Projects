@@ -50,6 +50,19 @@ export class BotController implements Controller {
     return { choiceId: chosen.choiceId, thinkMs: this.thinkTime(view) };
   }
 
+  /** Free time follows personality: impulsive and aggressive → bar, cautious → home/park, social → café. */
+  chooseLeisure(options: readonly string[]): string | undefined {
+    const p = this.profile.personality;
+    const weight: Record<string, number> = {
+      cafe: 20 + p.empathy * 0.4 + p.trusting * 0.3,
+      bar: 10 + p.impulsiveness * 0.5 + p.aggression * 0.3 + p.riskTolerance * 0.2,
+      park: 15 + p.caution * 0.3 + p.empathy * 0.2,
+      shop: 15 + p.selfishness * 0.3 + p.ambition * 0.2,
+      home: 15 + p.caution * 0.5 + (100 - p.impulsiveness) * 0.2,
+    };
+    return this.rng.weighted([...options], (o) => weight[o] ?? 10);
+  }
+
   observe(notice: Notice): void {
     this.memory.observe(notice, this.selfId);
     if (notice.kind === "resolved") this.updateRevenge();

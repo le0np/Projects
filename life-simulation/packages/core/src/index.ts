@@ -1,6 +1,7 @@
 export * from "./constants";
 export * from "./rng";
 export * from "./calendar";
+export * from "./map";
 export * from "./clock";
 export * from "./refs";
 export * from "./conditions";

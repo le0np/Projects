@@ -14,6 +14,7 @@ import {
   STATUSES,
 } from "./constants";
 import type { Condition } from "./conditions";
+import { LOCATION_KINDS, PLACE_KINDS } from "./map";
 import { OUTCOME_TAGS } from "./view";
 
 /** Current version of the event file format. Bump on breaking schema changes. */
@@ -100,6 +101,14 @@ export const EffectSchema = z.discriminatedUnion("type", [
     key: Id,
     about: RefStr.optional(),
     remove: z.boolean().optional(),
+  }),
+  /** Send characters somewhere after the event (hospital, police station, home…) and keep them there a while. */
+  z.strictObject({
+    type: z.literal("move"),
+    target: RefStr,
+    to: z.enum(LOCATION_KINDS).exclude(["here"]),
+    /** Session seconds they stay before their routine resumes. Default 10. */
+    staySeconds: z.number().min(0).max(120).optional(),
   }),
   z.strictObject({
     type: z.literal("status"),
@@ -235,6 +244,14 @@ export const EventSchema = z.strictObject({
     })
     .default({}),
   tags: z.array(Id).optional(),
+  /**
+   * Where it happens (concept v2 §2). One of the options is chosen, nearest to `of` (default: the
+   * first participant of the first role). "home"/"work" = that character's home/workplace;
+   * "here" = wherever they are now. Omitted = "here".
+   */
+  location: z
+    .strictObject({ at: z.array(z.enum(LOCATION_KINDS)).min(1), of: RefStr.optional() })
+    .optional(),
   roles: z.record(Id, RoleSchema).refine((r) => Object.keys(r).length > 0, "at least one role is required"),
   /** Activation condition over the bound roles (no `self`). */
   conditions: ConditionSchema.optional(),
@@ -275,6 +292,8 @@ export const CareerSchema = z.strictObject({
   id: Id,
   name: NonEmptyText,
   description: NonEmptyText,
+  /** Kind of place where people with this career work (their routine goes there). */
+  workplace: z.enum(PLACE_KINDS),
   abilities: z
     .array(z.strictObject({ id: Id, name: NonEmptyText, description: NonEmptyText, modifiers: z.array(ModifierSchema).min(1) }))
     .min(2)

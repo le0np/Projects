@@ -27,6 +27,7 @@ function view(choices: { id: string; tags: ChoiceTag[]; perceived?: Perceived }[
         { characterId: "you", name: "You", role: "b" },
       ],
       publicText: "",
+      place: null,
       choices: choices.map((c, i) => ({ id: c.id, label: c.id, tags: c.tags, perceived: c.perceived ?? {}, special: false, isDefault: i === 0 })),
     },
   };
@@ -164,6 +165,21 @@ describe("session memory", () => {
     bot.decide(truthOrLie); // learns its own id
     for (let i = 0; i < 3; i++) bot.observe(resolved([{ id: "you", tags: ["threaten"] }]));
     expect(profile.motives).toContainEqual(expect.objectContaining({ type: "revenge", targetId: "you" }));
+  });
+});
+
+describe("free time", () => {
+  it("personality shapes where bots spend free time", () => {
+    const share = (a: Archetype, place: string) => {
+      let hits = 0;
+      for (let i = 0; i < 300; i++) {
+        const rng = new Rng(`${a}-leisure-${i}`);
+        if (new BotController(createBotProfile(rng.fork("p"), a), rng.fork("d")).chooseLeisure(["cafe", "park", "shop", "bar", "home"]) === place) hits++;
+      }
+      return hits / 300;
+    };
+    expect(share("impulsive", "bar")).toBeGreaterThan(share("cautious", "bar") + 0.1);
+    expect(share("cautious", "home")).toBeGreaterThan(share("impulsive", "home"));
   });
 });
 

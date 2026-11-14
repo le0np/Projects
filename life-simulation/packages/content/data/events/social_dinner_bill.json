@@ -1,31 +1,186 @@
 {
-  "schemaVersion": 1, "id": "social_dinner_bill", "version": 1, "title": "Who Pays?",
-  "category": "social", "trigger": "director", "importance": "multi", "weight": 7,
-  "cooldown": { "maxPerSession": 2, "maxPerCharacter": 1 },
-  "roles": { "diners": { "count": [2, 3] } },
+  "schemaVersion": 1,
+  "id": "social_dinner_bill",
+  "version": 1,
+  "title": "Who Pays?",
+  "category": "social",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 7,
+  "cooldown": {
+    "maxPerSession": 2,
+    "maxPerCharacter": 1
+  },
+  "location": {
+    "at": [
+      "cafe",
+      "bar"
+    ]
+  },
+  "roles": {
+    "diners": {
+      "count": [
+        2,
+        3
+      ]
+    }
+  },
   "text": {
     "public": "{diners} finish a long dinner together. The bill arrives — it is bigger than anyone expected.",
-    "private": { "diners": "You ordered less than the others." }
+    "private": {
+      "diners": "You ordered less than the others."
+    }
   },
   "choices": {
     "diners": [
-      { "id": "split", "label": "Split it equally", "tags": ["negotiate"], "default": true,
-        "effects": [{ "type": "attr", "target": "self", "delta": { "money": -5 } }] },
-      { "id": "own_share", "label": "Insist on paying only for what you had", "tags": ["negotiate"], "perceived": { "money": 1 },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "money": -3 } }, { "type": "relation", "from": "role:diners", "to": "self", "affinity": -3 }] },
-      { "id": "pay_all", "label": "Pay for everyone", "tags": ["help", "sacrifice"], "perceived": { "money": -2, "reputation": 1 },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "money": -12, "reputation": 3 } }, { "type": "relation", "from": "role:diners", "to": "self", "affinity": 15 }] },
-      { "id": "slip_out", "label": "\"Go to the bathroom\" and never come back", "tags": ["avoid_responsibility", "lie"], "perceived": { "money": 1, "risk": 1 },
-        "effects": [{ "type": "relation", "from": "role:diners", "to": "self", "affinity": -20, "trust": -20 }, { "type": "attr", "target": "self", "delta": { "reputation": -4 } }] }
+      {
+        "id": "split",
+        "label": "Split it equally",
+        "tags": [
+          "negotiate"
+        ],
+        "default": true,
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -5
+            }
+          }
+        ]
+      },
+      {
+        "id": "own_share",
+        "label": "Insist on paying only for what you had",
+        "tags": [
+          "negotiate"
+        ],
+        "perceived": {
+          "money": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -3
+            }
+          },
+          {
+            "type": "relation",
+            "from": "role:diners",
+            "to": "self",
+            "affinity": -3
+          }
+        ]
+      },
+      {
+        "id": "pay_all",
+        "label": "Pay for everyone",
+        "tags": [
+          "help",
+          "sacrifice"
+        ],
+        "perceived": {
+          "money": -2,
+          "reputation": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -12,
+              "reputation": 3
+            }
+          },
+          {
+            "type": "relation",
+            "from": "role:diners",
+            "to": "self",
+            "affinity": 15
+          }
+        ]
+      },
+      {
+        "id": "slip_out",
+        "label": "\"Go to the bathroom\" and never come back",
+        "tags": [
+          "avoid_responsibility",
+          "lie"
+        ],
+        "perceived": {
+          "money": 1,
+          "risk": 1
+        },
+        "effects": [
+          {
+            "type": "relation",
+            "from": "role:diners",
+            "to": "self",
+            "affinity": -20,
+            "trust": -20
+          },
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "reputation": -4
+            }
+          }
+        ]
+      }
     ]
   },
   "outcomes": [
-    { "id": "generous", "when": { "chose": "pay_all", "role": "diners" }, "revealChoices": true,
-      "effects": [{ "type": "attr", "target": "role:diners", "delta": { "mental": 3 } }],
-      "text": { "diners": "Someone picks up the whole bill. The evening ends on a high." } },
-    { "id": "dine_and_dash", "when": { "chose": "slip_out", "role": "diners" }, "revealChoices": true,
-      "effects": [{ "type": "attr", "target": "role:diners", "delta": { "money": -3, "mental": -3 } }],
-      "text": { "diners": "Someone vanished before paying. The rest cover it, grumbling." } },
-    { "id": "fair", "revealChoices": true, "text": { "diners": "You sort the bill out without drama." } }
+    {
+      "id": "generous",
+      "when": {
+        "chose": "pay_all",
+        "role": "diners"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:diners",
+          "delta": {
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "diners": "Someone picks up the whole bill. The evening ends on a high."
+      }
+    },
+    {
+      "id": "dine_and_dash",
+      "when": {
+        "chose": "slip_out",
+        "role": "diners"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:diners",
+          "delta": {
+            "money": -3,
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "diners": "Someone vanished before paying. The rest cover it, grumbling."
+      }
+    },
+    {
+      "id": "fair",
+      "revealChoices": true,
+      "text": {
+        "diners": "You sort the bill out without drama."
+      }
+    }
   ]
 }

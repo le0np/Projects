@@ -38,6 +38,8 @@ export interface OfferView {
   participants: ParticipantInfo[];
   publicText: string;
   privateText?: string;
+  /** Where it happens (null: on the street). */
+  place: { id: string; name: string; kind: string } | null;
   /** Empty for passive roles (the character is involved but does not decide). */
   choices: VisibleChoice[];
 }
@@ -172,4 +174,6 @@ export interface Controller {
   /** Return null to not decide (the deadline default will apply). */
   decide(view: CharacterView): Decision | null;
   observe?(notice: Notice): void;
+  /** Passive play: where to spend free time (a place kind from `options`). Undefined = no preference. */
+  chooseLeisure?(options: readonly string[]): string | undefined;
 }

@@ -1,27 +1,164 @@
 {
-  "schemaVersion": 1, "id": "health_chest_pain", "version": 1, "title": "A Twinge in the Chest",
-  "category": "health", "trigger": "director", "importance": "simple", "weight": 6,
-  "cooldown": { "maxPerCharacter": 1, "maxPerSession": 2 },
-  "roles": { "patient": { "count": 1, "conditions": { "any": [ { "attr": "health", "lte": 75 }, { "attr": "mental", "lte": 50 } ] } } },
+  "schemaVersion": 1,
+  "id": "health_chest_pain",
+  "version": 2,
+  "title": "A Twinge in the Chest",
+  "category": "health",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 6,
+  "cooldown": {
+    "maxPerCharacter": 1,
+    "maxPerSession": 2
+  },
+  "location": {
+    "at": [
+      "here"
+    ]
+  },
+  "roles": {
+    "patient": {
+      "count": 1,
+      "conditions": {
+        "any": [
+          {
+            "attr": "health",
+            "lte": 75
+          },
+          {
+            "attr": "mental",
+            "lte": 50
+          }
+        ]
+      }
+    }
+  },
   "text": {
     "public": "{patient} feels a sharp pain in the chest while climbing the stairs.",
-    "private": { "patient": "It passes after a minute. Your left arm feels a bit numb." }
+    "private": {
+      "patient": "It passes after a minute. Your left arm feels a bit numb."
+    }
   },
   "choices": {
     "patient": [
-      { "id": "doctor", "label": "Book a doctor's appointment today", "tags": ["take_responsibility"], "perceived": { "health": 1, "career": -1 },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "career": -2 } }] },
-      { "id": "ignore", "label": "Ignore it — probably just stress", "tags": ["ignore", "risk"], "default": true, "perceived": { "risk": 1 } },
-      { "id": "self_diagnose", "label": "Recognise the warning signs and go straight to A&E", "tags": ["take_responsibility"], "careers": ["doctor"],
-        "perceived": { "health": 2 }, "insight": { "careers": ["doctor"], "perceived": { "health": 2, "risk": 2 }, "note": "Chest pain plus arm numbness: possible cardiac event." } }
+      {
+        "id": "doctor",
+        "label": "Book a doctor's appointment today",
+        "tags": [
+          "take_responsibility"
+        ],
+        "perceived": {
+          "health": 1,
+          "career": -1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": -2
+            }
+          }
+        ]
+      },
+      {
+        "id": "ignore",
+        "label": "Ignore it — probably just stress",
+        "tags": [
+          "ignore",
+          "risk"
+        ],
+        "default": true,
+        "perceived": {
+          "risk": 1
+        }
+      },
+      {
+        "id": "self_diagnose",
+        "label": "Recognise the warning signs and go straight to A&E",
+        "tags": [
+          "take_responsibility"
+        ],
+        "careers": [
+          "doctor"
+        ],
+        "perceived": {
+          "health": 2
+        },
+        "insight": {
+          "careers": [
+            "doctor"
+          ],
+          "perceived": {
+            "health": 2,
+            "risk": 2
+          },
+          "note": "Chest pain plus arm numbness: possible cardiac event."
+        }
+      }
     ]
   },
   "outcomes": [
-    { "id": "caught_early", "when": { "any": [ { "chose": "doctor", "role": "patient" }, { "chose": "self_diagnose", "role": "patient" } ] }, "important": true,
-      "effects": [{ "type": "attr", "target": "role:patient", "delta": { "health": 8, "mental": 3 } }],
-      "text": { "patient": "A blocked artery, caught early. Medication and a stern talk about stress." } },
-    { "id": "ignored", "effects": [{ "type": "fact", "target": "role:patient", "key": "ignored_symptoms" }],
-      "followUps": [{ "event": "critical_heart_attack", "delaySeconds": [60, 150], "chance": 0.6, "roles": { "patient": "role:patient" } }],
-      "text": { "patient": "The pain goes away. You forget about it." } }
+    {
+      "id": "caught_early",
+      "when": {
+        "any": [
+          {
+            "chose": "doctor",
+            "role": "patient"
+          },
+          {
+            "chose": "self_diagnose",
+            "role": "patient"
+          }
+        ]
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:patient",
+          "delta": {
+            "health": 8,
+            "mental": 3
+          }
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 6
+        }
+      ],
+      "text": {
+        "patient": "A blocked artery, caught early. Medication and a stern talk about stress."
+      }
+    },
+    {
+      "id": "ignored",
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:patient",
+          "key": "ignored_symptoms"
+        }
+      ],
+      "followUps": [
+        {
+          "event": "critical_heart_attack",
+          "delaySeconds": [
+            60,
+            150
+          ],
+          "chance": 0.6,
+          "roles": {
+            "patient": "role:patient"
+          }
+        }
+      ],
+      "text": {
+        "patient": "The pain goes away. You forget about it."
+      }
+    }
   ]
 }

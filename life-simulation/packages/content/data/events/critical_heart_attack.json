@@ -1,13 +1,19 @@
 {
   "schemaVersion": 1,
   "id": "critical_heart_attack",
-  "version": 2,
+  "version": 3,
   "title": "Heart Attack",
   "category": "critical",
   "trigger": "followup_only",
   "importance": "important",
   "cooldown": {
     "maxPerSession": 2
+  },
+  "location": {
+    "at": [
+      "shop",
+      "street"
+    ]
   },
   "roles": {
     "patient": {
@@ -131,6 +137,12 @@
           "to": "role:bystander",
           "affinity": 45,
           "trust": 35
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 10
         }
       ],
       "text": {
@@ -181,6 +193,12 @@
           "to": "role:bystander",
           "affinity": 35,
           "trust": 25
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 15
         }
       ],
       "text": {
@@ -234,6 +252,12 @@
           "target": "role:patient",
           "key": "ignored_symptoms",
           "remove": true
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 20
         }
       ],
       "text": {

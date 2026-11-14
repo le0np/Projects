@@ -109,7 +109,7 @@ export function GameScreen({ game, connected, decide }: Props) {
           <div className="card">
             <h2>Around town</h2>
             <ul className="feed" aria-live="polite">
-              {[...game.feed].reverse().filter((f) => f.kind !== "season").slice(0, 12).map((f, i) =>
+              {[...game.feed].reverse().filter((f) => f.kind === "event" || f.kind === "ended").slice(0, 12).map((f, i) =>
                 f.kind === "event" ? (
                   <li key={`${f.instanceId}-${i}`}>
                     <strong>{f.title}</strong> — {f.text}

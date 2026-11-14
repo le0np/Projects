@@ -1,10 +1,37 @@
 {
-  "schemaVersion": 1, "id": "family_holiday_dinner", "version": 1, "title": "Holiday Dinner",
-  "category": "family", "trigger": "director", "importance": "multi", "weight": 7,
-  "cooldown": { "maxPerSession": 1 },
+  "schemaVersion": 1,
+  "id": "family_holiday_dinner",
+  "version": 1,
+  "title": "Holiday Dinner",
+  "category": "family",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 7,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "home"
+    ],
+    "of": "role:host"
+  },
   "roles": {
-    "host": { "count": 1 },
-    "relative": { "count": 1, "conditions": { "relation": { "to": "role:host", "typeIn": ["family", "partner"] } } }
+    "host": {
+      "count": 1
+    },
+    "relative": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:host",
+          "typeIn": [
+            "family",
+            "partner"
+          ]
+        }
+      }
+    }
   },
   "text": {
     "public": "{host} hosts a holiday dinner. Halfway through, {relative} brings up an old argument.",
@@ -15,28 +42,191 @@
   },
   "choices": {
     "host": [
-      { "id": "apologize", "label": "Finally apologise properly", "tags": ["apologize", "take_responsibility"], "perceived": { "relation": { "relative": 2 } } },
-      { "id": "defend", "label": "Defend yourself — you had your reasons", "tags": ["truth", "threaten"], "perceived": { "relation": { "relative": -1 } } },
-      { "id": "change_subject", "label": "Change the subject and pass the potatoes", "tags": ["ignore"], "default": true }
+      {
+        "id": "apologize",
+        "label": "Finally apologise properly",
+        "tags": [
+          "apologize",
+          "take_responsibility"
+        ],
+        "perceived": {
+          "relation": {
+            "relative": 2
+          }
+        }
+      },
+      {
+        "id": "defend",
+        "label": "Defend yourself — you had your reasons",
+        "tags": [
+          "truth",
+          "threaten"
+        ],
+        "perceived": {
+          "relation": {
+            "relative": -1
+          }
+        }
+      },
+      {
+        "id": "change_subject",
+        "label": "Change the subject and pass the potatoes",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
     ],
     "relative": [
-      { "id": "let_go", "label": "Say you want to let it go", "tags": ["help"], "perceived": { "relation": { "host": 1 } } },
-      { "id": "push", "label": "Keep pushing until you get an answer", "tags": ["threaten"], "default": true, "perceived": { "relation": { "host": -1 } } }
+      {
+        "id": "let_go",
+        "label": "Say you want to let it go",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "host": 1
+          }
+        }
+      },
+      {
+        "id": "push",
+        "label": "Keep pushing until you get an answer",
+        "tags": [
+          "threaten"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "host": -1
+          }
+        }
+      }
     ]
   },
   "outcomes": [
-    { "id": "reconciled", "when": { "chose": "apologize", "role": "host" }, "important": true, "revealChoices": true,
-      "effects": [{ "type": "relation", "from": "role:host", "to": "role:relative", "affinity": 25, "trust": 20, "mutual": true },
-        { "type": "attr", "target": "role:host", "delta": { "mental": 5 } }, { "type": "attr", "target": "role:relative", "delta": { "mental": 8 } }],
-      "text": { "host": "Five years late, but you say it. {relative} cries. So do you.", "relative": "{host} finally apologises. Something heavy lifts." } },
-    { "id": "blowup", "when": { "all": [ { "chose": "defend", "role": "host" }, { "chose": "push", "role": "relative" } ] }, "important": true,
-      "effects": [{ "type": "relation", "from": "role:host", "to": "role:relative", "affinity": -25, "mutual": true },
-        { "type": "attr", "target": "role:host", "delta": { "mental": -8 } }, { "type": "attr", "target": "role:relative", "delta": { "mental": -8 } }],
-      "text": { "host": "Shouting, a broken glass, {relative} leaves before dessert.", "relative": "You leave before dessert. You will not be back next year." } },
-    { "id": "truce", "when": { "chose": "let_go", "role": "relative" },
-      "effects": [{ "type": "relation", "from": "role:host", "to": "role:relative", "affinity": 10, "mutual": true }],
-      "text": { "host": "{relative} drops it. The evening is warm after all.", "relative": "You let it go. It is a good dinner." } },
-    { "id": "frosty", "effects": [{ "type": "attr", "target": "role:host", "delta": { "mental": -4 } }, { "type": "relation", "from": "role:relative", "to": "role:host", "affinity": -8 }],
-      "text": { "host": "The rest of dinner is very quiet.", "relative": "{host} dodges the question. Again." } }
+    {
+      "id": "reconciled",
+      "when": {
+        "chose": "apologize",
+        "role": "host"
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:host",
+          "to": "role:relative",
+          "affinity": 25,
+          "trust": 20,
+          "mutual": true
+        },
+        {
+          "type": "attr",
+          "target": "role:host",
+          "delta": {
+            "mental": 5
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:relative",
+          "delta": {
+            "mental": 8
+          }
+        }
+      ],
+      "text": {
+        "host": "Five years late, but you say it. {relative} cries. So do you.",
+        "relative": "{host} finally apologises. Something heavy lifts."
+      }
+    },
+    {
+      "id": "blowup",
+      "when": {
+        "all": [
+          {
+            "chose": "defend",
+            "role": "host"
+          },
+          {
+            "chose": "push",
+            "role": "relative"
+          }
+        ]
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:host",
+          "to": "role:relative",
+          "affinity": -25,
+          "mutual": true
+        },
+        {
+          "type": "attr",
+          "target": "role:host",
+          "delta": {
+            "mental": -8
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:relative",
+          "delta": {
+            "mental": -8
+          }
+        }
+      ],
+      "text": {
+        "host": "Shouting, a broken glass, {relative} leaves before dessert.",
+        "relative": "You leave before dessert. You will not be back next year."
+      }
+    },
+    {
+      "id": "truce",
+      "when": {
+        "chose": "let_go",
+        "role": "relative"
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:host",
+          "to": "role:relative",
+          "affinity": 10,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "host": "{relative} drops it. The evening is warm after all.",
+        "relative": "You let it go. It is a good dinner."
+      }
+    },
+    {
+      "id": "frosty",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:host",
+          "delta": {
+            "mental": -4
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:relative",
+          "to": "role:host",
+          "affinity": -8
+        }
+      ],
+      "text": {
+        "host": "The rest of dinner is very quiet.",
+        "relative": "{host} dodges the question. Again."
+      }
+    }
   ]
 }

@@ -1,38 +1,187 @@
 {
-  "schemaVersion": 1, "id": "social_viral_post", "version": 1, "title": "Gone Viral",
-  "category": "social", "trigger": "director", "importance": "simple", "weight": 6,
-  "cooldown": { "maxPerSession": 1 },
-  "roles": { "poster": { "count": 1 } },
+  "schemaVersion": 1,
+  "id": "social_viral_post",
+  "version": 1,
+  "title": "Gone Viral",
+  "category": "social",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "home"
+    ]
+  },
+  "roles": {
+    "poster": {
+      "count": 1
+    }
+  },
   "text": {
     "public": "An angry post by {poster} about a local company is being shared everywhere.",
-    "private": { "poster": "You wrote it at midnight, furious. Some details are not quite accurate." }
+    "private": {
+      "poster": "You wrote it at midnight, furious. Some details are not quite accurate."
+    }
   },
   "choices": {
     "poster": [
-      { "id": "correct", "label": "Post a correction of the wrong details", "tags": ["truth", "take_responsibility"], "perceived": { "reputation": 1 } },
-      { "id": "double_down", "label": "Double down — they deserve it", "tags": ["threaten", "risk"], "perceived": { "reputation": 1, "risk": 2 } },
-      { "id": "delete", "label": "Delete it and hope it dies down", "tags": ["avoid_responsibility"], "default": true, "perceived": { "mental": -1 } },
-      { "id": "investigate", "label": "Turn it into a properly sourced article", "tags": ["truth", "risk"], "careers": ["journalist"],
-        "perceived": { "career": 2, "reputation": 1 } }
+      {
+        "id": "correct",
+        "label": "Post a correction of the wrong details",
+        "tags": [
+          "truth",
+          "take_responsibility"
+        ],
+        "perceived": {
+          "reputation": 1
+        }
+      },
+      {
+        "id": "double_down",
+        "label": "Double down — they deserve it",
+        "tags": [
+          "threaten",
+          "risk"
+        ],
+        "perceived": {
+          "reputation": 1,
+          "risk": 2
+        }
+      },
+      {
+        "id": "delete",
+        "label": "Delete it and hope it dies down",
+        "tags": [
+          "avoid_responsibility"
+        ],
+        "default": true,
+        "perceived": {
+          "mental": -1
+        }
+      },
+      {
+        "id": "investigate",
+        "label": "Turn it into a properly sourced article",
+        "tags": [
+          "truth",
+          "risk"
+        ],
+        "careers": [
+          "journalist"
+        ],
+        "perceived": {
+          "career": 2,
+          "reputation": 1
+        }
+      }
     ]
   },
   "outcomes": [
-    { "id": "scoop", "when": { "chose": "investigate", "role": "poster" }, "important": true,
-      "effects": [{ "type": "attr", "target": "role:poster", "delta": { "career": 12, "reputation": 8 } }],
-      "text": { "poster": "The sourced article is picked up by a national paper. Your editor is delighted." } },
-    { "id": "sued", "when": { "chose": "double_down", "role": "poster" }, "chance": 0.4, "important": true,
+    {
+      "id": "scoop",
+      "when": {
+        "chose": "investigate",
+        "role": "poster"
+      },
+      "important": true,
       "effects": [
-        { "type": "attr", "target": "role:poster", "delta": { "money": -15, "reputation": -10, "mental": -8 } },
-        { "type": "fact", "target": "role:poster", "key": "public_scandal" }
+        {
+          "type": "attr",
+          "target": "role:poster",
+          "delta": {
+            "career": 12,
+            "reputation": 8
+          }
+        }
       ],
-      "text": { "poster": "The company's lawyers send a letter. The wrong details cost you dearly." } },
-    { "id": "folk_hero", "when": { "chose": "double_down", "role": "poster" },
-      "effects": [{ "type": "attr", "target": "role:poster", "delta": { "reputation": 8, "mental": 4 } }],
-      "text": { "poster": "Thousands agree with you. The company issues an apology." } },
-    { "id": "corrected", "when": { "chose": "correct", "role": "poster" },
-      "effects": [{ "type": "attr", "target": "role:poster", "delta": { "reputation": 4 } }],
-      "text": { "poster": "People respect the correction. The core complaint stands." } },
-    { "id": "deleted", "effects": [{ "type": "attr", "target": "role:poster", "delta": { "mental": -3 } }],
-      "text": { "poster": "Screenshots live forever, but the storm passes." } }
+      "text": {
+        "poster": "The sourced article is picked up by a national paper. Your editor is delighted."
+      }
+    },
+    {
+      "id": "sued",
+      "when": {
+        "chose": "double_down",
+        "role": "poster"
+      },
+      "chance": 0.4,
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:poster",
+          "delta": {
+            "money": -15,
+            "reputation": -10,
+            "mental": -8
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:poster",
+          "key": "public_scandal"
+        }
+      ],
+      "text": {
+        "poster": "The company's lawyers send a letter. The wrong details cost you dearly."
+      }
+    },
+    {
+      "id": "folk_hero",
+      "when": {
+        "chose": "double_down",
+        "role": "poster"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:poster",
+          "delta": {
+            "reputation": 8,
+            "mental": 4
+          }
+        }
+      ],
+      "text": {
+        "poster": "Thousands agree with you. The company issues an apology."
+      }
+    },
+    {
+      "id": "corrected",
+      "when": {
+        "chose": "correct",
+        "role": "poster"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:poster",
+          "delta": {
+            "reputation": 4
+          }
+        }
+      ],
+      "text": {
+        "poster": "People respect the correction. The core complaint stands."
+      }
+    },
+    {
+      "id": "deleted",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:poster",
+          "delta": {
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "poster": "Screenshots live forever, but the storm passes."
+      }
+    }
   ]
 }

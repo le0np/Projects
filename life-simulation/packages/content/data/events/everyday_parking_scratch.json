@@ -1,34 +1,190 @@
 {
-  "schemaVersion": 1, "id": "everyday_parking_scratch", "version": 1, "title": "A Scratch in the Car Park",
-  "category": "everyday", "trigger": "director", "importance": "simple", "weight": 6,
-  "cooldown": { "maxPerCharacter": 1 }, "tags": ["vehicle"],
-  "roles": { "driver": { "count": 1 } },
+  "schemaVersion": 1,
+  "id": "everyday_parking_scratch",
+  "version": 1,
+  "title": "A Scratch in the Car Park",
+  "category": "everyday",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 6,
+  "cooldown": {
+    "maxPerCharacter": 1
+  },
+  "tags": [
+    "vehicle"
+  ],
+  "location": {
+    "at": [
+      "shop"
+    ]
+  },
+  "roles": {
+    "driver": {
+      "count": 1
+    }
+  },
   "text": {
     "public": "{driver} is reversing out of a tight parking space.",
-    "private": { "driver": "Crunch. You have left a long scratch on an expensive car. Nobody seems to have seen it." }
+    "private": {
+      "driver": "Crunch. You have left a long scratch on an expensive car. Nobody seems to have seen it."
+    }
   },
   "choices": {
     "driver": [
-      { "id": "note", "label": "Leave a note with your number", "tags": ["truth", "take_responsibility"], "perceived": { "money": -1, "reputation": 1 },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "money": -8 } }] },
-      { "id": "drive_off", "label": "Drive off quickly", "tags": ["avoid_responsibility", "lie"], "perceived": { "risk": 1 } },
-      { "id": "buff", "label": "Buff the scratch out yourself, then leave a note", "tags": ["take_responsibility", "help"], "careers": ["mechanic"],
-        "perceived": { "reputation": 1 }, "effects": [{ "type": "attr", "target": "self", "delta": { "money": -2 } }] },
-      { "id": "pretend", "label": "Pretend you did not notice", "tags": ["ignore", "avoid_responsibility"], "default": true, "perceived": { "risk": 1 } }
+      {
+        "id": "note",
+        "label": "Leave a note with your number",
+        "tags": [
+          "truth",
+          "take_responsibility"
+        ],
+        "perceived": {
+          "money": -1,
+          "reputation": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -8
+            }
+          }
+        ]
+      },
+      {
+        "id": "drive_off",
+        "label": "Drive off quickly",
+        "tags": [
+          "avoid_responsibility",
+          "lie"
+        ],
+        "perceived": {
+          "risk": 1
+        }
+      },
+      {
+        "id": "buff",
+        "label": "Buff the scratch out yourself, then leave a note",
+        "tags": [
+          "take_responsibility",
+          "help"
+        ],
+        "careers": [
+          "mechanic"
+        ],
+        "perceived": {
+          "reputation": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -2
+            }
+          }
+        ]
+      },
+      {
+        "id": "pretend",
+        "label": "Pretend you did not notice",
+        "tags": [
+          "ignore",
+          "avoid_responsibility"
+        ],
+        "default": true,
+        "perceived": {
+          "risk": 1
+        }
+      }
     ]
   },
   "outcomes": [
-    { "id": "noted", "when": { "chose": "note", "role": "driver" },
-      "effects": [{ "type": "attr", "target": "role:driver", "delta": { "reputation": 3, "mental": 2 } }],
-      "text": { "driver": "The owner calls, surprised anyone left a note. You split the repair." } },
-    { "id": "buffed", "when": { "chose": "buff", "role": "driver" },
-      "effects": [{ "type": "attr", "target": "role:driver", "delta": { "reputation": 5, "mental": 3 } }],
-      "text": { "driver": "Ten minutes with a polishing kit and it is barely visible. The owner is impressed." } },
-    { "id": "camera", "when": { "any": [ { "chose": "drive_off", "role": "driver" }, { "chose": "pretend", "role": "driver" } ] }, "chance": 0.25,
+    {
+      "id": "noted",
+      "when": {
+        "chose": "note",
+        "role": "driver"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "reputation": 3,
+            "mental": 2
+          }
+        }
+      ],
+      "text": {
+        "driver": "The owner calls, surprised anyone left a note. You split the repair."
+      }
+    },
+    {
+      "id": "buffed",
+      "when": {
+        "chose": "buff",
+        "role": "driver"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "reputation": 5,
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "driver": "Ten minutes with a polishing kit and it is barely visible. The owner is impressed."
+      }
+    },
+    {
+      "id": "camera",
+      "when": {
+        "any": [
+          {
+            "chose": "drive_off",
+            "role": "driver"
+          },
+          {
+            "chose": "pretend",
+            "role": "driver"
+          }
+        ]
+      },
+      "chance": 0.25,
       "important": true,
-      "effects": [{ "type": "attr", "target": "role:driver", "delta": { "money": -15, "reputation": -8 } }],
-      "text": { "driver": "A letter arrives: a camera recorded your number plate. Repairs plus a fine." } },
-    { "id": "got_away", "effects": [{ "type": "attr", "target": "role:driver", "delta": { "mental": -2 } }],
-      "text": { "driver": "Nobody ever finds out. You still think about it when you park." } }
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "money": -15,
+            "reputation": -8
+          }
+        }
+      ],
+      "text": {
+        "driver": "A letter arrives: a camera recorded your number plate. Repairs plus a fine."
+      }
+    },
+    {
+      "id": "got_away",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "mental": -2
+          }
+        }
+      ],
+      "text": {
+        "driver": "Nobody ever finds out. You still think about it when you park."
+      }
+    }
   ]
 }

@@ -1,10 +1,36 @@
 {
-  "schemaVersion": 1, "id": "family_inheritance", "version": 1, "title": "Grandmother's House",
-  "category": "family", "trigger": "director", "importance": "important", "weight": 7,
-  "cooldown": { "maxPerSession": 1 },
+  "schemaVersion": 1,
+  "id": "family_inheritance",
+  "version": 1,
+  "title": "Grandmother's House",
+  "category": "family",
+  "trigger": "director",
+  "importance": "important",
+  "weight": 7,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "home"
+    ],
+    "of": "role:heir_a"
+  },
   "roles": {
-    "heir_a": { "count": 1 },
-    "heir_b": { "count": 1, "conditions": { "relation": { "to": "role:heir_a", "typeIn": ["family"] } } }
+    "heir_a": {
+      "count": 1
+    },
+    "heir_b": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:heir_a",
+          "typeIn": [
+            "family"
+          ]
+        }
+      }
+    }
   },
   "text": {
     "public": "{heir_a} and {heir_b} have inherited their grandmother's house and must decide what to do with it.",
@@ -15,42 +41,274 @@
   },
   "choices": {
     "heir_a": [
-      { "id": "sell_split", "label": "Sell and split it equally", "tags": ["negotiate"], "default": true, "perceived": { "money": 1 } },
-      { "id": "claim", "label": "Say Grandmother promised the house to you", "tags": ["truth", "threaten"], "perceived": { "relation": { "heir_b": -2 } } },
-      { "id": "give_up", "label": "Let {heir_b} have your share", "tags": ["sacrifice", "help"], "perceived": { "money": -1, "relation": { "heir_b": 2 } } },
-      { "id": "mediate", "label": "Draw up a fair agreement: one keeps the house, the other gets paid out", "tags": ["negotiate", "help"], "careers": ["lawyer"],
-        "perceived": { "money": 1, "relation": { "heir_b": 1 } } }
+      {
+        "id": "sell_split",
+        "label": "Sell and split it equally",
+        "tags": [
+          "negotiate"
+        ],
+        "default": true,
+        "perceived": {
+          "money": 1
+        }
+      },
+      {
+        "id": "claim",
+        "label": "Say Grandmother promised the house to you",
+        "tags": [
+          "truth",
+          "threaten"
+        ],
+        "perceived": {
+          "relation": {
+            "heir_b": -2
+          }
+        }
+      },
+      {
+        "id": "give_up",
+        "label": "Let {heir_b} have your share",
+        "tags": [
+          "sacrifice",
+          "help"
+        ],
+        "perceived": {
+          "money": -1,
+          "relation": {
+            "heir_b": 2
+          }
+        }
+      },
+      {
+        "id": "mediate",
+        "label": "Draw up a fair agreement: one keeps the house, the other gets paid out",
+        "tags": [
+          "negotiate",
+          "help"
+        ],
+        "careers": [
+          "lawyer"
+        ],
+        "perceived": {
+          "money": 1,
+          "relation": {
+            "heir_b": 1
+          }
+        }
+      }
     ],
     "heir_b": [
-      { "id": "sell_split", "label": "Push to sell and split it equally", "tags": ["negotiate"], "default": true, "perceived": { "money": 2 } },
-      { "id": "lawyer_up", "label": "Hire a lawyer to get more than half", "tags": ["threaten"], "perceived": { "money": 2, "relation": { "heir_a": -2 } },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "money": -4 } }] },
-      { "id": "keep", "label": "Suggest keeping it in the family", "tags": ["sacrifice"], "perceived": { "money": -1, "relation": { "heir_a": 1 } } }
+      {
+        "id": "sell_split",
+        "label": "Push to sell and split it equally",
+        "tags": [
+          "negotiate"
+        ],
+        "default": true,
+        "perceived": {
+          "money": 2
+        }
+      },
+      {
+        "id": "lawyer_up",
+        "label": "Hire a lawyer to get more than half",
+        "tags": [
+          "threaten"
+        ],
+        "perceived": {
+          "money": 2,
+          "relation": {
+            "heir_a": -2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -4
+            }
+          }
+        ]
+      },
+      {
+        "id": "keep",
+        "label": "Suggest keeping it in the family",
+        "tags": [
+          "sacrifice"
+        ],
+        "perceived": {
+          "money": -1,
+          "relation": {
+            "heir_a": 1
+          }
+        }
+      }
     ]
   },
   "outcomes": [
-    { "id": "agreement", "when": { "chose": "mediate", "role": "heir_a" }, "revealChoices": true,
+    {
+      "id": "agreement",
+      "when": {
+        "chose": "mediate",
+        "role": "heir_a"
+      },
+      "revealChoices": true,
       "effects": [
-        { "type": "attr", "target": "role:heir_a", "delta": { "money": 6 } }, { "type": "attr", "target": "role:heir_b", "delta": { "money": 12 } },
-        { "type": "relation", "from": "role:heir_b", "to": "role:heir_a", "affinity": 15, "trust": 15 }
+        {
+          "type": "attr",
+          "target": "role:heir_a",
+          "delta": {
+            "money": 6
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:heir_b",
+          "delta": {
+            "money": 12
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:heir_b",
+          "to": "role:heir_a",
+          "affinity": 15,
+          "trust": 15
+        }
       ],
-      "text": { "heir_a": "You keep the house and pay {heir_b} out over time. Everyone signs.", "heir_b": "{heir_a} finds a solution that gets you cash and keeps the peace." } },
-    { "id": "feud", "when": { "any": [ { "chose": "lawyer_up", "role": "heir_b" }, { "chose": "claim", "role": "heir_a" } ] }, "important": true, "revealChoices": true,
+      "text": {
+        "heir_a": "You keep the house and pay {heir_b} out over time. Everyone signs.",
+        "heir_b": "{heir_a} finds a solution that gets you cash and keeps the peace."
+      }
+    },
+    {
+      "id": "feud",
+      "when": {
+        "any": [
+          {
+            "chose": "lawyer_up",
+            "role": "heir_b"
+          },
+          {
+            "chose": "claim",
+            "role": "heir_a"
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
       "effects": [
-        { "type": "attr", "target": "role:heir_a", "delta": { "money": 4, "mental": -10 } }, { "type": "attr", "target": "role:heir_b", "delta": { "money": 4, "mental": -10 } },
-        { "type": "relation", "from": "role:heir_a", "to": "role:heir_b", "setType": "enemy", "affinity": -40, "trust": -30, "mutual": true }
+        {
+          "type": "attr",
+          "target": "role:heir_a",
+          "delta": {
+            "money": 4,
+            "mental": -10
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:heir_b",
+          "delta": {
+            "money": 4,
+            "mental": -10
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:heir_a",
+          "to": "role:heir_b",
+          "setType": "enemy",
+          "affinity": -40,
+          "trust": -30,
+          "mutual": true
+        }
       ],
-      "text": { "heir_a": "Lawyers eat most of the money. You and {heir_b} stop speaking.", "heir_b": "Lawyers eat most of the money. You and {heir_a} stop speaking." } },
-    { "id": "gift", "when": { "chose": "give_up", "role": "heir_a" }, "important": true, "revealChoices": true,
+      "text": {
+        "heir_a": "Lawyers eat most of the money. You and {heir_b} stop speaking.",
+        "heir_b": "Lawyers eat most of the money. You and {heir_a} stop speaking."
+      }
+    },
+    {
+      "id": "gift",
+      "when": {
+        "chose": "give_up",
+        "role": "heir_a"
+      },
+      "important": true,
+      "revealChoices": true,
       "effects": [
-        { "type": "attr", "target": "role:heir_b", "delta": { "money": 20, "mental": 8 } },
-        { "type": "relation", "from": "role:heir_b", "to": "role:heir_a", "affinity": 35, "trust": 20 }
+        {
+          "type": "attr",
+          "target": "role:heir_b",
+          "delta": {
+            "money": 20,
+            "mental": 8
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:heir_b",
+          "to": "role:heir_a",
+          "affinity": 35,
+          "trust": 20
+        }
       ],
-      "text": { "heir_a": "You give your share to {heir_b}. You feel lighter.", "heir_b": "{heir_a} gives you their share. Your debts are gone." } },
-    { "id": "kept", "when": { "chose": "keep", "role": "heir_b" },
-      "effects": [{ "type": "relation", "from": "role:heir_a", "to": "role:heir_b", "affinity": 15, "mutual": true }, { "type": "attr", "target": "role:heir_b", "delta": { "mental": 3 } }],
-      "text": { "heir_a": "The house stays in the family. Summers there, together.", "heir_b": "You keep the house. Money will have to come from somewhere else." } },
-    { "id": "sold", "effects": [{ "type": "attr", "target": "role:heir_a", "delta": { "money": 10 } }, { "type": "attr", "target": "role:heir_b", "delta": { "money": 10 } }],
-      "text": { "heir_a": "The house is sold. It feels strange.", "heir_b": "The house is sold. The money helps." } }
+      "text": {
+        "heir_a": "You give your share to {heir_b}. You feel lighter.",
+        "heir_b": "{heir_a} gives you their share. Your debts are gone."
+      }
+    },
+    {
+      "id": "kept",
+      "when": {
+        "chose": "keep",
+        "role": "heir_b"
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:heir_a",
+          "to": "role:heir_b",
+          "affinity": 15,
+          "mutual": true
+        },
+        {
+          "type": "attr",
+          "target": "role:heir_b",
+          "delta": {
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "heir_a": "The house stays in the family. Summers there, together.",
+        "heir_b": "You keep the house. Money will have to come from somewhere else."
+      }
+    },
+    {
+      "id": "sold",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:heir_a",
+          "delta": {
+            "money": 10
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:heir_b",
+          "delta": {
+            "money": 10
+          }
+        }
+      ],
+      "text": {
+        "heir_a": "The house is sold. It feels strange.",
+        "heir_b": "The house is sold. The money helps."
+      }
+    }
   ]
 }

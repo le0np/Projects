@@ -1,37 +1,197 @@
 {
-  "schemaVersion": 1, "id": "career_overtime", "version": 1, "title": "Just This Once",
-  "category": "career", "trigger": "director", "importance": "simple", "weight": 7,
-  "cooldown": { "maxPerCharacter": 2, "minGapSeconds": 30 },
-  "roles": { "employee": { "count": 1, "conditions": { "fact": "employed" } } },
+  "schemaVersion": 1,
+  "id": "career_overtime",
+  "version": 1,
+  "title": "Just This Once",
+  "category": "career",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 7,
+  "cooldown": {
+    "maxPerCharacter": 2,
+    "minGapSeconds": 30
+  },
+  "location": {
+    "at": [
+      "work"
+    ]
+  },
+  "roles": {
+    "employee": {
+      "count": 1,
+      "conditions": {
+        "fact": "employed"
+      }
+    }
+  },
   "text": {
     "public": "At five o'clock, {employee}'s manager asks them to stay late — \"just this once\".",
-    "private": { "employee": "It is the third \"just this once\" this month." }
+    "private": {
+      "employee": "It is the third \"just this once\" this month."
+    }
   },
   "choices": {
     "employee": [
-      { "id": "stay", "label": "Stay until it is done", "tags": ["sacrifice"], "perceived": { "career": 1, "mental": -1, "health": -1 } },
-      { "id": "refuse", "label": "Say no — you have plans", "tags": ["refuse"], "perceived": { "career": -1, "mental": 1 } },
-      { "id": "negotiate", "label": "Agree, in exchange for a day off", "tags": ["negotiate"], "perceived": { "career": 0, "mental": 1 } },
-      { "id": "grumble_stay", "label": "Stay, but do the bare minimum", "tags": ["ignore"], "default": true, "perceived": { "mental": -1 } }
+      {
+        "id": "stay",
+        "label": "Stay until it is done",
+        "tags": [
+          "sacrifice"
+        ],
+        "perceived": {
+          "career": 1,
+          "mental": -1,
+          "health": -1
+        }
+      },
+      {
+        "id": "refuse",
+        "label": "Say no — you have plans",
+        "tags": [
+          "refuse"
+        ],
+        "perceived": {
+          "career": -1,
+          "mental": 1
+        }
+      },
+      {
+        "id": "negotiate",
+        "label": "Agree, in exchange for a day off",
+        "tags": [
+          "negotiate"
+        ],
+        "perceived": {
+          "career": 0,
+          "mental": 1
+        }
+      },
+      {
+        "id": "grumble_stay",
+        "label": "Stay, but do the bare minimum",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "mental": -1
+        }
+      }
     ]
   },
   "outcomes": [
-    { "id": "burnout", "when": { "all": [ { "chose": "stay", "role": "employee" }, { "attr": "mental", "of": "role:employee", "lte": 45 } ] }, "important": true,
+    {
+      "id": "burnout",
+      "when": {
+        "all": [
+          {
+            "chose": "stay",
+            "role": "employee"
+          },
+          {
+            "attr": "mental",
+            "of": "role:employee",
+            "lte": 45
+          }
+        ]
+      },
+      "important": true,
       "effects": [
-        { "type": "attr", "target": "role:employee", "delta": { "career": 4, "mental": -10, "health": -5 } },
-        { "type": "fact", "target": "role:employee", "key": "burned_out" }
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "career": 4,
+            "mental": -10,
+            "health": -5
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:employee",
+          "key": "burned_out"
+        }
       ],
-      "text": { "employee": "You finish at midnight. In the car park you realise you cannot remember the last time you felt rested." } },
-    { "id": "stayed", "when": { "chose": "stay", "role": "employee" },
-      "effects": [{ "type": "attr", "target": "role:employee", "delta": { "career": 5, "mental": -5, "health": -2 } }],
-      "text": { "employee": "Your manager notices the extra effort." } },
-    { "id": "refused", "when": { "chose": "refuse", "role": "employee" },
-      "effects": [{ "type": "attr", "target": "role:employee", "delta": { "career": -4, "mental": 5 } }],
-      "text": { "employee": "Your manager's smile tightens. Your evening is lovely." } },
-    { "id": "deal", "when": { "chose": "negotiate", "role": "employee" },
-      "effects": [{ "type": "attr", "target": "role:employee", "delta": { "career": 2, "mental": 2 } }],
-      "text": { "employee": "A day off next week. Fair trade." } },
-    { "id": "half_hearted", "effects": [{ "type": "attr", "target": "role:employee", "delta": { "mental": -4, "career": -1 } }],
-      "text": { "employee": "You stay, but your work shows it." } }
+      "text": {
+        "employee": "You finish at midnight. In the car park you realise you cannot remember the last time you felt rested."
+      }
+    },
+    {
+      "id": "stayed",
+      "when": {
+        "chose": "stay",
+        "role": "employee"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "career": 5,
+            "mental": -5,
+            "health": -2
+          }
+        }
+      ],
+      "text": {
+        "employee": "Your manager notices the extra effort."
+      }
+    },
+    {
+      "id": "refused",
+      "when": {
+        "chose": "refuse",
+        "role": "employee"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "career": -4,
+            "mental": 5
+          }
+        }
+      ],
+      "text": {
+        "employee": "Your manager's smile tightens. Your evening is lovely."
+      }
+    },
+    {
+      "id": "deal",
+      "when": {
+        "chose": "negotiate",
+        "role": "employee"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "career": 2,
+            "mental": 2
+          }
+        }
+      ],
+      "text": {
+        "employee": "A day off next week. Fair trade."
+      }
+    },
+    {
+      "id": "half_hearted",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "mental": -4,
+            "career": -1
+          }
+        }
+      ],
+      "text": {
+        "employee": "You stay, but your work shows it."
+      }
+    }
   ]
 }

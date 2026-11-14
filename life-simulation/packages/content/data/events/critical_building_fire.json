@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "critical_building_fire",
-  "version": 2,
+  "version": 3,
   "title": "Fire!",
   "category": "critical",
   "trigger": "director",
@@ -9,6 +9,12 @@
   "weight": 3,
   "cooldown": {
     "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "home"
+    ],
+    "of": "role:trapped"
   },
   "roles": {
     "trapped": {
@@ -159,6 +165,12 @@
           "to": "role:resident",
           "affinity": 35,
           "trust": 25
+        },
+        {
+          "type": "move",
+          "target": "role:trapped",
+          "to": "hospital",
+          "staySeconds": 8
         }
       ],
       "text": {
@@ -203,6 +215,18 @@
           "to": "role:resident",
           "affinity": 40,
           "trust": 30
+        },
+        {
+          "type": "move",
+          "target": "role:resident",
+          "to": "hospital",
+          "staySeconds": 15
+        },
+        {
+          "type": "move",
+          "target": "role:trapped",
+          "to": "hospital",
+          "staySeconds": 10
         }
       ],
       "text": {
@@ -247,6 +271,12 @@
           "to": "role:resident",
           "affinity": 40,
           "trust": 30
+        },
+        {
+          "type": "move",
+          "target": "role:trapped",
+          "to": "hospital",
+          "staySeconds": 8
         }
       ],
       "text": {

@@ -2,7 +2,7 @@
  * Domain log: the append-only, chronological source of truth for a session.
  * Life Recap, statistics, replay checks and the human-readable log are built from it.
  */
-import type { Attribute, RelationType, Season, Status } from "@lifesim/core";
+import type { Attribute, RelationType, Season, Status, TilePos } from "@lifesim/core";
 import type { SessionConfig } from "./config";
 
 export type EndReason = "time_limit" | "all_ended" | "story_resolved" | "cancelled";
@@ -20,7 +20,7 @@ export type LogEntry = { t: number } & (
       seed: string;
       contentHash: string;
       config: SessionConfig;
-      characters: { id: string; name: string; career: string; isBot: boolean; attrs: Record<Attribute, number> }[];
+      characters: { id: string; name: string; career: string; isBot: boolean; attrs: Record<Attribute, number>; home: string; work: string }[];
       relations: { a: string; b: string; type: RelationType }[];
     }
   | {
@@ -31,7 +31,10 @@ export type LogEntry = { t: number } & (
       title: string;
       bindings: Record<string, string[]>;
       parentInstanceId?: string;
+      /** When everyone has gathered at the place and the choices are shown. */
+      offerAt: number;
       deadlineAt: number;
+      place: { tile: TilePos; placeId: string | null };
     }
   | { type: "decision"; instanceId: string; characterId: string; choiceId: string; label: string; source: "player" | "default" }
   | { type: "decision_rejected"; instanceId: string; characterId: string; choiceId: string; reason: string }
@@ -40,6 +43,10 @@ export type LogEntry = { t: number } & (
   | { type: "followup_activated"; sourceInstanceId: string; eventId: string; instanceId: string }
   | { type: "followup_dropped"; sourceInstanceId: string; eventId: string; reason: string }
   | { type: "character_ended"; characterId: string; status: Status; cause: string }
+  /** Someone starts walking somewhere (routine, to an event, sent by an effect or a status). */
+  | { type: "moved"; characterId: string; from: TilePos; to: TilePos; placeId: string | null; arriveAt: number; reason: "routine" | "event" | "effect" | "status" }
+  /** Free-time choice (a decision too: replays need it). */
+  | { type: "leisure"; characterId: string; kind: string }
   /** A new season (and at spring, a new year: everyone is a year older). */
   | { type: "season_changed"; year: number; season: Season }
   | { type: "session_completed"; reason: EndReason }
@@ -72,7 +79,7 @@ export function formatLog(log: readonly LogEntry[]): string {
         const who = Object.entries(e.bindings)
           .map(([role, ids]) => `${role}: ${ids.map(name).join(", ")}`)
           .join("; ");
-        lines.push(`${at} - Event [${e.instanceId}]: ${e.title} (${who})${e.parentInstanceId ? ` — follow-up of ${e.parentInstanceId}` : ""}`);
+        lines.push(`${at} - Event [${e.instanceId}]: ${e.title} (${who})${e.place.placeId ? ` at ${e.place.placeId}` : ""}${e.parentInstanceId ? ` — follow-up of ${e.parentInstanceId}` : ""}`);
         break;
       }
       case "decision":
@@ -102,6 +109,12 @@ export function formatLog(log: readonly LogEntry[]): string {
         break;
       case "character_ended":
         lines.push(`${at} - ${name(e.characterId)}'s story ends: ${e.status} — ${e.cause}`);
+        break;
+      case "moved":
+        // Routine walks would drown the log; only show moves that tell the story.
+        if (e.reason === "effect" || e.reason === "status") lines.push(`${at} - ${name(e.characterId)} goes to ${e.placeId ?? "the street"}`);
+        break;
+      case "leisure":
         break;
       case "season_changed":
         lines.push(`${at} - ${e.season === "spring" ? `Year ${e.year + 1} begins. ` : ""}It is ${e.season}.`);

@@ -1,33 +1,178 @@
 {
-  "schemaVersion": 1, "id": "career_annual_review", "version": 1, "title": "The Annual Review",
-  "category": "career", "trigger": "director", "importance": "simple", "weight": 7,
-  "cooldown": { "maxPerCharacter": 1 },
-  "roles": { "employee": { "count": 1, "conditions": { "fact": "employed" } } },
+  "schemaVersion": 1,
+  "id": "career_annual_review",
+  "version": 1,
+  "title": "The Annual Review",
+  "category": "career",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 7,
+  "cooldown": {
+    "maxPerCharacter": 1
+  },
+  "location": {
+    "at": [
+      "work"
+    ]
+  },
+  "roles": {
+    "employee": {
+      "count": 1,
+      "conditions": {
+        "fact": "employed"
+      }
+    }
+  },
   "text": {
     "public": "{employee} has their annual review.",
-    "private": { "employee": "You know a colleague in the same role earns noticeably more than you." }
+    "private": {
+      "employee": "You know a colleague in the same role earns noticeably more than you."
+    }
   },
   "choices": {
     "employee": [
-      { "id": "ask_raise", "label": "Ask for a raise and mention the colleague's salary", "tags": ["negotiate", "truth"], "perceived": { "money": 1, "risk": 1 } },
-      { "id": "competing_offer", "label": "Claim you have a competing offer", "tags": ["lie", "risk"], "perceived": { "money": 2, "risk": 2 } },
-      { "id": "accept", "label": "Thank them and accept what is offered", "tags": ["ignore"], "default": true, "perceived": { "money": 0 } }
+      {
+        "id": "ask_raise",
+        "label": "Ask for a raise and mention the colleague's salary",
+        "tags": [
+          "negotiate",
+          "truth"
+        ],
+        "perceived": {
+          "money": 1,
+          "risk": 1
+        }
+      },
+      {
+        "id": "competing_offer",
+        "label": "Claim you have a competing offer",
+        "tags": [
+          "lie",
+          "risk"
+        ],
+        "perceived": {
+          "money": 2,
+          "risk": 2
+        }
+      },
+      {
+        "id": "accept",
+        "label": "Thank them and accept what is offered",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "money": 0
+        }
+      }
     ]
   },
   "outcomes": [
-    { "id": "bluff_called", "when": { "chose": "competing_offer", "role": "employee" }, "chance": 0.35,
-      "effects": [{ "type": "attr", "target": "role:employee", "delta": { "career": -8, "mental": -5 } }],
-      "text": { "employee": "\"Then you should take it.\" Your manager calls the bluff. Very awkward." } },
-    { "id": "big_raise", "when": { "chose": "competing_offer", "role": "employee" },
-      "effects": [{ "type": "attr", "target": "role:employee", "delta": { "money": 15, "career": 3 } }],
-      "text": { "employee": "They match the imaginary offer. A big raise." } },
-    { "id": "raise", "when": { "all": [ { "chose": "ask_raise", "role": "employee" }, { "attr": "career", "of": "role:employee", "gte": 45 } ] },
-      "effects": [{ "type": "attr", "target": "role:employee", "delta": { "money": 10, "mental": 3 } }],
-      "text": { "employee": "Your manager agrees it is overdue. A solid raise." } },
-    { "id": "not_now", "when": { "chose": "ask_raise", "role": "employee" },
-      "effects": [{ "type": "attr", "target": "role:employee", "delta": { "money": 3, "mental": -2 } }],
-      "text": { "employee": "\"Let's revisit after you improve your results.\" A small adjustment." } },
-    { "id": "standard", "effects": [{ "type": "attr", "target": "role:employee", "delta": { "money": 4 } }],
-      "text": { "employee": "The standard inflation adjustment." } }
+    {
+      "id": "bluff_called",
+      "when": {
+        "chose": "competing_offer",
+        "role": "employee"
+      },
+      "chance": 0.35,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "career": -8,
+            "mental": -5
+          }
+        }
+      ],
+      "text": {
+        "employee": "\"Then you should take it.\" Your manager calls the bluff. Very awkward."
+      }
+    },
+    {
+      "id": "big_raise",
+      "when": {
+        "chose": "competing_offer",
+        "role": "employee"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "money": 15,
+            "career": 3
+          }
+        }
+      ],
+      "text": {
+        "employee": "They match the imaginary offer. A big raise."
+      }
+    },
+    {
+      "id": "raise",
+      "when": {
+        "all": [
+          {
+            "chose": "ask_raise",
+            "role": "employee"
+          },
+          {
+            "attr": "career",
+            "of": "role:employee",
+            "gte": 45
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "money": 10,
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "employee": "Your manager agrees it is overdue. A solid raise."
+      }
+    },
+    {
+      "id": "not_now",
+      "when": {
+        "chose": "ask_raise",
+        "role": "employee"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "money": 3,
+            "mental": -2
+          }
+        }
+      ],
+      "text": {
+        "employee": "\"Let's revisit after you improve your results.\" A small adjustment."
+      }
+    },
+    {
+      "id": "standard",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "money": 4
+          }
+        }
+      ],
+      "text": {
+        "employee": "The standard inflation adjustment."
+      }
+    }
   ]
 }

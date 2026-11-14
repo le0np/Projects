@@ -1,9 +1,36 @@
 {
-  "schemaVersion": 1, "id": "critical_robbery", "version": 1, "title": "The Robbery",
-  "category": "critical", "trigger": "director", "importance": "important", "weight": 5,
-  "cooldown": { "maxPerSession": 1 },
-  "roles": { "victim": { "count": 1 }, "witness": { "count": [1, 2] } },
-  "conditions": { "progress": { "gte": 0.2 } },
+  "schemaVersion": 1,
+  "id": "critical_robbery",
+  "version": 2,
+  "title": "The Robbery",
+  "category": "critical",
+  "trigger": "director",
+  "importance": "important",
+  "weight": 5,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "street"
+    ]
+  },
+  "roles": {
+    "victim": {
+      "count": 1
+    },
+    "witness": {
+      "count": [
+        1,
+        2
+      ]
+    }
+  },
+  "conditions": {
+    "progress": {
+      "gte": 0.2
+    }
+  },
   "text": {
     "public": "A man with a knife grabs {victim}'s bag at a tram stop. {witness} is standing a few metres away.",
     "private": {
@@ -13,41 +40,269 @@
   },
   "choices": {
     "victim": [
-      { "id": "let_go", "label": "Let go of the bag", "tags": ["ignore"], "default": true, "perceived": { "money": -1 } },
-      { "id": "fight", "label": "Hold on and fight", "tags": ["risk"], "perceived": { "risk": 2, "money": 1 } }
+      {
+        "id": "let_go",
+        "label": "Let go of the bag",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "money": -1
+        }
+      },
+      {
+        "id": "fight",
+        "label": "Hold on and fight",
+        "tags": [
+          "risk"
+        ],
+        "perceived": {
+          "risk": 2,
+          "money": 1
+        }
+      }
     ],
     "witness": [
-      { "id": "intervene", "label": "Step in and shout at him", "tags": ["help", "risk"], "perceived": { "risk": 2, "relation": { "victim": 2 } } },
-      { "id": "call_police", "label": "Call the police and follow at a distance", "tags": ["help"], "perceived": { "relation": { "victim": 1 } } },
-      { "id": "disarm", "label": "Talk him down and take control", "tags": ["help", "risk"], "careers": ["police_officer"], "perceived": { "relation": { "victim": 2 }, "reputation": 1 },
-        "insight": { "careers": ["police_officer"], "perceived": { "risk": 1 }, "note": "He is scared, not experienced. He can be talked down." } },
-      { "id": "look_away", "label": "Look away", "tags": ["ignore"], "default": true }
+      {
+        "id": "intervene",
+        "label": "Step in and shout at him",
+        "tags": [
+          "help",
+          "risk"
+        ],
+        "perceived": {
+          "risk": 2,
+          "relation": {
+            "victim": 2
+          }
+        }
+      },
+      {
+        "id": "call_police",
+        "label": "Call the police and follow at a distance",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "victim": 1
+          }
+        }
+      },
+      {
+        "id": "disarm",
+        "label": "Talk him down and take control",
+        "tags": [
+          "help",
+          "risk"
+        ],
+        "careers": [
+          "police_officer"
+        ],
+        "perceived": {
+          "relation": {
+            "victim": 2
+          },
+          "reputation": 1
+        },
+        "insight": {
+          "careers": [
+            "police_officer"
+          ],
+          "perceived": {
+            "risk": 1
+          },
+          "note": "He is scared, not experienced. He can be talked down."
+        }
+      },
+      {
+        "id": "look_away",
+        "label": "Look away",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
     ]
   },
   "outcomes": [
-    { "id": "disarmed", "when": { "chose": "disarm", "role": "witness" }, "important": true, "revealChoices": true,
+    {
+      "id": "disarmed",
+      "when": {
+        "chose": "disarm",
+        "role": "witness"
+      },
+      "important": true,
+      "revealChoices": true,
       "effects": [
-        { "type": "attr", "target": "role:witness", "delta": { "reputation": 10, "career": 5 } },
-        { "type": "relation", "from": "role:victim", "to": "role:witness", "affinity": 35, "trust": 30 }
+        {
+          "type": "attr",
+          "target": "role:witness",
+          "delta": {
+            "reputation": 10,
+            "career": 5
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:victim",
+          "to": "role:witness",
+          "affinity": 35,
+          "trust": 30
+        }
       ],
-      "text": { "victim": "{witness} talks the robber into dropping the knife. Your bag is back.", "witness": "Calm voice, steady hands. He drops the knife." } },
-    { "id": "stabbed", "when": { "any": [ { "chose": "fight", "role": "victim" }, { "chose": "intervene", "role": "witness" } ] }, "chance": 0.3, "important": true,
+      "text": {
+        "victim": "{witness} talks the robber into dropping the knife. Your bag is back.",
+        "witness": "Calm voice, steady hands. He drops the knife."
+      }
+    },
+    {
+      "id": "stabbed",
+      "when": {
+        "any": [
+          {
+            "chose": "fight",
+            "role": "victim"
+          },
+          {
+            "chose": "intervene",
+            "role": "witness"
+          }
+        ]
+      },
+      "chance": 0.3,
+      "important": true,
       "effects": [
-        { "type": "attr", "target": "role:victim", "delta": { "health": -30 } },
-        { "type": "attr", "target": "role:witness", "delta": { "health": -15, "mental": -10 } }
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "health": -30
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:witness",
+          "delta": {
+            "health": -15,
+            "mental": -10
+          }
+        },
+        {
+          "type": "move",
+          "target": "role:victim",
+          "to": "hospital",
+          "staySeconds": 20
+        },
+        {
+          "type": "move",
+          "target": "role:witness",
+          "to": "hospital",
+          "staySeconds": 10
+        }
       ],
-      "text": { "victim": "He panics and lashes out. The knife goes in. Then he is gone.", "witness": "He slashes wildly and runs. There is blood on the pavement." } },
-    { "id": "chased_off", "when": { "chose": "intervene", "role": "witness" }, "important": true, "revealChoices": true,
+      "text": {
+        "victim": "He panics and lashes out. The knife goes in. Then he is gone.",
+        "witness": "He slashes wildly and runs. There is blood on the pavement."
+      }
+    },
+    {
+      "id": "chased_off",
+      "when": {
+        "chose": "intervene",
+        "role": "witness"
+      },
+      "important": true,
+      "revealChoices": true,
       "effects": [
-        { "type": "attr", "target": "role:witness", "delta": { "reputation": 6 } },
-        { "type": "relation", "from": "role:victim", "to": "role:witness", "affinity": 30, "trust": 25 },
-        { "type": "fact", "target": "role:victim", "key": "saved_by", "about": "role:witness" }
+        {
+          "type": "attr",
+          "target": "role:witness",
+          "delta": {
+            "reputation": 6
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:victim",
+          "to": "role:witness",
+          "affinity": 30,
+          "trust": 25
+        },
+        {
+          "type": "fact",
+          "target": "role:victim",
+          "key": "saved_by",
+          "about": "role:witness"
+        }
       ],
-      "text": { "victim": "{witness} shouts and charges. The robber drops the bag and runs.", "witness": "You yell, he runs. Your heart is pounding." } },
-    { "id": "tracked", "when": { "chose": "call_police", "role": "witness" },
-      "effects": [{ "type": "attr", "target": "role:victim", "delta": { "money": -4, "mental": -6 } }, { "type": "relation", "from": "role:victim", "to": "role:witness", "affinity": 15 }],
-      "text": { "victim": "The police find the bag in a bin. Laptop gone, but your documents are there.", "witness": "Your description helps the police find the bag." } },
-    { "id": "robbed", "effects": [{ "type": "attr", "target": "role:victim", "delta": { "money": -12, "mental": -10 } }],
-      "text": { "victim": "He is gone with the bag. Nobody did anything.", "witness": "You watch him run. You tell yourself there was nothing you could do." } }
+      "text": {
+        "victim": "{witness} shouts and charges. The robber drops the bag and runs.",
+        "witness": "You yell, he runs. Your heart is pounding."
+      }
+    },
+    {
+      "id": "tracked",
+      "when": {
+        "chose": "call_police",
+        "role": "witness"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "money": -4,
+            "mental": -6
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:victim",
+          "to": "role:witness",
+          "affinity": 15
+        },
+        {
+          "type": "move",
+          "target": "role:victim",
+          "to": "police",
+          "staySeconds": 6
+        },
+        {
+          "type": "move",
+          "target": "role:witness",
+          "to": "police",
+          "staySeconds": 6
+        }
+      ],
+      "text": {
+        "victim": "The police find the bag in a bin. Laptop gone, but your documents are there.",
+        "witness": "Your description helps the police find the bag."
+      }
+    },
+    {
+      "id": "robbed",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "money": -12,
+            "mental": -10
+          }
+        },
+        {
+          "type": "move",
+          "target": "role:victim",
+          "to": "police",
+          "staySeconds": 6
+        }
+      ],
+      "text": {
+        "victim": "He is gone with the bag. Nobody did anything.",
+        "witness": "You watch him run. You tell yourself there was nothing you could do."
+      }
+    }
   ]
 }

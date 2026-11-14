@@ -1,11 +1,48 @@
 {
-  "schemaVersion": 1, "id": "relationships_jealousy", "version": 1, "title": "Too Friendly",
-  "category": "relationships", "trigger": "director", "importance": "multi", "weight": 5,
-  "cooldown": { "maxPerSession": 1 },
+  "schemaVersion": 1,
+  "id": "relationships_jealousy",
+  "version": 1,
+  "title": "Too Friendly",
+  "category": "relationships",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 5,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "bar"
+    ]
+  },
   "roles": {
-    "partner": { "count": 1 },
-    "flirt_target": { "count": 1, "conditions": { "relation": { "to": "role:partner", "typeIn": ["partner"] } } },
-    "admirer": { "count": 1, "conditions": { "relation": { "to": "role:flirt_target", "typeIn": ["acquaintance", "friend", "colleague"] } } }
+    "partner": {
+      "count": 1
+    },
+    "flirt_target": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:partner",
+          "typeIn": [
+            "partner"
+          ]
+        }
+      }
+    },
+    "admirer": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:flirt_target",
+          "typeIn": [
+            "acquaintance",
+            "friend",
+            "colleague"
+          ]
+        }
+      }
+    }
   },
   "text": {
     "public": "At a party, {admirer} spends the whole evening laughing with {flirt_target}. {partner} is watching from across the room.",
@@ -17,39 +54,220 @@
   },
   "choices": {
     "admirer": [
-      { "id": "flirt", "label": "Ask {flirt_target} to leave with you", "tags": ["risk", "lie"], "perceived": { "relation": { "partner": -2 }, "risk": 2 } },
-      { "id": "back_off", "label": "Back off — they are taken", "tags": ["truth"], "default": true }
+      {
+        "id": "flirt",
+        "label": "Ask {flirt_target} to leave with you",
+        "tags": [
+          "risk",
+          "lie"
+        ],
+        "perceived": {
+          "relation": {
+            "partner": -2
+          },
+          "risk": 2
+        }
+      },
+      {
+        "id": "back_off",
+        "label": "Back off — they are taken",
+        "tags": [
+          "truth"
+        ],
+        "default": true
+      }
     ],
     "flirt_target": [
-      { "id": "go_with", "label": "Go with {admirer}", "tags": ["lie", "risk"], "perceived": { "relation": { "partner": -2 }, "risk": 2 } },
-      { "id": "return", "label": "Go back to {partner}", "tags": ["truth"], "default": true, "perceived": { "relation": { "partner": 1 } } }
+      {
+        "id": "go_with",
+        "label": "Go with {admirer}",
+        "tags": [
+          "lie",
+          "risk"
+        ],
+        "perceived": {
+          "relation": {
+            "partner": -2
+          },
+          "risk": 2
+        }
+      },
+      {
+        "id": "return",
+        "label": "Go back to {partner}",
+        "tags": [
+          "truth"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "partner": 1
+          }
+        }
+      }
     ],
     "partner": [
-      { "id": "make_scene", "label": "Walk over and make a scene", "tags": ["threaten"], "perceived": { "reputation": -1, "relation": { "admirer": -2 } } },
-      { "id": "join", "label": "Join the conversation", "tags": ["negotiate"], "default": true },
-      { "id": "leave", "label": "Leave the party alone", "tags": ["ignore"], "perceived": { "mental": -1 } }
+      {
+        "id": "make_scene",
+        "label": "Walk over and make a scene",
+        "tags": [
+          "threaten"
+        ],
+        "perceived": {
+          "reputation": -1,
+          "relation": {
+            "admirer": -2
+          }
+        }
+      },
+      {
+        "id": "join",
+        "label": "Join the conversation",
+        "tags": [
+          "negotiate"
+        ],
+        "default": true
+      },
+      {
+        "id": "leave",
+        "label": "Leave the party alone",
+        "tags": [
+          "ignore"
+        ],
+        "perceived": {
+          "mental": -1
+        }
+      }
     ]
   },
   "outcomes": [
-    { "id": "affair", "when": { "all": [ { "chose": "flirt", "role": "admirer" }, { "chose": "go_with", "role": "flirt_target" } ] }, "important": true,
+    {
+      "id": "affair",
+      "when": {
+        "all": [
+          {
+            "chose": "flirt",
+            "role": "admirer"
+          },
+          {
+            "chose": "go_with",
+            "role": "flirt_target"
+          }
+        ]
+      },
+      "important": true,
       "effects": [
-        { "type": "relation", "from": "role:partner", "to": "role:flirt_target", "setType": "acquaintance", "affinity": -40, "trust": -50, "mutual": true },
-        { "type": "relation", "from": "role:partner", "to": "role:admirer", "setType": "enemy", "affinity": -40 },
-        { "type": "relation", "from": "role:admirer", "to": "role:flirt_target", "setType": "partner", "affinity": 25, "mutual": true },
-        { "type": "attr", "target": "role:partner", "delta": { "mental": -15 } }
+        {
+          "type": "relation",
+          "from": "role:partner",
+          "to": "role:flirt_target",
+          "setType": "acquaintance",
+          "affinity": -40,
+          "trust": -50,
+          "mutual": true
+        },
+        {
+          "type": "relation",
+          "from": "role:partner",
+          "to": "role:admirer",
+          "setType": "enemy",
+          "affinity": -40
+        },
+        {
+          "type": "relation",
+          "from": "role:admirer",
+          "to": "role:flirt_target",
+          "setType": "partner",
+          "affinity": 25,
+          "mutual": true
+        },
+        {
+          "type": "attr",
+          "target": "role:partner",
+          "delta": {
+            "mental": -15
+          }
+        }
       ],
-      "text": { "partner": "{flirt_target} leaves with {admirer}. Everyone saw.", "flirt_target": "You leave with {admirer}. There is no going back now.", "admirer": "{flirt_target} leaves with you." } },
-    { "id": "scene", "when": { "chose": "make_scene", "role": "partner" }, "revealChoices": true,
+      "text": {
+        "partner": "{flirt_target} leaves with {admirer}. Everyone saw.",
+        "flirt_target": "You leave with {admirer}. There is no going back now.",
+        "admirer": "{flirt_target} leaves with you."
+      }
+    },
+    {
+      "id": "scene",
+      "when": {
+        "chose": "make_scene",
+        "role": "partner"
+      },
+      "revealChoices": true,
       "effects": [
-        { "type": "attr", "target": "role:partner", "delta": { "reputation": -5 } },
-        { "type": "relation", "from": "role:partner", "to": "role:admirer", "setType": "rival", "affinity": -20, "mutual": true },
-        { "type": "relation", "from": "role:flirt_target", "to": "role:partner", "affinity": -10 }
+        {
+          "type": "attr",
+          "target": "role:partner",
+          "delta": {
+            "reputation": -5
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:partner",
+          "to": "role:admirer",
+          "setType": "rival",
+          "affinity": -20,
+          "mutual": true
+        },
+        {
+          "type": "relation",
+          "from": "role:flirt_target",
+          "to": "role:partner",
+          "affinity": -10
+        }
       ],
-      "text": { "partner": "You tell {admirer} to back off. Loudly.", "flirt_target": "{partner} makes a scene. You are mortified.", "admirer": "{partner} confronts you in front of everyone." } },
-    { "id": "loyal", "when": { "chose": "return", "role": "flirt_target" },
-      "effects": [{ "type": "relation", "from": "role:partner", "to": "role:flirt_target", "trust": 10, "mutual": true }],
-      "text": { "partner": "{flirt_target} comes back and takes your hand.", "flirt_target": "You go back to {partner}.", "admirer": "{flirt_target} goes back to {partner}." } },
-    { "id": "awkward", "effects": [{ "type": "attr", "target": "role:partner", "delta": { "mental": -4 } }],
-      "text": { "partner": "An awkward evening.", "flirt_target": "An awkward evening.", "admirer": "Nothing happens." } }
+      "text": {
+        "partner": "You tell {admirer} to back off. Loudly.",
+        "flirt_target": "{partner} makes a scene. You are mortified.",
+        "admirer": "{partner} confronts you in front of everyone."
+      }
+    },
+    {
+      "id": "loyal",
+      "when": {
+        "chose": "return",
+        "role": "flirt_target"
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:partner",
+          "to": "role:flirt_target",
+          "trust": 10,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "partner": "{flirt_target} comes back and takes your hand.",
+        "flirt_target": "You go back to {partner}.",
+        "admirer": "{flirt_target} goes back to {partner}."
+      }
+    },
+    {
+      "id": "awkward",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:partner",
+          "delta": {
+            "mental": -4
+          }
+        }
+      ],
+      "text": {
+        "partner": "An awkward evening.",
+        "flirt_target": "An awkward evening.",
+        "admirer": "Nothing happens."
+      }
+    }
   ]
 }

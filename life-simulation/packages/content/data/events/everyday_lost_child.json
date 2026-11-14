@@ -1,38 +1,210 @@
 {
-  "schemaVersion": 1, "id": "everyday_lost_child", "version": 1, "title": "A Lost Child",
-  "category": "everyday", "trigger": "director", "importance": "simple", "weight": 6,
-  "cooldown": { "maxPerSession": 2, "maxPerCharacter": 1 },
-  "roles": { "finder": { "count": 1 } },
+  "schemaVersion": 1,
+  "id": "everyday_lost_child",
+  "version": 1,
+  "title": "A Lost Child",
+  "category": "everyday",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 2,
+    "maxPerCharacter": 1
+  },
+  "location": {
+    "at": [
+      "park",
+      "shop"
+    ]
+  },
+  "roles": {
+    "finder": {
+      "count": 1
+    }
+  },
   "text": {
     "public": "Near the market, a small child is crying alone. {finder} is the closest adult.",
-    "private": { "finder": "The child is about four. People walk past without looking." }
+    "private": {
+      "finder": "The child is about four. People walk past without looking."
+    }
   },
   "choices": {
     "finder": [
-      { "id": "stay", "label": "Stay with the child and call the police", "tags": ["help"], "perceived": { "career": -1, "mental": 1 },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "career": -2 } }] },
-      { "id": "security", "label": "Take the child to the security desk", "tags": ["help", "risk"], "perceived": { "mental": 1, "risk": 1 } },
-      { "id": "calm_ask", "label": "Kneel down, calm the child and get their parents' names", "tags": ["help"], "careers": ["teacher", "psychologist"],
-        "perceived": { "reputation": 1, "mental": 1 } },
-      { "id": "shopkeepers", "label": "Ask the shopkeepers you know — someone will recognise the child", "tags": ["help"], "careers": ["civilian"],
-        "perceived": { "reputation": 1, "mental": 1 } },
-      { "id": "walk_on", "label": "Assume the parents are nearby and walk on", "tags": ["ignore"], "default": true }
+      {
+        "id": "stay",
+        "label": "Stay with the child and call the police",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "career": -1,
+          "mental": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": -2
+            }
+          }
+        ]
+      },
+      {
+        "id": "security",
+        "label": "Take the child to the security desk",
+        "tags": [
+          "help",
+          "risk"
+        ],
+        "perceived": {
+          "mental": 1,
+          "risk": 1
+        }
+      },
+      {
+        "id": "calm_ask",
+        "label": "Kneel down, calm the child and get their parents' names",
+        "tags": [
+          "help"
+        ],
+        "careers": [
+          "teacher",
+          "psychologist"
+        ],
+        "perceived": {
+          "reputation": 1,
+          "mental": 1
+        }
+      },
+      {
+        "id": "shopkeepers",
+        "label": "Ask the shopkeepers you know — someone will recognise the child",
+        "tags": [
+          "help"
+        ],
+        "careers": [
+          "civilian"
+        ],
+        "perceived": {
+          "reputation": 1,
+          "mental": 1
+        }
+      },
+      {
+        "id": "walk_on",
+        "label": "Assume the parents are nearby and walk on",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
     ]
   },
   "outcomes": [
-    { "id": "expert_reunion", "when": { "any": [ { "chose": "calm_ask", "role": "finder" }, { "chose": "shopkeepers", "role": "finder" } ] },
-      "effects": [{ "type": "attr", "target": "role:finder", "delta": { "reputation": 6, "mental": 5 } }],
-      "text": { "finder": "Within minutes the mother comes running. She hugs you as well as the child." } },
-    { "id": "waited", "when": { "chose": "stay", "role": "finder" },
-      "effects": [{ "type": "attr", "target": "role:finder", "delta": { "reputation": 3, "mental": 3 } }],
-      "text": { "finder": "A patrol arrives and the parents are found. You are late, but it does not matter." } },
-    { "id": "accused", "when": { "chose": "security", "role": "finder" }, "chance": 0.15, "important": true,
-      "effects": [{ "type": "attr", "target": "role:finder", "delta": { "reputation": -5, "mental": -6 } }],
-      "text": { "finder": "The panicked father sees you leading his child away and accuses you of taking them. It takes an hour to clear up." } },
-    { "id": "security_ok", "when": { "chose": "security", "role": "finder" },
-      "effects": [{ "type": "attr", "target": "role:finder", "delta": { "mental": 3 } }],
-      "text": { "finder": "Security calls the parents over the speakers." } },
-    { "id": "walked_on", "effects": [{ "type": "attr", "target": "role:finder", "delta": { "mental": -4 } }],
-      "text": { "finder": "You keep thinking about the child for the rest of the day." } }
+    {
+      "id": "expert_reunion",
+      "when": {
+        "any": [
+          {
+            "chose": "calm_ask",
+            "role": "finder"
+          },
+          {
+            "chose": "shopkeepers",
+            "role": "finder"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:finder",
+          "delta": {
+            "reputation": 6,
+            "mental": 5
+          }
+        }
+      ],
+      "text": {
+        "finder": "Within minutes the mother comes running. She hugs you as well as the child."
+      }
+    },
+    {
+      "id": "waited",
+      "when": {
+        "chose": "stay",
+        "role": "finder"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:finder",
+          "delta": {
+            "reputation": 3,
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "finder": "A patrol arrives and the parents are found. You are late, but it does not matter."
+      }
+    },
+    {
+      "id": "accused",
+      "when": {
+        "chose": "security",
+        "role": "finder"
+      },
+      "chance": 0.15,
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:finder",
+          "delta": {
+            "reputation": -5,
+            "mental": -6
+          }
+        }
+      ],
+      "text": {
+        "finder": "The panicked father sees you leading his child away and accuses you of taking them. It takes an hour to clear up."
+      }
+    },
+    {
+      "id": "security_ok",
+      "when": {
+        "chose": "security",
+        "role": "finder"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:finder",
+          "delta": {
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "finder": "Security calls the parents over the speakers."
+      }
+    },
+    {
+      "id": "walked_on",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:finder",
+          "delta": {
+            "mental": -4
+          }
+        }
+      ],
+      "text": {
+        "finder": "You keep thinking about the child for the rest of the day."
+      }
+    }
   ]
 }

@@ -189,6 +189,9 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
 
   http.get("/api/lobby", async () => lobbyState());
 
+  /** The town (concept v2): tiles, roads and places, for the client's map. */
+  http.get("/api/map", async () => content.map.data);
+
   /** Complete session log, for participants (acceptance criterion "complete session logs can be inspected"). */
   http.get<{ Params: { id: string } }>("/api/sessions/:id/log", async (req, reply) => {
     const user = await authUser(req, reply);

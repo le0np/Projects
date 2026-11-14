@@ -1,10 +1,40 @@
 {
-  "schemaVersion": 1, "id": "social_borrowed_camera", "version": 1, "title": "The Borrowed Camera",
-  "category": "social", "trigger": "director", "importance": "multi", "weight": 6,
-  "cooldown": { "maxPerSession": 1 },
+  "schemaVersion": 1,
+  "id": "social_borrowed_camera",
+  "version": 1,
+  "title": "The Borrowed Camera",
+  "category": "social",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "home"
+    ],
+    "of": "role:owner"
+  },
   "roles": {
-    "owner": { "count": 1 },
-    "borrower": { "count": 1, "conditions": { "relation": { "to": "role:owner", "typeIn": ["friend", "acquaintance", "colleague", "family", "partner"] } } }
+    "owner": {
+      "count": 1
+    },
+    "borrower": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:owner",
+          "typeIn": [
+            "friend",
+            "acquaintance",
+            "colleague",
+            "family",
+            "partner"
+          ]
+        }
+      }
+    }
   },
   "text": {
     "public": "{borrower} returns the expensive camera {owner} lent them for a trip.",
@@ -15,33 +45,192 @@
   },
   "choices": {
     "borrower": [
-      { "id": "confess", "label": "Tell them and offer to pay for the repair", "tags": ["truth", "take_responsibility"], "perceived": { "money": -2, "relation": { "owner": 1 } },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "money": -10 } }] },
-      { "id": "blame", "label": "Say it was like that when you got it", "tags": ["lie", "avoid_responsibility"], "perceived": { "risk": 1, "relation": { "owner": -1 } } },
-      { "id": "silent", "label": "Hand it back and say nothing", "tags": ["avoid_responsibility"], "default": true, "perceived": { "risk": 1 } }
+      {
+        "id": "confess",
+        "label": "Tell them and offer to pay for the repair",
+        "tags": [
+          "truth",
+          "take_responsibility"
+        ],
+        "perceived": {
+          "money": -2,
+          "relation": {
+            "owner": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -10
+            }
+          }
+        ]
+      },
+      {
+        "id": "blame",
+        "label": "Say it was like that when you got it",
+        "tags": [
+          "lie",
+          "avoid_responsibility"
+        ],
+        "perceived": {
+          "risk": 1,
+          "relation": {
+            "owner": -1
+          }
+        }
+      },
+      {
+        "id": "silent",
+        "label": "Hand it back and say nothing",
+        "tags": [
+          "avoid_responsibility"
+        ],
+        "default": true,
+        "perceived": {
+          "risk": 1
+        }
+      }
     ],
     "owner": [
-      { "id": "check", "label": "Check the camera carefully in front of them", "tags": ["risk"], "perceived": { "relation": { "borrower": -1 } } },
-      { "id": "trust", "label": "Put it away without looking", "tags": ["ignore"], "default": true, "perceived": { "relation": { "borrower": 1 } } }
+      {
+        "id": "check",
+        "label": "Check the camera carefully in front of them",
+        "tags": [
+          "risk"
+        ],
+        "perceived": {
+          "relation": {
+            "borrower": -1
+          }
+        }
+      },
+      {
+        "id": "trust",
+        "label": "Put it away without looking",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "borrower": 1
+          }
+        }
+      }
     ]
   },
   "outcomes": [
-    { "id": "honest", "when": { "chose": "confess", "role": "borrower" }, "revealChoices": true,
-      "effects": [{ "type": "relation", "from": "role:owner", "to": "role:borrower", "trust": 15, "affinity": 5 }],
-      "text": { "borrower": "{owner} is upset, then grateful you told them.", "owner": "It hurts, but {borrower} owned up and is paying for the repair." } },
-    { "id": "caught_lying", "when": { "all": [ { "chose": "blame", "role": "borrower" }, { "chose": "check", "role": "owner" } ] }, "important": true, "revealChoices": true,
+    {
+      "id": "honest",
+      "when": {
+        "chose": "confess",
+        "role": "borrower"
+      },
+      "revealChoices": true,
       "effects": [
-        { "type": "relation", "from": "role:owner", "to": "role:borrower", "setType": "rival", "affinity": -30, "trust": -35 },
-        { "type": "attr", "target": "role:owner", "delta": { "mental": -6 } }
+        {
+          "type": "relation",
+          "from": "role:owner",
+          "to": "role:borrower",
+          "trust": 15,
+          "affinity": 5
+        }
       ],
-      "text": { "borrower": "{owner} has photos of the camera from before the trip. Your lie collapses.", "owner": "{borrower} lied to your face about your father's camera." } },
-    { "id": "found_later", "when": { "chose": "check", "role": "owner" },
+      "text": {
+        "borrower": "{owner} is upset, then grateful you told them.",
+        "owner": "It hurts, but {borrower} owned up and is paying for the repair."
+      }
+    },
+    {
+      "id": "caught_lying",
+      "when": {
+        "all": [
+          {
+            "chose": "blame",
+            "role": "borrower"
+          },
+          {
+            "chose": "check",
+            "role": "owner"
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
       "effects": [
-        { "type": "relation", "from": "role:owner", "to": "role:borrower", "affinity": -20, "trust": -20 },
-        { "type": "attr", "target": "role:owner", "delta": { "mental": -5 } }
+        {
+          "type": "relation",
+          "from": "role:owner",
+          "to": "role:borrower",
+          "setType": "rival",
+          "affinity": -30,
+          "trust": -35
+        },
+        {
+          "type": "attr",
+          "target": "role:owner",
+          "delta": {
+            "mental": -6
+          }
+        }
       ],
-      "text": { "borrower": "{owner} turns the camera over in the light. Their face changes.", "owner": "You find the crack. {borrower} said nothing." } },
-    { "id": "unnoticed", "effects": [{ "type": "attr", "target": "role:owner", "delta": { "mental": -3 } }, { "type": "attr", "target": "role:borrower", "delta": { "mental": -3 } }],
-      "text": { "borrower": "Nothing is said. The guilt stays with you.", "owner": "Weeks later you find the crack and wonder when it happened." } }
+      "text": {
+        "borrower": "{owner} has photos of the camera from before the trip. Your lie collapses.",
+        "owner": "{borrower} lied to your face about your father's camera."
+      }
+    },
+    {
+      "id": "found_later",
+      "when": {
+        "chose": "check",
+        "role": "owner"
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:owner",
+          "to": "role:borrower",
+          "affinity": -20,
+          "trust": -20
+        },
+        {
+          "type": "attr",
+          "target": "role:owner",
+          "delta": {
+            "mental": -5
+          }
+        }
+      ],
+      "text": {
+        "borrower": "{owner} turns the camera over in the light. Their face changes.",
+        "owner": "You find the crack. {borrower} said nothing."
+      }
+    },
+    {
+      "id": "unnoticed",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:owner",
+          "delta": {
+            "mental": -3
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:borrower",
+          "delta": {
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "borrower": "Nothing is said. The guilt stays with you.",
+        "owner": "Weeks later you find the crack and wonder when it happened."
+      }
+    }
   ]
 }

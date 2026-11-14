@@ -1,8 +1,32 @@
 {
-  "schemaVersion": 1, "id": "everyday_car_breakdown", "version": 1, "title": "Car Trouble",
-  "category": "everyday", "trigger": "director", "importance": "multi", "weight": 8,
-  "cooldown": { "maxPerCharacter": 1, "maxPerSession": 2 }, "tags": ["vehicle"],
-  "roles": { "driver": { "count": 1 }, "passerby": { "count": 1 } },
+  "schemaVersion": 1,
+  "id": "everyday_car_breakdown",
+  "version": 1,
+  "title": "Car Trouble",
+  "category": "everyday",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 8,
+  "cooldown": {
+    "maxPerCharacter": 1,
+    "maxPerSession": 2
+  },
+  "tags": [
+    "vehicle"
+  ],
+  "location": {
+    "at": [
+      "street"
+    ]
+  },
+  "roles": {
+    "driver": {
+      "count": 1
+    },
+    "passerby": {
+      "count": 1
+    }
+  },
   "text": {
     "public": "{driver}'s car dies in the middle of the road. {passerby} is walking past.",
     "private": {
@@ -12,41 +36,245 @@
   },
   "choices": {
     "driver": [
-      { "id": "ask_help", "label": "Ask {passerby} for help", "tags": ["negotiate"], "perceived": { "career": 1 } },
-      { "id": "call_tow", "label": "Call a tow truck", "tags": ["sacrifice"], "perceived": { "money": -1, "career": 1 },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "money": -6 } }] },
-      { "id": "fix_self", "label": "Open the bonnet and fix it yourself", "tags": ["risk"], "careers": ["mechanic"], "perceived": { "career": 1 } },
-      { "id": "abandon", "label": "Leave the car and take the bus", "tags": ["ignore"], "default": true, "perceived": { "career": -1 } }
+      {
+        "id": "ask_help",
+        "label": "Ask {passerby} for help",
+        "tags": [
+          "negotiate"
+        ],
+        "perceived": {
+          "career": 1
+        }
+      },
+      {
+        "id": "call_tow",
+        "label": "Call a tow truck",
+        "tags": [
+          "sacrifice"
+        ],
+        "perceived": {
+          "money": -1,
+          "career": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -6
+            }
+          }
+        ]
+      },
+      {
+        "id": "fix_self",
+        "label": "Open the bonnet and fix it yourself",
+        "tags": [
+          "risk"
+        ],
+        "careers": [
+          "mechanic"
+        ],
+        "perceived": {
+          "career": 1
+        }
+      },
+      {
+        "id": "abandon",
+        "label": "Leave the car and take the bus",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "career": -1
+        }
+      }
     ],
     "passerby": [
-      { "id": "push", "label": "Help push it to the side and take a look", "tags": ["help"], "perceived": { "career": -1, "relation": { "driver": 1 } },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "career": -2 } }] },
-      { "id": "give_number", "label": "Give them the number of a cheap mechanic", "tags": ["help"], "perceived": { "relation": { "driver": 1 } } },
-      { "id": "repair", "label": "Diagnose and fix it on the spot", "tags": ["help"], "careers": ["mechanic"],
-        "perceived": { "reputation": 1, "relation": { "driver": 2 } },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "reputation": 4 } }] },
-      { "id": "walk_on", "label": "Walk on", "tags": ["ignore"], "default": true }
+      {
+        "id": "push",
+        "label": "Help push it to the side and take a look",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "career": -1,
+          "relation": {
+            "driver": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": -2
+            }
+          }
+        ]
+      },
+      {
+        "id": "give_number",
+        "label": "Give them the number of a cheap mechanic",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "driver": 1
+          }
+        }
+      },
+      {
+        "id": "repair",
+        "label": "Diagnose and fix it on the spot",
+        "tags": [
+          "help"
+        ],
+        "careers": [
+          "mechanic"
+        ],
+        "perceived": {
+          "reputation": 1,
+          "relation": {
+            "driver": 2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "reputation": 4
+            }
+          }
+        ]
+      },
+      {
+        "id": "walk_on",
+        "label": "Walk on",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
     ]
   },
   "outcomes": [
-    { "id": "roadside_repair", "when": { "chose": "repair", "role": "passerby" }, "revealChoices": true,
-      "effects": [
-        { "type": "attr", "target": "role:driver", "delta": { "mental": 5 } },
-        { "type": "relation", "from": "role:driver", "to": "role:passerby", "affinity": 25, "trust": 15 }
-      ],
-      "text": { "driver": "{passerby} finds a loose cable in two minutes. You make your meeting.", "passerby": "A loose cable. Easy for you; a lifesaver for {driver}." } },
-    { "id": "self_repair", "when": { "chose": "fix_self", "role": "driver" },
-      "effects": [{ "type": "attr", "target": "role:driver", "delta": { "career": 2, "mental": 3 } }],
-      "text": { "driver": "Greasy hands, but the engine starts. You are only a little late.", "passerby": "{driver} seems to know what they are doing." } },
-    { "id": "helped", "when": { "all": [ { "chose": "ask_help", "role": "driver" },
-        { "any": [ { "chose": "push", "role": "passerby" }, { "chose": "give_number", "role": "passerby" } ] } ] },
+    {
+      "id": "roadside_repair",
+      "when": {
+        "chose": "repair",
+        "role": "passerby"
+      },
       "revealChoices": true,
-      "effects": [{ "type": "relation", "from": "role:driver", "to": "role:passerby", "affinity": 15, "trust": 10 }],
-      "text": { "driver": "{passerby} stops to help. The meeting is lost, but you made an acquaintance.", "passerby": "You help {driver} out. It costs you some time." } },
-    { "id": "towed", "when": { "chose": "call_tow", "role": "driver" },
-      "text": { "driver": "Expensive, but the car is taken care of and you make it on time.", "passerby": "A tow truck arrives as you walk away." } },
-    { "id": "missed_meeting",
-      "effects": [{ "type": "attr", "target": "role:driver", "delta": { "career": -5, "mental": -4 } }],
-      "text": { "driver": "You miss the meeting. Your manager is not impressed.", "passerby": "You leave {driver} standing by the car." } }
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "mental": 5
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:driver",
+          "to": "role:passerby",
+          "affinity": 25,
+          "trust": 15
+        }
+      ],
+      "text": {
+        "driver": "{passerby} finds a loose cable in two minutes. You make your meeting.",
+        "passerby": "A loose cable. Easy for you; a lifesaver for {driver}."
+      }
+    },
+    {
+      "id": "self_repair",
+      "when": {
+        "chose": "fix_self",
+        "role": "driver"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "career": 2,
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "driver": "Greasy hands, but the engine starts. You are only a little late.",
+        "passerby": "{driver} seems to know what they are doing."
+      }
+    },
+    {
+      "id": "helped",
+      "when": {
+        "all": [
+          {
+            "chose": "ask_help",
+            "role": "driver"
+          },
+          {
+            "any": [
+              {
+                "chose": "push",
+                "role": "passerby"
+              },
+              {
+                "chose": "give_number",
+                "role": "passerby"
+              }
+            ]
+          }
+        ]
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:driver",
+          "to": "role:passerby",
+          "affinity": 15,
+          "trust": 10
+        }
+      ],
+      "text": {
+        "driver": "{passerby} stops to help. The meeting is lost, but you made an acquaintance.",
+        "passerby": "You help {driver} out. It costs you some time."
+      }
+    },
+    {
+      "id": "towed",
+      "when": {
+        "chose": "call_tow",
+        "role": "driver"
+      },
+      "text": {
+        "driver": "Expensive, but the car is taken care of and you make it on time.",
+        "passerby": "A tow truck arrives as you walk away."
+      }
+    },
+    {
+      "id": "missed_meeting",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "career": -5,
+            "mental": -4
+          }
+        }
+      ],
+      "text": {
+        "driver": "You miss the meeting. Your manager is not impressed.",
+        "passerby": "You leave {driver} standing by the car."
+      }
+    }
   ]
 }

@@ -1,8 +1,28 @@
 {
-  "schemaVersion": 1, "id": "career_rising_star", "version": 1, "title": "The Promotion",
-  "category": "career", "trigger": "followup_only", "importance": "important",
-  "cooldown": { "maxPerSession": 2 },
-  "roles": { "star": { "count": 1 }, "mentor": { "count": 1 } },
+  "schemaVersion": 1,
+  "id": "career_rising_star",
+  "version": 1,
+  "title": "The Promotion",
+  "category": "career",
+  "trigger": "followup_only",
+  "importance": "important",
+  "cooldown": {
+    "maxPerSession": 2
+  },
+  "location": {
+    "at": [
+      "work"
+    ],
+    "of": "role:mentor"
+  },
+  "roles": {
+    "star": {
+      "count": 1
+    },
+    "mentor": {
+      "count": 1
+    }
+  },
   "text": {
     "public": "Management offers {star} the team lead position — the team includes {mentor}, who helped {star} get hired.",
     "private": {
@@ -12,40 +32,228 @@
   },
   "choices": {
     "star": [
-      { "id": "accept", "label": "Accept the promotion", "tags": ["risk"], "perceived": { "career": 2, "relation": { "mentor": -1 } } },
-      { "id": "suggest_mentor", "label": "Suggest {mentor} for the role instead", "tags": ["sacrifice", "help"], "perceived": { "career": -1, "relation": { "mentor": 2 } } },
-      { "id": "think", "label": "Ask for time to think", "tags": ["ignore"], "default": true }
+      {
+        "id": "accept",
+        "label": "Accept the promotion",
+        "tags": [
+          "risk"
+        ],
+        "perceived": {
+          "career": 2,
+          "relation": {
+            "mentor": -1
+          }
+        }
+      },
+      {
+        "id": "suggest_mentor",
+        "label": "Suggest {mentor} for the role instead",
+        "tags": [
+          "sacrifice",
+          "help"
+        ],
+        "perceived": {
+          "career": -1,
+          "relation": {
+            "mentor": 2
+          }
+        }
+      },
+      {
+        "id": "think",
+        "label": "Ask for time to think",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
     ],
     "mentor": [
-      { "id": "congratulate", "label": "Congratulate {star} sincerely", "tags": ["help"], "perceived": { "relation": { "star": 1 } } },
-      { "id": "remind", "label": "Remind {star} who got them this job", "tags": ["threaten"], "perceived": { "relation": { "star": -1 } } },
-      { "id": "say_nothing", "label": "Say nothing", "tags": ["ignore"], "default": true }
+      {
+        "id": "congratulate",
+        "label": "Congratulate {star} sincerely",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "star": 1
+          }
+        }
+      },
+      {
+        "id": "remind",
+        "label": "Remind {star} who got them this job",
+        "tags": [
+          "threaten"
+        ],
+        "perceived": {
+          "relation": {
+            "star": -1
+          }
+        }
+      },
+      {
+        "id": "say_nothing",
+        "label": "Say nothing",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
     ]
   },
   "outcomes": [
-    { "id": "mentor_promoted", "when": { "chose": "suggest_mentor", "role": "star" }, "important": true, "revealChoices": true,
+    {
+      "id": "mentor_promoted",
+      "when": {
+        "chose": "suggest_mentor",
+        "role": "star"
+      },
+      "important": true,
+      "revealChoices": true,
       "effects": [
-        { "type": "attr", "target": "role:mentor", "delta": { "career": 12, "money": 6, "mental": 5 } },
-        { "type": "fact", "target": "role:mentor", "key": "promoted" },
-        { "type": "fact", "target": "role:mentor", "key": "manager_of", "about": "role:star" },
-        { "type": "fact", "target": "role:star", "key": "owes_favor", "about": "role:mentor", "remove": true },
-        { "type": "relation", "from": "role:mentor", "to": "role:star", "affinity": 30, "trust": 20 }
+        {
+          "type": "attr",
+          "target": "role:mentor",
+          "delta": {
+            "career": 12,
+            "money": 6,
+            "mental": 5
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:mentor",
+          "key": "promoted"
+        },
+        {
+          "type": "fact",
+          "target": "role:mentor",
+          "key": "manager_of",
+          "about": "role:star"
+        },
+        {
+          "type": "fact",
+          "target": "role:star",
+          "key": "owes_favor",
+          "about": "role:mentor",
+          "remove": true
+        },
+        {
+          "type": "relation",
+          "from": "role:mentor",
+          "to": "role:star",
+          "affinity": 30,
+          "trust": 20
+        }
       ],
-      "followUps": [{ "event": "career_manager_dilemma", "delaySeconds": [50, 110], "roles": { "manager": "role:mentor", "report": "role:star" } }],
-      "text": { "star": "You step aside for {mentor}. Debt repaid — with interest.", "mentor": "{star} turned down the job and recommended you. You are the team lead now." } },
-    { "id": "star_promoted", "when": { "chose": "accept", "role": "star" }, "important": true,
+      "followUps": [
+        {
+          "event": "career_manager_dilemma",
+          "delaySeconds": [
+            50,
+            110
+          ],
+          "roles": {
+            "manager": "role:mentor",
+            "report": "role:star"
+          }
+        }
+      ],
+      "text": {
+        "star": "You step aside for {mentor}. Debt repaid — with interest.",
+        "mentor": "{star} turned down the job and recommended you. You are the team lead now."
+      }
+    },
+    {
+      "id": "star_promoted",
+      "when": {
+        "chose": "accept",
+        "role": "star"
+      },
+      "important": true,
       "effects": [
-        { "type": "attr", "target": "role:star", "delta": { "career": 12, "money": 6 } },
-        { "type": "fact", "target": "role:star", "key": "promoted" },
-        { "type": "fact", "target": "role:star", "key": "manager_of", "about": "role:mentor" },
-        { "type": "attr", "target": "role:mentor", "delta": { "mental": -4 } }
+        {
+          "type": "attr",
+          "target": "role:star",
+          "delta": {
+            "career": 12,
+            "money": 6
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:star",
+          "key": "promoted"
+        },
+        {
+          "type": "fact",
+          "target": "role:star",
+          "key": "manager_of",
+          "about": "role:mentor"
+        },
+        {
+          "type": "attr",
+          "target": "role:mentor",
+          "delta": {
+            "mental": -4
+          }
+        }
       ],
-      "followUps": [{ "event": "career_manager_dilemma", "delaySeconds": [50, 110], "roles": { "manager": "role:star", "report": "role:mentor" } }],
-      "text": { "star": "You accept. You are now {mentor}'s manager.", "mentor": "{star} is your boss now." } },
-    { "id": "bitter", "when": { "chose": "remind", "role": "mentor" },
-      "effects": [{ "type": "relation", "from": "role:star", "to": "role:mentor", "affinity": -15, "trust": -5 }],
-      "text": { "star": "{mentor} makes sure you know you owe them. It sours things.", "mentor": "You remind {star} where they came from." } },
-    { "id": "offer_lapses", "effects": [{ "type": "attr", "target": "role:star", "delta": { "career": -3 } }],
-      "text": { "star": "While you were thinking, management gave the role to someone from outside.", "mentor": "An outsider gets the job." } }
+      "followUps": [
+        {
+          "event": "career_manager_dilemma",
+          "delaySeconds": [
+            50,
+            110
+          ],
+          "roles": {
+            "manager": "role:star",
+            "report": "role:mentor"
+          }
+        }
+      ],
+      "text": {
+        "star": "You accept. You are now {mentor}'s manager.",
+        "mentor": "{star} is your boss now."
+      }
+    },
+    {
+      "id": "bitter",
+      "when": {
+        "chose": "remind",
+        "role": "mentor"
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:star",
+          "to": "role:mentor",
+          "affinity": -15,
+          "trust": -5
+        }
+      ],
+      "text": {
+        "star": "{mentor} makes sure you know you owe them. It sours things.",
+        "mentor": "You remind {star} where they came from."
+      }
+    },
+    {
+      "id": "offer_lapses",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:star",
+          "delta": {
+            "career": -3
+          }
+        }
+      ],
+      "text": {
+        "star": "While you were thinking, management gave the role to someone from outside.",
+        "mentor": "An outsider gets the job."
+      }
+    }
   ]
 }

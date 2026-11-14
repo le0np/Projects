@@ -1,4 +1,5 @@
 import {
+  type TilePos,
   ATTRIBUTE_MAX,
   ATTRIBUTE_MIN,
   type Attribute,
@@ -27,6 +28,38 @@ export interface CharacterState {
   availableAt: number;
   lastCategory?: EventCategory;
   eventsCompleted: number;
+  /** Place ids of the character's home and workplace. */
+  home: string;
+  work: string;
+  /** Tile where the character stands when not travelling. */
+  pos: TilePos;
+  trip: Trip | null;
+  /** The routine does not move the character before this time. */
+  stayUntil: number;
+}
+
+export interface Trip {
+  from: TilePos;
+  /** Tiles to walk, excluding `from`. */
+  path: TilePos[];
+  departAt: number;
+  msPerTile: number;
+  /** Destination place id, or null for a street tile. */
+  to: string | null;
+  reason: "routine" | "event" | "effect" | "status";
+}
+
+export function arrivalOf(trip: Trip): number {
+  return trip.departAt + trip.path.length * trip.msPerTile;
+}
+
+/** Where a character is at time `t` (tile granularity). */
+export function positionAt(c: Pick<CharacterState, "pos" | "trip">, t: number): TilePos {
+  const trip = c.trip;
+  if (!trip) return c.pos;
+  const steps = Math.floor((t - trip.departAt) / trip.msPerTile);
+  if (steps <= 0) return trip.from;
+  return trip.path[Math.min(steps, trip.path.length) - 1] ?? trip.from;
 }
 
 export function factKey(key: string, about?: string): string {

@@ -46,6 +46,7 @@ export function runSession(opts: RunOptions): SessionResult {
     }
   };
 
+  session.chooseLeisure = (characterId, options) => controllers.get(characterId)?.chooseLeisure?.(options) as never;
   session.start();
   let guard = 0;
   while (session.state === "active") {

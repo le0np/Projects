@@ -73,9 +73,12 @@ export class LiveSession {
     });
 
     this.session.onNotice = (characterId, notice) => this.route(characterId, notice);
+    this.session.chooseLeisure = (characterId, options) => this.bots.get(characterId)?.chooseLeisure(options) as never;
     this.session.onPublic = (entry) => {
-      this.feed.push(entry);
-      if (this.feed.length > FEED_LIMIT) this.feed.shift();
+      if (entry.kind !== "move") {
+        this.feed.push(entry);
+        if (this.feed.length > FEED_LIMIT) this.feed.shift();
+      }
       for (const h of this.humans.values()) this.events.toUser(h.userId, "game:feed", entry);
     };
   }
@@ -118,10 +121,17 @@ export class LiveSession {
       durationSeconds: this.session.config.durationSeconds,
       timeScale: this.timeScale,
       roster: this.roster.map(({ userId: _u, ...r }) => r),
+      positions: this.session.positions(),
+      homes: this.roster.map((r) => ({ characterId: r.characterId, home: this.homeOf(r.characterId) })),
       pending: seat?.pending ?? null,
       history: seat?.history ?? [],
       feed: this.feed,
     };
+  }
+
+  private homeOf(characterId: string): string | undefined {
+    const start = this.session.log[0];
+    return start?.type === "session_started" ? start.characters.find((c) => c.id === characterId)?.home : undefined;
   }
 
   cancel(): void {

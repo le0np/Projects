@@ -1,8 +1,38 @@
 {
-  "schemaVersion": 1, "id": "career_machine_failure", "version": 1, "title": "Smoke from the Machine",
-  "category": "career", "trigger": "director", "importance": "multi", "weight": 6,
-  "cooldown": { "maxPerSession": 1 }, "tags": ["technical"],
-  "roles": { "operator": { "count": 1, "conditions": { "fact": "employed" } }, "coworker": { "count": [1, 2] } },
+  "schemaVersion": 1,
+  "id": "career_machine_failure",
+  "version": 1,
+  "title": "Smoke from the Machine",
+  "category": "career",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "tags": [
+    "technical"
+  ],
+  "location": {
+    "at": [
+      "work"
+    ],
+    "of": "role:operator"
+  },
+  "roles": {
+    "operator": {
+      "count": 1,
+      "conditions": {
+        "fact": "employed"
+      }
+    },
+    "coworker": {
+      "count": [
+        1,
+        2
+      ]
+    }
+  },
   "text": {
     "public": "During a rush order, a machine on {operator}'s shift starts smoking. {coworker} is nearby.",
     "private": {
@@ -12,37 +42,214 @@
   },
   "choices": {
     "operator": [
-      { "id": "stop", "label": "Stop the line", "tags": ["take_responsibility"], "perceived": { "career": -1, "money": -1 } },
-      { "id": "push_on", "label": "Keep it running until the order is done", "tags": ["risk"], "default": true, "perceived": { "career": 1, "risk": 2 } },
-      { "id": "fix_running", "label": "Diagnose and patch it without stopping", "tags": ["risk", "help"], "careers": ["engineer", "mechanic"],
-        "perceived": { "career": 2 }, "insight": { "careers": ["engineer", "mechanic"], "perceived": { "risk": 1, "career": 2 }, "note": "A worn bearing. Fixable — if you are careful." } }
+      {
+        "id": "stop",
+        "label": "Stop the line",
+        "tags": [
+          "take_responsibility"
+        ],
+        "perceived": {
+          "career": -1,
+          "money": -1
+        }
+      },
+      {
+        "id": "push_on",
+        "label": "Keep it running until the order is done",
+        "tags": [
+          "risk"
+        ],
+        "default": true,
+        "perceived": {
+          "career": 1,
+          "risk": 2
+        }
+      },
+      {
+        "id": "fix_running",
+        "label": "Diagnose and patch it without stopping",
+        "tags": [
+          "risk",
+          "help"
+        ],
+        "careers": [
+          "engineer",
+          "mechanic"
+        ],
+        "perceived": {
+          "career": 2
+        },
+        "insight": {
+          "careers": [
+            "engineer",
+            "mechanic"
+          ],
+          "perceived": {
+            "risk": 1,
+            "career": 2
+          },
+          "note": "A worn bearing. Fixable — if you are careful."
+        }
+      }
     ],
     "coworker": [
-      { "id": "hit_stop", "label": "Hit the emergency stop yourself", "tags": ["take_responsibility", "help"], "perceived": { "relation": { "operator": -1 } } },
-      { "id": "warn", "label": "Warn {operator} loudly", "tags": ["help", "truth"] },
-      { "id": "step_back", "label": "Step back and stay out of it", "tags": ["ignore"], "default": true }
+      {
+        "id": "hit_stop",
+        "label": "Hit the emergency stop yourself",
+        "tags": [
+          "take_responsibility",
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "operator": -1
+          }
+        }
+      },
+      {
+        "id": "warn",
+        "label": "Warn {operator} loudly",
+        "tags": [
+          "help",
+          "truth"
+        ]
+      },
+      {
+        "id": "step_back",
+        "label": "Step back and stay out of it",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
     ]
   },
   "outcomes": [
-    { "id": "patched", "when": { "chose": "fix_running", "role": "operator" }, "chance": 0.85,
-      "effects": [{ "type": "attr", "target": "role:operator", "delta": { "career": 8, "reputation": 5 } }],
-      "text": { "operator": "You replace the bearing mid-run. The order ships on time.", "coworker": "{operator} fixes it without stopping the line. Impressive." } },
-    { "id": "fire", "when": { "any": [ { "chose": "push_on", "role": "operator" }, { "chose": "fix_running", "role": "operator" } ] }, "chance": 0.35, "important": true,
+    {
+      "id": "patched",
+      "when": {
+        "chose": "fix_running",
+        "role": "operator"
+      },
+      "chance": 0.85,
       "effects": [
-        { "type": "attr", "target": "role:operator", "delta": { "health": -20, "career": -10 } },
-        { "type": "attr", "target": "role:coworker", "delta": { "health": -8, "mental": -6 } }
+        {
+          "type": "attr",
+          "target": "role:operator",
+          "delta": {
+            "career": 8,
+            "reputation": 5
+          }
+        }
       ],
-      "text": { "operator": "The motor bursts into flames. You burn your arm putting it out.", "coworker": "The machine catches fire. Everyone gets out, some with burns." } },
-    { "id": "stopped_by_coworker", "when": { "chose": "hit_stop", "role": "coworker" }, "revealChoices": true,
+      "text": {
+        "operator": "You replace the bearing mid-run. The order ships on time.",
+        "coworker": "{operator} fixes it without stopping the line. Impressive."
+      }
+    },
+    {
+      "id": "fire",
+      "when": {
+        "any": [
+          {
+            "chose": "push_on",
+            "role": "operator"
+          },
+          {
+            "chose": "fix_running",
+            "role": "operator"
+          }
+        ]
+      },
+      "chance": 0.35,
+      "important": true,
       "effects": [
-        { "type": "attr", "target": "role:operator", "delta": { "money": -4 } },
-        { "type": "relation", "from": "role:operator", "to": "role:coworker", "affinity": -5, "trust": 10 }
+        {
+          "type": "attr",
+          "target": "role:operator",
+          "delta": {
+            "health": -20,
+            "career": -10
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:coworker",
+          "delta": {
+            "health": -8,
+            "mental": -6
+          }
+        }
       ],
-      "text": { "operator": "{coworker} slams the emergency stop. The order is late — but the engineer says it was about to go.", "coworker": "You stop the machine. The engineer says you prevented a fire." } },
-    { "id": "stopped", "when": { "chose": "stop", "role": "operator" },
-      "effects": [{ "type": "attr", "target": "role:operator", "delta": { "money": -4, "reputation": 3 } }],
-      "text": { "operator": "No bonus, but nobody got hurt.", "coworker": "{operator} stops the line. Good call." } },
-    { "id": "lucky", "effects": [{ "type": "attr", "target": "role:operator", "delta": { "career": 3 } }],
-      "text": { "operator": "The smoke clears by itself. The order ships. You were lucky.", "coworker": "Nothing happens. This time." } }
+      "text": {
+        "operator": "The motor bursts into flames. You burn your arm putting it out.",
+        "coworker": "The machine catches fire. Everyone gets out, some with burns."
+      }
+    },
+    {
+      "id": "stopped_by_coworker",
+      "when": {
+        "chose": "hit_stop",
+        "role": "coworker"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:operator",
+          "delta": {
+            "money": -4
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:operator",
+          "to": "role:coworker",
+          "affinity": -5,
+          "trust": 10
+        }
+      ],
+      "text": {
+        "operator": "{coworker} slams the emergency stop. The order is late — but the engineer says it was about to go.",
+        "coworker": "You stop the machine. The engineer says you prevented a fire."
+      }
+    },
+    {
+      "id": "stopped",
+      "when": {
+        "chose": "stop",
+        "role": "operator"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:operator",
+          "delta": {
+            "money": -4,
+            "reputation": 3
+          }
+        }
+      ],
+      "text": {
+        "operator": "No bonus, but nobody got hurt.",
+        "coworker": "{operator} stops the line. Good call."
+      }
+    },
+    {
+      "id": "lucky",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:operator",
+          "delta": {
+            "career": 3
+          }
+        }
+      ],
+      "text": {
+        "operator": "The smoke clears by itself. The order ships. You were lucky.",
+        "coworker": "Nothing happens. This time."
+      }
+    }
   ]
 }

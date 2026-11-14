@@ -21,7 +21,11 @@ export function replaySession(content: ContentBundle, log: readonly LogEntry[]):
     throw new Error(`content version mismatch: log ${start.contentHash}, loaded ${content.hash}`);
   }
   const decisions = new Map<string, LogEntryOf<"decision">>();
-  for (const e of log) if (e.type === "decision" && e.source === "player") decisions.set(`${e.instanceId}/${e.characterId}`, e);
+  const leisure = new Map<string, string[]>();
+  for (const e of log) {
+    if (e.type === "decision" && e.source === "player") decisions.set(`${e.instanceId}/${e.characterId}`, e);
+    if (e.type === "leisure") leisure.set(e.characterId, [...(leisure.get(e.characterId) ?? []), e.kind]);
+  }
 
   const result = runSession({
     content,
@@ -32,6 +36,7 @@ export function replaySession(content: ContentBundle, log: readonly LogEntry[]):
           const d = decisions.get(`${view.offer.instanceId}/${c.id}`);
           return d ? { choiceId: d.choiceId, thinkMs: d.t - view.now } : null;
         },
+        chooseLeisure: () => leisure.get(c.id)?.shift(),
       };
       return { id: c.id, name: c.name, career: c.career, isBot: c.isBot, controller };
     }),

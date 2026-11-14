@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-**MVP je funkcionalno kompletan (M1–M7).** Vlasnik je 14.–15. studenog 2026. dopunio koncept (`docs/spec/08_CONCEPT_V2.md`): grad gledan odozgo, vrijeme i starenje od 18 godina, kaos (gradski preokreti, smicalice, efekt leptira), humorističan ton i likovi u stilu B3. Rad se nastavlja po planu za koncept v2 (`docs/IMPLEMENTATION_PLAN.md` §9). **M8 (vrijeme i dob) je gotov**; sljedeći je M9 (grad i rutina).
+**MVP je funkcionalno kompletan (M1–M7).** Vlasnik je 14.–15. studenog 2026. dopunio koncept (`docs/spec/08_CONCEPT_V2.md`): grad gledan odozgo, vrijeme i starenje od 18 godina, kaos (gradski preokreti, smicalice, efekt leptira), humorističan ton i likovi u stilu B3. Rad se nastavlja po planu za koncept v2 (`docs/IMPLEMENTATION_PLAN.md` §9). **M8 (vrijeme i dob) i M9 (grad i rutina) su gotovi**; sljedeći je M10 (kaos).
 
 ### Kriteriji prihvaćanja (00_OVERVIEW)
 
@@ -259,6 +259,32 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
   - godišnje doba se promijeni 63 puta po sesiji;
   - starenje do 34. godine nikoga ne ubija; smrtnost je ostala 5,6 % likova.
 
+### M9: grad i rutina
+
+- **Mapa kao sadržaj:** `packages/content/data/map.json` (24×16 pločica, ceste, 17 mjesta, od toga 8 kuća). `TownMap` u `core` traži puteve (BFS, s cacheom).
+- **Validator mape:** vrata na hodnoj pločici, sva mjesta dostižna, barem 8 kuća, postoji radno mjesto za svaku karijeru, mjesta eventa postoje na mapi.
+- **Karijere:** svaka ima `workplace` (doktor i psiholog → bolnica, inženjer, odvjetnik i novinar → ured, učitelj → škola, mehaničar → radiona, poduzetnik → kafić, civil → dućan, policajac → policija).
+- **Format eventa:**
+  - `location: { at: [...], of }`: vrsta mjesta, `home`, `work`, `street` ili `here`; bira se najbliža opcija;
+  - efekt `{ type: "move", target, to, staySeconds }` šalje lika negdje nakon eventa.
+  Svih 57 eventa dobilo je mjesto, a 11 njih i odlaske (bolnica, policija, kuća).
+- **Engine:**
+  - svaki lik ima kuću, radno mjesto, položaj i putovanje; brzina je 4 pločice u sekundi, a položaj u bilo kojem trenutku daje `positionAt`;
+  - **rutina** u svakom godišnjem dobu: prvih 15 % je noć (kuća), do 60 % posao (za zaposlene), a ostatak slobodno vrijeme, koje bot bira prema osobnosti (impulzivni češće u bar, oprezni kod kuće);
+  - **okupljanje:** sudionici prvo dođu na mjesto, tek onda se pojave izbori (`offerAt`); odluka prije okupljanja se odbija; lik s ulogom `aware: false` ostaje gdje jest;
+  - direktor prednost daje likovima u blizini, a event koji odgovara mjestu gdje se lik nalazi ima veću težinu;
+  - zatvoreni idu u policiju, hospitalizirani u bolnicu.
+- **Log:**
+  - `moved` (svako kretanje, s razlogom);
+  - `leisure` (izbor slobodnog vremena; replay ga treba, a test je to otkrio: bez njega replay nije bio identičan);
+  - `event_started` s mjestom i `offerAt`.
+- **Server:** `GET /api/map`; snapshot sadrži položaje i kuće; kretanja idu klijentu kroz `game:feed` (prikaz dolazi u M11).
+- **Testovi:** rutina (kuća, posao, slobodno vrijeme), okupljanje i ponuda tek nakon dolaska, odbijanje rane odluke, efekt kretanja, odlazak u zatvor, izbor slobodnog vremena prema osobnosti, `positionAt`.
+- **Batch (200 sesija):**
+  - okupljanje traje u prosjeku 1,75 s (90 % unutar 4 s);
+  - po sesiji oko 500 rutinskih kretanja i 110 dolazaka na evente;
+  - 21 event po liku, 48 % vremena u eventima, smrtnost 4,3 %.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:
@@ -267,7 +293,7 @@ Provedeno 13. studenog 2026.:
 | --- | --- |
 | `npm run typecheck` | prolazi |
 | `npm run validate` | 57 eventa, 0 grešaka, 0 upozorenja; hash sadržaja `8554608747611859` |
-| `npm test` | 88/88 testova prolazi |
+| `npm test` | 94/94 testova prolazi |
 | `TEST_DATABASE_URL=… npx vitest run packages/server` | 4/4 na PostgreSQL 16 (privremeni lokalni klaster); u bazi: sesija `completed`, 40 odluka igrača i 1 default (dok je igrač bio odspojen), 4 rezultata |
 | `npm run server` + curl | health, registracija, validacijske poruke, karijere rade |
 | `npm run typecheck` (uključuje web) i `npm run web:build` | čisto; bundle 88 kB gzip |
@@ -289,7 +315,7 @@ Provedeno 13. studenog 2026.:
 
 ## Sljedeći koraci
 
-1. ~~M8 Vrijeme i dob~~ (gotovo) → M9 Grad i rutina → M10 Kaos → M11 Prikaz → M12 Sadržaj → M13 Balans (plan §9).
+1. ~~M8 Vrijeme i dob~~ → ~~M9 Grad i rutina~~ (gotovo) → M10 Kaos → M11 Prikaz → M12 Sadržaj → M13 Balans (plan §9).
 
 ## Handoff za novi chat
 

@@ -8,6 +8,7 @@ export function buildContent(events: Record<string, unknown>[]): ContentBundle {
   const { bundle, issues } = validateContent({
     careers: raw.careers,
     facts: raw.facts,
+    map: raw.map,
     events: events.map((e) => ({ file: `${e.id as string}.json`, data: e })),
   });
   if (!bundle) {

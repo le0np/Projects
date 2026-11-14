@@ -1,38 +1,186 @@
 {
-  "schemaVersion": 1, "id": "social_karaoke_bet", "version": 1, "title": "Karaoke Night",
-  "category": "social", "trigger": "director", "importance": "simple", "weight": 6,
-  "cooldown": { "maxPerSession": 1 },
-  "roles": { "challenger": { "count": 1 }, "challenged": { "count": 1 } },
+  "schemaVersion": 1,
+  "id": "social_karaoke_bet",
+  "version": 1,
+  "title": "Karaoke Night",
+  "category": "social",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "bar"
+    ]
+  },
+  "roles": {
+    "challenger": {
+      "count": 1
+    },
+    "challenged": {
+      "count": 1
+    }
+  },
   "text": {
     "public": "At a karaoke bar, {challenger} bets {challenged} a round of drinks that they will not dare to sing.",
-    "private": { "challenger": "You are terrible at singing.", "challenged": "You have not sung in public since school." }
+    "private": {
+      "challenger": "You are terrible at singing.",
+      "challenged": "You have not sung in public since school."
+    }
   },
   "choices": {
     "challenger": [
-      { "id": "sing_together", "label": "Offer to sing a duet instead", "tags": ["help", "risk"], "perceived": { "relation": { "challenged": 1 } } },
-      { "id": "tease", "label": "Keep teasing", "tags": ["threaten"], "default": true }
+      {
+        "id": "sing_together",
+        "label": "Offer to sing a duet instead",
+        "tags": [
+          "help",
+          "risk"
+        ],
+        "perceived": {
+          "relation": {
+            "challenged": 1
+          }
+        }
+      },
+      {
+        "id": "tease",
+        "label": "Keep teasing",
+        "tags": [
+          "threaten"
+        ],
+        "default": true
+      }
     ],
     "challenged": [
-      { "id": "sing", "label": "Grab the microphone", "tags": ["risk"], "perceived": { "mental": 1, "risk": 1 } },
-      { "id": "decline", "label": "Pay for the round", "tags": ["refuse"], "default": true, "perceived": { "money": -1 },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "money": -3 } }] }
+      {
+        "id": "sing",
+        "label": "Grab the microphone",
+        "tags": [
+          "risk"
+        ],
+        "perceived": {
+          "mental": 1,
+          "risk": 1
+        }
+      },
+      {
+        "id": "decline",
+        "label": "Pay for the round",
+        "tags": [
+          "refuse"
+        ],
+        "default": true,
+        "perceived": {
+          "money": -1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -3
+            }
+          }
+        ]
+      }
     ]
   },
   "outcomes": [
-    { "id": "duet", "when": { "all": [ { "chose": "sing_together", "role": "challenger" }, { "chose": "sing", "role": "challenged" } ] }, "revealChoices": true,
+    {
+      "id": "duet",
+      "when": {
+        "all": [
+          {
+            "chose": "sing_together",
+            "role": "challenger"
+          },
+          {
+            "chose": "sing",
+            "role": "challenged"
+          }
+        ]
+      },
+      "revealChoices": true,
       "effects": [
-        { "type": "relation", "from": "role:challenger", "to": "role:challenged", "affinity": 25, "mutual": true },
-        { "type": "attr", "target": "role:challenger", "delta": { "mental": 6 } }, { "type": "attr", "target": "role:challenged", "delta": { "mental": 6 } }
+        {
+          "type": "relation",
+          "from": "role:challenger",
+          "to": "role:challenged",
+          "affinity": 25,
+          "mutual": true
+        },
+        {
+          "type": "attr",
+          "target": "role:challenger",
+          "delta": {
+            "mental": 6
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:challenged",
+          "delta": {
+            "mental": 6
+          }
+        }
       ],
-      "text": { "challenger": "A terrible duet, a standing ovation, and a new friend.", "challenged": "Off-key, laughing, and somehow it is the best night in months." } },
-    { "id": "brave", "when": { "chose": "sing", "role": "challenged" },
+      "text": {
+        "challenger": "A terrible duet, a standing ovation, and a new friend.",
+        "challenged": "Off-key, laughing, and somehow it is the best night in months."
+      }
+    },
+    {
+      "id": "brave",
+      "when": {
+        "chose": "sing",
+        "role": "challenged"
+      },
       "effects": [
-        { "type": "attr", "target": "role:challenged", "delta": { "mental": 5, "reputation": 2 } },
-        { "type": "attr", "target": "role:challenger", "delta": { "money": -3 } },
-        { "type": "relation", "from": "role:challenger", "to": "role:challenged", "affinity": 10, "mutual": true }
+        {
+          "type": "attr",
+          "target": "role:challenged",
+          "delta": {
+            "mental": 5,
+            "reputation": 2
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:challenger",
+          "delta": {
+            "money": -3
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:challenger",
+          "to": "role:challenged",
+          "affinity": 10,
+          "mutual": true
+        }
       ],
-      "text": { "challenger": "They actually do it. You owe them a drink.", "challenged": "Your knees shake, but you do it. Free drink." } },
-    { "id": "chickened", "effects": [{ "type": "relation", "from": "role:challenger", "to": "role:challenged", "affinity": 5 }],
-      "text": { "challenger": "Free drink.", "challenged": "Maybe next time." } }
+      "text": {
+        "challenger": "They actually do it. You owe them a drink.",
+        "challenged": "Your knees shake, but you do it. Free drink."
+      }
+    },
+    {
+      "id": "chickened",
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:challenger",
+          "to": "role:challenged",
+          "affinity": 5
+        }
+      ],
+      "text": {
+        "challenger": "Free drink.",
+        "challenged": "Maybe next time."
+      }
+    }
   ]
 }

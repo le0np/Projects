@@ -1,9 +1,35 @@
 {
-  "schemaVersion": 1, "id": "financial_missing_money", "version": 1, "title": "The Books Don't Add Up",
-  "category": "financial", "trigger": "followup_only", "importance": "important",
-  "cooldown": { "maxPerSession": 1 }, "tags": ["secret"],
-  "roles": { "treasurer": { "count": 1 }, "co_owner": { "count": 1 } },
-  "conditions": { "fact": "business_partner", "of": "role:treasurer", "about": "role:co_owner" },
+  "schemaVersion": 1,
+  "id": "financial_missing_money",
+  "version": 1,
+  "title": "The Books Don't Add Up",
+  "category": "financial",
+  "trigger": "followup_only",
+  "importance": "important",
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "tags": [
+    "secret"
+  ],
+  "location": {
+    "at": [
+      "cafe"
+    ]
+  },
+  "roles": {
+    "treasurer": {
+      "count": 1
+    },
+    "co_owner": {
+      "count": 1
+    }
+  },
+  "conditions": {
+    "fact": "business_partner",
+    "of": "role:treasurer",
+    "about": "role:co_owner"
+  },
   "text": {
     "public": "Three months into the café, money is short.",
     "private": {
@@ -13,32 +39,198 @@
   },
   "choices": {
     "treasurer": [
-      { "id": "confess", "label": "Tell {co_owner} what you did", "tags": ["truth", "take_responsibility"], "perceived": { "relation": { "co_owner": -1 }, "money": -1 },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "money": -8 } }] },
-      { "id": "cover", "label": "Fudge the books before anyone looks", "tags": ["lie", "risk"], "default": true, "perceived": { "risk": 2 } }
+      {
+        "id": "confess",
+        "label": "Tell {co_owner} what you did",
+        "tags": [
+          "truth",
+          "take_responsibility"
+        ],
+        "perceived": {
+          "relation": {
+            "co_owner": -1
+          },
+          "money": -1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -8
+            }
+          }
+        ]
+      },
+      {
+        "id": "cover",
+        "label": "Fudge the books before anyone looks",
+        "tags": [
+          "lie",
+          "risk"
+        ],
+        "default": true,
+        "perceived": {
+          "risk": 2
+        }
+      }
     ],
     "co_owner": [
-      { "id": "audit", "label": "Go through every receipt", "tags": ["risk"], "perceived": { "relation": { "treasurer": -1 } } },
-      { "id": "ask", "label": "Ask {treasurer} directly", "tags": ["truth"], "perceived": { "relation": { "treasurer": 0 } } },
-      { "id": "trust", "label": "Trust your partner and let it go", "tags": ["ignore"], "default": true, "perceived": { "relation": { "treasurer": 1 } } }
+      {
+        "id": "audit",
+        "label": "Go through every receipt",
+        "tags": [
+          "risk"
+        ],
+        "perceived": {
+          "relation": {
+            "treasurer": -1
+          }
+        }
+      },
+      {
+        "id": "ask",
+        "label": "Ask {treasurer} directly",
+        "tags": [
+          "truth"
+        ],
+        "perceived": {
+          "relation": {
+            "treasurer": 0
+          }
+        }
+      },
+      {
+        "id": "trust",
+        "label": "Trust your partner and let it go",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "treasurer": 1
+          }
+        }
+      }
     ]
   },
   "outcomes": [
-    { "id": "owned_up", "when": { "chose": "confess", "role": "treasurer" }, "revealChoices": true,
-      "effects": [{ "type": "relation", "from": "role:co_owner", "to": "role:treasurer", "trust": -15, "affinity": -5 }],
-      "text": { "treasurer": "{co_owner} is angry, but you repay it and the café survives.", "co_owner": "{treasurer} admits it and pays it back. Trust will take time." } },
-    { "id": "fraud", "when": { "all": [ { "chose": "cover", "role": "treasurer" }, { "chose": "audit", "role": "co_owner" } ] }, "important": true,
+    {
+      "id": "owned_up",
+      "when": {
+        "chose": "confess",
+        "role": "treasurer"
+      },
+      "revealChoices": true,
       "effects": [
-        { "type": "status", "target": "role:treasurer", "status": "imprisoned", "cause": "Convicted of embezzling from their own café" },
-        { "type": "attr", "target": "role:co_owner", "delta": { "money": -10, "mental": -10 } },
-        { "type": "fact", "target": "role:co_owner", "key": "business_partner", "about": "role:treasurer", "remove": true },
-        { "type": "relation", "from": "role:co_owner", "to": "role:treasurer", "setType": "enemy", "affinity": -50, "trust": -60 }
+        {
+          "type": "relation",
+          "from": "role:co_owner",
+          "to": "role:treasurer",
+          "trust": -15,
+          "affinity": -5
+        }
       ],
-      "text": { "treasurer": "The audit finds the forged entries. {co_owner} goes to the police.", "co_owner": "Forged books. You report {treasurer} to the police. The café closes." } },
-    { "id": "cafe_fails", "when": { "chose": "trust", "role": "co_owner" }, "important": true,
-      "effects": [{ "type": "attr", "target": "role:co_owner", "delta": { "money": -12 } }, { "type": "attr", "target": "role:treasurer", "delta": { "money": 4, "mental": -6 } }],
-      "text": { "treasurer": "The hole in the accounts grows. The café closes. {co_owner} never finds out why.", "co_owner": "The café closes. You lose your investment." } },
-    { "id": "suspicion", "effects": [{ "type": "relation", "from": "role:co_owner", "to": "role:treasurer", "trust": -20 }],
-      "text": { "treasurer": "{co_owner} asks questions. You give answers. They are not convinced.", "co_owner": "{treasurer}'s answers do not quite add up." } }
+      "text": {
+        "treasurer": "{co_owner} is angry, but you repay it and the café survives.",
+        "co_owner": "{treasurer} admits it and pays it back. Trust will take time."
+      }
+    },
+    {
+      "id": "fraud",
+      "when": {
+        "all": [
+          {
+            "chose": "cover",
+            "role": "treasurer"
+          },
+          {
+            "chose": "audit",
+            "role": "co_owner"
+          }
+        ]
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "status",
+          "target": "role:treasurer",
+          "status": "imprisoned",
+          "cause": "Convicted of embezzling from their own café"
+        },
+        {
+          "type": "attr",
+          "target": "role:co_owner",
+          "delta": {
+            "money": -10,
+            "mental": -10
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:co_owner",
+          "key": "business_partner",
+          "about": "role:treasurer",
+          "remove": true
+        },
+        {
+          "type": "relation",
+          "from": "role:co_owner",
+          "to": "role:treasurer",
+          "setType": "enemy",
+          "affinity": -50,
+          "trust": -60
+        }
+      ],
+      "text": {
+        "treasurer": "The audit finds the forged entries. {co_owner} goes to the police.",
+        "co_owner": "Forged books. You report {treasurer} to the police. The café closes."
+      }
+    },
+    {
+      "id": "cafe_fails",
+      "when": {
+        "chose": "trust",
+        "role": "co_owner"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:co_owner",
+          "delta": {
+            "money": -12
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:treasurer",
+          "delta": {
+            "money": 4,
+            "mental": -6
+          }
+        }
+      ],
+      "text": {
+        "treasurer": "The hole in the accounts grows. The café closes. {co_owner} never finds out why.",
+        "co_owner": "The café closes. You lose your investment."
+      }
+    },
+    {
+      "id": "suspicion",
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:co_owner",
+          "to": "role:treasurer",
+          "trust": -20
+        }
+      ],
+      "text": {
+        "treasurer": "{co_owner} asks questions. You give answers. They are not convinced.",
+        "co_owner": "{treasurer}'s answers do not quite add up."
+      }
+    }
   ]
 }

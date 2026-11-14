@@ -9,7 +9,8 @@ import type { Attribute, LifeRecap, Notice, OfferView, OtherCharacterView, Parti
 export type PublicEntry =
   | { kind: "event"; t: number; instanceId: string; title: string; text: string; participants: ParticipantInfo[] }
   | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
-  | { kind: "season"; t: number; year: number; season: string };
+  | { kind: "season"; t: number; year: number; season: string }
+  | { kind: "move"; t: number; characterId: string; from: [number, number]; path: [number, number][]; departAt: number; msPerTile: number; to: string | null };
 
 export interface Snapshot {
   sessionId: string;
@@ -113,7 +114,9 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
 
     socket.on("game:feed", (entry: PublicEntry) =>
       setGame((g) =>
-        g ? { ...g, feed: [...g.feed, entry].slice(-50), ...(entry.kind === "season" ? { calendar: { year: entry.year, season: entry.season } } : {}) } : g,
+        !g || entry.kind === "move" // positions are for the map view (M11), not the news feed
+          ? g
+          : { ...g, feed: [...g.feed, entry].slice(-50), ...(entry.kind === "season" ? { calendar: { year: entry.year, season: entry.season } } : {}) },
       ),
     );
 

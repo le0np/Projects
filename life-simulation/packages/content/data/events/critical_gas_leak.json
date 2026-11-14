@@ -1,33 +1,195 @@
 {
-  "schemaVersion": 1, "id": "critical_gas_leak", "version": 1, "title": "The Smell of Gas",
-  "category": "critical", "trigger": "director", "importance": "important", "weight": 5,
-  "cooldown": { "maxPerSession": 1 }, "tags": ["technical"],
-  "roles": { "neighbors": { "count": [2, 3] } },
+  "schemaVersion": 1,
+  "id": "critical_gas_leak",
+  "version": 2,
+  "title": "The Smell of Gas",
+  "category": "critical",
+  "trigger": "director",
+  "importance": "important",
+  "weight": 5,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "tags": [
+    "technical"
+  ],
+  "location": {
+    "at": [
+      "home"
+    ]
+  },
+  "roles": {
+    "neighbors": {
+      "count": [
+        2,
+        3
+      ]
+    }
+  },
   "text": {
     "public": "{neighbors} smell gas in the stairwell of their building.",
-    "private": { "neighbors": "The smell is coming from the basement. An elderly couple lives on the ground floor." }
+    "private": {
+      "neighbors": "The smell is coming from the basement. An elderly couple lives on the ground floor."
+    }
   },
   "choices": {
     "neighbors": [
-      { "id": "evacuate", "label": "Knock on every door and get everyone out", "tags": ["help", "risk"], "perceived": { "reputation": 1, "risk": 1 },
-        "effects": [{ "type": "relation", "from": "role:neighbors", "to": "self", "affinity": 10, "trust": 10 }] },
-      { "id": "call", "label": "Leave and call the gas company", "tags": ["take_responsibility"], "default": true },
-      { "id": "investigate", "label": "Go down to the basement to find the leak", "tags": ["risk"], "perceived": { "risk": 2 } },
-      { "id": "isolate", "label": "Shut the main valve and ventilate safely", "tags": ["help"], "careers": ["engineer", "mechanic"],
-        "perceived": { "reputation": 1 }, "insight": { "careers": ["engineer", "mechanic"], "perceived": { "risk": 0 }, "note": "No sparks, no switches, close the valve by hand." },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "reputation": 8 } }, { "type": "relation", "from": "role:neighbors", "to": "self", "affinity": 15, "trust": 15 }] }
+      {
+        "id": "evacuate",
+        "label": "Knock on every door and get everyone out",
+        "tags": [
+          "help",
+          "risk"
+        ],
+        "perceived": {
+          "reputation": 1,
+          "risk": 1
+        },
+        "effects": [
+          {
+            "type": "relation",
+            "from": "role:neighbors",
+            "to": "self",
+            "affinity": 10,
+            "trust": 10
+          }
+        ]
+      },
+      {
+        "id": "call",
+        "label": "Leave and call the gas company",
+        "tags": [
+          "take_responsibility"
+        ],
+        "default": true
+      },
+      {
+        "id": "investigate",
+        "label": "Go down to the basement to find the leak",
+        "tags": [
+          "risk"
+        ],
+        "perceived": {
+          "risk": 2
+        }
+      },
+      {
+        "id": "isolate",
+        "label": "Shut the main valve and ventilate safely",
+        "tags": [
+          "help"
+        ],
+        "careers": [
+          "engineer",
+          "mechanic"
+        ],
+        "perceived": {
+          "reputation": 1
+        },
+        "insight": {
+          "careers": [
+            "engineer",
+            "mechanic"
+          ],
+          "perceived": {
+            "risk": 0
+          },
+          "note": "No sparks, no switches, close the valve by hand."
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "reputation": 8
+            }
+          },
+          {
+            "type": "relation",
+            "from": "role:neighbors",
+            "to": "self",
+            "affinity": 15,
+            "trust": 15
+          }
+        ]
+      }
     ]
   },
   "outcomes": [
-    { "id": "isolated", "when": { "chose": "isolate", "role": "neighbors" }, "revealChoices": true,
-      "text": { "neighbors": "The valve is shut, the windows are open. The gas company says it could have been very bad." } },
-    { "id": "explosion", "when": { "chose": "investigate", "role": "neighbors" }, "chance": 0.4, "important": true,
-      "effects": [{ "type": "attr", "target": "role:neighbors", "delta": { "health": -25, "money": -10, "mental": -10 } }],
-      "text": { "neighbors": "Someone flicks a light switch in the basement. The blast blows out the windows." } },
-    { "id": "evacuated", "when": { "chose": "evacuate", "role": "neighbors" }, "revealChoices": true,
-      "effects": [{ "type": "attr", "target": "role:neighbors", "delta": { "mental": -2 } }],
-      "text": { "neighbors": "Everyone is out, including the elderly couple. The engineers find a cracked pipe." } },
-    { "id": "safe", "effects": [{ "type": "attr", "target": "role:neighbors", "delta": { "mental": -3 } }],
-      "text": { "neighbors": "The gas company arrives within the hour and seals the leak." } }
+    {
+      "id": "isolated",
+      "when": {
+        "chose": "isolate",
+        "role": "neighbors"
+      },
+      "revealChoices": true,
+      "text": {
+        "neighbors": "The valve is shut, the windows are open. The gas company says it could have been very bad."
+      }
+    },
+    {
+      "id": "explosion",
+      "when": {
+        "chose": "investigate",
+        "role": "neighbors"
+      },
+      "chance": 0.4,
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:neighbors",
+          "delta": {
+            "health": -25,
+            "money": -10,
+            "mental": -10
+          }
+        },
+        {
+          "type": "move",
+          "target": "role:neighbors",
+          "to": "hospital",
+          "staySeconds": 15
+        }
+      ],
+      "text": {
+        "neighbors": "Someone flicks a light switch in the basement. The blast blows out the windows."
+      }
+    },
+    {
+      "id": "evacuated",
+      "when": {
+        "chose": "evacuate",
+        "role": "neighbors"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:neighbors",
+          "delta": {
+            "mental": -2
+          }
+        }
+      ],
+      "text": {
+        "neighbors": "Everyone is out, including the elderly couple. The engineers find a cracked pipe."
+      }
+    },
+    {
+      "id": "safe",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:neighbors",
+          "delta": {
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "neighbors": "The gas company arrives within the hour and seals the leak."
+      }
+    }
   ]
 }

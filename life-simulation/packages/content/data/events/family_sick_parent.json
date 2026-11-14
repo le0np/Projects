@@ -1,10 +1,35 @@
 {
-  "schemaVersion": 1, "id": "family_sick_parent", "version": 1, "title": "Mum Needs Help",
-  "category": "family", "trigger": "director", "importance": "important", "weight": 8,
-  "cooldown": { "maxPerSession": 1 },
+  "schemaVersion": 1,
+  "id": "family_sick_parent",
+  "version": 1,
+  "title": "Mum Needs Help",
+  "category": "family",
+  "trigger": "director",
+  "importance": "important",
+  "weight": 8,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "hospital"
+    ]
+  },
   "roles": {
-    "sibling_a": { "count": 1 },
-    "sibling_b": { "count": 1, "conditions": { "relation": { "to": "role:sibling_a", "typeIn": ["family"] } } }
+    "sibling_a": {
+      "count": 1
+    },
+    "sibling_b": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:sibling_a",
+          "typeIn": [
+            "family"
+          ]
+        }
+      }
+    }
   },
   "text": {
     "public": "{sibling_a} and {sibling_b}'s mother has had a fall. She needs someone with her for the next few weeks.",
@@ -15,41 +40,286 @@
   },
   "choices": {
     "sibling_a": [
-      { "id": "take_leave", "label": "Take unpaid leave and move in with her", "tags": ["sacrifice", "help"], "perceived": { "career": -1, "money": -1, "relation": { "sibling_b": 1 } },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "career": -6, "money": -6, "mental": -3 } }] },
-      { "id": "pay_carer", "label": "Offer to pay for a professional carer", "tags": ["help"], "perceived": { "money": -2 },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "money": -12 } }] },
-      { "id": "leave_it", "label": "Assume {sibling_b} will handle it", "tags": ["avoid_responsibility"], "default": true, "perceived": { "relation": { "sibling_b": -2 } } }
+      {
+        "id": "take_leave",
+        "label": "Take unpaid leave and move in with her",
+        "tags": [
+          "sacrifice",
+          "help"
+        ],
+        "perceived": {
+          "career": -1,
+          "money": -1,
+          "relation": {
+            "sibling_b": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": -6,
+              "money": -6,
+              "mental": -3
+            }
+          }
+        ]
+      },
+      {
+        "id": "pay_carer",
+        "label": "Offer to pay for a professional carer",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "money": -2
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -12
+            }
+          }
+        ]
+      },
+      {
+        "id": "leave_it",
+        "label": "Assume {sibling_b} will handle it",
+        "tags": [
+          "avoid_responsibility"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "sibling_b": -2
+          }
+        }
+      }
     ],
     "sibling_b": [
-      { "id": "take_leave", "label": "Take unpaid leave and move in with her", "tags": ["sacrifice", "help"], "perceived": { "career": -1, "money": -1, "relation": { "sibling_a": 1 } },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "career": -6, "money": -6, "mental": -3 } }] },
-      { "id": "demand_turn", "label": "Tell {sibling_a} it is their turn", "tags": ["truth", "refuse"], "perceived": { "relation": { "sibling_a": -1 } } },
-      { "id": "home_care", "label": "Arrange proper home care and physiotherapy yourself", "tags": ["help"], "careers": ["doctor", "psychologist"],
-        "perceived": { "relation": { "sibling_a": 1 } } },
-      { "id": "leave_it", "label": "Wait and see", "tags": ["ignore"], "default": true }
+      {
+        "id": "take_leave",
+        "label": "Take unpaid leave and move in with her",
+        "tags": [
+          "sacrifice",
+          "help"
+        ],
+        "perceived": {
+          "career": -1,
+          "money": -1,
+          "relation": {
+            "sibling_a": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": -6,
+              "money": -6,
+              "mental": -3
+            }
+          }
+        ]
+      },
+      {
+        "id": "demand_turn",
+        "label": "Tell {sibling_a} it is their turn",
+        "tags": [
+          "truth",
+          "refuse"
+        ],
+        "perceived": {
+          "relation": {
+            "sibling_a": -1
+          }
+        }
+      },
+      {
+        "id": "home_care",
+        "label": "Arrange proper home care and physiotherapy yourself",
+        "tags": [
+          "help"
+        ],
+        "careers": [
+          "doctor",
+          "psychologist"
+        ],
+        "perceived": {
+          "relation": {
+            "sibling_a": 1
+          }
+        }
+      },
+      {
+        "id": "leave_it",
+        "label": "Wait and see",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
     ]
   },
   "outcomes": [
-    { "id": "expert_care", "when": { "chose": "home_care", "role": "sibling_b" }, "revealChoices": true,
-      "effects": [{ "type": "relation", "from": "role:sibling_a", "to": "role:sibling_b", "affinity": 20, "trust": 15 }, { "type": "attr", "target": "role:sibling_b", "delta": { "mental": 3 } }],
-      "text": { "sibling_a": "{sibling_b} organises everything. Mum is back on her feet quickly.", "sibling_b": "You know exactly what she needs. She recovers quickly." } },
-    { "id": "shared", "when": { "any": [
-        { "all": [ { "chose": "take_leave", "role": "sibling_a" }, { "chose": "take_leave", "role": "sibling_b" } ] },
-        { "all": [ { "chose": "pay_carer", "role": "sibling_a" }, { "chose": "take_leave", "role": "sibling_b", "count": "none" } ] } ] }, "revealChoices": true,
-      "effects": [{ "type": "relation", "from": "role:sibling_a", "to": "role:sibling_b", "affinity": 15, "trust": 10, "mutual": true }],
-      "text": { "sibling_a": "You handle it together. Mum is well looked after.", "sibling_b": "You handle it together. Mum is well looked after." } },
-    { "id": "a_alone", "when": { "chose": "take_leave", "role": "sibling_a" }, "revealChoices": true,
-      "effects": [{ "type": "relation", "from": "role:sibling_a", "to": "role:sibling_b", "affinity": -15 }],
-      "text": { "sibling_a": "You end up doing it alone. {sibling_b} visits twice.", "sibling_b": "{sibling_a} moves in with Mum." } },
-    { "id": "b_alone", "when": { "chose": "take_leave", "role": "sibling_b" }, "revealChoices": true,
-      "effects": [{ "type": "relation", "from": "role:sibling_b", "to": "role:sibling_a", "affinity": -20, "trust": -10 }, { "type": "attr", "target": "role:sibling_b", "delta": { "mental": -5 } }],
-      "text": { "sibling_a": "{sibling_b} takes care of Mum again.", "sibling_b": "Again it is you. Again {sibling_a} is \"too busy\"." } },
-    { "id": "neglected", "important": true,
+    {
+      "id": "expert_care",
+      "when": {
+        "chose": "home_care",
+        "role": "sibling_b"
+      },
+      "revealChoices": true,
       "effects": [
-        { "type": "relation", "from": "role:sibling_a", "to": "role:sibling_b", "setType": "rival", "affinity": -20, "mutual": true },
-        { "type": "attr", "target": "role:sibling_a", "delta": { "mental": -8 } }, { "type": "attr", "target": "role:sibling_b", "delta": { "mental": -8 } }
+        {
+          "type": "relation",
+          "from": "role:sibling_a",
+          "to": "role:sibling_b",
+          "affinity": 20,
+          "trust": 15
+        },
+        {
+          "type": "attr",
+          "target": "role:sibling_b",
+          "delta": {
+            "mental": 3
+          }
+        }
       ],
-      "text": { "sibling_a": "Nobody steps up. A neighbour finds Mum on the floor a week later. You blame each other.", "sibling_b": "Nobody steps up. A neighbour finds Mum on the floor a week later. You blame each other." } }
+      "text": {
+        "sibling_a": "{sibling_b} organises everything. Mum is back on her feet quickly.",
+        "sibling_b": "You know exactly what she needs. She recovers quickly."
+      }
+    },
+    {
+      "id": "shared",
+      "when": {
+        "any": [
+          {
+            "all": [
+              {
+                "chose": "take_leave",
+                "role": "sibling_a"
+              },
+              {
+                "chose": "take_leave",
+                "role": "sibling_b"
+              }
+            ]
+          },
+          {
+            "all": [
+              {
+                "chose": "pay_carer",
+                "role": "sibling_a"
+              },
+              {
+                "chose": "take_leave",
+                "role": "sibling_b",
+                "count": "none"
+              }
+            ]
+          }
+        ]
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:sibling_a",
+          "to": "role:sibling_b",
+          "affinity": 15,
+          "trust": 10,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "sibling_a": "You handle it together. Mum is well looked after.",
+        "sibling_b": "You handle it together. Mum is well looked after."
+      }
+    },
+    {
+      "id": "a_alone",
+      "when": {
+        "chose": "take_leave",
+        "role": "sibling_a"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:sibling_a",
+          "to": "role:sibling_b",
+          "affinity": -15
+        }
+      ],
+      "text": {
+        "sibling_a": "You end up doing it alone. {sibling_b} visits twice.",
+        "sibling_b": "{sibling_a} moves in with Mum."
+      }
+    },
+    {
+      "id": "b_alone",
+      "when": {
+        "chose": "take_leave",
+        "role": "sibling_b"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:sibling_b",
+          "to": "role:sibling_a",
+          "affinity": -20,
+          "trust": -10
+        },
+        {
+          "type": "attr",
+          "target": "role:sibling_b",
+          "delta": {
+            "mental": -5
+          }
+        }
+      ],
+      "text": {
+        "sibling_a": "{sibling_b} takes care of Mum again.",
+        "sibling_b": "Again it is you. Again {sibling_a} is \"too busy\"."
+      }
+    },
+    {
+      "id": "neglected",
+      "important": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:sibling_a",
+          "to": "role:sibling_b",
+          "setType": "rival",
+          "affinity": -20,
+          "mutual": true
+        },
+        {
+          "type": "attr",
+          "target": "role:sibling_a",
+          "delta": {
+            "mental": -8
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:sibling_b",
+          "delta": {
+            "mental": -8
+          }
+        }
+      ],
+      "text": {
+        "sibling_a": "Nobody steps up. A neighbour finds Mum on the floor a week later. You blame each other.",
+        "sibling_b": "Nobody steps up. A neighbour finds Mum on the floor a week later. You blame each other."
+      }
+    }
   ]
 }

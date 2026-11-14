@@ -1,13 +1,61 @@
 {
-  "schemaVersion": 1, "id": "career_promotion_contest", "version": 1, "title": "One Spot at the Top",
-  "category": "career", "trigger": "director", "importance": "important", "weight": 6,
-  "cooldown": { "maxPerSession": 1 },
+  "schemaVersion": 1,
+  "id": "career_promotion_contest",
+  "version": 1,
+  "title": "One Spot at the Top",
+  "category": "career",
+  "trigger": "director",
+  "importance": "important",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "work"
+    ],
+    "of": "role:candidate_a"
+  },
   "roles": {
-    "candidate_a": { "count": 1, "conditions": { "all": [ { "fact": "employed" }, { "fact": "promoted", "present": false } ] } },
-    "candidate_b": { "count": 1, "conditions": { "all": [
-      { "fact": "employed" }, { "fact": "promoted", "present": false },
-      { "relation": { "to": "role:candidate_a", "typeIn": ["colleague", "rival", "acquaintance", "friend"] } }
-    ] } }
+    "candidate_a": {
+      "count": 1,
+      "conditions": {
+        "all": [
+          {
+            "fact": "employed"
+          },
+          {
+            "fact": "promoted",
+            "present": false
+          }
+        ]
+      }
+    },
+    "candidate_b": {
+      "count": 1,
+      "conditions": {
+        "all": [
+          {
+            "fact": "employed"
+          },
+          {
+            "fact": "promoted",
+            "present": false
+          },
+          {
+            "relation": {
+              "to": "role:candidate_a",
+              "typeIn": [
+                "colleague",
+                "rival",
+                "acquaintance",
+                "friend"
+              ]
+            }
+          }
+        ]
+      }
+    }
   },
   "text": {
     "public": "{candidate_a} and {candidate_b} are both up for the same promotion. The decision comes after this week's presentation.",
@@ -18,50 +66,296 @@
   },
   "choices": {
     "candidate_a": [
-      { "id": "warn", "label": "Quietly tell {candidate_b} about the error", "tags": ["help", "truth"], "perceived": { "career": -1, "relation": { "candidate_b": 2 } } },
-      { "id": "exploit", "label": "Point out the error during the presentation", "tags": ["threaten"], "perceived": { "career": 2, "relation": { "candidate_b": -2 } } },
-      { "id": "focus", "label": "Focus on your own work", "tags": ["ignore"], "default": true }
+      {
+        "id": "warn",
+        "label": "Quietly tell {candidate_b} about the error",
+        "tags": [
+          "help",
+          "truth"
+        ],
+        "perceived": {
+          "career": -1,
+          "relation": {
+            "candidate_b": 2
+          }
+        }
+      },
+      {
+        "id": "exploit",
+        "label": "Point out the error during the presentation",
+        "tags": [
+          "threaten"
+        ],
+        "perceived": {
+          "career": 2,
+          "relation": {
+            "candidate_b": -2
+          }
+        }
+      },
+      {
+        "id": "focus",
+        "label": "Focus on your own work",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
     ],
     "candidate_b": [
-      { "id": "expose", "label": "Tell the director about the stolen ideas", "tags": ["truth", "threaten"], "perceived": { "career": 1, "relation": { "candidate_a": -2 } } },
-      { "id": "overwork", "label": "Work through the nights to make your pitch perfect", "tags": ["sacrifice"], "perceived": { "career": 1, "health": -1 },
-        "effects": [{ "type": "attr", "target": "self", "delta": { "health": -6, "mental": -4 } }] },
-      { "id": "focus", "label": "Focus on your own work", "tags": ["ignore"], "default": true }
+      {
+        "id": "expose",
+        "label": "Tell the director about the stolen ideas",
+        "tags": [
+          "truth",
+          "threaten"
+        ],
+        "perceived": {
+          "career": 1,
+          "relation": {
+            "candidate_a": -2
+          }
+        }
+      },
+      {
+        "id": "overwork",
+        "label": "Work through the nights to make your pitch perfect",
+        "tags": [
+          "sacrifice"
+        ],
+        "perceived": {
+          "career": 1,
+          "health": -1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "health": -6,
+              "mental": -4
+            }
+          }
+        ]
+      },
+      {
+        "id": "focus",
+        "label": "Focus on your own work",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
     ]
   },
   "outcomes": [
-    { "id": "both_dirty", "when": { "all": [ { "chose": "exploit", "role": "candidate_a" }, { "chose": "expose", "role": "candidate_b" } ] }, "important": true, "revealChoices": true,
+    {
+      "id": "both_dirty",
+      "when": {
+        "all": [
+          {
+            "chose": "exploit",
+            "role": "candidate_a"
+          },
+          {
+            "chose": "expose",
+            "role": "candidate_b"
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
       "effects": [
-        { "type": "attr", "target": "role:candidate_a", "delta": { "reputation": -10, "career": -5 } },
-        { "type": "attr", "target": "role:candidate_b", "delta": { "reputation": -5, "career": -5 } },
-        { "type": "relation", "from": "role:candidate_a", "to": "role:candidate_b", "setType": "enemy", "affinity": -35, "mutual": true }
+        {
+          "type": "attr",
+          "target": "role:candidate_a",
+          "delta": {
+            "reputation": -10,
+            "career": -5
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:candidate_b",
+          "delta": {
+            "reputation": -5,
+            "career": -5
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:candidate_a",
+          "to": "role:candidate_b",
+          "setType": "enemy",
+          "affinity": -35,
+          "mutual": true
+        }
       ],
-      "text": { "candidate_a": "You both go for each other's throat. The director promotes neither of you.", "candidate_b": "You both go for each other's throat. The director promotes neither of you." } },
-    { "id": "b_wins", "when": { "any": [ { "chose": "expose", "role": "candidate_b" },
-        { "all": [ { "chose": "warn", "role": "candidate_a" }, { "chose": "overwork", "role": "candidate_b" } ] } ] }, "important": true,
+      "text": {
+        "candidate_a": "You both go for each other's throat. The director promotes neither of you.",
+        "candidate_b": "You both go for each other's throat. The director promotes neither of you."
+      }
+    },
+    {
+      "id": "b_wins",
+      "when": {
+        "any": [
+          {
+            "chose": "expose",
+            "role": "candidate_b"
+          },
+          {
+            "all": [
+              {
+                "chose": "warn",
+                "role": "candidate_a"
+              },
+              {
+                "chose": "overwork",
+                "role": "candidate_b"
+              }
+            ]
+          }
+        ]
+      },
+      "important": true,
       "effects": [
-        { "type": "attr", "target": "role:candidate_b", "delta": { "career": 15, "money": 8 } },
-        { "type": "fact", "target": "role:candidate_b", "key": "promoted" },
-        { "type": "fact", "target": "role:candidate_b", "key": "manager_of", "about": "role:candidate_a" },
-        { "type": "attr", "target": "role:candidate_a", "delta": { "mental": -6 } }
+        {
+          "type": "attr",
+          "target": "role:candidate_b",
+          "delta": {
+            "career": 15,
+            "money": 8
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:candidate_b",
+          "key": "promoted"
+        },
+        {
+          "type": "fact",
+          "target": "role:candidate_b",
+          "key": "manager_of",
+          "about": "role:candidate_a"
+        },
+        {
+          "type": "attr",
+          "target": "role:candidate_a",
+          "delta": {
+            "mental": -6
+          }
+        }
       ],
-      "followUps": [{ "event": "career_manager_dilemma", "delaySeconds": [60, 120], "chance": 0.6, "roles": { "manager": "role:candidate_b", "report": "role:candidate_a" } }],
-      "text": { "candidate_a": "{candidate_b} gets the promotion — and is now your manager.", "candidate_b": "You get the promotion. {candidate_a} now reports to you." } },
-    { "id": "a_wins", "when": { "any": [ { "chose": "exploit", "role": "candidate_a" }, { "chose": "focus", "role": "candidate_a" } ] }, "important": true,
+      "followUps": [
+        {
+          "event": "career_manager_dilemma",
+          "delaySeconds": [
+            60,
+            120
+          ],
+          "chance": 0.6,
+          "roles": {
+            "manager": "role:candidate_b",
+            "report": "role:candidate_a"
+          }
+        }
+      ],
+      "text": {
+        "candidate_a": "{candidate_b} gets the promotion — and is now your manager.",
+        "candidate_b": "You get the promotion. {candidate_a} now reports to you."
+      }
+    },
+    {
+      "id": "a_wins",
+      "when": {
+        "any": [
+          {
+            "chose": "exploit",
+            "role": "candidate_a"
+          },
+          {
+            "chose": "focus",
+            "role": "candidate_a"
+          }
+        ]
+      },
+      "important": true,
       "effects": [
-        { "type": "attr", "target": "role:candidate_a", "delta": { "career": 15, "money": 8 } },
-        { "type": "fact", "target": "role:candidate_a", "key": "promoted" },
-        { "type": "fact", "target": "role:candidate_a", "key": "manager_of", "about": "role:candidate_b" },
-        { "type": "attr", "target": "role:candidate_b", "delta": { "mental": -6 } }
+        {
+          "type": "attr",
+          "target": "role:candidate_a",
+          "delta": {
+            "career": 15,
+            "money": 8
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:candidate_a",
+          "key": "promoted"
+        },
+        {
+          "type": "fact",
+          "target": "role:candidate_a",
+          "key": "manager_of",
+          "about": "role:candidate_b"
+        },
+        {
+          "type": "attr",
+          "target": "role:candidate_b",
+          "delta": {
+            "mental": -6
+          }
+        }
       ],
-      "followUps": [{ "event": "career_manager_dilemma", "delaySeconds": [60, 120], "chance": 0.6, "roles": { "manager": "role:candidate_a", "report": "role:candidate_b" } }],
-      "text": { "candidate_a": "You get the promotion. {candidate_b} now reports to you.", "candidate_b": "{candidate_a} gets the promotion — and is now your manager." } },
-    { "id": "gracious", "revealChoices": true,
+      "followUps": [
+        {
+          "event": "career_manager_dilemma",
+          "delaySeconds": [
+            60,
+            120
+          ],
+          "chance": 0.6,
+          "roles": {
+            "manager": "role:candidate_a",
+            "report": "role:candidate_b"
+          }
+        }
+      ],
+      "text": {
+        "candidate_a": "You get the promotion. {candidate_b} now reports to you.",
+        "candidate_b": "{candidate_a} gets the promotion — and is now your manager."
+      }
+    },
+    {
+      "id": "gracious",
+      "revealChoices": true,
       "effects": [
-        { "type": "attr", "target": "role:candidate_b", "delta": { "career": 10 } },
-        { "type": "fact", "target": "role:candidate_b", "key": "promoted" },
-        { "type": "relation", "from": "role:candidate_b", "to": "role:candidate_a", "affinity": 25, "trust": 25 }
+        {
+          "type": "attr",
+          "target": "role:candidate_b",
+          "delta": {
+            "career": 10
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:candidate_b",
+          "key": "promoted"
+        },
+        {
+          "type": "relation",
+          "from": "role:candidate_b",
+          "to": "role:candidate_a",
+          "affinity": 25,
+          "trust": 25
+        }
       ],
-      "text": { "candidate_a": "You warned {candidate_b} and lost the promotion to them. They know what you did.", "candidate_b": "{candidate_a} saved your presentation — and you got the promotion." } }
+      "text": {
+        "candidate_a": "You warned {candidate_b} and lost the promotion to them. They know what you did.",
+        "candidate_b": "{candidate_a} saved your presentation — and you got the promotion."
+      }
+    }
   ]
 }

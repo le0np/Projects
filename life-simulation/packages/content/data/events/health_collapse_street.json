@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "health_collapse_street",
-  "version": 2,
+  "version": 3,
   "title": "Collapse on the Street",
   "category": "critical",
   "trigger": "director",
@@ -9,6 +9,11 @@
   "weight": 5,
   "cooldown": {
     "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "street"
+    ]
   },
   "roles": {
     "patient": {
@@ -179,6 +184,12 @@
           "to": "role:bystander",
           "affinity": 40,
           "trust": 30
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 8
         }
       ],
       "text": {
@@ -215,6 +226,12 @@
           "to": "role:bystander",
           "affinity": 20,
           "trust": 10
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 12
         }
       ],
       "text": {
@@ -262,6 +279,12 @@
           "to": "role:bystander",
           "affinity": 30,
           "trust": 20
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 10
         }
       ],
       "text": {
@@ -296,6 +319,12 @@
             "health": -25,
             "mental": -10
           }
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 15
         }
       ],
       "text": {

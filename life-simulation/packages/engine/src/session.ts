@@ -14,6 +14,10 @@ import {
   Rng,
   ageAt,
   calendarAt,
+  manhattan,
+  type LocationKind,
+  type PlaceKind,
+  type TilePos,
   TimerQueue,
   evaluate,
   type Attribute,
@@ -35,7 +39,7 @@ import { makeContext, type Bindings, type WorldView } from "./context";
 import type { Change, EndReason, LogEntry } from "./log";
 import { pickNames } from "./names";
 import { computeRecaps, type CharacterTracking } from "./recap";
-import { Relations, clampAttr, factKey, type CharacterState } from "./state";
+import { Relations, arrivalOf, clampAttr, factKey, positionAt, type CharacterState, type Trip } from "./state";
 
 export type SessionState = "initializing" | "active" | "completed" | "cancelled";
 
@@ -49,7 +53,8 @@ export interface ParticipantSpec {
 export type PublicEntry =
   | { kind: "event"; t: number; instanceId: string; title: string; text: string; participants: ParticipantInfo[] }
   | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
-  | { kind: "season"; t: number; year: number; season: string };
+  | { kind: "season"; t: number; year: number; season: string }
+  | { kind: "move"; t: number; characterId: string; from: TilePos; path: TilePos[]; departAt: number; msPerTile: number; to: string | null };
 
 export type SubmitResult = { ok: true } | { ok: false; reason: string };
 
@@ -88,8 +93,10 @@ interface Instance {
   offered: Map<string, VisibleChoice[]>;
   decisions: Map<string, { choiceId: string; defaulted: boolean }>;
   parentId?: string;
+  /** When the participants have gathered and the choices are offered. */
   startedAt: number;
   deadlineAt: number;
+  place: { tile: TilePos; placeId: string | null };
   deadlineTimer: number;
   resolved: boolean;
 }
@@ -104,7 +111,9 @@ interface PendingFollowUp {
   condition?: Condition;
 }
 
-type Timer = { kind: "deadline"; instanceId: string } | { kind: "tick" } | { kind: "end" } | { kind: "season" };
+type Timer = { kind: "deadline"; instanceId: string } | { kind: "offer"; instanceId: string } | { kind: "tick" } | { kind: "end" } | { kind: "season" };
+
+const LEISURE: PlaceKind[] = ["cafe", "park", "shop", "bar", "home"];
 
 const MS = 1000;
 
@@ -126,6 +135,8 @@ export class Session {
   };
   /** Delivery of per-character messages; set by the host. */
   onNotice: (characterId: string, notice: Notice) => void = () => {};
+  /** Host hook: where a character spends free time (bots decide by personality). Default: random. */
+  chooseLeisure: (characterId: string, options: readonly PlaceKind[]) => PlaceKind | undefined = () => undefined;
   /** Public feed for everyone in the session, including spectators (hidden events never appear). */
   onPublic: (entry: PublicEntry) => void = () => {};
 
@@ -150,6 +161,8 @@ export class Session {
   private readonly directorEvents: EventDefinition[];
   private readonly tracking = new Map<string, CharacterTracking>();
   private accepting = true;
+  /** Destinations set by "move" effects, applied once the event is over. */
+  private readonly pendingMoves = new Map<string, { to: LocationKind; stay: number }>();
   private storyResolved = false;
   private instanceSeq = 0;
   private pendingSeq = 0;
@@ -182,6 +195,14 @@ export class Session {
     return this._state;
   }
 
+  /** Current position and trip of every character, for (re)connecting clients. */
+  positions(): { characterId: string; pos: TilePos; trip: Trip | null; status: string }[] {
+    return this.order.map((id) => {
+      const c = this.char(id);
+      return { characterId: id, pos: c.pos, trip: c.trip && arrivalOf(c.trip) > this.now() ? c.trip : null, status: c.status };
+    });
+  }
+
   /** Time of the next timer the host must process, if any. */
   nextWakeAt(): number | undefined {
     return this.timers.nextAt();
@@ -201,7 +222,7 @@ export class Session {
       config: this.config,
       characters: this.order.map((id) => {
         const c = this.char(id);
-        return { id, name: c.name, career: c.career.id, isBot: c.isBot, attrs: { ...c.attrs } };
+        return { id, name: c.name, career: c.career.id, isBot: c.isBot, attrs: { ...c.attrs }, home: c.home, work: c.work };
       }),
       relations,
     });
@@ -226,6 +247,9 @@ export class Session {
           break;
         case "season":
           this.onSeason();
+          break;
+        case "offer":
+          this.offer(timer.instanceId);
           break;
         case "end":
           this.accepting = false;
@@ -305,6 +329,7 @@ export class Session {
     const inst = this.instances.get(instanceId);
     if (!inst) return reject("unknown event");
     if (inst.resolved) return reject("event already resolved");
+    if (inst.startedAt > this.now()) return reject("participants are still gathering");
     if (!inst.deciders.includes(characterId)) return reject("character does not decide in this event");
     if (inst.decisions.has(characterId)) return reject("decision already submitted");
     if (!inst.offered.get(characterId)?.some((c) => c.id === choiceId)) return reject("choice not available");
@@ -341,6 +366,7 @@ export class Session {
     const names = pickNames(participants.length, this.rngInit);
     const initFacts = [...this.content.facts.values()].filter((f) => f.setAtInit).map((f) => f.key);
     const [d0, d1] = this.config.initialDelaySeconds;
+    const homes = this.rngInit.shuffle(this.content.map.placesOf("home"));
     participants.forEach((p, i) => {
       const career = this.content.careers.get(p.career);
       if (!career) throw new Error(`unknown career "${p.career}"`);
@@ -368,7 +394,16 @@ export class Session {
         busyWith: null,
         availableAt: Math.round(this.rngTiming.range(d0, d1) * MS),
         eventsCompleted: 0,
+        home: (homes[i % homes.length] as { id: string }).id,
+        work: "",
+        pos: [0, 0],
+        trip: null,
+        stayUntil: 0,
       });
+      const ch = this.char(id);
+      const home = this.content.map.place(ch.home)!;
+      ch.pos = [...home.door] as TilePos;
+      ch.work = (this.content.map.nearest(career.workplace, ch.pos) ?? home).id;
       this.order.push(id);
       this.tracking.set(id, { keyMoments: [], influence: new Map(), startTypes: new Map() });
     });
@@ -425,8 +460,7 @@ export class Session {
       const candidates: { ev: EventDefinition; bindings: Record<string, string[]>; weight: number }[] = [];
       for (const ev of this.directorEvents) {
         if (!this.cooldownOk(ev, true)) continue;
-        const pool = this.rngSelect.shuffle(this.order.filter((id) => id !== anchor && this.isFree(id)));
-        const bindings = this.bind(ev, anchor, pool, {});
+        const bindings = this.bind(ev, anchor, this.nearbyPool(anchor), {});
         if (bindings) candidates.push({ ev, bindings, weight: this.weight(ev, anchor, bindings) });
       }
       const pick = this.rngSelect.weighted(candidates, (c) => c.weight);
@@ -437,6 +471,174 @@ export class Session {
       }
       this.startInstance(pick.ev, pick.bindings);
     }
+    this.runRoutine();
+  }
+
+  /** Free characters ordered by distance to `anchor` (with jitter): events draw in the people nearby. */
+  private nearbyPool(anchor: string): string[] {
+    const at = this.posOf(anchor);
+    return this.order
+      .filter((id) => id !== anchor && this.isFree(id))
+      .map((id) => ({ id, d: manhattan(this.posOf(id), at) + this.rngSelect.range(0, 6) }))
+      .sort((a, b) => a.d - b.d)
+      .map((x) => x.id);
+  }
+
+  // ================================================================== town: positions, trips, routine
+
+  private posOf(id: string): TilePos {
+    return positionAt(this.char(id), this.now());
+  }
+
+  /** Place the tile belongs to (inside a place or at its door), if any. */
+  private placeAt(tile: TilePos): string | null {
+    for (const p of this.content.map.places) {
+      if ((tile[0] === p.door[0] && tile[1] === p.door[1]) || (tile[0] >= p.x && tile[0] < p.x + p.w && tile[1] >= p.y && tile[1] < p.y + p.h)) return p.id;
+    }
+    return null;
+  }
+
+  /** Starts walking; returns the arrival time. */
+  private walkTo(c: CharacterState, tile: TilePos, to: string | null, reason: Trip["reason"]): number {
+    const from = positionAt(c, this.now());
+    const path = this.content.map.route(from, tile);
+    c.pos = path.length > 0 ? (path[path.length - 1] as TilePos) : from;
+    if (path.length === 0) {
+      c.trip = null;
+      return this.now();
+    }
+    const msPerTile = MS / this.config.walkTilesPerSecond;
+    c.trip = { from, path, departAt: this.now(), msPerTile, to, reason };
+    const arriveAt = arrivalOf(c.trip);
+    this.log.push({ t: this.now(), type: "moved", characterId: c.id, from, to: c.pos, placeId: to, arriveAt, reason });
+    this.onPublic({ kind: "move", t: this.now(), characterId: c.id, from, path, departAt: this.now(), msPerTile, to });
+    return arriveAt;
+  }
+
+  private goToPlace(c: CharacterState, placeId: string, reason: Trip["reason"]): number {
+    const place = this.content.map.place(placeId);
+    if (!place) return this.now();
+    // Inside walkable places (the park) people spread out instead of queueing at the gate.
+    let tile: TilePos = place.door;
+    if (place.walkable) {
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const t: TilePos = [place.x + this.rngTiming.int(0, place.w - 1), place.y + this.rngTiming.int(0, place.h - 1)];
+        if (this.content.map.isWalkable(t[0], t[1])) {
+          tile = t;
+          break;
+        }
+      }
+    }
+    return this.walkTo(c, tile, placeId, reason);
+  }
+
+  /** After an event: go where an effect sent you, or where your new status takes you. */
+  private afterEventMovement(c: CharacterState): void {
+    const move = this.pendingMoves.get(c.id);
+    this.pendingMoves.delete(c.id);
+    if (c.status === "imprisoned" || c.status === "hospitalized") {
+      const kind: PlaceKind = c.status === "imprisoned" ? "police" : "hospital";
+      const place = this.content.map.nearest(kind, c.pos);
+      if (place) this.goToPlace(c, place.id, "status");
+      return;
+    }
+    if (!move || c.status !== "active") return;
+    let placeId: string | null = null;
+    if (move.to === "home") placeId = c.home;
+    else if (move.to === "work") placeId = c.work;
+    else if (move.to === "street") {
+      const tiles = this.content.map.streetTiles();
+      c.stayUntil = this.walkTo(c, this.rngTiming.pick(tiles), null, "effect") + move.stay;
+      return;
+    } else placeId = this.content.map.nearest(move.to as PlaceKind, c.pos)?.id ?? null;
+    if (placeId) c.stayUntil = this.goToPlace(c, placeId, "effect") + move.stay;
+  }
+
+  /** Passive play (concept v2 §2): sleep at home, work, free time — for everyone not in an event. */
+  private runRoutine(): void {
+    const quarter = (this.config.yearSeconds * MS) / 4;
+    const qStart = Math.floor(this.now() / quarter) * quarter;
+    const f = (this.now() - qStart) / quarter;
+    const { night, workEnd, leisureStaySeconds } = this.config.routine;
+    for (const id of this.order) {
+      const c = this.char(id);
+      if (c.status !== "active" || c.busyWith !== null || this.now() < c.stayUntil) continue;
+      if (c.trip && arrivalOf(c.trip) > this.now()) continue;
+      c.trip = null;
+      let target: string;
+      let until: number;
+      if (f < night) {
+        target = c.home;
+        until = qStart + night * quarter;
+      } else if (f < workEnd && c.facts.has("employed")) {
+        target = c.work;
+        until = qStart + workEnd * quarter;
+      } else {
+        // Draw the fallback first so the random stream does not depend on who chose (replays stay identical).
+        const fallback = this.rngTiming.pick(LEISURE);
+        const chosen = this.chooseLeisure(id, LEISURE);
+        const kind = chosen && (LEISURE as string[]).includes(chosen) ? chosen : fallback;
+        this.log.push({ t: this.now(), type: "leisure", characterId: id, kind });
+        target = kind === "home" ? c.home : (this.content.map.nearest(kind, c.pos)?.id ?? c.home);
+        until = Math.min(qStart + quarter, this.now() + this.rngTiming.range(leisureStaySeconds[0], leisureStaySeconds[1]) * MS);
+      }
+      const here = this.placeAt(c.pos);
+      const arrive = here === target ? this.now() : this.goToPlace(c, target, "routine");
+      c.stayUntil = Math.max(until, arrive);
+      this.scheduleTick(c.stayUntil);
+    }
+  }
+
+  /** Where an event happens: the nearest of its location options, seen from its anchor. */
+  private eventPlace(ev: EventDefinition, bindings: Record<string, string[]>): { tile: TilePos; placeId: string | null } {
+    const ofRole = ev.location?.of?.startsWith("role:") ? ev.location.of.slice(5) : Object.keys(ev.roles)[0]!;
+    const anchor = this.char((bindings[ofRole] ?? Object.values(bindings).flat())[0] as string);
+    const from = positionAt(anchor, this.now());
+    let best: { tile: TilePos; placeId: string | null } | null = null;
+    let bestLen = Infinity;
+    for (const at of (ev.location?.at ?? ["here"]) as LocationKind[]) {
+      let option: { tile: TilePos; placeId: string | null } | null = null;
+      if (at === "here") option = { tile: from, placeId: this.placeAt(from) };
+      else if (at === "home") option = { tile: this.content.map.place(anchor.home)!.door, placeId: anchor.home };
+      else if (at === "work") option = { tile: this.content.map.place(anchor.work)!.door, placeId: anchor.work };
+      else if (at === "street") {
+        const near = this.content.map.streetTiles().filter((t) => manhattan(t, from) <= 6);
+        option = near.length > 0 ? { tile: this.rngTiming.pick(near), placeId: null } : null;
+      } else {
+        const p = this.content.map.nearest(at, from);
+        option = p ? { tile: p.door, placeId: p.id } : null;
+      }
+      if (!option) continue;
+      const len = this.content.map.route(from, option.tile).length;
+      if (len < bestLen) {
+        best = option;
+        bestLen = len;
+      }
+    }
+    return best ?? { tile: from, placeId: this.placeAt(from) };
+  }
+
+  /** Participants walk to the event; returns when the last one arrives. */
+  private gather(inst: Instance): number {
+    const offsets: TilePos[] = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
+    let arrival = this.now();
+    let slot = 0;
+    for (const id of inst.participants) {
+      if (inst.ev.roles[inst.roleOf.get(id) as string]?.aware === false) continue; // they do not know: they stay put
+      const c = this.char(id);
+      let tile = inst.place.tile;
+      for (; slot < offsets.length; slot++) {
+        const o = offsets[slot] as TilePos;
+        const t: TilePos = [inst.place.tile[0] + o[0], inst.place.tile[1] + o[1]];
+        if (this.content.map.isWalkable(t[0], t[1])) {
+          tile = t;
+          slot++;
+          break;
+        }
+      }
+      arrival = Math.max(arrival, this.walkTo(c, tile, inst.place.placeId, "event"));
+    }
+    return arrival;
   }
 
   private isFree(id: string): boolean {
@@ -528,6 +730,9 @@ export class Session {
     const others = Object.values(bindings).flat().filter((id) => id !== anchor);
     if (others.some((o) => this.relations.get(anchor, o).type !== "stranger")) w *= 1.5;
     if (ev.category === "critical") w *= 0.4 + this.progress();
+    const here = this.placeAt(this.posOf(anchor));
+    const herePlace = here ? this.content.map.place(here) : undefined;
+    if (herePlace && ev.location?.at.includes(herePlace.kind)) w *= 1.5;
     return w;
   }
 
@@ -592,7 +797,7 @@ export class Session {
     const participants = [...roleOf.keys()];
     const deciders = participants.filter((c) => (ev.choices[roleOf.get(c) as string]?.length ?? 0) > 0);
     const [lo, hi] = ev.durationSeconds !== undefined ? [ev.durationSeconds, ev.durationSeconds] : this.config.deadlines[ev.importance];
-    const deadlineAt = this.now() + this.rngTiming.int(lo, hi) * MS;
+    const duration = this.rngTiming.int(lo, hi) * MS;
     const inst: Instance = {
       id,
       ev,
@@ -604,9 +809,10 @@ export class Session {
       decisions: new Map(),
       parentId,
       startedAt: this.now(),
-      deadlineAt,
-      deadlineTimer: this.timers.push(deadlineAt, { kind: "deadline", instanceId: id }),
+      deadlineAt: this.now(),
+      deadlineTimer: -1,
       resolved: false,
+      place: this.eventPlace(ev, bindings),
     };
     this.instances.set(id, inst);
     this.running.add(id);
@@ -617,9 +823,13 @@ export class Session {
     for (const c of participants) {
       const ch = this.char(c);
       ch.busyWith = id;
+      ch.stayUntil = 0;
       ch.seen.set(ev.id, (ch.seen.get(ev.id) ?? 0) + 1);
       inst.offered.set(c, this.visibleChoices(inst, c));
     }
+    inst.startedAt = this.gather(inst);
+    inst.deadlineAt = inst.startedAt + duration;
+    inst.deadlineTimer = this.timers.push(inst.deadlineAt, { kind: "deadline", instanceId: id });
     this.log.push({
       t: this.now(),
       type: "event_started",
@@ -629,7 +839,9 @@ export class Session {
       title: ev.title,
       bindings,
       parentInstanceId: parentId,
-      deadlineAt,
+      offerAt: inst.startedAt,
+      deadlineAt: inst.deadlineAt,
+      place: inst.place,
     });
     if (!ev.hidden) {
       this.onPublic({
@@ -641,11 +853,19 @@ export class Session {
         participants: participants.map((c) => ({ characterId: c, name: this.char(c).name, role: roleOf.get(c) as string })),
       });
     }
-    for (const c of participants) {
-      if (ev.roles[roleOf.get(c) as string]?.aware === false) continue; // involved without knowing it
+    if (inst.startedAt > this.now()) this.timers.push(inst.startedAt, { kind: "offer", instanceId: id });
+    else this.offer(id);
+    return inst;
+  }
+
+  /** Everyone has arrived: show the event to the participants who know about it. */
+  private offer(instanceId: string): void {
+    const inst = this.instances.get(instanceId);
+    if (!inst || inst.resolved) return;
+    for (const c of inst.participants) {
+      if (inst.ev.roles[inst.roleOf.get(c) as string]?.aware === false) continue; // involved without knowing it
       this.onNotice(c, { kind: "event", t: this.now(), view: this.view(c, inst) });
     }
-    return inst;
   }
 
   private visibleChoices(inst: Instance, characterId: string): VisibleChoice[] {
@@ -696,6 +916,7 @@ export class Session {
       role,
       participants,
       publicText: this.interpolate(inst.ev.text.public, inst.bindings),
+      place: inst.place.placeId ? (({ id, name, kind }) => ({ id, name, kind }))(this.content.map.place(inst.place.placeId)!) : null,
       ...(privateText ? { privateText: this.interpolate(privateText, inst.bindings) } : {}),
       choices: structuredClone(inst.offered.get(characterId) ?? []),
     };
@@ -824,7 +1045,9 @@ export class Session {
       c.eventsCompleted++;
       const [r0, r1] = this.config.restSeconds;
       c.availableAt = this.now() + Math.round(this.rngTiming.range(r0, r1) * MS);
-      if (c.status === "active") this.scheduleTick(c.availableAt);
+      c.stayUntil = this.now();
+      this.afterEventMovement(c);
+      if (c.status === "active") this.scheduleTick(Math.max(c.availableAt, c.stayUntil));
 
       this.onNotice(id, {
         kind: "resolved",
@@ -970,6 +1193,9 @@ export class Session {
       }
       case "status":
         for (const id of resolve(effect.target)) this.setStatus(this.char(id), effect.status, effect.cause, changes);
+        break;
+      case "move":
+        for (const id of resolve(effect.target)) this.pendingMoves.set(id, { to: effect.to, stay: (effect.staySeconds ?? 10) * MS });
         break;
     }
   }

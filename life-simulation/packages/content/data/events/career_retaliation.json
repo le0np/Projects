@@ -7,10 +7,22 @@
   "trigger": "followup_only",
   "hidden": true,
   "importance": "multi",
-  "cooldown": { "maxPerSession": 2 },
+  "cooldown": {
+    "maxPerSession": 2
+  },
+  "location": {
+    "at": [
+      "work"
+    ],
+    "of": "role:aggressor"
+  },
   "roles": {
-    "aggressor": { "count": 1 },
-    "target": { "count": 1 }
+    "aggressor": {
+      "count": 1
+    },
+    "target": {
+      "count": 1
+    }
   },
   "text": {
     "public": "Weeks later, the atmosphere between {aggressor} and {target} at work is still cold.",
@@ -21,57 +33,246 @@
   },
   "choices": {
     "aggressor": [
-      { "id": "sabotage", "label": "Quietly sabotage {target}'s project", "tags": ["threaten", "risk"],
-        "perceived": { "risk": 2, "benefit": 1, "relation": { "target": -2 } } },
-      { "id": "confront", "label": "Confront {target} openly", "tags": ["threaten"],
-        "perceived": { "mental": -1, "relation": { "target": -1 } } },
-      { "id": "apologize", "label": "Admit {target} was right to speak up", "tags": ["apologize", "take_responsibility"],
-        "perceived": { "reputation": 1, "relation": { "target": 2 } } },
-      { "id": "let_go", "label": "Let it go", "tags": ["ignore"], "default": true }
+      {
+        "id": "sabotage",
+        "label": "Quietly sabotage {target}'s project",
+        "tags": [
+          "threaten",
+          "risk"
+        ],
+        "perceived": {
+          "risk": 2,
+          "benefit": 1,
+          "relation": {
+            "target": -2
+          }
+        }
+      },
+      {
+        "id": "confront",
+        "label": "Confront {target} openly",
+        "tags": [
+          "threaten"
+        ],
+        "perceived": {
+          "mental": -1,
+          "relation": {
+            "target": -1
+          }
+        }
+      },
+      {
+        "id": "apologize",
+        "label": "Admit {target} was right to speak up",
+        "tags": [
+          "apologize",
+          "take_responsibility"
+        ],
+        "perceived": {
+          "reputation": 1,
+          "relation": {
+            "target": 2
+          }
+        }
+      },
+      {
+        "id": "let_go",
+        "label": "Let it go",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
     ],
     "target": [
-      { "id": "keep_records", "label": "Start documenting everything you do", "tags": ["take_responsibility"],
-        "perceived": { "mental": -1, "career": 1 } },
-      { "id": "reach_out", "label": "Try to make peace with {aggressor}", "tags": ["apologize", "help"],
-        "perceived": { "relation": { "aggressor": 1 } } },
-      { "id": "carry_on", "label": "Carry on as usual", "tags": ["ignore"], "default": true }
+      {
+        "id": "keep_records",
+        "label": "Start documenting everything you do",
+        "tags": [
+          "take_responsibility"
+        ],
+        "perceived": {
+          "mental": -1,
+          "career": 1
+        }
+      },
+      {
+        "id": "reach_out",
+        "label": "Try to make peace with {aggressor}",
+        "tags": [
+          "apologize",
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "aggressor": 1
+          }
+        }
+      },
+      {
+        "id": "carry_on",
+        "label": "Carry on as usual",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
     ]
   },
   "outcomes": [
-    { "id": "sabotage_caught", "when": { "all": [
-        { "chose": "sabotage", "role": "aggressor" }, { "chose": "keep_records", "role": "target" } ] },
-      "important": true, "revealChoices": true,
+    {
+      "id": "sabotage_caught",
+      "when": {
+        "all": [
+          {
+            "chose": "sabotage",
+            "role": "aggressor"
+          },
+          {
+            "chose": "keep_records",
+            "role": "target"
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
       "effects": [
-        { "type": "attr", "target": "role:aggressor", "delta": { "career": -20, "reputation": -15 } },
-        { "type": "relation", "from": "role:aggressor", "to": "role:target", "setType": "enemy", "affinity": -20, "mutual": true }
+        {
+          "type": "attr",
+          "target": "role:aggressor",
+          "delta": {
+            "career": -20,
+            "reputation": -15
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:aggressor",
+          "to": "role:target",
+          "setType": "enemy",
+          "affinity": -20,
+          "mutual": true
+        }
       ],
-      "text": { "aggressor": "{target}'s records prove the sabotage. HR wants to see you.",
-                "target": "Your notes show exactly who tampered with your work: {aggressor}." } },
-    { "id": "sabotaged", "when": { "chose": "sabotage", "role": "aggressor" }, "important": true,
+      "text": {
+        "aggressor": "{target}'s records prove the sabotage. HR wants to see you.",
+        "target": "Your notes show exactly who tampered with your work: {aggressor}."
+      }
+    },
+    {
+      "id": "sabotaged",
+      "when": {
+        "chose": "sabotage",
+        "role": "aggressor"
+      },
+      "important": true,
       "effects": [
-        { "type": "attr", "target": "role:target", "delta": { "career": -12, "mental": -8 } },
-        { "type": "relation", "from": "role:target", "to": "role:aggressor", "trust": -10 }
+        {
+          "type": "attr",
+          "target": "role:target",
+          "delta": {
+            "career": -12,
+            "mental": -8
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:target",
+          "to": "role:aggressor",
+          "trust": -10
+        }
       ],
-      "text": { "aggressor": "{target}'s project falls apart. Nobody suspects you.",
-                "target": "Your project collapses and you cannot explain why." } },
-    { "id": "reconciled", "when": { "any": [
-        { "chose": "apologize", "role": "aggressor" },
-        { "all": [ { "chose": "let_go", "role": "aggressor" }, { "chose": "reach_out", "role": "target" } ] } ] },
+      "text": {
+        "aggressor": "{target}'s project falls apart. Nobody suspects you.",
+        "target": "Your project collapses and you cannot explain why."
+      }
+    },
+    {
+      "id": "reconciled",
+      "when": {
+        "any": [
+          {
+            "chose": "apologize",
+            "role": "aggressor"
+          },
+          {
+            "all": [
+              {
+                "chose": "let_go",
+                "role": "aggressor"
+              },
+              {
+                "chose": "reach_out",
+                "role": "target"
+              }
+            ]
+          }
+        ]
+      },
       "effects": [
-        { "type": "relation", "from": "role:aggressor", "to": "role:target", "setType": "acquaintance", "affinity": 25, "trust": 10, "mutual": true },
-        { "type": "attr", "target": "role:aggressor", "delta": { "mental": 5 } }
+        {
+          "type": "relation",
+          "from": "role:aggressor",
+          "to": "role:target",
+          "setType": "acquaintance",
+          "affinity": 25,
+          "trust": 10,
+          "mutual": true
+        },
+        {
+          "type": "attr",
+          "target": "role:aggressor",
+          "delta": {
+            "mental": 5
+          }
+        }
       ],
-      "text": { "aggressor": "Clearing the air with {target} feels better than expected.",
-                "target": "You and {aggressor} finally talk it through." } },
-    { "id": "confrontation", "when": { "chose": "confront", "role": "aggressor" },
+      "text": {
+        "aggressor": "Clearing the air with {target} feels better than expected.",
+        "target": "You and {aggressor} finally talk it through."
+      }
+    },
+    {
+      "id": "confrontation",
+      "when": {
+        "chose": "confront",
+        "role": "aggressor"
+      },
       "effects": [
-        { "type": "attr", "target": "role:aggressor", "delta": { "mental": -5 } },
-        { "type": "attr", "target": "role:target", "delta": { "mental": -5 } },
-        { "type": "relation", "from": "role:aggressor", "to": "role:target", "setType": "rival", "affinity": -10, "mutual": true }
+        {
+          "type": "attr",
+          "target": "role:aggressor",
+          "delta": {
+            "mental": -5
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:target",
+          "delta": {
+            "mental": -5
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:aggressor",
+          "to": "role:target",
+          "setType": "rival",
+          "affinity": -10,
+          "mutual": true
+        }
       ],
-      "text": { "aggressor": "You say what you think of {target}. Everyone in the office hears it.",
-                "target": "{aggressor} confronts you in front of everyone." } },
-    { "id": "cold_war",
-      "text": { "aggressor": "You keep your resentment to yourself.", "target": "The coldness continues." } }
+      "text": {
+        "aggressor": "You say what you think of {target}. Everyone in the office hears it.",
+        "target": "{aggressor} confronts you in front of everyone."
+      }
+    },
+    {
+      "id": "cold_war",
+      "text": {
+        "aggressor": "You keep your resentment to yourself.",
+        "target": "The coldness continues."
+      }
+    }
   ]
 }

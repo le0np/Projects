@@ -23,6 +23,13 @@ export interface SessionConfig {
   startAge: number;
   /** From this age on, health drops by `healthPerYear` at every new year. */
   aging: { fromAge: number; healthPerYear: number };
+  /** Movement on the town map (concept v2 §2). */
+  walkTilesPerSecond: number;
+  /**
+   * Routine within each season: the first `night` share everyone sleeps at home,
+   * until `workEnd` employed people are at work, the rest is free time.
+   */
+  routine: { night: number; workEnd: number; leisureStaySeconds: [number, number] };
   /** Pre-existing relationships at session start (decision D3). */
   startingRelationships: {
     /** Number of colleague pairs = round(participants × ratio). */
@@ -42,6 +49,8 @@ export const DEFAULT_CONFIG: Omit<SessionConfig, "seed"> = {
   baseAttributes: { health: 75, mental: 70, money: 50, reputation: 50, career: 50 },
   attributeVariation: 8,
   startingRelationships: { colleaguePairRatio: 0.25, familyChance: 0.3, partnerChance: 0.25 },
+  walkTilesPerSecond: 4,
+  routine: { night: 0.15, workEnd: 0.6, leisureStaySeconds: [3, 8] },
   yearSeconds: 30,
   startAge: 18,
   aging: { fromAge: 30, healthPerYear: 1 },
@@ -55,5 +64,6 @@ export function resolveConfig(partial: Partial<SessionConfig> & { seed: string }
     baseAttributes: { ...DEFAULT_CONFIG.baseAttributes, ...partial.baseAttributes },
     startingRelationships: { ...DEFAULT_CONFIG.startingRelationships, ...partial.startingRelationships },
     aging: { ...DEFAULT_CONFIG.aging, ...partial.aging },
+    routine: { ...DEFAULT_CONFIG.routine, ...partial.routine },
   };
 }

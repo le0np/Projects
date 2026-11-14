@@ -1,13 +1,50 @@
 {
-  "schemaVersion": 1, "id": "career_job_referral", "version": 1, "title": "A Good Word",
-  "category": "career", "trigger": "director", "importance": "multi", "weight": 7,
-  "cooldown": { "maxPerSession": 1 },
+  "schemaVersion": 1,
+  "id": "career_job_referral",
+  "version": 1,
+  "title": "A Good Word",
+  "category": "career",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 7,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "cafe"
+    ]
+  },
   "roles": {
-    "insider": { "count": 1, "conditions": { "fact": "employed" } },
-    "seeker": { "count": 1, "conditions": { "all": [
-      { "relation": { "to": "role:insider", "typeIn": ["acquaintance", "friend", "family", "partner"] } },
-      { "fact": "owes_favor", "about": "role:insider", "present": false }
-    ] } }
+    "insider": {
+      "count": 1,
+      "conditions": {
+        "fact": "employed"
+      }
+    },
+    "seeker": {
+      "count": 1,
+      "conditions": {
+        "all": [
+          {
+            "relation": {
+              "to": "role:insider",
+              "typeIn": [
+                "acquaintance",
+                "friend",
+                "family",
+                "partner"
+              ]
+            }
+          },
+          {
+            "fact": "owes_favor",
+            "about": "role:insider",
+            "present": false
+          }
+        ]
+      }
+    }
   },
   "text": {
     "public": "{seeker} is unhappy at work and asks {insider} to recommend them for an opening at {insider}'s company.",
@@ -18,37 +55,205 @@
   },
   "choices": {
     "insider": [
-      { "id": "recommend", "label": "Put in a strong word for {seeker}", "tags": ["help", "risk"], "perceived": { "relation": { "seeker": 2 }, "risk": 1 } },
-      { "id": "lukewarm", "label": "Pass on the CV without comment", "tags": ["negotiate"], "perceived": { "relation": { "seeker": 0 } } },
-      { "id": "decline", "label": "Say you cannot help", "tags": ["refuse"], "default": true, "perceived": { "relation": { "seeker": -1 } } }
+      {
+        "id": "recommend",
+        "label": "Put in a strong word for {seeker}",
+        "tags": [
+          "help",
+          "risk"
+        ],
+        "perceived": {
+          "relation": {
+            "seeker": 2
+          },
+          "risk": 1
+        }
+      },
+      {
+        "id": "lukewarm",
+        "label": "Pass on the CV without comment",
+        "tags": [
+          "negotiate"
+        ],
+        "perceived": {
+          "relation": {
+            "seeker": 0
+          }
+        }
+      },
+      {
+        "id": "decline",
+        "label": "Say you cannot help",
+        "tags": [
+          "refuse"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "seeker": -1
+          }
+        }
+      }
     ],
     "seeker": [
-      { "id": "honest_cv", "label": "Fix the CV before it goes in", "tags": ["truth"], "perceived": { "career": -1 } },
-      { "id": "keep_cv", "label": "Leave the CV as it is", "tags": ["lie"], "default": true, "perceived": { "career": 1, "risk": 1 } }
+      {
+        "id": "honest_cv",
+        "label": "Fix the CV before it goes in",
+        "tags": [
+          "truth"
+        ],
+        "perceived": {
+          "career": -1
+        }
+      },
+      {
+        "id": "keep_cv",
+        "label": "Leave the CV as it is",
+        "tags": [
+          "lie"
+        ],
+        "default": true,
+        "perceived": {
+          "career": 1,
+          "risk": 1
+        }
+      }
     ]
   },
   "outcomes": [
-    { "id": "cv_exposed", "when": { "all": [ { "chose": "recommend", "role": "insider" }, { "chose": "keep_cv", "role": "seeker" } ] }, "chance": 0.25,
-      "important": true, "revealChoices": true,
+    {
+      "id": "cv_exposed",
+      "when": {
+        "all": [
+          {
+            "chose": "recommend",
+            "role": "insider"
+          },
+          {
+            "chose": "keep_cv",
+            "role": "seeker"
+          }
+        ]
+      },
+      "chance": 0.25,
+      "important": true,
+      "revealChoices": true,
       "effects": [
-        { "type": "attr", "target": "role:insider", "delta": { "reputation": -8, "career": -4 } },
-        { "type": "attr", "target": "role:seeker", "delta": { "reputation": -8, "mental": -5 } },
-        { "type": "relation", "from": "role:insider", "to": "role:seeker", "trust": -25, "affinity": -15 }
+        {
+          "type": "attr",
+          "target": "role:insider",
+          "delta": {
+            "reputation": -8,
+            "career": -4
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:seeker",
+          "delta": {
+            "reputation": -8,
+            "mental": -5
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:insider",
+          "to": "role:seeker",
+          "trust": -25,
+          "affinity": -15
+        }
       ],
-      "text": { "insider": "HR checks the CV. Your recommendation now looks foolish.", "seeker": "HR found the inflated experience. {insider} vouched for you." } },
-    { "id": "hired", "when": { "chose": "recommend", "role": "insider" }, "important": true,
+      "text": {
+        "insider": "HR checks the CV. Your recommendation now looks foolish.",
+        "seeker": "HR found the inflated experience. {insider} vouched for you."
+      }
+    },
+    {
+      "id": "hired",
+      "when": {
+        "chose": "recommend",
+        "role": "insider"
+      },
+      "important": true,
       "effects": [
-        { "type": "attr", "target": "role:seeker", "delta": { "career": 8, "money": 5, "mental": 6 } },
-        { "type": "fact", "target": "role:seeker", "key": "owes_favor", "about": "role:insider" },
-        { "type": "relation", "from": "role:seeker", "to": "role:insider", "setType": "colleague", "affinity": 20, "trust": 15, "mutual": true }
+        {
+          "type": "attr",
+          "target": "role:seeker",
+          "delta": {
+            "career": 8,
+            "money": 5,
+            "mental": 6
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:seeker",
+          "key": "owes_favor",
+          "about": "role:insider"
+        },
+        {
+          "type": "relation",
+          "from": "role:seeker",
+          "to": "role:insider",
+          "setType": "colleague",
+          "affinity": 20,
+          "trust": 15,
+          "mutual": true
+        }
       ],
-      "followUps": [{ "event": "career_rising_star", "delaySeconds": [50, 110], "chance": 0.8, "roles": { "star": "role:seeker", "mentor": "role:insider" } }],
-      "text": { "insider": "{seeker} gets the job. You are colleagues now.", "seeker": "You got the job — thanks to {insider}. You owe them." } },
-    { "id": "interview", "when": { "chose": "lukewarm", "role": "insider" },
-      "effects": [{ "type": "attr", "target": "role:seeker", "delta": { "mental": -2 } }],
-      "text": { "insider": "You pass the CV on. It is up to HR now.", "seeker": "An interview, then silence. Without a real recommendation, someone else got it." } },
-    { "id": "turned_down",
-      "effects": [{ "type": "relation", "from": "role:seeker", "to": "role:insider", "affinity": -10 }],
-      "text": { "insider": "You tell {seeker} you cannot help.", "seeker": "{insider} will not help. Fine." } }
+      "followUps": [
+        {
+          "event": "career_rising_star",
+          "delaySeconds": [
+            50,
+            110
+          ],
+          "chance": 0.8,
+          "roles": {
+            "star": "role:seeker",
+            "mentor": "role:insider"
+          }
+        }
+      ],
+      "text": {
+        "insider": "{seeker} gets the job. You are colleagues now.",
+        "seeker": "You got the job — thanks to {insider}. You owe them."
+      }
+    },
+    {
+      "id": "interview",
+      "when": {
+        "chose": "lukewarm",
+        "role": "insider"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:seeker",
+          "delta": {
+            "mental": -2
+          }
+        }
+      ],
+      "text": {
+        "insider": "You pass the CV on. It is up to HR now.",
+        "seeker": "An interview, then silence. Without a real recommendation, someone else got it."
+      }
+    },
+    {
+      "id": "turned_down",
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:seeker",
+          "to": "role:insider",
+          "affinity": -10
+        }
+      ],
+      "text": {
+        "insider": "You tell {seeker} you cannot help.",
+        "seeker": "{insider} will not help. Fine."
+      }
+    }
   ]
 }

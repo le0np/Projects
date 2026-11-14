@@ -10,6 +10,9 @@ import {
   CareersFileSchema,
   EventSchema,
   FactsFileSchema,
+  MapSchema,
+  PLACE_KINDS,
+  TownMap,
   SESSION_LIMITS,
   parseRef,
   refsOf,
@@ -43,6 +46,7 @@ export interface RawFile {
 export interface RawContent {
   careers: RawFile;
   facts: RawFile;
+  map: RawFile;
   events: RawFile[];
 }
 
@@ -50,6 +54,7 @@ export interface ContentBundle {
   careers: ReadonlyMap<string, Career>;
   facts: ReadonlyMap<string, Fact>;
   events: ReadonlyMap<string, EventDefinition>;
+  map: TownMap;
   /** sha256 of the raw content; recorded in session logs for replay. */
   hash: string;
 }
@@ -117,6 +122,8 @@ interface Registry {
   careersWithSpecials: Set<string>;
   /** Follow-up edges that fire immediately and unconditionally (loop detection). */
   immediateEdges: Map<string, Set<string>>;
+  /** Place kinds present on the map (null if the map failed to load). */
+  placeKinds: Set<string> | null;
 }
 
 interface Scope {
@@ -141,6 +148,7 @@ export function validateContent(raw: RawContent): ValidationResult {
     followUpEdges: new Map(),
     careersWithSpecials: new Set(),
     immediateEdges: new Map(),
+    placeKinds: null,
   };
   const reporter =
     (source: string): Report =>
@@ -174,6 +182,33 @@ export function validateContent(raw: RawContent): ValidationResult {
       if (f.recap?.about && f.scope !== "pair") report("error", `facts[${i}].recap.about`, "only pair facts have an `about` character");
       reg.facts.set(f.key, f);
     });
+  }
+
+  // --- town map
+  let town: TownMap | null = null;
+  const mapParsed = MapSchema.safeParse(raw.map.data);
+  if (!mapParsed.success) formatZodIssues(mapParsed.error, raw.map.file, issues);
+  else {
+    const report = reporter(raw.map.file);
+    town = new TownMap(mapParsed.data);
+    const ids = new Set<string>();
+    const first = mapParsed.data.places[0]!;
+    mapParsed.data.places.forEach((p, i) => {
+      const path = `places[${i}]`;
+      if (ids.has(p.id)) report("error", `${path}.id`, `duplicate place id "${p.id}"`);
+      ids.add(p.id);
+      if (p.x + p.w > mapParsed.data.width || p.y + p.h > mapParsed.data.height) report("error", path, "place is outside the map");
+      if (!town!.isWalkable(p.door[0], p.door[1])) report("error", `${path}.door`, "door is not on a walkable tile");
+      else if (p !== first && town!.route(first.door, p.door).length === 0) report("error", `${path}.door`, `"${p.id}" cannot be reached from "${first.id}"`);
+    });
+    const homes = mapParsed.data.places.filter((p) => p.kind === "home").length;
+    if (homes < SESSION_LIMITS.maxParticipants) {
+      report("error", "places", `needs at least ${SESSION_LIMITS.maxParticipants} homes (one per character), found ${homes}`);
+    }
+    reg.placeKinds = new Set(mapParsed.data.places.map((p) => p.kind));
+    for (const c of reg.careers.values()) {
+      if (!reg.placeKinds.has(c.workplace)) report("error", "places", `no place of kind "${c.workplace}" for career "${c.id}"`);
+    }
   }
 
   // --- events: structure first, so cross-references between events can be resolved
@@ -221,19 +256,19 @@ export function validateContent(raw: RawContent): ValidationResult {
     report("error", cycle[0] as string, `immediate unconditional follow-up loop: ${cycle.join(" → ")}`);
   }
 
-  const hasErrors = issues.some((i) => i.severity === "error");
+  const hasErrors = issues.some((i) => i.severity === "error") || town === null;
   return {
     issues,
     bundle: hasErrors
       ? null
-      : { careers: reg.careers, facts: reg.facts, events: reg.events, hash: hashContent(raw) },
+      : { careers: reg.careers, facts: reg.facts, events: reg.events, map: town as TownMap, hash: hashContent(raw) },
   };
 }
 
 export function hashContent(raw: RawContent): string {
   const events = [...raw.events].sort((a, b) => a.file.localeCompare(b.file)).map((e) => e.data);
   return createHash("sha256")
-    .update(JSON.stringify([raw.careers.data, raw.facts.data, events]))
+    .update(JSON.stringify([raw.careers.data, raw.facts.data, raw.map.data, events]))
     .digest("hex")
     .slice(0, 16);
 }
@@ -269,6 +304,10 @@ function checkEvent(ev: EventDefinition, reg: Registry, report: Report): void {
 
   if (ev.conditions) {
     checkCondition(ev.conditions, "conditions", reg, report, { roles, allowSelf: false, allowSession: false });
+  }
+  if (ev.location) {
+    if (ev.location.of) checkRef(ev.location.of, "location.of", { roles, allowSelf: false, allowSession: false }, report);
+    for (const at of ev.location.at) checkPlaceKind(at, "location.at", reg, report);
   }
 
   // Text
@@ -346,6 +385,11 @@ function checkPerceived(p: Perceived | undefined, path: string, roles: ReadonlyS
   for (const role of Object.keys(p?.relation ?? {})) {
     if (!roles.has(role)) report("error", `${path}.relation.${role}`, `unknown role "${role}"`);
   }
+}
+
+function checkPlaceKind(kind: string, path: string, reg: Registry, report: Report): void {
+  if (!reg.placeKinds || !(PLACE_KINDS as readonly string[]).includes(kind)) return; // "work", "street", "here" are always valid
+  if (!reg.placeKinds.has(kind)) report("error", path, `the map has no place of kind "${kind}"`);
 }
 
 function checkCareers(ids: readonly string[] | undefined, path: string, reg: Registry, report: Report): void {
@@ -430,6 +474,10 @@ function checkEffects(effects: readonly Effect[], path: string, reg: Registry, r
     switch (effect.type) {
       case "attr":
         checkRef(effect.target, `${p}.target`, nonFactScope, report);
+        break;
+      case "move":
+        checkRef(effect.target, `${p}.target`, nonFactScope, report);
+        checkPlaceKind(effect.to, `${p}.to`, reg, report);
         break;
       case "status": {
         checkRef(effect.target, `${p}.target`, nonFactScope, report);
