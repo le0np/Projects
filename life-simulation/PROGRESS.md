@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-**MVP je funkcionalno kompletan (M1–M7).** Igra se igra u browseru na desktopu i mobitelu, s ljudima i botovima zajedno; sesije samo s botovima rade bez nadzora. Svi kriteriji prihvaćanja iz specifikacije su ispunjeni i provjereni (tablica niže). Preostaje M8: balansiranje s pravim igračima.
+**MVP je funkcionalno kompletan (M1–M7).** Vlasnik je 14.–15. studenog 2026. dopunio koncept (`docs/spec/08_CONCEPT_V2.md`): grad gledan odozgo, vrijeme i starenje od 18 godina, kaos (gradski preokreti, smicalice, efekt leptira), humorističan ton i likovi u stilu B3. Rad se nastavlja po planu za koncept v2 (`docs/IMPLEMENTATION_PLAN.md` §9), počevši od M8.
 
 ### Kriteriji prihvaćanja (00_OVERVIEW)
 
@@ -230,6 +230,17 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 - Greška se nije vidjela jer su testovi i ručne provjere uvijek koristili bazu u memoriji. Provjereno je sada bez mape `data/`: prvo pokretanje stvori bazu i izvrši migraciju, drugo koristi postojeću bazu.
 - Projekt je prebačen na granu `dev` (fast-forward), kako traži `CLAUDE.md`.
 
+### Koncept v2 (dogovor s vlasnikom)
+
+- Uz vlasnika je kroz skice i pitanja dogovoren novi smjer; zapisan je u `docs/spec/08_CONCEPT_V2.md`, a odobrene skice su u `docs/sketches/`.
+- Odbačeni smjerovi, da se ne vraćamo na njih:
+  - kartice bez mape;
+  - pravi sandbox u kojem igrač upravlja figuricom;
+  - Among Us s tajnim saboterima;
+  - „svatko ima tajni cilj protiv nekoga”;
+  - dug život kao glavni cilj;
+  - lica nalik South Parku (stil B s velikim bijelim očima).
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:
@@ -260,13 +271,7 @@ Provedeno 13. studenog 2026.:
 
 ## Sljedeći koraci
 
-1. M8 (closed beta):
-   - igranje s pravim ljudima i podešavanje rokova i odmora;
-   - analitika iz baze (`session_results`, `decisions`);
-   - balans karijera i smrtnosti prema stvarnim odlukama.
-2. Prikaz neaktiviranih odgođenih posljedica u Life Recapu („što bi se dogodilo poslije“).
-3. Nastavak sesije nakon restarta servera (replay iz loga i odluka u bazi).
-4. Po želji vlasnika: trajno sjećanje botova među sesijama (02 §7, faza nakon MVP-a) i LLM proširenje za botove (02 §2, opcionalno).
+1. M8 Vrijeme i dob → M9 Grad i rutina → M10 Kaos → M11 Prikaz → M12 Sadržaj → M13 Balans (plan §9).
 
 ## Handoff za novi chat
 

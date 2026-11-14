@@ -208,3 +208,16 @@ Ove odluke nisu mijenjale koncept igre. Zapisane su ovdje jer odstupaju od doslo
 | Odspojeni igrač | Mjesto u sesiji ostaje; za njegove odluke vrijedi default kad istekne rok; pri ponovnom spajanju dobiva cijelo stanje. Odspojeni igrač se miče iz reda za matchmaking. | 04 §5: „configurable timeout and default decision policy“. Rok eventa je ujedno i timeout. |
 | Restart servera | Sesije koje su bile u tijeku označe se kao `cancelled` (`server_restart`). | Stanje sesije je u memoriji. Nastavak nakon restarta (replay iz loga) moguć je kasnije, ali nije potreban za MVP. |
 | Ubrzanje vremena | `TIME_SCALE` ubrzava sesiju za demo i testove; engine to ne zna (vidi samo `Clock`). | Testovi cijele multiplayer sesije traju nekoliko sekundi. |
+
+## 9. Plan za koncept v2 (dokument 08)
+
+MVP iz M1–M7 ostaje temelj: engine, botovi, eventi, server i baza se nadograđuju, ništa se ne baca.
+
+| M | Sadržaj | Gotovo kad |
+|---|---|---|
+| **M8 Vrijeme i dob** | Kalendar u engineu (godina ≈ 30 s, godišnja doba), dob od 18, starenje (zdravlje s godinama lagano slabi), uvjeti `age` i `season` u jeziku uvjeta, dob u prikazu lika i u Life Recapu | evente se može vezati uz dob i godišnje doba; batch pokazuje dob na kraju |
+| **M9 Grad i rutina** | Mapa grada kao sadržaj (`map.json`: mjesta, ceste), dom i radno mjesto svakog lika, rutina (posao, san, slobodno vrijeme prema osobnosti), mjesto eventa i odredište izbora; kretanje računa server (ruta i vrijeme dolaska), a direktor bira evente i sudionike prema mjestu i blizini | sesija samo s botovima ima smislena kretanja; log sadrži tko je bio gdje |
+| **M10 Kaos** | Gradski preokreti (eventi za cijeli grad), smicalice (radnja koju igrač pokreće sam, 1–2 po sesiji, tajna do Life Recapa), češći lanci posljedica; botovi koriste smicalice prema osobnosti | batch: preokreti 2–3 po sesiji, smicalice se koriste, recap ih otkriva |
+| **M11 Prikaz** | Canvas diorama: mapa, likovi B3 s animacijom od 8 sličica u sekundi, godišnja doba, panel s izborima iznad mape, gumb za smicalicu | e2e prolazi na desktopu i mobitelu |
+| **M12 Sadržaj** | Postojeći eventi prepisani u humorističnom tonu i dopunjeni mjestom i dobi; novi eventi za preokrete, smicalice i životne faze | validator čist; svaki event se pojavljuje u batchu |
+| **M13 Balans** | Batch: koliko je kaosa dovoljno, a da se nikome život ne raspadne u svakoj sesiji; tempo za ljude | brojke zapisane u izvještaju |

@@ -20,6 +20,7 @@ Documents:
 5. [05_DATABASE_SCHEMA.md](05_DATABASE_SCHEMA.md)
 6. [06_MVP_ROADMAP.md](06_MVP_ROADMAP.md)
 7. [07_TESTING_SIMULATION.md](07_TESTING_SIMULATION.md)
+8. [08_CONCEPT_V2.md](08_CONCEPT_V2.md) — **dopuna vlasnika (studeni 2026.): grad odozgo, vrijeme i starenje, kaos, humor, stil likova B3. Gdje se razlikuje od 01–07, vrijedi 08.**
 
 ---
 
