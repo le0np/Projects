@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "id": "crash_regret",
+  "title": "Seller's Remorse",
+  "category": "financial",
+  "trigger": "followup_only",
+  "importance": "multi",
+  "cooldown": {
+    "maxPerSession": 2
+  },
+  "location": {
+    "at": [
+      "street",
+      "cafe"
+    ]
+  },
+  "roles": {
+    "victim": {
+      "count": 1
+    },
+    "winner": {
+      "count": 1
+    }
+  },
+  "text": {
+    "public": "Prices have recovered. {victim} spots {winner} driving their old car.",
+    "private": {
+      "victim": "It is worth four times what you sold it for.",
+      "winner": "Uh-oh."
+    }
+  },
+  "choices": {
+    "victim": [
+      {
+        "id": "demand",
+        "label": "Demand the difference",
+        "tags": [
+          "threaten"
+        ],
+        "perceived": {
+          "money": 1,
+          "relation": {
+            "winner": -2
+          }
+        }
+      },
+      {
+        "id": "laugh",
+        "label": "Laugh it off",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "mental": 1
+        }
+      }
+    ],
+    "winner": [
+      {
+        "id": "share",
+        "label": "Offer to share the profit",
+        "tags": [
+          "sacrifice",
+          "help"
+        ],
+        "perceived": {
+          "money": -1,
+          "relation": {
+            "victim": 2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -6
+            }
+          }
+        ]
+      },
+      {
+        "id": "shrug",
+        "label": "A deal is a deal",
+        "tags": [
+          "refuse"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "victim": -1
+          }
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "shared",
+      "when": {
+        "chose": "share",
+        "role": "winner"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "money": 6
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:victim",
+          "to": "role:winner",
+          "affinity": 20,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "victim": "{winner} hands you an envelope. Faith in humanity: restored.",
+        "winner": "You share. It stings less than expected."
+      }
+    },
+    {
+      "id": "shouting",
+      "when": {
+        "chose": "demand",
+        "role": "victim"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:victim",
+          "to": "role:winner",
+          "setType": "rival",
+          "affinity": -25,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "victim": "You shout. They drive off. In your car.",
+        "winner": "{victim} yells at you from the pavement."
+      }
+    },
+    {
+      "id": "let_go",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "victim": "You laugh. Mostly on the outside.",
+        "winner": "{victim} waves. You wave back, awkwardly."
+      }
+    }
+  ]
+}

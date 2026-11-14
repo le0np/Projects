@@ -4,4 +4,4 @@ coverage/
 sim-output/
 *.log
 .env
-data/
+/data/

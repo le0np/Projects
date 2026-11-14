@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "id": "storm_tree_on_car",
+  "title": "A Tree on the Car",
+  "category": "everyday",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 14,
+  "cooldown": {
+    "maxPerSession": 2,
+    "maxPerCharacter": 1
+  },
+  "location": {
+    "at": [
+      "street"
+    ]
+  },
+  "conditions": {
+    "sessionFact": "storm"
+  },
+  "roles": {
+    "owner": {
+      "count": 1
+    },
+    "neighbor": {
+      "count": 1
+    }
+  },
+  "text": {
+    "public": "The storm drops a tree onto {owner}'s car. The tree came from {neighbor}'s garden.",
+    "private": {
+      "owner": "Your car is now a convertible.",
+      "neighbor": "You were told to cut that tree down three years ago."
+    }
+  },
+  "choices": {
+    "owner": [
+      {
+        "id": "ask_help",
+        "label": "Ask {neighbor} to help clear it",
+        "tags": [
+          "negotiate"
+        ],
+        "perceived": {
+          "relation": {
+            "neighbor": 1
+          }
+        }
+      },
+      {
+        "id": "blame",
+        "label": "Shout that it is all {neighbor}'s fault",
+        "tags": [
+          "threaten"
+        ],
+        "perceived": {
+          "money": 1,
+          "relation": {
+            "neighbor": -2
+          }
+        }
+      },
+      {
+        "id": "insurance",
+        "label": "Call the insurance and wait",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "money": -1
+        }
+      }
+    ],
+    "neighbor": [
+      {
+        "id": "chainsaw",
+        "label": "Fetch the chainsaw and help",
+        "tags": [
+          "help",
+          "risk"
+        ],
+        "perceived": {
+          "risk": 1,
+          "relation": {
+            "owner": 2
+          }
+        }
+      },
+      {
+        "id": "pay",
+        "label": "Offer to pay for the damage",
+        "tags": [
+          "take_responsibility",
+          "sacrifice"
+        ],
+        "perceived": {
+          "money": -2,
+          "relation": {
+            "owner": 2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -10
+            }
+          }
+        ]
+      },
+      {
+        "id": "hide",
+        "label": "Pretend you are not home",
+        "tags": [
+          "ignore",
+          "avoid_responsibility"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "owner": -1
+          }
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "chainsaw_mishap",
+      "when": {
+        "chose": "chainsaw",
+        "role": "neighbor"
+      },
+      "chance": 0.25,
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:neighbor",
+          "delta": {
+            "health": -10
+          }
+        },
+        {
+          "type": "move",
+          "target": "role:neighbor",
+          "to": "hospital",
+          "staySeconds": 8
+        },
+        {
+          "type": "relation",
+          "from": "role:owner",
+          "to": "role:neighbor",
+          "affinity": 15
+        }
+      ],
+      "text": {
+        "owner": "{neighbor} heroically saws the tree — and a bit of their own thumb.",
+        "neighbor": "Tree: removed. Thumb: mostly attached."
+      }
+    },
+    {
+      "id": "teamwork",
+      "when": {
+        "any": [
+          {
+            "chose": "chainsaw",
+            "role": "neighbor"
+          },
+          {
+            "chose": "pay",
+            "role": "neighbor"
+          }
+        ]
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:owner",
+          "to": "role:neighbor",
+          "affinity": 25,
+          "trust": 15,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "owner": "{neighbor} turns up with sawdust in their hair and an apology. Storm friends.",
+        "neighbor": "You help. It feels oddly heroic."
+      }
+    },
+    {
+      "id": "feud",
+      "when": {
+        "chose": "blame",
+        "role": "owner"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:owner",
+          "to": "role:neighbor",
+          "setType": "rival",
+          "affinity": -20,
+          "mutual": true
+        },
+        {
+          "type": "attr",
+          "target": "role:owner",
+          "delta": {
+            "mental": -4
+          }
+        }
+      ],
+      "text": {
+        "owner": "You shout at {neighbor} in the rain. The tree does not care.",
+        "neighbor": "{owner} is screaming at you over a tree. In a hurricane."
+      }
+    },
+    {
+      "id": "paperwork",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:owner",
+          "delta": {
+            "money": -6,
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "owner": "The insurance says trees are \"an act of God\". God does not answer your emails.",
+        "neighbor": "You watch from behind the curtain."
+      }
+    }
+  ]
+}

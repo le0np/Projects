@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "id": "festival_pie_contest",
+  "title": "The Pie Contest",
+  "category": "social",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 16,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "park"
+    ]
+  },
+  "conditions": {
+    "sessionFact": "festival"
+  },
+  "roles": {
+    "bakers": {
+      "count": [
+        2,
+        3
+      ]
+    }
+  },
+  "text": {
+    "public": "The festival pie contest! {bakers} enter. The prize is a trophy and eternal bragging rights.",
+    "private": {
+      "bakers": "Last year's winner still mentions it at every dinner party."
+    }
+  },
+  "choices": {
+    "bakers": [
+      {
+        "id": "bake",
+        "label": "Bake your grandmother's recipe",
+        "tags": [
+          "truth"
+        ],
+        "default": true,
+        "perceived": {
+          "reputation": 1
+        }
+      },
+      {
+        "id": "buy",
+        "label": "Buy a pie at MegaMart and claim you baked it",
+        "tags": [
+          "lie",
+          "risk"
+        ],
+        "perceived": {
+          "reputation": 2,
+          "risk": 1
+        }
+      },
+      {
+        "id": "salt",
+        "label": "Swap the sugar in a rival's kitchen for salt",
+        "tags": [
+          "lie",
+          "threaten",
+          "risk"
+        ],
+        "perceived": {
+          "reputation": 2,
+          "risk": 2
+        },
+        "effects": [
+          {
+            "type": "relation",
+            "from": "role:bakers",
+            "to": "self",
+            "trust": -5
+          }
+        ]
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "salt_scandal",
+      "when": {
+        "chose": "salt",
+        "role": "bakers"
+      },
+      "chance": 0.5,
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:bakers",
+          "delta": {
+            "mental": -4
+          }
+        },
+        {
+          "type": "fact",
+          "target": "session",
+          "key": "festival",
+          "remove": true
+        }
+      ],
+      "text": {
+        "bakers": "A judge bites into a salt pie and is carried away coughing. The festival is cancelled. Someone did this."
+      }
+    },
+    {
+      "id": "fake_found",
+      "when": {
+        "chose": "buy",
+        "role": "bakers"
+      },
+      "chance": 0.4,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:bakers",
+          "delta": {
+            "mental": 2
+          }
+        }
+      ],
+      "text": {
+        "bakers": "One pie still has the MegaMart sticker on the foil. The crowd gasps. Then laughs for an hour."
+      }
+    },
+    {
+      "id": "glory",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:bakers",
+          "delta": {
+            "mental": 5,
+            "reputation": 2
+          }
+        }
+      ],
+      "text": {
+        "bakers": "Everyone gets a ribbon. Some ribbons are bigger than others."
+      }
+    }
+  ]
+}
