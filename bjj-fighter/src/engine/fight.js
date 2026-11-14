@@ -1,7 +1,7 @@
 // Fight simulation. Works in game seconds; the UI converts real time with CLOCK_SPEED.
 // Pure logic: the renderer only reads `pos`, `playerTop`, `critical`, `lastAction`.
-import { MOVE_BY_ID } from '../data/moves.js';
-import { POSITIONS, ACTION_BY_ID, MISTAKES, OPPORTUNITY_MISTAKES, GENERIC_MISTAKES, actionsFor } from '../data/positions.js';
+import { MOVES, MOVE_BY_ID } from '../data/moves.js';
+import { POSITIONS, ACTIONS, ACTION_BY_ID, MISTAKES, OPPORTUNITY_MISTAKES, GENERIC_MISTAKES, actionsFor } from '../data/positions.js';
 import { pick, shuffle } from './rng.js';
 
 export const ROUND_SECONDS = 180;
@@ -34,6 +34,7 @@ export function createFight(player, opponent, rng) {
     critical: null,
     criticalCount: 0,
     lastCriticalAt: -Infinity,
+    subCooldownUntil: -Infinity,
     lastResult: null,
     lastAction: null,
     seq: 0,
@@ -99,7 +100,8 @@ function autoChance(f, who, action) {
 }
 
 function chooseAction(f, who) {
-  const options = actionsFor(f.pos, roleOf(f, who)).filter((a) => lvl(f, who, a.move) > 0);
+  const subsBlocked = who === 'o' && f.elapsed < f.subCooldownUntil;
+  const options = actionsFor(f.pos, roleOf(f, who)).filter((a) => lvl(f, who, a.move) > 0 && !(subsBlocked && a.kind === 'sub'));
   if (!options.length) return null;
   const total = options.reduce((s, a) => s + KIND_WEIGHT[a.kind], 0);
   let r = f.rng() * total;
@@ -133,16 +135,29 @@ function openCritical(f, critical) {
   f.seq += 1;
 }
 
-function mistakeOption(id) {
-  return { label: MISTAKES[id].text, correct: false, mistakeId: id };
+// Every option is a real technique. Wrong ones are techniques that do not work from this spot;
+// choosing one triggers one of the situation's typical mistakes (`MISTAKES` effects).
+const option = (moveId, extra) => ({ label: MOVE_BY_ID[moveId].name, detail: MOVE_BY_ID[moveId].desc, moveId, ...extra });
+
+const MOVES_BY_ROLE = {};
+for (const a of ACTIONS) (MOVES_BY_ROLE[a.role] ??= new Set()).add(a.move);
+const ATTACK_KINDS = new Set(['sub', 'sweep', 'pass', 'takedown', 'transition']);
+const DEFENSIVE_CATEGORIES = new Set(['defense', 'escape', 'movement']);
+
+function attackDecoys(role) {
+  const mine = MOVES_BY_ROLE[role];
+  return [...new Set(ACTIONS.filter((a) => ATTACK_KINDS.has(a.kind) && !mine.has(a.move)).map((a) => a.move))];
 }
 
-function fillOptions(f, correct, mistakeIds) {
-  const wrong = shuffle(f.rng, [...new Set(mistakeIds)]).slice(0, 5 - correct.length).map(mistakeOption);
-  for (const g of shuffle(f.rng, GENERIC_MISTAKES)) {
-    if (correct.length + wrong.length >= 5) break;
-    if (!wrong.some((w) => w.mistakeId === g)) wrong.push(mistakeOption(g));
-  }
+function defenseDecoys(pos, role, correctIds) {
+  const usable = new Set(actionsFor(pos, role).map((a) => a.move));
+  return MOVES.filter((m) => DEFENSIVE_CATEGORIES.has(m.category) && !correctIds.includes(m.id) && !usable.has(m.id)).map((m) => m.id);
+}
+
+function fillOptions(f, correct, decoyIds, mistakeIds) {
+  const effects = shuffle(f.rng, mistakeIds.length ? [...new Set(mistakeIds)] : GENERIC_MISTAKES);
+  const wrong = shuffle(f.rng, decoyIds).slice(0, 5 - correct.length)
+    .map((id, i) => option(id, { correct: false, mistakeId: effects[i % effects.length] }));
   return shuffle(f.rng, [...correct, ...wrong]);
 }
 
@@ -160,12 +175,13 @@ export function startDefense(f, actionId) {
     f.playerTop = action.from === 'standing' ? null : action.role === 'bottom';
     f.pending = null;
   }
-  const correct = action.defenses.map((d) => ({ label: MOVE_BY_ID[d].desc, correct: true, moveId: d }));
+  const correct = action.defenses.map((d) => option(d, { correct: true }));
   const move = MOVE_BY_ID[action.move];
+  const role = roleOf(f, 'p');
   openCritical(f, {
     kind: 'defense', actionId,
     text: `${f.opponent.name} ${THREAT_TEXT[action.kind](move.name)}`,
-    options: fillOptions(f, correct, action.mistakes),
+    options: fillOptions(f, correct, defenseDecoys(f.pos, role, action.defenses), [...action.mistakes, ...GENERIC_MISTAKES]),
   });
   f.lastAction = { seq: f.seq, who: 'o', actionId, success: null };
 }
@@ -177,11 +193,11 @@ export function startOpportunity(f) {
   const known = shuffle(f.rng, actionsFor(f.pos, role).filter((a) => lvl(f, 'p', a.move) > 0 && a.kind !== 'pull'));
   if (!known.length) return false;
   const count = Math.min(known.length, 1 + Math.floor(f.rng() * 3));
-  const correct = known.slice(0, count).map((a) => ({ label: MOVE_BY_ID[a.move].desc, correct: true, moveId: a.move, actionId: a.id }));
+  const correct = known.slice(0, count).map((a) => option(a.move, { correct: true, actionId: a.id }));
   openCritical(f, {
     kind: 'opportunity',
     text: `Prilika! (${POSITIONS[f.pos].name})`,
-    options: fillOptions(f, correct, OPPORTUNITY_MISTAKES[`${f.pos}:${role}`] ?? []),
+    options: fillOptions(f, correct, attackDecoys(role), OPPORTUNITY_MISTAKES[`${f.pos}:${role}`] ?? []),
   });
   return true;
 }
@@ -212,6 +228,19 @@ function applyMistake(f, mk, threatAction) {
   }
 }
 
+const BAD_SPOTS = new Set(['mount', 'back', 'sideControl', 'kneeOnBelly', 'northSouth', 'turtle']);
+export const SUB_COOLDOWN = 20;
+
+// After defending a submission the opponent needs time to set up the next one, and from a bad spot
+// the escape lands the player in half guard instead of the same submission again.
+function escapeAfterDefense(f) {
+  f.subCooldownUntil = f.elapsed + SUB_COOLDOWN;
+  if (roleOf(f, 'p') === 'bottom' && BAD_SPOTS.has(f.pos)) {
+    say(f, 'Izvukao si se u polugard.', 'p');
+    applyTransition(f, 'p', 'escape', { pos: 'halfGuard', actorTop: false });
+  }
+}
+
 export function chooseOption(f, index) {
   const c = f.critical;
   if (!c) return;
@@ -221,27 +250,39 @@ export function chooseOption(f, index) {
   if (c.kind === 'defense') {
     const threat = ACTION_BY_ID[c.actionId];
     if (!opt) { say(f, 'Nisi reagirao na vrijeme!', 'o'); applyMistake(f, { effect: 'threat' }, threat); return; }
-    if (!opt.correct) { say(f, opt.label, 'p'); applyMistake(f, MISTAKES[opt.mistakeId], threat); return; }
-    const p = clamp(0.8 + 0.05 * (lvl(f, 'p', opt.moveId) - lvl(f, 'o', threat.move)), 0.5, 0.97);
+    if (!opt.correct) { say(f, `${opt.label} ovdje ne pomaže.`, 'p'); applyMistake(f, MISTAKES[opt.mistakeId], threat); return; }
+    const mine = lvl(f, 'p', opt.moveId);
+    const theirs = lvl(f, 'o', threat.move);
+    Object.assign(f.lastResult, { myLevel: mine, theirLevel: theirs, theirMove: MOVE_BY_ID[threat.move].name });
+    const p = clamp(0.8 + 0.05 * (mine - theirs), 0.5, 0.97);
     if (f.rng() < p) {
-      if (threat.kind === 'sub') f.score.o.adv += 1;
+      f.lastResult.success = true;
       f.lastAction = { seq: ++f.seq, who: 'o', actionId: threat.id, success: false };
       say(f, `${MOVE_BY_ID[opt.moveId].name} — obranio si se!`, 'p');
+      if (threat.kind === 'sub') escapeAfterDefense(f);
     } else if (threat.kind === 'sub' && f.rng() < 0.65) {
+      f.lastResult.success = true;
       f.score.o.adv += 1;
-      say(f, 'Zamalo! Jedva si se izvukao.', 'p');
+      say(f, `Zamalo! ${f.opponent.name} je jači (razina ${theirs} protiv tvojih ${mine}), ali izvukao si se.`, 'p');
+      escapeAfterDefense(f);
     } else {
+      f.lastResult.success = false;
+      say(f, `Dobar izbor, ali ${f.opponent.name} je jači: ${MOVE_BY_ID[threat.move].name} razina ${theirs} protiv tvoje obrane razine ${mine}.`, 'o');
       runAction(f, 'o', threat, true);
     }
     return;
   }
   // opportunity
   if (!opt) { say(f, 'Propustio si priliku.', 'p'); return; }
-  if (!opt.correct) { say(f, opt.label, 'p'); applyMistake(f, MISTAKES[opt.mistakeId], null); return; }
+  if (!opt.correct) { say(f, `${opt.label} odavde ne ide.`, 'p'); applyMistake(f, MISTAKES[opt.mistakeId], null); return; }
   const action = ACTION_BY_ID[opt.actionId];
-  const diff = lvl(f, 'p', action.move) - bestDefense(f, 'o', action);
-  const p = action.kind === 'sub' ? clamp(0.35 + 0.06 * diff, 0.15, 0.75) : clamp(0.6 + 0.06 * diff, 0.25, 0.92);
-  runAction(f, 'p', action, f.rng() < p);
+  const mine = lvl(f, 'p', action.move);
+  const theirs = bestDefense(f, 'o', action);
+  const p = action.kind === 'sub' ? clamp(0.35 + 0.06 * (mine - theirs), 0.15, 0.75) : clamp(0.6 + 0.06 * (mine - theirs), 0.25, 0.92);
+  const success = f.rng() < p;
+  Object.assign(f.lastResult, { success, myLevel: mine, theirLevel: theirs });
+  if (!success) say(f, `Dobar izbor, ali ${f.opponent.name} se obranio: tvoj ${MOVE_BY_ID[action.move].name} razina ${mine} protiv njegove obrane razine ${theirs}.`, 'o');
+  runAction(f, 'p', action, success);
 }
 
 function endRound(f) {

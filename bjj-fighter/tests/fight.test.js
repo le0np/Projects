@@ -6,7 +6,7 @@ import {
 } from '../src/engine/fight.js';
 import { makeOpponent, fighterFromState } from '../src/engine/opponent.js';
 import { createState } from '../src/engine/progression.js';
-import { ACTIONS, OPPORTUNITY_MISTAKES } from '../src/data/positions.js';
+import { ACTIONS, ACTION_BY_ID, OPPORTUNITY_MISTAKES } from '../src/data/positions.js';
 import { mulberry32 } from '../src/engine/rng.js';
 
 const empty = (name) => ({ name, belt: 'white', levels: {} });
@@ -172,4 +172,87 @@ test('no opportunity opens when the only known move is guard pull', () => {
     stepFight(f, 10);
     if (f.critical) assert.ok(f.critical.options.some((o) => o.correct));
   }
+});
+
+// ---- feedback round 2 ----
+import { MOVES, MOVE_BY_ID } from '../src/data/moves.js';
+import { actionsFor } from '../src/data/positions.js';
+
+test('a defended submission from a bad spot escapes to half guard and stops sub attacks for 20 s', () => {
+  const opp = { name: 'On', belt: 'white', levels: { armbar: 3, americana: 3, darce: 3, kimura: 3 } };
+  const f = createFight({ name: 'Ti', belt: 'white', levels: { armbarDefense: 10 } }, opp, mulberry32(11));
+  f.pos = 'mount'; f.playerTop = false;
+  startDefense(f, 'armbar_m');
+  const right = f.critical.options.findIndex((o) => o.correct);
+  f.rng = () => 0.01; // defense succeeds
+  chooseOption(f, right);
+  assert.equal(f.ended, null);
+  assert.equal(f.pos, 'halfGuard');
+  assert.equal(f.playerTop, false);
+  f.rng = mulberry32(12);
+  const start = f.elapsed;
+  while (f.elapsed - start < 19 && !f.ended) {
+    stepFight(f, 0.5);
+    if (f.critical) {
+      assert.notEqual(f.critical.kind === 'defense' && ACTION_BY_ID[f.critical.actionId].kind, 'sub');
+      chooseOption(f, f.critical.options.findIndex((o) => o.correct));
+    }
+  }
+});
+
+const nameSet = new Set(MOVES.map((m) => m.name));
+const usableBy = (pos, role) => new Set(actionsFor(pos, role).map((a) => a.move));
+
+test('every option in a critical moment is a real technique name', () => {
+  const everything = Object.fromEntries(MOVES.map((m) => [m.id, 3]));
+  for (const a of ACTIONS.filter((x) => x.defenses.length)) {
+    const f = createFight({ name: 'Ti', belt: 'white', levels: everything }, { name: 'On', belt: 'white', levels: everything }, mulberry32(9));
+    f.pos = a.from; f.playerTop = a.role === 'bottom';
+    startDefense(f, a.id);
+    for (const o of f.critical.options) {
+      assert.ok(nameSet.has(o.label), `${a.id}: "${o.label}"`);
+      assert.ok(MOVE_BY_ID[o.moveId], a.id);
+    }
+  }
+  for (const key of Object.keys(OPPORTUNITY_MISTAKES)) {
+    const [pos, role] = key.split(':');
+    const f = createFight({ name: 'Ti', belt: 'white', levels: everything }, empty('On'), mulberry32(4));
+    f.pos = pos; f.playerTop = role === 'neutral' ? null : role === 'top';
+    startOpportunity(f);
+    for (const o of f.critical.options) assert.ok(nameSet.has(o.label), `${key}: "${o.label}"`);
+  }
+});
+
+test('wrong technique options are not usable by the player from that spot', () => {
+  const everything = Object.fromEntries(MOVES.map((m) => [m.id, 3]));
+  for (const key of Object.keys(OPPORTUNITY_MISTAKES)) {
+    const [pos, role] = key.split(':');
+    for (let seed = 1; seed < 6; seed++) {
+      const f = createFight({ name: 'Ti', belt: 'white', levels: everything }, empty('On'), mulberry32(seed));
+      f.pos = pos; f.playerTop = role === 'neutral' ? null : role === 'top';
+      startOpportunity(f);
+      const ok = usableBy(pos, role);
+      for (const o of f.critical.options.filter((x) => !x.correct)) assert.ok(!ok.has(o.moveId), `${key}: ${o.moveId}`);
+    }
+  }
+});
+
+test('a decent player (right 75 % of the time) wins about half of balanced sparring fights or more', () => {
+  let wins = 0;
+  const N = 300;
+  for (let i = 0; i < N; i++) {
+    const rng = mulberry32(5000 + i);
+    const s = createState({ test: true, now: 0 });
+    const f = createFight(fighterFromState(s), makeOpponent('white', rng, 1), rng);
+    while (!f.ended) {
+      if (f.critical) {
+        const o = f.critical.options;
+        const right = o.map((x, k) => (x.correct ? k : -1)).filter((k) => k >= 0);
+        const wrong = o.map((x, k) => (x.correct ? -1 : k)).filter((k) => k >= 0);
+        chooseOption(f, rng() < 0.75 ? right[0] : wrong[0]);
+      } else stepFight(f, 1);
+    }
+    if (f.ended.winner === 'p') wins++;
+  }
+  assert.ok(wins / N >= 0.45 && wins / N <= 0.8, `win rate ${wins / N}`);
 });

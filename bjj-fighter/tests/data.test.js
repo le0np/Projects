@@ -47,3 +47,13 @@ test('mulberry32 is deterministic and in [0,1)', () => {
     assert.ok(x >= 0 && x < 1);
   }
 });
+
+import { makeOpponent } from '../src/engine/opponent.js';
+
+test('an opponent built around a base level stays within one level of it', () => {
+  const rng = mulberry32(3);
+  for (const base of [1, 2, 5]) {
+    const o = makeOpponent('white', rng, base);
+    for (const l of Object.values(o.levels)) assert.ok(l >= Math.max(1, base - 1) && l <= base + 1, `${base}: ${l}`);
+  }
+});

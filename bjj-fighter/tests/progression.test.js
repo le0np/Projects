@@ -152,3 +152,16 @@ test('save numbers out of range are clamped or reset', () => {
   assert.equal(s.levels.upa, 10);
   assert.equal(s.levels.x, undefined);
 });
+
+import { competitionReady } from '../src/engine/progression.js';
+
+test('competition needs at least one attack, one defense and one control move', () => {
+  const s = createState({ test: false, now: 0 });
+  assert.deepEqual(competitionReady(s), { ok: false, missing: ['napad', 'obrana', 'kontrola'] });
+  s.levels.armbar = 1;
+  assert.deepEqual(competitionReady(s).missing, ['obrana', 'kontrola']);
+  s.levels.armbarDefense = 1;
+  assert.deepEqual(competitionReady(s).missing, ['kontrola']);
+  s.levels.mount = 1;
+  assert.deepEqual(competitionReady(s), { ok: true, missing: [] });
+});

@@ -116,6 +116,20 @@ export function rollCompetitionLearn(state, rng) {
   return rng() < COMPETITION_LEARN_CHANCE ? learnRandomMove(state, rng) : null;
 }
 
+// Before a competition the fighter must know at least one move from each group.
+export const COMPETITION_GROUPS = {
+  napad: ['sub', 'sweep', 'pass', 'takedown'],
+  obrana: ['defense', 'escape'],
+  kontrola: ['top', 'guard', 'transition'],
+};
+
+export function competitionReady(state) {
+  const missing = Object.entries(COMPETITION_GROUPS)
+    .filter(([, cats]) => !MOVES.some((m) => cats.includes(m.category) && effectiveLevel(state, m.id) > 0))
+    .map(([group]) => group);
+  return { ok: missing.length === 0, missing };
+}
+
 export function knownMoveCount(state) {
   return Object.values(state.levels).filter((l) => l >= 1).length;
 }

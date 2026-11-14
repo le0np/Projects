@@ -3,10 +3,10 @@ import { BELTS, BELT_NAMES, CATEGORIES, MOVES, MOVE_BY_ID } from '../data/moves.
 import { POSITIONS } from '../data/positions.js';
 import {
   createState, learnTime, effectiveLevel, canTrain, startTraining, startActivity, advance, setSpeed,
-  rollCompetitionLearn, promotionStatus, promote, serialize, deserialize, ACTIVITIES, MAX_LEVEL,
+  rollCompetitionLearn, promotionStatus, promote, serialize, deserialize, competitionReady, ACTIVITIES, MAX_LEVEL,
 } from '../engine/progression.js';
 import { createFight, stepFight, chooseOption, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
-import { makeOpponent, fighterFromState } from '../engine/opponent.js';
+import { makeOpponent, fighterFromState, averageLevel } from '../engine/opponent.js';
 import { createRenderer } from '../render/renderer2d.js';
 import { tickCriticalTimer } from './criticalTimer.js';
 
@@ -136,6 +136,7 @@ function renderActivities() {
 
 function renderFights() {
   const st = promotionStatus(state);
+  const ready = competitionReady(state);
   const promo = st.next
     ? `<div class="card"><h3>Promocija: ${BELT_NAMES[st.next]} pojas</h3>
         <ul class="req"><li class="${st.have.moves >= st.need.moves ? 'ok' : 'no'}">Naučeni potezi: ${st.have.moves} / ${st.need.moves}</li>
@@ -152,7 +153,8 @@ function renderFights() {
         <div class="row"><span>Kotizacija</span><b>${COMP_FEE} €</b></div>
         <div class="row"><span>Nagrade</span><b>🥇 ${COMP_PRIZES.gold} · 🥈 ${COMP_PRIZES.silver} · 🥉 ${COMP_PRIZES.bronze} €</b></div>
         <div class="row"><span>Šansa za novi potez</span><b>5 %</b></div>
-        <button data-fight="comp" ${state.money < COMP_FEE ? 'disabled' : ''}>Prijavi se</button></div>
+        ${ready.ok ? '' : `<p>Prije natjecanja moraš znati barem po jedan potez iz napada, obrane i kontrole. Nedostaje: <b>${ready.missing.join(', ')}</b>.</p>`}
+        <button data-fight="comp" ${state.money < COMP_FEE || !ready.ok ? 'disabled' : ''}>Prijavi se</button></div>
       ${promo}
       <div class="card"><h3>Karijera</h3>
         <div class="row"><span>Pobjede / porazi</span><b>${state.wins} / ${state.losses}</b></div>
@@ -251,6 +253,8 @@ $('career').addEventListener('change', (ev) => {
 // ---------- fights ----------
 function startFightFlow(mode) {
   if (mode === 'comp') {
+    const ready = competitionReady(state);
+    if (!ready.ok) { toast(`Za natjecanje trebaš znati barem jedan potez iz: ${ready.missing.join(', ')}.`); return; }
     if (state.money < COMP_FEE) { toast(`Kotizacija je ${COMP_FEE} €.`); return; }
     state.money -= COMP_FEE;
     save();
@@ -258,8 +262,12 @@ function startFightFlow(mode) {
   openFight(mode, 0);
 }
 
+// Opponents are built around the player's average level: sparring partners a bit easier,
+// each competition round a bit harder.
 function openFight(mode, stage) {
-  const fight = createFight(fighterFromState(state), makeOpponent(state.belt, rng), rng);
+  const me = fighterFromState(state);
+  const base = averageLevel(me) + (mode === 'spar' ? -0.5 : stage * 0.5);
+  const fight = createFight(me, makeOpponent(state.belt, rng, base), rng);
   fightCtx = { fight, mode, stage, timer: null, feedbackUntil: 0, logLen: -1, critSeq: -1, done: false };
   $('career').hidden = true;
   $('fight').hidden = false;
@@ -304,7 +312,7 @@ function renderCritical(f) {
     fightCtx.critSeq = f.criticalCount;
     $('critical-text').textContent = c.text;
     $('critical-options').innerHTML = c.options
-      .map((o, i) => `<button data-opt="${i}"><span class="k">${i + 1}</span> ${esc(o.label)}</button>`).join('');
+      .map((o, i) => `<button data-opt="${i}"><span class="k">${i + 1}</span> <b>${esc(o.label)}</b><small>${esc(o.detail ?? '')}</small></button>`).join('');
     $('critical').hidden = false;
   }
   const left = fightCtx.timer?.seq === f.criticalCount ? fightCtx.timer.left : c.timeLimit;
@@ -316,12 +324,19 @@ function choose(index) {
   if (!f?.critical) return;
   const opt = index === null ? null : f.critical.options[index];
   chooseOption(f, index);
+  const r = f.lastResult;
   const fb = $('feedback');
+  let ms = 1800;
   if (!opt) { fb.textContent = 'Prekasno!'; fb.className = 'feedback bad'; }
-  else if (opt.correct) { fb.textContent = `✔ Dobar izbor: ${MOVE_BY_ID[opt.moveId].name}`; fb.className = 'feedback good'; }
-  else { fb.textContent = '✘ Greška!'; fb.className = 'feedback bad'; }
+  else if (!opt.correct) { fb.textContent = `✘ ${opt.label} ovdje ne pomaže.`; fb.className = 'feedback bad'; }
+  else if (r.success) { fb.textContent = `✔ ${opt.label} — uspjelo! (razina ${r.myLevel} protiv ${r.theirLevel})`; fb.className = 'feedback good'; }
+  else {
+    fb.textContent = `✔ Dobar izbor, ali ${f.opponent.name} je bio jači: tvoja razina ${r.myLevel} protiv njegove ${r.theirLevel}. Treniraj ${opt.label}!`;
+    fb.className = 'feedback mixed';
+    ms = 3500;
+  }
   fb.hidden = false;
-  fightCtx.feedbackUntil = performance.now() + 1600;
+  fightCtx.feedbackUntil = performance.now() + ms;
   $('critical').hidden = true;
 }
 

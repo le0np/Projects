@@ -15,13 +15,23 @@ export function fighterFromState(state, name = 'Ti') {
   return { name, belt: state.belt, levels };
 }
 
-export function makeOpponent(belt, rng) {
+// Average level of the moves a fighter knows; used to build an opponent of similar skill.
+export function averageLevel(fighter) {
+  const l = Object.values(fighter.levels);
+  return l.length ? l.reduce((s, x) => s + x, 0) / l.length : 1;
+}
+
+// `baseLevel` (optional): opponent's moves are within one level of it, so fights are even.
+export function makeOpponent(belt, rng, baseLevel) {
   const bi = BELTS.indexOf(belt);
   const levels = {};
+  const level = () => (baseLevel === undefined
+    ? Math.min(10, 1 + bi * 2 + Math.floor(rng() * 3))
+    : Math.min(10, Math.max(1, Math.round(baseLevel) + Math.floor(rng() * 3) - 1)));
   for (const m of MOVES) {
     const mi = BELTS.indexOf(m.belt);
-    if (mi <= bi && rng() < 0.8) levels[m.id] = Math.min(10, 1 + bi * 2 + Math.floor(rng() * 3));
-    else if (mi === bi + 1 && rng() < 0.1) levels[m.id] = 1;
+    if (mi <= bi && rng() < 0.8) levels[m.id] = level();
+    else if (mi === bi + 1 && rng() < 0.1) levels[m.id] = baseLevel === undefined ? 1 : level();
   }
   return { name: `${pick(rng, NAMES)} ${pick(rng, SURNAMES)}`, belt, levels };
 }
