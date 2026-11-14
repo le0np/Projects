@@ -47,7 +47,7 @@ Mogućnost za razmotriti: vještine lika utječu na to koje se opcije nude i kol
 
 Svaki potez ima razine. Novi potez se nauči brzo (razina 1 traje od nekoliko sekundi do minute), a svaka sljedeća razina istog poteza traje 2x duže od prethodne, kao u drugim igrama tog tipa. Usavršavanje poteza tako s vremenom traje minute, sate, pa i dane.
 
-Što je pojas viši, borac brže uči nove poteze (iskusniji borac lakše pohvata novu tehniku). Prijedlog za trajanje učenja u odnosu na bijeli pojas: bijeli 100 %, plavi 85 %, ljubičasti 70 %, smeđi 55 %, crni 40 %. U testnoj verziji isti sustav radi s vremenom ubrzanim do 10x.
+Što je pojas viši, borac brže uči nove poteze (iskusniji borac lakše pohvata novu tehniku). Koliko brže od bijelog pojasa uči koji pojas: plavi 20 %, ljubičasti 45 %, smeđi 65 %, crni 85 %. Npr. potez koji bijeli pojas uči 10 minuta crni nauči za 1,5 minutu. U testnoj verziji isti sustav radi s vremenom ubrzanim do 10x.
 
 Potezi su ograničeni po pojasevima, ali ne strogo:
 - redovnim treningom u klubu igrač uči poteze svog pojasa
