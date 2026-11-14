@@ -13,7 +13,7 @@ Treba samo [Node.js](https://nodejs.org) 20 ili noviji, bez instalacije paketa.
 ```bash
 cd bjj-fighter
 npm start          # server na http://localhost:8080
-npm test           # testovi pravila igre (43 testa)
+npm test           # testovi pravila igre (44 testa)
 ```
 
 Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `index.html` ne radi jer preglednici ne učitavaju JavaScript module s `file://`. Radi i bilo koji statički server, npr. `python3 -m http.server 8080` u ovoj mapi.
@@ -41,7 +41,7 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
   - Heel hookovi su dopušteni.
 - **Kritični trenuci:**
   - Uvijek kad te protivnik napada submissionom, a ponekad i kod sweepa, prolaza ili tvoje prilike.
-  - Vrijeme se uspori i biraš jednu od 5 opcija klikom ili tipkama 1–5. Imaš 10 sekundi.
+  - Vrijeme se uspori i biraš jednu od 5 opcija klikom ili tipkama 1–5. Imaš 20 sekundi.
   - Ako ne odabereš ništa, to se računa kao pasivnost.
   - Kriva opcija može odmah otvoriti novu opasnost, npr. ruka unutra u gardu otvara triangle.
 - **Test:**

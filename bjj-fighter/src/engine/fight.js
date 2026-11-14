@@ -8,7 +8,7 @@ export const ROUND_SECONDS = 180;
 export const ROUNDS = 3;
 export const CLOCK_SPEED = 3;
 export const HOLD_SECONDS = 3;
-export const CRITICAL_TIME_LIMIT = 10; // real seconds, enforced by the UI
+export const CRITICAL_TIME_LIMIT = 20; // real seconds, enforced by the UI; long enough to read five options
 
 const KIND_POINTS = { takedown: 2, sweep: 2, pass: 3 };
 const POSITION_POINTS = { kneeOnBelly: 2, mount: 4, back: 4 };

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createFight, stepFight, chooseOption, applyTransition, startDefense, startOpportunity,
-  ROUND_SECONDS, ROUNDS, CLOCK_SPEED,
+  ROUND_SECONDS, ROUNDS, CLOCK_SPEED, CRITICAL_TIME_LIMIT,
 } from '../src/engine/fight.js';
 import { makeOpponent, fighterFromState } from '../src/engine/opponent.js';
 import { createState } from '../src/engine/progression.js';
@@ -16,6 +16,14 @@ test('constants match the spec', () => {
   assert.equal(ROUND_SECONDS, 180);
   assert.equal(ROUNDS, 3);
   assert.equal(CLOCK_SPEED, 3);
+});
+
+test('a critical moment gives 20 real seconds to read five options and choose', () => {
+  assert.equal(CRITICAL_TIME_LIMIT, 20);
+  const f = idle();
+  f.pos = 'mount'; f.playerTop = false;
+  startDefense(f, 'armbar_m');
+  assert.equal(f.critical.timeLimit, 20);
 });
 
 test('points are awarded only after holding the position for 3 seconds', () => {
