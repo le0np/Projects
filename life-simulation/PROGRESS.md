@@ -222,6 +222,14 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 - **E2E (`npm run e2e`):** pravi server (8× ubrzan, PGlite u memoriji) + Chromium, na desktopu (1280×800) i na iPhoneu 13. Prolazi registraciju, izbor karijere, matchmaking s botovima, cijelu sesiju, Life Recap, log, povratak u lobby i prijašnje živote, uz provjeru da nema horizontalnog skrolanja ni grešaka u konzoli.
 - Pregledom snimki zaslona uočen je i ispravljen prikaz ID-a karijere (`police_officer`) umjesto imena.
 
+## Napravljeno 14. studenog 2026.
+
+### Popravak: pokretanje na svježem kloniranju
+
+- `npm run start` je padao s `ENOENT: mkdir …/data/pglite`, jer PGlite stvara samo zadnju mapu u putanji, a `data/` ne postoji u kloniranom repou. Server sada sam napravi mapu (`mkdirSync(…, { recursive: true })`).
+- Greška se nije vidjela jer su testovi i ručne provjere uvijek koristili bazu u memoriji. Provjereno je sada bez mape `data/`: prvo pokretanje stvori bazu i izvrši migraciju, drugo koristi postojeću bazu.
+- Projekt je prebačen na granu `dev` (fast-forward), kako traži `CLAUDE.md`.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:

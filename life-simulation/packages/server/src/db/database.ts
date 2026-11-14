@@ -3,7 +3,7 @@
  *   - `pg` against a real PostgreSQL server (DATABASE_URL),
  *   - PGlite (PostgreSQL compiled to WebAssembly, in-process) for zero-setup development and tests.
  */
-import { readFileSync, readdirSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 
@@ -49,6 +49,8 @@ export async function openPostgres(url: string): Promise<Database> {
 /** `dataDir` undefined = in-memory. */
 export async function openPglite(dataDir?: string): Promise<Database> {
   const { PGlite } = await import("@electric-sql/pglite");
+  // PGlite creates only the last path segment; make sure the parents exist (e.g. ./data on a fresh clone).
+  if (dataDir) mkdirSync(dataDir, { recursive: true });
   const db = new PGlite(dataDir);
   await db.waitReady;
   return {
