@@ -82,6 +82,12 @@ Dizajn: `docs/superpowers/specs/2026-11-14-round2-step1-fight-rules-design.md`, 
 ### Tipka za trenutno učenje (test)
 - Svaki potez u klubu u testnoj verziji ima tipku „⚡ +1” koja odmah podigne potez za jednu razinu, bez čekanja (do razine 10). Ako taj potez trenutno trenira, trening se poništi jer je razina već dobivena.
 
+### Greške protivnika i precizniji log
+- Prikazana šansa greške u postocima: uz ime borca na semaforu („greška 18 %”) i u prvom retku loga, prema pojasu i prosječnoj razini poteza.
+- Svaka greška u logu navodi koliko je bila vjerojatna („Marko griješi: Toreando mu ne sjeda (šansa greške 24 %)”).
+- Kad protivnik nadjača dobar izbor ili obrani tvoj automatski potez, log kaže „nadjačao” i navodi razine i šansu („razina 3 protiv tvoje obrane razine 1 (šansa obrane bila je 70 %)”). Isto u narančastoj poruci nakon odluke.
+- Bodovi su precizni u dva koraka: odmah „Flower sweep +2, mount +4 = +6 (boda ako zadrži 3 s)”, zatim „+6 boda: Ti (Flower sweep +2, mount +4)”. Svaka prednost ima svoj redak s razlogom („+1 prednost: Ti (skoro Knee slice)”), a kazna „+1 kazna”.
+
 ### Za promociju se broje samo pobjede na natjecanjima
 
 - Uvjet „pobjede” za promociju (npr. plavi pojas: 20 poteza, 5 pobjeda) sad broji samo pobjede na natjecanjima. Svaka pobijeđena borba na turniru (četvrtfinale, polufinale, finale) vrijedi jednu pobjedu. Sparing se i dalje upisuje u ukupni omjer pobjeda i poraza, ali ne vodi do promocije.
@@ -95,7 +101,7 @@ Provedeno 14. studenog 2026.:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` | 62/62 prolazi |
+| `npm test` | 65/65 prolazi |
 | `npm start` | server odgovara 200 na `/` i module |
 | Playwright e2e (1100 px) | trening uz 10x završi, sparing odigran do rezultata, reload zadrži napredak, 0 grešaka u konzoli |
 | Playwright mobitel (iPhone 13) | nema horizontalnog scrolla ni u karijeri ni u borbi |

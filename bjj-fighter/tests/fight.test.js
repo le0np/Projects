@@ -313,9 +313,11 @@ test('the log spells out how points add up and carries round and clock', () => {
   const f = idle();
   applyTransition(f, 'p', 'sweep', { pos: 'mount', actorTop: true }, 'Flower sweep');
   stepFight(f, 3.1);
-  const line = f.log.find((l) => l.text.includes('+6'));
+  const announced = f.log.find((l) => l.text.includes('= +6'));
+  assert.match(announced.text, /Flower sweep \+2, mount \+4 = \+6/);
+  const line = f.log.find((l) => l.text.startsWith('+6 boda'));
   assert.ok(line, 'points line');
-  assert.match(line.text, /Flower sweep 2 \+ mount 4/);
+  assert.match(line.text, /Flower sweep \+2, mount \+4/);
   assert.equal(line.round, 1);
   assert.match(formatLog(f), /R1 \d:\d\d .*\+6/);
 });
@@ -341,4 +343,36 @@ test('every option carries a class colour group', () => {
   f.pos = 'back'; f.playerTop = true;
   startOpportunity(f);
   for (const o of f.critical.options) assert.ok(['napad', 'obrana', 'kontrola', 'pozicija'].includes(o.cls), o.label);
+});
+
+// ---- opponent mistakes and precise log ----
+import { fighterErrorChance } from '../src/engine/fight.js';
+
+test('the fight log opens with both fighters\' error chance in percent', () => {
+  const f = createFight({ name: 'Ti', belt: 'white', levels: { mount: 1 } }, { name: 'On', belt: 'purple', levels: { mount: 3 } }, mulberry32(1));
+  assert.ok(Math.abs(fighterErrorChance(f.opponent) - 0.09) < 1e-9);
+  assert.match(f.log[0].text, /Ti 25 %, On 9 %/);
+});
+
+test('an opponent blunder says how likely it was', () => {
+  const f = createFight(empty('Ti'), { name: 'On', belt: 'blue', levels: { sideShrimp: 1 } }, mulberry32(2));
+  f.pos = 'sideControl'; f.playerTop = true;
+  opponentBlunder(f, ACTION_BY_ID.sideShrimp_e);
+  assert.ok(f.log.some((l) => /On griješi: .*šansa greške 18 %/.test(l.text)));
+  assert.ok(f.log.some((l) => /^\+1 prednost: Ti/.test(l.text)));
+});
+
+test('when the opponent overpowers a good choice the log gives levels and the chance', () => {
+  let seen = false;
+  for (let seed = 1; seed < 400 && !seen; seed++) {
+    const rng = mulberry32(seed);
+    const s = createState({ test: true, now: 0 });
+    const f = createFight(fighterFromState(s), makeOpponent('white', rng, 4), rng);
+    while (!f.ended && !seen) {
+      if (f.critical) chooseOption(f, f.critical.options.findIndex((o) => o.correct));
+      else stepFight(f, 1);
+      seen = f.log.some((l) => /nadjača.*razina \d+ protiv .*razine \d+ \(šansa .*\d+ %\)/.test(l.text));
+    }
+  }
+  assert.ok(seen);
 });

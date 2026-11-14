@@ -5,7 +5,7 @@ import {
   createState, learnTime, effectiveLevel, canTrain, startTraining, startActivity, advance, setSpeed,
   rollCompetitionLearn, recordFight, instantLevelUp, promotionStatus, promote, serialize, deserialize, competitionReady, ACTIVITIES, MAX_LEVEL,
 } from '../engine/progression.js';
-import { createFight, stepFight, chooseOption, formatLog, logLine, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
+import { createFight, stepFight, chooseOption, formatLog, logLine, fighterErrorChance, pct, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
 import { makeOpponent, fighterFromState, averageLevel } from '../engine/opponent.js';
 import { createRenderer } from '../render/renderer2d.js';
 import { tickCriticalTimer } from './criticalTimer.js';
@@ -278,8 +278,8 @@ function openFight(mode, stage) {
   $('result').hidden = true;
   $('critical').hidden = true;
   $('feedback').hidden = true;
-  $('sb-p-name').textContent = `Ti · ${BELT_NAMES[state.belt]}`;
-  $('sb-o-name').textContent = `${fight.opponent.name} · ${BELT_NAMES[fight.opponent.belt]}`;
+  $('sb-p-name').textContent = `Ti · ${BELT_NAMES[state.belt]} · greška ${pct(fighterErrorChance(fight.player))}`;
+  $('sb-o-name').textContent = `${fight.opponent.name} · ${BELT_NAMES[fight.opponent.belt]} · greška ${pct(fighterErrorChance(fight.opponent))}`;
   if (!renderer) renderer = createRenderer($('canvas'));
   renderer.resize();
   window.scrollTo(0, 0);
@@ -341,7 +341,7 @@ function choose(index) {
   else if (!opt.correct) { fb.textContent = `✘ ${opt.label} ovdje ne pomaže.`; fb.className = 'feedback bad'; }
   else if (r.success) { fb.textContent = `✔ ${opt.label} — uspjelo! (razina ${r.myLevel} protiv ${r.theirLevel}${fast ? ', brza odluka +10 %' : ''})`; fb.className = 'feedback good'; }
   else {
-    fb.textContent = `✔ Dobar izbor, ali ${f.opponent.name} je bio jači: tvoja razina ${r.myLevel} protiv njegove ${r.theirLevel}. Treniraj ${opt.label}!`;
+    fb.textContent = `✔ Dobar izbor, ali ${f.opponent.name} te nadjačao: tvoja razina ${r.myLevel} protiv njegove ${r.theirLevel} (šansa ${pct(r.chance)}). Treniraj ${opt.label}!`;
     fb.className = 'feedback mixed';
     ms = 3500;
   }

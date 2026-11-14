@@ -27,13 +27,22 @@ const POSITION_LABEL = { kneeOnBelly: 'knee on belly', mount: 'mount', back: 'le
 export function errorChance(belt, level) {
   return Math.max(0.02, BELT_ERROR[belt] - 0.015 * Math.max(0, level - 1));
 }
+
+// Typical error chance of a fighter (belt and average level of known moves), shown before the fight.
+export function fighterErrorChance(fighter) {
+  const l = Object.values(fighter.levels);
+  const avg = l.length ? l.reduce((s, x) => s + x, 0) / l.length : 1;
+  return errorChance(fighter.belt, avg);
+}
+
+export const pct = (p) => `${Math.round(p * 100)} %`;
 const KIND_WEIGHT = { sub: 0.6, sweep: 1.5, pass: 1.5, takedown: 1.5, transition: 1.2, escape: 2, pull: 0.3 };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const other = (who) => (who === 'p' ? 'o' : 'p');
 
 export function createFight(player, opponent, rng) {
-  return {
+  const f = {
     rng, player, opponent,
     round: 1, clock: 0, elapsed: 0,
     pos: 'standing', playerTop: null,
@@ -52,6 +61,8 @@ export function createFight(player, opponent, rng) {
     log: [],
     ended: null,
   };
+  say(f, `Šansa greške po potezu: ${player.name} ${pct(fighterErrorChance(player))}, ${opponent.name} ${pct(fighterErrorChance(opponent))} (pojas i razina poteza).`);
+  return f;
 }
 
 const fighter = (f, who) => (who === 'p' ? f.player : f.opponent);
@@ -66,6 +77,11 @@ function say(f, text, who = null) {
   f.log.push({ t: f.elapsed, round: f.round, clock: f.clock, text, who });
 }
 
+function addAdvantage(f, who, why) {
+  f.score[who].adv += 1;
+  say(f, `+1 prednost: ${fighter(f, who).name} (${why})`, who);
+}
+
 function bestDefense(f, who, action) {
   return action.defenses.reduce((best, d) => Math.max(best, lvl(f, who, d)), 0);
 }
@@ -78,8 +94,9 @@ function finish(f, winner, method, detail) {
 
 export function applyTransition(f, who, kind, to, label = KIND_LABEL[kind]) {
   if (f.pending) {
-    f.score[f.pending.who].adv += 1; // near-score that was not held
+    const lost = f.pending; // near-score that was not held
     f.pending = null;
+    addAdvantage(f, lost.who, `${lost.why} nije zadržano 3 s`);
   }
   f.pos = to.pos;
   f.playerTop = to.pos === 'standing' ? null : (who === 'p') === to.actorTop;
@@ -88,16 +105,20 @@ export function applyTransition(f, who, kind, to, label = KIND_LABEL[kind]) {
   if (KIND_POINTS[kind]) parts.push([label, KIND_POINTS[kind]]);
   if (to.actorTop && scoring) parts.push([POSITION_LABEL[scoring], POSITION_POINTS[scoring]]);
   const pts = parts.reduce((sum, [, n]) => sum + n, 0);
-  if (pts > 0) f.pending = { who, pts, at: f.clock, why: parts.map(([l, n]) => `${l} ${n}`).join(' + ') };
+  if (pts > 0) {
+    const why = parts.map(([l, n]) => `${l} +${n}`).join(', ');
+    f.pending = { who, pts, at: f.clock, why };
+    say(f, `${why}${parts.length > 1 ? ` = +${pts}` : ''} (boda ako zadrži ${HOLD_SECONDS} s)`, who);
+  }
   f.seq += 1;
 }
 
-function runAction(f, who, action, success) {
+function runAction(f, who, action, success, why = '') {
   const move = MOVE_BY_ID[action.move];
   f.lastAction = { seq: ++f.seq, who, actionId: action.id, success };
   if (!success) {
-    if (action.kind !== 'pull' && f.rng() < 0.3) f.score[who].adv += 1;
-    say(f, `${fighter(f, who).name}: ${move.name} — ne prolazi.`, who);
+    say(f, `${fighter(f, who).name}: ${move.name} — ne prolazi${why ? ` (${why})` : ''}.`, who);
+    if (action.kind !== 'pull' && f.rng() < 0.3) addAdvantage(f, who, `skoro ${move.name}`);
     return;
   }
   if (action.kind === 'sub') {
@@ -129,14 +150,11 @@ function chooseAction(f, who) {
 const canCritical = (f) => f.elapsed - f.lastCriticalAt >= CRITICAL_COOLDOWN;
 
 // The opponent botched a move: it fails and the player gets a chance to punish it.
-export function opponentBlunder(f, action) {
+export function opponentBlunder(f, action, chance = errorChance(f.opponent.belt, lvl(f, 'o', action.move))) {
   const move = MOVE_BY_ID[action.move];
   f.lastAction = { seq: ++f.seq, who: 'o', actionId: action.id, success: false };
-  say(f, `${f.opponent.name} griješi: ${move.name} mu ne sjeda.`, 'o');
-  if (!startOpportunity(f, `${f.opponent.name} je pogriješio — prilika!`)) {
-    f.score.p.adv += 1;
-    say(f, 'Prednost za tebe.', 'p');
-  }
+  say(f, `${f.opponent.name} griješi: ${move.name} mu ne sjeda (šansa greške ${pct(chance)}).`, 'o');
+  if (!startOpportunity(f, `${f.opponent.name} je pogriješio — prilika!`)) addAdvantage(f, 'p', `greška protivnika: ${move.name}`);
 }
 
 // One exchange: the fighter whose turn it is acts, then the turn passes to the other one.
@@ -147,11 +165,12 @@ function exchange(f) {
   const entry = { who, actionId: action?.id ?? null, error: false };
   f.history.push(entry);
   if (!action) return;
-  if (f.rng() < errorChance(fighter(f, who).belt, lvl(f, who, action.move))) {
+  const err = errorChance(fighter(f, who).belt, lvl(f, who, action.move));
+  if (f.rng() < err) {
     entry.error = true;
-    if (who === 'o') { opponentBlunder(f, action); return; }
+    if (who === 'o') { opponentBlunder(f, action, err); return; }
     f.lastAction = { seq: ++f.seq, who, actionId: action.id, success: false };
-    say(f, `Ti: ${MOVE_BY_ID[action.move].name} — greška u izvedbi, ne prolazi.`, 'p');
+    say(f, `Ti: ${MOVE_BY_ID[action.move].name} — greška u izvedbi, ne prolazi (šansa greške ${pct(err)}).`, 'p');
     return;
   }
   if (who === 'o' && action.defenses.length) {
@@ -161,7 +180,9 @@ function exchange(f) {
     }
   }
   if (who === 'p' && canCritical(f) && f.rng() < P_OPPORTUNITY_CRITICAL && startOpportunity(f)) return;
-  runAction(f, who, action, f.rng() < autoChance(f, who, action));
+  const chance = autoChance(f, who, action);
+  const why = `napad razine ${lvl(f, who, action.move)} protiv obrane razine ${bestDefense(f, other(who), action)}, šansa ${pct(chance)}`;
+  runAction(f, who, action, f.rng() < chance, why);
 }
 
 function openCritical(f, critical) {
@@ -246,7 +267,7 @@ function applyMistake(f, mk, threatAction) {
       return;
     case 'threat':
       if (threatAction) runAction(f, 'o', threatAction, true);
-      else f.score.o.adv += 1;
+      else addAdvantage(f, 'o', 'nisi reagirao');
       return;
     case 'pos':
       say(f, `${f.opponent.name} to iskoristi.`, 'o');
@@ -257,7 +278,7 @@ function applyMistake(f, mk, threatAction) {
       return;
     case 'penalty':
       f.score.p.pen += 1;
-      say(f, 'Sudac ti daje kaznu.', 'o');
+      say(f, 'Sudac ti daje kaznu (+1 kazna).', 'o');
       if (threatAction) runAction(f, 'o', threatAction, f.rng() < autoChance(f, 'o', threatAction));
       return;
     default:
@@ -294,6 +315,7 @@ export function chooseOption(f, index, { fast = false } = {}) {
     const theirs = lvl(f, 'o', threat.move);
     Object.assign(f.lastResult, { myLevel: mine, theirLevel: theirs, theirMove: MOVE_BY_ID[threat.move].name });
     const p = clamp(0.8 + 0.05 * (mine - theirs), 0.5, 0.97) + bonus;
+    f.lastResult.chance = Math.min(1, p);
     if (f.rng() < p) {
       f.lastResult.success = true;
       f.lastAction = { seq: ++f.seq, who: 'o', actionId: threat.id, success: false };
@@ -301,12 +323,12 @@ export function chooseOption(f, index, { fast = false } = {}) {
       if (threat.kind === 'sub') escapeAfterDefense(f);
     } else if (threat.kind === 'sub' && f.rng() < 0.65) {
       f.lastResult.success = true;
-      f.score.o.adv += 1;
-      say(f, `Zamalo! ${f.opponent.name} je jači (razina ${theirs} protiv tvojih ${mine}), ali izvukao si se.`, 'p');
+      say(f, `Zamalo! ${f.opponent.name} je jači (razina ${theirs} protiv tvojih ${mine}, šansa obrane bila je ${pct(p)}), ali izvukao si se.`, 'p');
+      addAdvantage(f, 'o', `skoro ${MOVE_BY_ID[threat.move].name}`);
       escapeAfterDefense(f);
     } else {
       f.lastResult.success = false;
-      say(f, `Dobar izbor, ali ${f.opponent.name} je jači: ${MOVE_BY_ID[threat.move].name} razina ${theirs} protiv tvoje obrane razine ${mine}.`, 'o');
+      say(f, `Dobar izbor, ali ${f.opponent.name} je nadjačao: ${MOVE_BY_ID[threat.move].name} razina ${theirs} protiv tvoje obrane razine ${mine} (šansa obrane bila je ${pct(p)}).`, 'o');
       runAction(f, 'o', threat, true);
     }
     return;
@@ -319,8 +341,8 @@ export function chooseOption(f, index, { fast = false } = {}) {
   const theirs = bestDefense(f, 'o', action);
   const p = (action.kind === 'sub' ? clamp(0.35 + 0.06 * (mine - theirs), 0.15, 0.75) : clamp(0.6 + 0.06 * (mine - theirs), 0.25, 0.92)) + bonus;
   const success = f.rng() < p;
-  Object.assign(f.lastResult, { success, myLevel: mine, theirLevel: theirs });
-  if (!success) say(f, `Dobar izbor, ali ${f.opponent.name} se obranio: tvoj ${MOVE_BY_ID[action.move].name} razina ${mine} protiv njegove obrane razine ${theirs}.`, 'o');
+  Object.assign(f.lastResult, { success, myLevel: mine, theirLevel: theirs, chance: Math.min(1, p) });
+  if (!success) say(f, `Dobar izbor, ali ${f.opponent.name} te nadjačao: tvoj ${MOVE_BY_ID[action.move].name} razina ${mine} protiv njegove obrane razine ${theirs} (šansa je bila ${pct(p)}).`, 'o');
   runAction(f, 'p', action, success);
 }
 
