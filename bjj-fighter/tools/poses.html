@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<title>Poze boraca</title>
+<style>
+  body { background: #111; color: #eee; font: 14px system-ui, sans-serif; margin: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px; }
+  canvas { width: 100%; display: block; border-radius: 8px; }
+</style>
+</head>
+<body>
+<h1>Poze boraca (alat za provjeru prikaza)</h1>
+<div class="grid" id="grid"></div>
+<script type="module">
+  import { createRenderer } from '../src/render/renderer2d.js';
+  import { POSES } from '../src/render/poses.js';
+  const grid = document.getElementById('grid');
+  for (const pos of Object.keys(POSES)) {
+    for (const playerTop of pos === 'standing' ? [null] : [true, false]) {
+      const box = document.createElement('div');
+      box.innerHTML = `<div>${pos} — ${playerTop === null ? 'stojeći' : playerTop ? 'igrač (plavi) gore' : 'igrač (plavi) dolje'}</div>`;
+      const c = document.createElement('canvas');
+      box.appendChild(c);
+      grid.appendChild(box);
+      const r = createRenderer(c);
+      r.draw({ pos, playerTop, lastAction: null, ended: null }, 0);
+    }
+  }
+</script>
+</body>
+</html>
