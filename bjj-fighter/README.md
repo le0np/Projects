@@ -44,7 +44,7 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
   - Vrijeme se uspori i biraš jednu od 5 opcija klikom ili tipkama 1–5. Imaš 20 sekundi.
   - Ako ne odabereš ništa, to se računa kao pasivnost.
   - Kriva opcija može odmah otvoriti novu opasnost, npr. ruka unutra u gardu otvara triangle.
-- **Tijek borbe:** borci igraju potez za potez. Oba borca ponekad pogriješe, rjeđe što je pojas i razina poteza viša, a protivnikova greška tebi daje priliku. Odluka se traži u oko 30 % razmjena. Brz odgovor (u prvoj trećini roka) daje +10 % šanse. Opcije su obojene po klasi: napad, obrana, kontrola, pozicija.
+- **Tijek borbe:** borci igraju potez za potez. Oba borca ponekad pogriješe, rjeđe što je pojas i razina poteza viša, a protivnikova greška tebi daje priliku. Šansa greške oba borca (u postocima) piše uz ime na semaforu i na početku loga, a log za svaki potez navodi razine, šansu i točne bodove (npr. „Scissor sweep +2, mount +4 = +6”). Odluka se traži u oko 30 % razmjena. Brz odgovor (u prvoj trećini roka) daje +10 % šanse. Opcije su obojene po klasi: napad, obrana, kontrola, pozicija.
 - **Log borbe:** cijeli log je ispod borbe. „Kopiraj log” kopira ga s rezultatom, pa ga možeš zalijepiti u chat.
 - **Test:**
   - ubrzanje vremena 1–10x (vrijedi za treninge, aktivnosti i sat borbe)
