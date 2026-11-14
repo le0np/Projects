@@ -30,6 +30,7 @@ export function createState({ test = true, now = 0 } = {}) {
     levels: {},
     wins: 0,
     losses: 0,
+    compWins: 0, // only competition wins count toward promotion
     medals: { gold: 0, silver: 0, bronze: 0 },
     training: null,
     activity: null,
@@ -145,11 +146,22 @@ export function knownMoveCount(state) {
   return Object.values(state.levels).filter((l) => l >= 1).length;
 }
 
+// Every fight counts toward the overall record; only competition wins count toward promotion.
+export function recordFight(state, mode, won) {
+  if (won) state.wins += 1; else state.losses += 1;
+  if (won && mode === 'comp') state.compWins += 1;
+}
+
+// Wins implied by medals from finished competitions: gold 3, silver 2, bronze 1.
+export function compWinsFromMedals(medals) {
+  return 3 * (medals?.gold ?? 0) + 2 * (medals?.silver ?? 0) + (medals?.bronze ?? 0);
+}
+
 export function promotionStatus(state) {
   const next = BELTS[beltIndex(state.belt) + 1];
   if (!next) return { next: null, ok: false };
   const need = PROMOTION[next];
-  const have = { moves: knownMoveCount(state), wins: state.wins };
+  const have = { moves: knownMoveCount(state), wins: state.compWins };
   return { next, need, have, ok: have.moves >= need.moves && have.wins >= need.wins };
 }
 
@@ -196,6 +208,8 @@ function repair(raw, realNow) {
     wins: Math.floor(num(raw.wins, 0, 0)),
     losses: Math.floor(num(raw.losses, 0, 0)),
     medals,
+    // Older saves have no compWins: rebuild it from medals (a quarterfinal exit has no wins).
+    compWins: Math.floor(num(raw.compWins, compWinsFromMedals(medals), 0)),
     training: timer(tr) && MOVE_BY_ID[tr.moveId] && Number.isInteger(tr.toLevel) && tr.toLevel >= 1 && tr.toLevel <= MAX_LEVEL
       ? { moveId: tr.moveId, toLevel: tr.toLevel, startedAt: tr.startedAt, endsAt: tr.endsAt } : null,
     activity: timer(ac) && ACTIVITIES[ac.type] && Number.isFinite(ac.chance)

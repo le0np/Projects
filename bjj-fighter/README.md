@@ -33,7 +33,7 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
 - **Borbe:**
   - Sparing: pobjeda donosi 10 €.
   - Natjecanje: kotizacija 20 €, četvrtfinale, polufinale i finale. Zlato 100 €, srebro 40 €, bronca 15 €, uz 5 % šanse da pokupiš novi potez.
-  - Promocija u viši pojas traži dovoljno naučenih poteza i pobjeda.
+  - Promocija u viši pojas traži dovoljno naučenih poteza i pobjeda na natjecanjima (svaka pobijeđena borba na turniru, sparing se ne računa).
 - **Borba:**
   - Traje 3 runde po 3 minute ili do submissiona. Sat ide 3x brže od stvarnog, a testno ubrzanje ga dodatno ubrzava.
   - Bodovanje: takedown 2, sweep 2, knee on belly 2, prolaz garda 3, mount 4, leđa 4. Bodovi se dobivaju tek nakon 3 s držanja pozicije.

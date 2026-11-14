@@ -3,7 +3,7 @@ import { BELTS, BELT_NAMES, CATEGORIES, MOVES, MOVE_BY_ID } from '../data/moves.
 import { POSITIONS } from '../data/positions.js';
 import {
   createState, learnTime, effectiveLevel, canTrain, startTraining, startActivity, advance, setSpeed,
-  rollCompetitionLearn, instantLevelUp, promotionStatus, promote, serialize, deserialize, competitionReady, ACTIVITIES, MAX_LEVEL,
+  rollCompetitionLearn, recordFight, instantLevelUp, promotionStatus, promote, serialize, deserialize, competitionReady, ACTIVITIES, MAX_LEVEL,
 } from '../engine/progression.js';
 import { createFight, stepFight, chooseOption, formatLog, logLine, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
 import { makeOpponent, fighterFromState, averageLevel } from '../engine/opponent.js';
@@ -140,13 +140,13 @@ function renderFights() {
   const promo = st.next
     ? `<div class="card"><h3>Promocija: ${BELT_NAMES[st.next]} pojas</h3>
         <ul class="req"><li class="${st.have.moves >= st.need.moves ? 'ok' : 'no'}">Naučeni potezi: ${st.have.moves} / ${st.need.moves}</li>
-        <li class="${st.have.wins >= st.need.wins ? 'ok' : 'no'}">Pobjede: ${st.have.wins} / ${st.need.wins}</li></ul>
+        <li class="${st.have.wins >= st.need.wins ? 'ok' : 'no'}">Pobjede na natjecanjima: ${st.have.wins} / ${st.need.wins}</li></ul>
         <button data-promote ${st.ok ? '' : 'disabled'}>Promocija</button></div>`
     : '<div class="card"><h3>Crni pojas</h3><p>Najviši pojas. Svaka čast.</p></div>';
   $('tab-fights').innerHTML = `
     <p class="hint">Borba: ${ROUNDS} runde po ${ROUND_SECONDS / 60} min (sat ide ${CLOCK_SPEED}x brže) ili do submissiona. U kritičnim trenucima vrijeme se uspori i biraš jednu od 5 opcija (tipke 1–5).</p>
     <div class="cards">
-      <div class="card"><h3>Sparing</h3><p>Borba s protivnikom tvog pojasa.</p>
+      <div class="card"><h3>Sparing</h3><p>Borba s protivnikom tvog pojasa. Ne računa se za promociju.</p>
         <div class="row"><span>Nagrada za pobjedu</span><b>${SPAR_REWARD} €</b></div>
         <button data-fight="spar">Kreni u sparing</button></div>
       <div class="card"><h3>Natjecanje</h3><p>Do 3 borbe: četvrtfinale, polufinale, finale.</p>
@@ -158,6 +158,7 @@ function renderFights() {
       ${promo}
       <div class="card"><h3>Karijera</h3>
         <div class="row"><span>Pobjede / porazi</span><b>${state.wins} / ${state.losses}</b></div>
+        <div class="row"><span>Pobjede na natjecanjima</span><b>${state.compWins}</b></div>
         <div class="row"><span>Medalje</span><b>🥇 ${state.medals.gold} · 🥈 ${state.medals.silver} · 🥉 ${state.medals.bronze}</b></div></div>
     </div>`;
 }
@@ -394,7 +395,7 @@ $('give-up').addEventListener('click', () => {
 function finishFight(f) {
   fightCtx.done = true;
   const won = f.ended.winner === 'p';
-  if (won) state.wins += 1; else state.losses += 1;
+  recordFight(state, fightCtx.mode, won);
   const lines = [];
   let next = null;
   if (fightCtx.mode === 'spar') {
