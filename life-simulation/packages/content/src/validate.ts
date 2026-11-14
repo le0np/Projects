@@ -403,6 +403,9 @@ function checkCondition(
     if ("attr" in node && node.gte !== undefined && node.lte !== undefined && node.gte > node.lte) {
       report("error", path, `impossible bounds: gte ${node.gte} > lte ${node.lte}`);
     }
+    if ("age" in node && node.age.gte !== undefined && node.age.lte !== undefined && node.age.gte > node.age.lte) {
+      report("error", path, `impossible age bounds: ${node.age.gte} > ${node.age.lte}`);
+    }
     if ("progress" in node) {
       const { gte, lte } = node.progress;
       if (gte !== undefined && lte !== undefined && gte > lte) report("error", path, `impossible progress bounds`);

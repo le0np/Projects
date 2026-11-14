@@ -458,3 +458,54 @@ describe("setup", () => {
     expect(() => newSession(shipped, [])).toThrow();
   });
 });
+
+describe("life calendar (concept v2)", () => {
+  const quiet = event({
+    id: "quiet",
+    roles: { me: { count: 1 } },
+    cooldown: { maxPerSession: 1 },
+    choices: { me: [{ id: "a", label: "A", tags: ["help"] }, { id: "b", label: "B", tags: ["ignore"], default: true }] },
+    outcomes: [{ id: "done" }],
+  });
+
+  it("logs every season, ages characters and reports the age at the end", () => {
+    const seen: Notice[] = [];
+    const r = runSession({
+      content: buildContent([quiet]),
+      config: { seed: "calendar", durationSeconds: 120, yearSeconds: 30, startAge: 40, aging: { fromAge: 40, healthPerYear: 5 } },
+      participants: [{ career: "mechanic", isBot: true, controller: scripted(pickDefault) }],
+      onNotice: (_id, n) => seen.push(n),
+    });
+    const seasons = entries(r, "season_changed");
+    expect(seasons.map((e) => e.season)).toEqual(["summer", "autumn", "winter", "spring", "summer", "autumn", "winter", "spring", "summer", "autumn", "winter", "spring", "summer", "autumn", "winter"]);
+    expect(seasons.filter((e) => e.season === "spring").map((e) => e.year)).toEqual([1, 2, 3]);
+    const recap = r.recaps[0]!;
+    expect(recap.ageAtEnd).toBe(44);
+    // ages 41, 42, 43 are past fromAge → 3 × 5 health lost (mechanic: health losses ×0.85 do not apply to aging)
+    expect(recap.startAttrs.health - recap.finalAttrs.health).toBe(15);
+    const offer = seen.find((n) => n.kind === "event") as Extract<Notice, { kind: "event" }>;
+    expect(offer.view.self.age).toBe(40);
+    expect(offer.view.calendar).toEqual({ year: 0, season: "spring" });
+  });
+
+  it("events can depend on age and season", () => {
+    const winterOnly = event({ ...quiet, id: "winter_only", conditions: undefined, roles: { me: { count: 1, conditions: { all: [{ age: { gte: 19 } }] } } } });
+    const content = buildContent([{ ...winterOnly, conditions: { seasonIn: ["winter"] } }]);
+    const r = runSession({
+      content,
+      config: { seed: "season-gate", durationSeconds: 60, yearSeconds: 40 },
+      participants: [{ career: "civilian", isBot: true, controller: scripted(pickDefault) }],
+    });
+    const started = entries(r, "event_started")[0];
+    // 18 until 40 s, winter of year 0 starts at 30 s → must wait for age 19 (≥ 40 s), and season winter is over by then
+    expect(started).toBeUndefined();
+    const r2 = runSession({
+      content,
+      config: { seed: "season-gate", durationSeconds: 100, yearSeconds: 40 },
+      participants: [{ career: "civilian", isBot: true, controller: scripted(pickDefault) }],
+    });
+    const s2 = entries(r2, "event_started")[0]!;
+    expect(s2.t).toBeGreaterThanOrEqual(70_000); // winter of year 1: 70–80 s, age 19
+    expect(s2.t).toBeLessThan(80_000);
+  });
+});

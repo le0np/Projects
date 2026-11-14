@@ -18,8 +18,10 @@ export function computeRecaps(input: {
   tracking: ReadonlyMap<string, CharacterTracking>;
   facts: ReadonlyMap<string, Fact>;
   sessionDurationMs: number;
+  /** Age at a given session time. */
+  ageAt: (timeMs: number) => number;
 }): LifeRecap[] {
-  const { characters, relations, tracking, facts, sessionDurationMs } = input;
+  const { characters, relations, tracking, facts, sessionDurationMs, ageAt } = input;
   const byId = new Map(characters.map((c) => [c.id, c]));
 
   // Outcome tags granted by facts (content-driven, e.g. saved_by → "saved_another" for the rescuer).
@@ -85,6 +87,7 @@ export function computeRecaps(input: {
       isBot: c.isBot,
       sessionDurationMs,
       lifeDurationMs: c.endedAt ?? sessionDurationMs,
+      ageAtEnd: ageAt(c.endedAt ?? sessionDurationMs),
       eventsCount: c.eventsCompleted,
       finalStatus: c.status,
       ...(c.cause ? { cause: c.cause } : {}),
@@ -104,7 +107,7 @@ export function computeRecaps(input: {
 export function formatRecap(r: LifeRecap): string {
   const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
   const lines = [
-    `${r.name} (${r.career}${r.isBot ? ", bot" : ""}) — ${r.finalStatus}${r.cause ? `: ${r.cause}` : ""}`,
+    `${r.name} (${r.career}${r.isBot ? ", bot" : ""}), age ${r.ageAtEnd} — ${r.finalStatus}${r.cause ? `: ${r.cause}` : ""}`,
     `  Outcomes: ${r.outcomes.join(", ")}`,
     `  Lived ${mmss(r.lifeDurationMs)} of ${mmss(r.sessionDurationMs)}, ${r.eventsCount} events, life score ${r.lifeScore}`,
     `  ${ATTRIBUTES.map((a) => `${a} ${r.startAttrs[a]}→${r.finalAttrs[a]}`).join(", ")}`,

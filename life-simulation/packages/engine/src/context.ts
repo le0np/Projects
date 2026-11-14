@@ -1,4 +1,4 @@
-import { parseRef, type ConditionContext } from "@lifesim/core";
+import { parseRef, type ConditionContext, type Season } from "@lifesim/core";
 import { factKey, type CharacterState, type Relations } from "./state";
 
 export interface WorldView {
@@ -6,6 +6,8 @@ export interface WorldView {
   relations: Relations;
   sessionFacts: ReadonlySet<string>;
   progress(): number;
+  age(characterId: string): number;
+  season(): Season;
 }
 
 export type Bindings = Readonly<Record<string, readonly string[]>>;
@@ -41,6 +43,8 @@ export function makeContext(
     },
     seenEvent: (id, eventId) => (char(id).seen.get(eventId) ?? 0) > 0,
     progress: () => world.progress(),
+    age: (id) => world.age(id),
+    season: () => world.season(),
     choicesOf,
   };
 }

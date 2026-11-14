@@ -3,6 +3,8 @@ import type { Attribute, Notice, OfferView } from "@lifesim/core";
 import { ATTR_LABELS, RELATION_LABELS, careerName, clock, hints } from "../format";
 import type { GameState } from "../useGame";
 
+const SEASON_LABELS: Record<string, string> = { spring: "🌱 Spring", summer: "☀ Summer", autumn: "🍂 Autumn", winter: "❄ Winter" };
+
 function useNow(intervalMs = 250): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -32,6 +34,12 @@ export function GameScreen({ game, connected, decide }: Props) {
         <div className="who">
           <strong>{me?.name ?? "You"}</strong>
           <span className="muted">{me ? careerName(me.career) : ""}</span>
+          {game.calendar && (
+            <span className="chip">
+              {SEASON_LABELS[game.calendar.season] ?? game.calendar.season} · year {game.calendar.year + 1}
+              {game.ageBase && ` · age ${game.ageBase.age + game.calendar.year - game.ageBase.year}`}
+            </span>
+          )}
           {!connected && <span className="chip bad">Reconnecting…</span>}
         </div>
         <div className="session-clock" aria-label="Session time">
@@ -101,7 +109,7 @@ export function GameScreen({ game, connected, decide }: Props) {
           <div className="card">
             <h2>Around town</h2>
             <ul className="feed" aria-live="polite">
-              {[...game.feed].reverse().slice(0, 12).map((f, i) =>
+              {[...game.feed].reverse().filter((f) => f.kind !== "season").slice(0, 12).map((f, i) =>
                 f.kind === "event" ? (
                   <li key={`${f.instanceId}-${i}`}>
                     <strong>{f.title}</strong> — {f.text}

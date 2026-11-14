@@ -69,3 +69,6 @@ export const SESSION_LIMITS = {
 
 /** Identifier format for events, roles, choices, outcomes, careers, facts. */
 export const ID_PATTERN = /^[a-z][a-z0-9_]*$/;
+
+export const SEASONS = ["spring", "summer", "autumn", "winter"] as const;
+export type Season = (typeof SEASONS)[number];

@@ -8,7 +8,8 @@ import type { Attribute, LifeRecap, Notice, OfferView, OtherCharacterView, Parti
 
 export type PublicEntry =
   | { kind: "event"; t: number; instanceId: string; title: string; text: string; participants: ParticipantInfo[] }
-  | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string };
+  | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
+  | { kind: "season"; t: number; year: number; season: string };
 
 export interface Snapshot {
   sessionId: string;
@@ -45,6 +46,9 @@ export interface GameState {
   history: Notice[];
   feed: PublicEntry[];
   attrs?: Record<Attribute, number>;
+  /** Life calendar; age is derived from the last view's age plus the years since. */
+  calendar?: { year: number; season: string };
+  ageBase?: { age: number; year: number };
   others: OtherCharacterView[];
   ended?: { status: string; cause: string };
   recap?: LifeRecap;
@@ -72,6 +76,8 @@ function stateFromSnapshot(s: Snapshot): GameState {
     history: s.history,
     feed: s.feed,
     attrs: lastView?.self.attrs,
+    calendar: [...s.feed].reverse().find((f): f is Extract<PublicEntry, { kind: "season" }> => f.kind === "season") ?? lastView?.calendar,
+    ageBase: lastView ? { age: lastView.self.age, year: lastView.calendar.year } : undefined,
     others: lastView?.others ?? [],
     ...(ended ? { ended: { status: ended.status, cause: ended.cause } } : {}),
   };
@@ -105,7 +111,11 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
     socket.on("game:started", start);
     socket.on("game:state", start);
 
-    socket.on("game:feed", (entry: PublicEntry) => setGame((g) => (g ? { ...g, feed: [...g.feed, entry].slice(-50) } : g)));
+    socket.on("game:feed", (entry: PublicEntry) =>
+      setGame((g) =>
+        g ? { ...g, feed: [...g.feed, entry].slice(-50), ...(entry.kind === "season" ? { calendar: { year: entry.year, season: entry.season } } : {}) } : g,
+      ),
+    );
 
     socket.on("game:notice", (n: Notice) =>
       setGame((g) => {
@@ -116,6 +126,8 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
             ...g,
             history,
             attrs: n.view.self.attrs,
+            calendar: n.view.calendar,
+            ageBase: { age: n.view.self.age, year: n.view.calendar.year },
             others: n.view.others,
             sync: { sessionTime: n.view.now, wall: Date.now() },
             pending: n.view.offer.choices.length > 0 ? n.view.offer : g.pending,

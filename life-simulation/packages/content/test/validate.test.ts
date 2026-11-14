@@ -141,6 +141,7 @@ describe("validator catches", () => {
   it("impossible participant requirements", () => {
     expectError(mutate("health_collapse_street", (ev) => (ev.roles.bystander.count = [8, 9])), "at most 8");
     expectError(mutate("everyday_missed_bus", (ev) => (ev.roles.commuter.conditions = { attr: "health", gte: 80, lte: 20 })), "impossible bounds");
+    expectError(mutate("everyday_missed_bus", (ev) => (ev.roles.commuter.conditions = { age: { gte: 60, lte: 30 } })), "impossible age bounds");
   });
 
   it("outcome ordering problems", () => {

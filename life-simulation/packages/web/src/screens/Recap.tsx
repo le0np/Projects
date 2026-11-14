@@ -26,6 +26,10 @@ export function RecapView({ recap }: { recap: LifeRecap }) {
           <span className="stat-label">of {clock(recap.sessionDurationMs)} lived</span>
         </div>
         <div className="stat">
+          <span className="stat-value">{recap.ageAtEnd ?? "–"}</span>
+          <span className="stat-label">years old</span>
+        </div>
+        <div className="stat">
           <span className="stat-value">{recap.eventsCount}</span>
           <span className="stat-label">events</span>
         </div>

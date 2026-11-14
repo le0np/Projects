@@ -10,6 +10,7 @@ import {
   ID_PATTERN,
   IMPORTANCE,
   RELATION_TYPES,
+  SEASONS,
   STATUSES,
 } from "./constants";
 import type { Condition } from "./conditions";
@@ -61,6 +62,11 @@ export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
       }),
     }),
     z.strictObject({ seenEvent: Id, of: RefStr.optional(), present: z.boolean().optional() }),
+    z.strictObject({
+      age: z.strictObject({ gte: z.number().int().min(0).optional(), lte: z.number().int().min(0).optional() }),
+      of: RefStr.optional(),
+    }),
+    z.strictObject({ seasonIn: z.array(z.enum(SEASONS)).min(1) }),
     z.strictObject({
       progress: z.strictObject({ gte: z.number().min(0).max(1).optional(), lte: z.number().min(0).max(1).optional() }),
     }),

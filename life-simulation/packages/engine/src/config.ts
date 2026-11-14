@@ -18,6 +18,11 @@ export interface SessionConfig {
   /** Starting attributes before career bonuses, with ± variation. */
   baseAttributes: Record<Attribute, number>;
   attributeVariation: number;
+  /** Life calendar (concept v2 §3): session seconds per year, and everyone's starting age. */
+  yearSeconds: number;
+  startAge: number;
+  /** From this age on, health drops by `healthPerYear` at every new year. */
+  aging: { fromAge: number; healthPerYear: number };
   /** Pre-existing relationships at session start (decision D3). */
   startingRelationships: {
     /** Number of colleague pairs = round(participants × ratio). */
@@ -37,6 +42,9 @@ export const DEFAULT_CONFIG: Omit<SessionConfig, "seed"> = {
   baseAttributes: { health: 75, mental: 70, money: 50, reputation: 50, career: 50 },
   attributeVariation: 8,
   startingRelationships: { colleaguePairRatio: 0.25, familyChance: 0.3, partnerChance: 0.25 },
+  yearSeconds: 30,
+  startAge: 18,
+  aging: { fromAge: 30, healthPerYear: 1 },
 };
 
 export function resolveConfig(partial: Partial<SessionConfig> & { seed: string }): SessionConfig {
@@ -46,5 +54,6 @@ export function resolveConfig(partial: Partial<SessionConfig> & { seed: string }
     deadlines: { ...DEFAULT_CONFIG.deadlines, ...partial.deadlines },
     baseAttributes: { ...DEFAULT_CONFIG.baseAttributes, ...partial.baseAttributes },
     startingRelationships: { ...DEFAULT_CONFIG.startingRelationships, ...partial.startingRelationships },
+    aging: { ...DEFAULT_CONFIG.aging, ...partial.aging },
   };
 }

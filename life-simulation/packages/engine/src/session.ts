@@ -12,6 +12,8 @@
 import {
   ATTRIBUTES,
   Rng,
+  ageAt,
+  calendarAt,
   TimerQueue,
   evaluate,
   type Attribute,
@@ -46,7 +48,8 @@ export interface ParticipantSpec {
 
 export type PublicEntry =
   | { kind: "event"; t: number; instanceId: string; title: string; text: string; participants: ParticipantInfo[] }
-  | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string };
+  | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
+  | { kind: "season"; t: number; year: number; season: string };
 
 export type SubmitResult = { ok: true } | { ok: false; reason: string };
 
@@ -101,7 +104,7 @@ interface PendingFollowUp {
   condition?: Condition;
 }
 
-type Timer = { kind: "deadline"; instanceId: string } | { kind: "tick" } | { kind: "end" };
+type Timer = { kind: "deadline"; instanceId: string } | { kind: "tick" } | { kind: "end" } | { kind: "season" };
 
 const MS = 1000;
 
@@ -204,6 +207,7 @@ export class Session {
     });
     this._state = "active";
     this.timers.push(this.config.durationSeconds * MS, { kind: "end" });
+    this.scheduleNextSeason();
     for (const id of this.order) this.scheduleTick(this.char(id).availableAt);
   }
 
@@ -220,6 +224,9 @@ export class Session {
           if (this.retryAt !== undefined && this.retryAt <= this.now()) this.retryAt = undefined;
           this.fillIdle();
           break;
+        case "season":
+          this.onSeason();
+          break;
         case "end":
           this.accepting = false;
           this.endReason ??= "time_limit";
@@ -227,6 +234,43 @@ export class Session {
           break;
       }
     }
+  }
+
+  /** Season boundaries every quarter year; at each new year everyone ages (concept v2 §3). */
+  private scheduleNextSeason(): void {
+    const quarter = (this.config.yearSeconds * MS) / 4;
+    const next = (Math.floor(this.now() / quarter) + 1) * quarter;
+    if (next < this.config.durationSeconds * MS) this.timers.push(next, { kind: "season" });
+  }
+
+  private onSeason(): void {
+    const { year, season } = calendarAt(this.now(), this.config.yearSeconds * MS);
+    this.log.push({ t: this.now(), type: "season_changed", year, season });
+    this.onPublic({ kind: "season", t: this.now(), year, season });
+    if (season === "spring") {
+      const changes: Change[] = [];
+      for (const id of this.order) {
+        const c = this.char(id);
+        if (c.status !== "active" || this.age(id) <= this.config.aging.fromAge) continue;
+        c.attrs.health = clampAttr(c.attrs.health - this.config.aging.healthPerYear);
+        if (c.attrs.health <= 0 && c.busyWith === null) {
+          this.setStatus(c, "dead", `Worn out by the years, at ${this.age(id)}`, changes);
+          this.log.push({ t: this.now(), type: "character_ended", characterId: id, status: "dead", cause: c.cause ?? "" });
+          this.onNotice(id, { kind: "ended", t: this.now(), status: "dead", cause: c.cause ?? "" });
+        }
+      }
+      if (this.order.every((id) => this.char(id).status !== "active")) {
+        this.accepting = false;
+        this.endReason = "all_ended";
+        this.maybeComplete();
+      }
+    }
+    this.scheduleNextSeason();
+  }
+
+  private age(id: string): number {
+    const c = this.char(id);
+    return ageAt(this.config.startAge, c.endedAt ?? this.now(), this.config.yearSeconds * MS);
   }
 
   cancel(): void {
@@ -658,10 +702,12 @@ export class Session {
     return {
       now: this.now(),
       sessionProgress: this.progress(),
+      calendar: (({ year, season }) => ({ year, season }))(calendarAt(this.now(), this.config.yearSeconds * MS)),
       self: {
         id: self.id,
         name: self.name,
         career: self.career.id,
+        age: this.age(characterId),
         attrs: { ...self.attrs },
         status: self.status,
         facts: [...self.facts].sort(),
@@ -855,6 +901,7 @@ export class Session {
       tracking: this.tracking,
       facts: this.content.facts,
       sessionDurationMs: this.now(),
+      ageAt: (t) => ageAt(this.config.startAge, t, this.config.yearSeconds * MS),
     });
     for (const recap of this.recaps) {
       this.onNotice(recap.characterId, { kind: "session_completed", t: this.now(), recap });
@@ -999,6 +1046,8 @@ export class Session {
       relations: this.relations,
       sessionFacts: this.sessionFacts,
       progress: () => this.progress(),
+      age: (id) => this.age(id),
+      season: () => calendarAt(this.now(), this.config.yearSeconds * MS).season,
     };
   }
 }

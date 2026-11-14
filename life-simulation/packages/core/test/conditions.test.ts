@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConditionSchema, evaluate, type Condition, type ConditionContext, type RelationView } from "../src";
+import { ConditionSchema, ageAt, calendarAt, evaluate, type Condition, type ConditionContext, type RelationView } from "../src";
 
 interface Char {
   career: string;
@@ -25,6 +25,8 @@ function makeContext(
     relation: (a, b) => extra.relations?.[`${a}>${b}`] ?? { type: "stranger", affinity: 0, trust: 50 },
     seenEvent: (id, ev) => (chars[id]!.seen ?? []).includes(ev),
     progress: () => extra.progress ?? 0,
+    age: (id) => ({ ana: 34, ben: 19 })[id as "ana" | "ben"] ?? 18,
+    season: () => "winter",
     choicesOf: extra.choices ? (role) => extra.choices![role] ?? [] : undefined,
   };
 }
@@ -89,6 +91,14 @@ describe("evaluate", () => {
     expect(t({ any: [{ careerIn: ["lawyer"] }, { attr: "health", gte: 99 }] })).toBe(false);
   });
 
+  it("age and season", () => {
+    expect(t({ age: { gte: 30 } })).toBe(true);
+    expect(t({ age: { lte: 20 }, of: "role:lender" })).toBe(true);
+    expect(t({ age: { gte: 20 }, of: "role:lender" })).toBe(false);
+    expect(t({ seasonIn: ["winter", "autumn"] })).toBe(true);
+    expect(t({ seasonIn: ["summer"] })).toBe(false);
+  });
+
   it("chose outside resolution throws", () => {
     const noChoices = makeContext(chars, { self: ["ana"] });
     expect(() => evaluate({ chose: "x", role: "y" }, noChoices)).toThrow();
@@ -100,5 +110,16 @@ describe("ConditionSchema", () => {
     expect(ConditionSchema.safeParse({ attr: "health", gte: 1, typo: true }).success).toBe(false);
     expect(ConditionSchema.safeParse({ attr: "health", of: "witness" }).success).toBe(false);
     expect(ConditionSchema.safeParse({ attr: "luck", gte: 1 }).success).toBe(false);
+  });
+});
+
+describe("calendar", () => {
+  it("maps session time to years and seasons", () => {
+    const year = 30_000;
+    expect(calendarAt(0, year)).toEqual({ year: 0, season: "spring", seasonIndex: 0 });
+    expect(calendarAt(7_500, year).season).toBe("summer");
+    expect(calendarAt(29_999, year).season).toBe("winter");
+    expect(calendarAt(30_000, year)).toMatchObject({ year: 1, season: "spring" });
+    expect(ageAt(18, 95_000, year)).toBe(21);
   });
 });

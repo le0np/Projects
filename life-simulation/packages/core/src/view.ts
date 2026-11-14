@@ -4,7 +4,7 @@
  * (BOT_SYSTEM §8): no other characters' private info, hidden conditions, future
  * events or real outcome effects.
  */
-import type { Attribute, ChoiceTag, EventCategory, Importance, RelationType, Status } from "./constants";
+import type { Attribute, ChoiceTag, EventCategory, Importance, RelationType, Season, Status } from "./constants";
 import type { Perceived } from "./schema";
 
 export interface VisibleChoice {
@@ -52,6 +52,7 @@ export interface SelfView {
   id: string;
   name: string;
   career: string;
+  age: number;
   attrs: Record<Attribute, number>;
   status: Status;
   /** Own facts: `key` or `key:<otherCharacterId>`. */
@@ -71,6 +72,8 @@ export interface CharacterView {
   now: number;
   /** 0..1 fraction of the configured session duration (players see a clock too). */
   sessionProgress: number;
+  /** Life calendar: whole years since the session started and the current season. */
+  calendar: { year: number; season: Season };
   self: SelfView;
   others: OtherCharacterView[];
   offer: OfferView;
@@ -139,6 +142,8 @@ export interface LifeRecap {
   isBot: boolean;
   sessionDurationMs: number;
   lifeDurationMs: number;
+  /** Age when the story ended (or at the end of the session). */
+  ageAtEnd: number;
   eventsCount: number;
   finalStatus: Status;
   cause?: string;

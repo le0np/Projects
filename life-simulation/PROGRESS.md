@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-**MVP je funkcionalno kompletan (M1–M7).** Vlasnik je 14.–15. studenog 2026. dopunio koncept (`docs/spec/08_CONCEPT_V2.md`): grad gledan odozgo, vrijeme i starenje od 18 godina, kaos (gradski preokreti, smicalice, efekt leptira), humorističan ton i likovi u stilu B3. Rad se nastavlja po planu za koncept v2 (`docs/IMPLEMENTATION_PLAN.md` §9), počevši od M8.
+**MVP je funkcionalno kompletan (M1–M7).** Vlasnik je 14.–15. studenog 2026. dopunio koncept (`docs/spec/08_CONCEPT_V2.md`): grad gledan odozgo, vrijeme i starenje od 18 godina, kaos (gradski preokreti, smicalice, efekt leptira), humorističan ton i likovi u stilu B3. Rad se nastavlja po planu za koncept v2 (`docs/IMPLEMENTATION_PLAN.md` §9). **M8 (vrijeme i dob) je gotov**; sljedeći je M9 (grad i rutina).
 
 ### Kriteriji prihvaćanja (00_OVERVIEW)
 
@@ -241,6 +241,24 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
   - dug život kao glavni cilj;
   - lica nalik South Parku (stil B s velikim bijelim očima).
 
+### M8: vrijeme i dob
+
+- `core`:
+  - `calendarAt` i `ageAt`: godina traje `yearSeconds` (zadano 30 s), a dijeli se na četiri godišnja doba;
+  - novi uvjeti `{ age: { gte, lte }, of }` i `{ seasonIn: [...] }`;
+  - lik vidi `calendar` (godina i godišnje doba) i svoju dob (`self.age`);
+  - Life Recap ima `ageAtEnd`.
+- `engine`:
+  - konfiguracija `yearSeconds`, `startAge` (18) i `aging` (od 30. godine zdravlje slabi za 1 svake nove godine);
+  - timer na svakoj granici godišnjeg doba upisuje `season_changed` u log, šalje ga u javni feed i na proljeće primjenjuje starenje; lik kojem zdravlje padne na 0 umire od starosti („Worn out by the years”).
+- Validator hvata nemoguće dobne granice.
+- Web zasad samo prikazuje godišnje doba, godinu i dob u zaglavlju te dob u recapu. Prava diorama dolazi u M11.
+- Testovi: kalendar, uvjeti dobi i godišnjeg doba, slijed godišnjih doba, starenje, dob na kraju i u prikazu lika, event koji ovisi o zimi i dobi.
+- Batch (200 sesija, 4–8 botova):
+  - sesija od 8 minuta pokriva 16 godina, pa likovi dožive 34 godine (umrli ranije od 22);
+  - godišnje doba se promijeni 63 puta po sesiji;
+  - starenje do 34. godine nikoga ne ubija; smrtnost je ostala 5,6 % likova.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:
@@ -249,7 +267,7 @@ Provedeno 13. studenog 2026.:
 | --- | --- |
 | `npm run typecheck` | prolazi |
 | `npm run validate` | 57 eventa, 0 grešaka, 0 upozorenja; hash sadržaja `8554608747611859` |
-| `npm test` | 84/84 testova prolazi |
+| `npm test` | 88/88 testova prolazi |
 | `TEST_DATABASE_URL=… npx vitest run packages/server` | 4/4 na PostgreSQL 16 (privremeni lokalni klaster); u bazi: sesija `completed`, 40 odluka igrača i 1 default (dok je igrač bio odspojen), 4 rezultata |
 | `npm run server` + curl | health, registracija, validacijske poruke, karijere rade |
 | `npm run typecheck` (uključuje web) i `npm run web:build` | čisto; bundle 88 kB gzip |
@@ -271,7 +289,7 @@ Provedeno 13. studenog 2026.:
 
 ## Sljedeći koraci
 
-1. M8 Vrijeme i dob → M9 Grad i rutina → M10 Kaos → M11 Prikaz → M12 Sadržaj → M13 Balans (plan §9).
+1. ~~M8 Vrijeme i dob~~ (gotovo) → M9 Grad i rutina → M10 Kaos → M11 Prikaz → M12 Sadržaj → M13 Balans (plan §9).
 
 ## Handoff za novi chat
 

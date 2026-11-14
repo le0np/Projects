@@ -2,7 +2,7 @@
  * Domain log: the append-only, chronological source of truth for a session.
  * Life Recap, statistics, replay checks and the human-readable log are built from it.
  */
-import type { Attribute, RelationType, Status } from "@lifesim/core";
+import type { Attribute, RelationType, Season, Status } from "@lifesim/core";
 import type { SessionConfig } from "./config";
 
 export type EndReason = "time_limit" | "all_ended" | "story_resolved" | "cancelled";
@@ -40,6 +40,8 @@ export type LogEntry = { t: number } & (
   | { type: "followup_activated"; sourceInstanceId: string; eventId: string; instanceId: string }
   | { type: "followup_dropped"; sourceInstanceId: string; eventId: string; reason: string }
   | { type: "character_ended"; characterId: string; status: Status; cause: string }
+  /** A new season (and at spring, a new year: everyone is a year older). */
+  | { type: "season_changed"; year: number; season: Season }
   | { type: "session_completed"; reason: EndReason }
 );
 
@@ -100,6 +102,9 @@ export function formatLog(log: readonly LogEntry[]): string {
         break;
       case "character_ended":
         lines.push(`${at} - ${name(e.characterId)}'s story ends: ${e.status} — ${e.cause}`);
+        break;
+      case "season_changed":
+        lines.push(`${at} - ${e.season === "spring" ? `Year ${e.year + 1} begins. ` : ""}It is ${e.season}.`);
         break;
       case "session_completed":
         lines.push(`${at} - Session completed (${e.reason})`);

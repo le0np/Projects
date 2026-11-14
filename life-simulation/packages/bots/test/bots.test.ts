@@ -8,7 +8,8 @@ function view(choices: { id: string; tags: ChoiceTag[]; perceived?: Perceived }[
   return {
     now: 10_000,
     sessionProgress: 0.2,
-    self: { id: "me", name: "Me", career: "civilian", attrs: { health: 70, mental: 70, money: 50, reputation: 50, career: 50 }, status: "active", facts: [] },
+    calendar: { year: 1, season: "summer" },
+    self: { id: "me", name: "Me", career: "civilian", age: 19, attrs: { health: 70, mental: 70, money: 50, reputation: 50, career: 50 }, status: "active", facts: [] },
     others: [
       { id: "you", name: "You", career: "teacher", status: "active", relation: { type: "acquaintance", affinity: opts.otherAffinity ?? 0, trust: 50 } },
     ],

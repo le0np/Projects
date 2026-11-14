@@ -7,7 +7,7 @@
  * with count > 1), a leaf condition holds only if it holds for every one of them.
  * A ref resolving to no characters makes the leaf false.
  */
-import type { Attribute, RelationType, Status } from "./constants";
+import type { Attribute, RelationType, Season, Status } from "./constants";
 import type { Ref } from "./refs";
 
 export type Condition =
@@ -34,6 +34,10 @@ export type Condition =
     }
   /** Whether the character has already taken part in an event template this session. */
   | { seenEvent: string; of?: Ref; present?: boolean }
+  /** Character age in years, inclusive bounds. */
+  | { age: { gte?: number; lte?: number }; of?: Ref }
+  /** Current season of the town. */
+  | { seasonIn: Season[] }
   /** Session progress as a fraction of the configured duration, 0..1. */
   | { progress: { gte?: number; lte?: number } }
   /** Only valid in outcome rules: how many members of `role` picked `choice`. */
@@ -57,6 +61,8 @@ export interface ConditionContext {
   relation(fromId: string, toId: string): RelationView;
   seenEvent(characterId: string, eventId: string): boolean;
   progress(): number;
+  age(characterId: string): number;
+  season(): Season;
   /** Choice ids selected by the members of a role; only available during resolution. */
   choicesOf?(role: string): readonly string[];
 }
@@ -117,6 +123,10 @@ export function evaluate(cond: Condition, ctx: ConditionContext): boolean {
     const want = cond.present ?? true;
     return every(ctx.resolve(cond.of ?? "self"), (id) => ctx.seenEvent(id, cond.seenEvent) === want);
   }
+  if ("age" in cond) {
+    return every(ctx.resolve(cond.of ?? "self"), (id) => inBounds(ctx.age(id), cond.age.gte, cond.age.lte));
+  }
+  if ("seasonIn" in cond) return cond.seasonIn.includes(ctx.season());
   if ("progress" in cond) {
     return inBounds(ctx.progress(), cond.progress.gte, cond.progress.lte);
   }
@@ -147,7 +157,7 @@ export function walkCondition(cond: Condition, visit: (node: Condition) => void)
 
 /** All character refs mentioned by a single (non-composite) condition node. */
 export function refsOf(node: Condition): Ref[] {
-  if ("attr" in node || "careerIn" in node || "statusIn" in node || "seenEvent" in node) {
+  if ("attr" in node || "careerIn" in node || "statusIn" in node || "seenEvent" in node || "age" in node) {
     return [node.of ?? "self"];
   }
   if ("fact" in node) return node.about ? [node.of ?? "self", node.about] : [node.of ?? "self"];
