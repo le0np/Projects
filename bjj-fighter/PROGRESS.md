@@ -146,13 +146,21 @@ Vlasnik: s gotovo svim vještinama na maksimumu muči se tri runde s bijelim poj
 - **Obrana:** ostaje kao prije: točne obrane plus obrane od drugih napada iz te pozicije i tvoji potezi odatle (sve što znaš o toj situaciji).
 - **Boje kartica:** napad (crveno: submissioni, prolazi, rušenja, napredovanje gore), sweep (zeleno), obrana (plavo: obrane, bijegovi, gardovi, osnove kretanja).
 
+### Snaga i kondicija
+Vlasnik: uz vještinu tehnike u jednadžbu ulaze snaga i kondicija. Odabrano: nove aktivnosti u klubu (teretana i kardio), snaga mijenja šansu, a kondicija je umor.
+- **Klub:** odjeljak „Fizička priprema” s teretanom (snaga) i kardiom (kondicija), razine 1–10. Nova igra počinje sa snagom 1 i kondicijom 1. Trening traje 20 s × 2^(razina−1) vremena igre (razina 2: 40 s, razina 10: 2 h 50 min) i ide u vlastitom slotu, usporedno s treningom tehnike. Testni gumb ⚡ +1 radi i ovdje. Stari save dobiva snagu i kondiciju 1.
+- **Snaga u borbi:** svaka razina razlike u snazi pomiče šansu svakog napada i obrane za 3 postotna boda (automatski potezi, tvoje prilike i obrane).
+- **Kondicija u borbi:** oba borca počinju s energijom 100. Svaki pokušaj troši 2,5 (submission 3,5, a greška još 1), puta (1,25 − 0,05 × kondicija), dakle 1,2× uz kondiciju 1 i 0,75× uz kondiciju 10. Ispod 50 energije borac je umoran: šansa greške mu raste, a napadi i obrane slabe, do 15 postotnih bodova na nuli. Između rundi oporavak 20 + 2 × kondicija. Log javlja „se počinje umarati” i „je iscrpljen”, a semafor ima traku energije (zeleno, žuto ispod 50, crveno ispod 20).
+- **Protivnici:** snaga i kondicija prema pojasu (bijeli oko 2, plavi 3,5, ljubičasti 5, smeđi 6, crni 7, ±1). Na turniru +0,5 po rundi, a sparing partneri imaju 1–5. Na semaforu piše snaga i kondicija oba borca, a na početku loga redak „Snaga: … · kondicija: …”.
+- Simulacija (bijeli pojas, sve bijele tehnike na razini 4, turnir, 300 borbi): snaga i kondicija 1 → 60 % pobjeda, umoran u 74 % borbi; 3/3 → 78 %; 6/6 → 96 %; snaga 3 i kondicija 8 → 85 %; snaga 8 i kondicija 3 → 97 %.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 14. studenog 2026.:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` | 78/78 prolazi |
+| `npm test` | 83/83 prolazi |
 | `npm start` | server odgovara 200 na `/` i module |
 | Playwright e2e (1100 px) | sparing (dvorana) i natjecanje (arena) odigrani do rezultata uz „sve otključano”, 0 grešaka u konzoli |
 | Playwright mobitel (iPhone 13) | nema horizontalnog scrolla ni u karijeri ni u borbi |
@@ -165,7 +173,7 @@ Provedeno 14. studenog 2026.:
 - Reload usred borbe prekida borbu bez upisa rezultata.
 - Dok je uključeno „sve otključano”, igrač zna sve poteze pa se nude svi potezi iz pozicije.
 - Igrač bez poteza bori se samo na instinkt (male šanse); nema upozorenja prije sparinga.
-- Nema kondicije ni umora.
+- Snaga i kondicija su jedan broj svaka (nema posebne eksplozivnosti, izdržljivosti stiska i sl.).
 - Nakon ponovnog otvaranja igre nema obavijesti o treningu ili aktivnosti koji su završili dok je igra bila zatvorena.
 
 ## Sljedeći koraci
@@ -174,7 +182,7 @@ Provedeno 14. studenog 2026.:
 2. Vlasnik isproba testnu verziju i javi što treba podesiti (učestalost kritičnih trenutaka, težina, trajanja).
 2. Prava verzija: početak bez otključanih poteza, bez testnog panela.
 3. Animacije pojedinih tehnika i više poza (npr. zasebne poze za trokut, armbar, leg lockove).
-4. Kondicija, klub koji se nadograđuje, karijera.
+4. Klub koji se nadograđuje, karijera, ozljede.
 
 ## Handoff za novi chat
 

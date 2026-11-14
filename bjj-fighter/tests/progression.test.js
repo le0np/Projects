@@ -215,3 +215,27 @@ test('instant level up is not available outside test mode', () => {
   assert.equal(instantLevelUp(s, 'armbar').ok, false);
   assert.equal(effectiveLevel(s, 'armbar'), 0);
 });
+
+import { startWorkout, workoutTime, instantPhysicalUp } from '../src/engine/progression.js';
+
+test('strength and cardio start at 1 and are trained in their own slot, next to a technique', () => {
+  const s = createState({ test: true, now: 0 });
+  assert.deepEqual(s.physical, { strength: 1, cardio: 1 });
+  s.levels.shrimp = 1;
+  assert.equal(startTraining(s, 'shrimp').ok, true);
+  assert.equal(startWorkout(s, 'strength').ok, true);
+  assert.equal(startWorkout(s, 'cardio').ok, false); // one workout at a time
+  assert.equal(workoutTime('strength', 2), 40);
+  const events = advance(s, 41_000);
+  assert.ok(events.some((e) => e.type === 'workout' && e.attr === 'strength' && e.level === 2));
+  assert.equal(s.physical.strength, 2);
+  assert.equal(instantPhysicalUp(s, 'cardio').level, 2);
+});
+
+test('an old save without strength and cardio loads with both at 1', () => {
+  const s = createState({ test: true, now: 0 });
+  delete s.physical; delete s.workout;
+  const back = deserialize(serialize(s), 0);
+  assert.deepEqual(back.physical, { strength: 1, cardio: 1 });
+  assert.equal(back.workout, null);
+});

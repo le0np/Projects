@@ -10,6 +10,12 @@ export const ACTIVITIES = {
   openMat: { name: 'Open mat', cost: 0, duration: 60 },
 };
 export const COMPETITION_LEARN_CHANCE = 0.05;
+// Physical preparation, trained in the club next to the techniques (its own slot, so it runs in parallel).
+// Strength changes the chance of every attack and defense; cardio is how slowly you tire in a fight.
+export const PHYSICAL = {
+  strength: { name: 'Snaga', place: 'Teretana', base: 20, desc: 'Utezi i vježbe s vlastitom težinom. Snaga dodaje šansu svakom napadu i obrani.' },
+  cardio: { name: 'Kondicija', place: 'Kardio', base: 20, desc: 'Trčanje, intervali i drilovi. Bolja kondicija: sporije se umaraš u borbi i brže oporaviš između rundi.' },
+};
 export const PROMOTION = {
   blue: { moves: 20, wins: 5 },
   purple: { moves: 30, wins: 15 },
@@ -28,6 +34,8 @@ export function createState({ test = true, now = 0 } = {}) {
     belt: 'white',
     money: test ? 500 : 100,
     levels: {},
+    physical: { strength: 1, cardio: 1 },
+    workout: null,
     wins: 0,
     losses: 0,
     compWins: 0, // only competition wins count toward promotion
@@ -35,6 +43,28 @@ export function createState({ test = true, now = 0 } = {}) {
     training: null,
     activity: null,
   };
+}
+
+export function workoutTime(attr, level) {
+  return PHYSICAL[attr].base * 2 ** (level - 1);
+}
+
+export function startWorkout(state, attr) {
+  if (!PHYSICAL[attr]) return { ok: false, reason: 'Nepoznata vježba.' };
+  if (state.workout) return { ok: false, reason: 'Fizička priprema već traje.' };
+  const toLevel = state.physical[attr] + 1;
+  if (toLevel > MAX_LEVEL) return { ok: false, reason: 'Najviša razina.' };
+  state.workout = { attr, toLevel, startedAt: state.gameTime, endsAt: state.gameTime + workoutTime(attr, toLevel) };
+  return { ok: true };
+}
+
+// Test version only: raise strength or cardio by one level right away.
+export function instantPhysicalUp(state, attr) {
+  if (!state.test) return { ok: false, reason: 'Samo u testnoj verziji.' };
+  if (!PHYSICAL[attr] || state.physical[attr] >= MAX_LEVEL) return { ok: false, reason: 'Najviša razina.' };
+  state.physical[attr] += 1;
+  if (state.workout?.attr === attr) state.workout = null;
+  return { ok: true, level: state.physical[attr] };
 }
 
 export function learnTime(moveId, level, belt) {
@@ -108,6 +138,12 @@ export function advance(state, realNow, rng = Math.random) {
     state.levels[moveId] = Math.max(state.levels[moveId] ?? 0, toLevel);
     state.training = null;
     events.push({ type: 'trained', moveId, level: toLevel });
+  }
+  if (state.workout && state.gameTime >= state.workout.endsAt) {
+    const { attr, toLevel } = state.workout;
+    state.physical[attr] = Math.max(state.physical[attr], toLevel);
+    state.workout = null;
+    events.push({ type: 'workout', attr, level: toLevel });
   }
   if (state.activity && state.gameTime >= state.activity.endsAt) {
     const { type, chance } = state.activity;
@@ -195,6 +231,9 @@ function repair(raw, realNow) {
   for (const k of Object.keys(medals)) medals[k] = Math.floor(num(raw.medals?.[k], 0, 0));
   const tr = raw.training;
   const ac = raw.activity;
+  const wo = raw.workout;
+  const physical = {};
+  for (const k of Object.keys(PHYSICAL)) physical[k] = Math.floor(num(raw.physical?.[k], 1, 1, MAX_LEVEL));
   return {
     ...d,
     test: raw.test !== false,
@@ -205,6 +244,9 @@ function repair(raw, realNow) {
     belt: raw.belt,
     money: Math.floor(num(raw.money, d.money, 0)),
     levels,
+    physical,
+    workout: timer(wo) && PHYSICAL[wo.attr] && Number.isInteger(wo.toLevel) && wo.toLevel >= 2 && wo.toLevel <= MAX_LEVEL
+      ? { attr: wo.attr, toLevel: wo.toLevel, startedAt: wo.startedAt, endsAt: wo.endsAt } : null,
     wins: Math.floor(num(raw.wins, 0, 0)),
     losses: Math.floor(num(raw.losses, 0, 0)),
     medals,

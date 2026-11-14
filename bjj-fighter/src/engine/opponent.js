@@ -12,7 +12,7 @@ export function fighterFromState(state, name = 'Ti') {
     const lvl = effectiveLevel(state, m.id);
     if (lvl > 0) levels[m.id] = lvl;
   }
-  return { name, belt: state.belt, levels };
+  return { name, belt: state.belt, levels, strength: state.physical?.strength ?? 1, cardio: state.physical?.cardio ?? 1 };
 }
 
 // Average level of the moves a fighter knows; used to build an opponent of similar skill.
@@ -23,7 +23,11 @@ export function averageLevel(fighter) {
 
 // `baseLevel` (optional): opponent's moves are within one level of it, so fights are even.
 // `knowShare`: share of the belt's moves the opponent knows.
-export function makeOpponent(belt, rng, baseLevel, knowShare = 0.8) {
+// Typical strength and cardio by belt (1-10); each opponent is within one level of it.
+const BELT_PHYSICAL = { white: 2, blue: 3.5, purple: 5, brown: 6, black: 7 };
+const physicalAround = (base, rng) => Math.min(10, Math.max(1, Math.round(base) + Math.floor(rng() * 3) - 1));
+
+export function makeOpponent(belt, rng, baseLevel, knowShare = 0.8, physBase = BELT_PHYSICAL[belt]) {
   const bi = BELTS.indexOf(belt);
   const levels = {};
   const level = () => (baseLevel === undefined
@@ -34,19 +38,22 @@ export function makeOpponent(belt, rng, baseLevel, knowShare = 0.8) {
     if (mi <= bi && rng() < knowShare) levels[m.id] = level();
     else if (mi === bi + 1 && rng() < 0.1) levels[m.id] = baseLevel === undefined ? 1 : level();
   }
-  return { name: `${pick(rng, NAMES)} ${pick(rng, SURNAMES)}`, belt, levels };
+  return {
+    name: `${pick(rng, NAMES)} ${pick(rng, SURNAMES)}`, belt, levels,
+    strength: physicalAround(physBase, rng), cardio: physicalAround(physBase, rng),
+  };
 }
 
 // Sparring in your own gym: a random training partner from white to blue belt, with a random
 // set of moves (some know a lot, some only a few) at the levels typical for their belt.
 export function makeSparPartner(rng) {
   const belt = rng() < 0.55 ? 'white' : 'blue';
-  return makeOpponent(belt, rng, undefined, 0.35 + rng() * 0.55);
+  return makeOpponent(belt, rng, undefined, 0.35 + rng() * 0.55, 1 + rng() * 4); // gym partners: strength and cardio 1-5
 }
 
 // Competition: opponents of your belt with the skill typical for that belt, a bit stronger each round
 // (quarterfinal, semifinal, final). They do not scale with your levels, so training pays off.
 const BELT_SKILL = { white: 2, blue: 4, purple: 5.5, brown: 7, black: 8.5 };
 export function makeCompetitor(belt, stage, rng) {
-  return makeOpponent(belt, rng, BELT_SKILL[belt] + stage * 0.75, 0.6 + rng() * 0.3);
+  return makeOpponent(belt, rng, BELT_SKILL[belt] + stage * 0.75, 0.6 + rng() * 0.3, BELT_PHYSICAL[belt] + stage * 0.5);
 }

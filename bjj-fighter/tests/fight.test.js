@@ -251,7 +251,7 @@ test('a decent player (right 75 % of the time) wins about half of balanced sparr
   for (let i = 0; i < N; i++) {
     const rng = mulberry32(5000 + i);
     const s = { ...createState({ test: true, now: 0 }), unlockAll: true };
-    const f = createFight(fighterFromState(s), makeOpponent('white', rng, 1), rng);
+    const f = createFight(fighterFromState(s), makeOpponent('white', rng, 1, 0.8, 1), rng);
     while (!f.ended) {
       if (f.critical) {
         const o = f.critical.options;
@@ -280,7 +280,7 @@ test('initiative strictly alternates between the fighters', () => {
   for (let seed = 77; seed < 87; seed++) {
     const rng = mulberry32(seed);
     const s = { ...createState({ test: true, now: 0 }), unlockAll: true };
-    const f = createFight(fighterFromState(s), makeOpponent('white', rng, 1), rng);
+    const f = createFight(fighterFromState(s), makeOpponent('white', rng, 1, 0.8, 1), rng);
     while (!f.ended && f.elapsed < 300) {
       if (f.critical) chooseOption(f, f.critical.options.findIndex((o) => o.correct));
       else stepFight(f, 1);
@@ -322,7 +322,7 @@ test('the player decides in about 7 % of exchanges', () => {
   for (let i = 0; i < 150; i++) {
     const rng = mulberry32(300 + i);
     const s = { ...createState({ test: true, now: 0 }), unlockAll: true };
-    const f = createFight(fighterFromState(s), makeOpponent('white', rng, 1), rng);
+    const f = createFight(fighterFromState(s), makeOpponent('white', rng, 1, 0.8, 1), rng);
     while (!f.ended) {
       if (f.critical) chooseOption(f, f.critical.options.findIndex((o) => o.correct));
       else stepFight(f, 1);
@@ -525,4 +525,50 @@ test('a white belt with maxed techniques beats white-belt competitors most of th
     if (f.ended.winner === 'p') wins++;
   }
   assert.ok(wins / N >= 0.75, `win rate ${wins / N}`);
+});
+
+// ---- strength and cardio ----
+import { fatigue } from '../src/engine/fight.js';
+
+test('strength moves the chance of a chosen attack by 3 points per level of difference', () => {
+  const chance = (sp, so) => {
+    const f = createFight({ ...kit({ armbar: 3 }), strength: sp }, { name: 'On', belt: 'white', levels: {}, strength: so }, () => 0.99, { quiet: true });
+    f.pos = 'mount'; f.playerTop = true;
+    startOpportunity(f);
+    chooseOption(f, f.critical.options.findIndex((o) => o.moveId === 'armbar'));
+    return f.lastResult.chance;
+  };
+  assert.ok(Math.abs(chance(5, 1) - chance(1, 1) - 0.12) < 1e-9);
+  assert.ok(Math.abs(chance(1, 1) - chance(1, 3) - 0.06) < 1e-9);
+});
+
+test('energy drops with every attempt, faster with poor cardio, and tiredness raises errors', () => {
+  const play = (cardio) => {
+    const rng = mulberry32(31);
+    const me = { ...kit(), cardio };
+    const f = createFight(me, { name: 'On', belt: 'white', levels: {}, cardio: 5 }, rng);
+    for (let i = 0; i < 40 && !f.ended; i++) {
+      if (f.critical) chooseOption(f, f.critical.options.findIndex((o) => o.correct));
+      else stepFight(f, 5);
+    }
+    return f;
+  };
+  const poor = play(1), fit = play(10);
+  assert.ok(poor.energy.p < 100);
+  const f = idle();
+  f.energy.p = 0;
+  assert.ok(Math.abs(fatigue(f, 'p') - 0.15) < 1e-9);
+  f.energy.p = 60;
+  assert.equal(fatigue(f, 'p'), 0);
+  assert.ok(fit.energy.p >= poor.energy.p || fit.round !== poor.round);
+});
+
+test('energy recovers between rounds, more with better cardio', () => {
+  const f = createFight({ ...kit(), cardio: 10 }, { name: 'On', belt: 'white', levels: {}, cardio: 1 }, mulberry32(1), { quiet: true });
+  f.energy.p = 10; f.energy.o = 10;
+  stepFight(f, 181);
+  assert.equal(f.round, 2);
+  assert.equal(f.energy.p, 10 + 20 + 20);
+  assert.equal(f.energy.o, 10 + 20 + 2);
+  assert.match(f.log.at(-1).text, /Runda 2! Energija/);
 });

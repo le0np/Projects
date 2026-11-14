@@ -4,6 +4,7 @@ import { POSITIONS } from '../data/positions.js';
 import {
   createState, learnTime, effectiveLevel, canTrain, startTraining, startActivity, advance, setSpeed,
   rollCompetitionLearn, recordFight, instantLevelUp, promotionStatus, promote, serialize, deserialize, competitionReady, ACTIVITIES, MAX_LEVEL,
+  PHYSICAL, startWorkout, workoutTime, instantPhysicalUp,
 } from '../engine/progression.js';
 import { createFight, stepFight, chooseOption, formatLog, logLine, fighterErrorChance, pct, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
 import { makeSparPartner, makeCompetitor, fighterFromState } from '../engine/opponent.js';
@@ -80,8 +81,10 @@ function slotHtml(title, what, startedAt, endsAt, idle) {
 function renderStatus() {
   const t = state.training;
   const a = state.activity;
+  const w = state.workout;
   $('status').innerHTML =
     slotHtml('Trening', t && `${esc(MOVE_BY_ID[t.moveId].name)} → razina ${t.toLevel}`, t?.startedAt, t?.endsAt, 'Nema treninga. Odaberi potez u klubu.')
+    + slotHtml('Fizička priprema', w && `${PHYSICAL[w.attr].place}: ${PHYSICAL[w.attr].name.toLowerCase()} → razina ${w.toLevel}`, w?.startedAt, w?.endsAt, 'Slobodno. Teretana ili kardio u klubu.')
     + slotHtml('Aktivnost', a && `${ACTIVITIES[a.type].name} (šansa za novi potez ${Math.round(a.chance * 100)} %)`, a?.startedAt, a?.endsAt, 'Slobodan. Idi na seminar ili open mat.');
 }
 
@@ -92,8 +95,24 @@ function pips(level) {
   return `${html}</span>`;
 }
 
+function renderPhysical() {
+  let html = '<h2>Fizička priprema</h2><p class="hint">Teretana i kardio idu uz trening tehnike. Snaga dodaje 3 % šanse po razini razlike u svakom napadu i obrani. Kondicija: sporije se umaraš i brže se oporaviš između rundi.</p><div class="physical">';
+  for (const [attr, def] of Object.entries(PHYSICAL)) {
+    const lvl = state.physical[attr];
+    const busy = state.workout?.attr === attr;
+    const next = lvl < MAX_LEVEL ? workoutTime(attr, lvl + 1) / state.speed : null;
+    html += `<div class="move${busy ? ' training' : ''}">
+      <div><span class="name">${def.place} · ${def.name}</span>${pips(lvl)}</div>
+      <div class="move-btns">${state.test && lvl < MAX_LEVEL ? `<button class="instant" data-instant-phys="${attr}" title="Test: odmah +1 razina">⚡ +1</button>` : ''}<button data-workout="${attr}" ${state.workout || lvl >= MAX_LEVEL ? 'disabled' : ''}>Treniraj</button></div>
+      <div class="desc">${esc(def.desc)}</div>
+      <div class="meta">${busy ? 'Trening u tijeku' : next === null ? 'Najviša razina' : `Razina ${lvl + 1}: ${fmtTime(next)}`}</div>
+    </div>`;
+  }
+  return `${html}</div>`;
+}
+
 function renderClub() {
-  let html = '<p class="hint">Svaka sljedeća razina poteza traje 2x duže. Viši pojas uči brže. Jedan trening istovremeno.</p>';
+  let html = renderPhysical() + '<p class="hint">Svaka sljedeća razina poteza traje 2x duže. Viši pojas uči brže. Jedan trening istovremeno.</p>';
   for (const [cat, title] of Object.entries(CATEGORIES)) {
     const moves = MOVES.filter((m) => m.category === cat);
     html += `<h2>${title}</h2><div class="moves">`;
@@ -191,6 +210,7 @@ function renderAll() {
 function handleEvents(events) {
   for (const e of events) {
     if (e.type === 'trained') toast(`Trening gotov: ${MOVE_BY_ID[e.moveId].name}, razina ${e.level}.`);
+    if (e.type === 'workout') toast(`${PHYSICAL[e.attr].place} gotov: ${PHYSICAL[e.attr].name.toLowerCase()} je sad razina ${e.level}.`);
     if (e.type === 'activityDone') {
       const name = ACTIVITIES[e.activity].name;
       toast(e.learned ? `${name}: naučio si novi potez — ${MOVE_BY_ID[e.learned].name}!` : `${name} gotov. Ovaj put bez novog poteza.`);
@@ -212,7 +232,13 @@ $('career').addEventListener('click', (ev) => {
   const t = ev.target.closest('button');
   if (!t || t.disabled) return;
   handleEvents(advance(state, Date.now()));
-  if (t.dataset.instant) {
+  if (t.dataset.instantPhys) {
+    const r = instantPhysicalUp(state, t.dataset.instantPhys);
+    if (!r.ok) toast(r.reason);
+  } else if (t.dataset.workout) {
+    const r = startWorkout(state, t.dataset.workout);
+    if (!r.ok) toast(r.reason);
+  } else if (t.dataset.instant) {
     const r = instantLevelUp(state, t.dataset.instant);
     if (!r.ok) toast(r.reason);
   } else if (t.dataset.train) {
@@ -277,8 +303,9 @@ function openFight(mode, stage) {
   $('result').hidden = true;
   $('critical').hidden = true;
   $('feedback').hidden = true;
-  $('sb-p-name').textContent = `Ti · ${BELT_NAMES[state.belt]} · greška ${pct(fighterErrorChance(fight.player))}`;
-  $('sb-o-name').textContent = `${fight.opponent.name} · ${BELT_NAMES[fight.opponent.belt]} · greška ${pct(fighterErrorChance(fight.opponent))}`;
+  const body = (x) => `snaga ${x.strength ?? 1} · kondicija ${x.cardio ?? 1}`;
+  $('sb-p-name').textContent = `Ti · ${BELT_NAMES[state.belt]} · greška ${pct(fighterErrorChance(fight.player))} · ${body(fight.player)}`;
+  $('sb-o-name').textContent = `${fight.opponent.name} · ${BELT_NAMES[fight.opponent.belt]} · greška ${pct(fighterErrorChance(fight.opponent))} · ${body(fight.opponent)}`;
   if (!renderer) renderer = createRenderer($('canvas'));
   renderer.resize();
   window.scrollTo(0, 0);
@@ -295,6 +322,13 @@ function renderScore(f) {
   const s = (x) => `<b>${x.pts}</b>A ${x.adv} · K ${x.pen}`;
   $('sb-p').innerHTML = s(f.score.p);
   $('sb-o').innerHTML = s(f.score.o);
+  for (const w of ['p', 'o']) {
+    const bar = $(`sb-${w}-en`);
+    const e = f.energy[w];
+    bar.style.width = `${e}%`;
+    bar.className = e < 20 ? 'spent' : e < 50 ? 'tired' : '';
+    bar.parentElement.title = `Energija ${Math.round(e)} / 100`;
+  }
   const left = Math.max(0, ROUND_SECONDS - f.clock);
   $('sb-round').textContent = `Runda ${f.round}/${ROUNDS}${fightCtx.mode === 'comp' ? ` · ${COMP_STAGES[fightCtx.stage]}` : ''}`;
   $('sb-clock').textContent = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;

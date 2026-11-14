@@ -46,6 +46,38 @@ export function fighterErrorChance(fighter) {
 }
 
 export const pct = (p) => `${Math.round(p * 100)} %`;
+
+// ---- strength and cardio ----
+// Every attempt costs energy (0-100); good cardio makes it cheaper and helps recover between rounds.
+// Below 50 energy a fighter gets tired: more errors, weaker attacks and defenses (up to 15 points at 0).
+// Strength: every level of difference moves the chance of an attack or a defense by 3 points.
+const STRENGTH_STEP = 0.03;
+const ATTEMPT_COST = 2.5;
+const SUB_COST = 3.5;
+const ERROR_COST = 1;
+const TIRED_AT = 50;
+const FATIGUE_MAX = 0.15;
+const strengthOf = (x) => x.strength ?? 1;
+const cardioOf = (x) => x.cardio ?? 1;
+
+export function fatigue(f, who) {
+  return Math.max(0, TIRED_AT - f.energy[who]) / TIRED_AT * FATIGUE_MAX;
+}
+
+// Physical edge of `who` over the other fighter: strength difference and who is more tired.
+function physicalEdge(f, who) {
+  const them = other(who);
+  return STRENGTH_STEP * (strengthOf(fighter(f, who)) - strengthOf(fighter(f, them))) - fatigue(f, who) + fatigue(f, them);
+}
+
+function spend(f, who, amount) {
+  const before = f.energy[who];
+  const cost = amount * (1.25 - 0.05 * cardioOf(fighter(f, who)));
+  f.energy[who] = Math.max(0, before - cost);
+  const name = fighter(f, who).name;
+  if (before >= TIRED_AT && f.energy[who] < TIRED_AT) say(f, `${name} se počinje umarati.`, who);
+  if (before >= 20 && f.energy[who] < 20) say(f, `${name} je iscrpljen!`, who);
+}
 const KIND_WEIGHT = { sub: 0.4, sweep: 1.5, pass: 1.5, takedown: 1.5, transition: 1.2, escape: 2, pull: 0.3 };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -72,8 +104,10 @@ export function createFight(player, opponent, rng, { quiet = false } = {}) {
     seq: 0,
     log: [],
     ended: null,
+    energy: { p: 100, o: 100 },
   };
   say(f, `Šansa greške po potezu: ${player.name} ${pct(fighterErrorChance(player))}, ${opponent.name} ${pct(fighterErrorChance(opponent))} (pojas i razina poteza).`);
+  say(f, `Snaga: ${player.name} ${strengthOf(player)}, ${opponent.name} ${strengthOf(opponent)} · kondicija: ${player.name} ${cardioOf(player)}, ${opponent.name} ${cardioOf(opponent)}.`);
   return f;
 }
 
@@ -128,6 +162,7 @@ export function applyTransition(f, who, kind, to, label = KIND_LABEL[kind]) {
 function runAction(f, who, action, success, why = '') {
   const move = MOVE_BY_ID[action.move];
   f.lastAction = { seq: ++f.seq, who, actionId: action.id, success };
+  spend(f, who, action.kind === 'sub' ? SUB_COST : ATTEMPT_COST);
   if (!success) {
     say(f, `${fighter(f, who).name}: ${move.name} — ne prolazi${why ? ` (${why})` : ''}.`, who);
     if (action.kind !== 'pull' && f.rng() < 0.3) addAdvantage(f, who, `skoro ${move.name}`);
@@ -143,7 +178,8 @@ function runAction(f, who, action, success, why = '') {
 
 function autoChance(f, who, action, bonus = 0) {
   const diff = lvl(f, who, action.move) - bestDefense(f, other(who), action);
-  return (action.kind === 'sub' ? clamp(0.05 + 0.03 * diff, 0.02, 0.3) : clamp(0.6 + 0.07 * diff, 0.25, 0.9)) + bonus;
+  const base = action.kind === 'sub' ? clamp(0.05 + 0.03 * diff, 0.02, 0.3) : clamp(0.6 + 0.07 * diff, 0.25, 0.9);
+  return clamp(base + bonus + physicalEdge(f, who), 0.01, 0.97);
 }
 
 // A fighter who knows nothing useful from this spot still moves on instinct: an untrained escape,
@@ -199,9 +235,10 @@ function exchange(f) {
   const entry = { who, actionId: action?.id ?? null, error: false };
   f.history.push(entry);
   if (!action) return;
-  const err = errorChance(fighter(f, who).belt, lvl(f, who, action.move));
+  const err = Math.min(0.95, errorChance(fighter(f, who).belt, lvl(f, who, action.move)) + fatigue(f, who));
   if (f.rng() < err) {
     entry.error = true;
+    spend(f, who, ATTEMPT_COST + ERROR_COST);
     if (who === 'o') { opponentBlunder(f, action, err); return; }
     f.lastAction = { seq: ++f.seq, who, actionId: action.id, success: false };
     say(f, `Ti: ${MOVE_BY_ID[action.move].name} — greška u izvedbi, ne prolazi (šansa greške ${pct(err)}).`, 'p');
@@ -286,7 +323,9 @@ function autoAction(f, who, action, bonus = 0) {
   const def = bestDefense(f, other(who), action);
   const unknown = who === 'o' && !def && action.defenses.length ? ' — ne znaš obranu' : '';
   const raw = lvl(f, who, action.move) ? '' : ', bez naučene tehnike';
-  const why = `napad razine ${lvl(f, who, action.move)} protiv obrane razine ${def}${unknown}${raw}, šansa ${pct(chance)}`;
+  const sa = strengthOf(fighter(f, who)), sd = strengthOf(fighter(f, other(who)));
+  const body = `${sa !== sd ? `, snaga ${sa}:${sd}` : ''}${fatigue(f, who) > 0 ? ', umoran' : ''}`;
+  const why = `napad razine ${lvl(f, who, action.move)} protiv obrane razine ${def}${unknown}${raw}${body}, šansa ${pct(chance)}`;
   runAction(f, who, action, f.rng() < chance, why);
 }
 
@@ -405,7 +444,7 @@ export function chooseOption(f, index, { fast = false } = {}) {
     const mine = lvl(f, 'p', opt.moveId);
     const theirs = lvl(f, 'o', threat.move);
     Object.assign(f.lastResult, { myLevel: mine, theirLevel: theirs, theirMove: MOVE_BY_ID[threat.move].name });
-    const p = defenseChance(mine, theirs) + bonus;
+    const p = clamp(defenseChance(mine, theirs) + bonus + physicalEdge(f, 'p'), 0.05, 0.99);
     f.lastResult.chance = Math.min(1, p);
     if (f.rng() < p) {
       f.lastResult.success = true;
@@ -429,7 +468,7 @@ export function chooseOption(f, index, { fast = false } = {}) {
   const action = ACTION_BY_ID[opt.actionId];
   const mine = lvl(f, 'p', action.move);
   const theirs = bestDefense(f, 'o', action);
-  const p = attackChance(action.kind, mine, theirs) + bonus;
+  const p = clamp(attackChance(action.kind, mine, theirs) + bonus + physicalEdge(f, 'p'), 0.02, 0.97);
   const success = f.rng() < p;
   Object.assign(f.lastResult, { success, myLevel: mine, theirLevel: theirs, chance: Math.min(1, p) });
   if (!success) say(f, `Dobar izbor, ali ${f.opponent.name} te nadjačao: tvoj ${MOVE_BY_ID[action.move].name} razina ${mine} protiv njegove obrane razine ${theirs} (šansa je bila ${pct(p)}).`, 'o');
@@ -446,7 +485,8 @@ function endRound(f) {
     f.pending = null;
     f.nextExchange = 2;
     f.seq += 1;
-    say(f, `Runda ${f.round}!`);
+    for (const w of ['p', 'o']) f.energy[w] = Math.min(100, f.energy[w] + 20 + 2 * cardioOf(fighter(f, w)));
+    say(f, `Runda ${f.round}! Energija: ${f.player.name} ${Math.round(f.energy.p)}, ${f.opponent.name} ${Math.round(f.energy.o)}.`);
     return;
   }
   const { p, o } = f.score;

@@ -147,3 +147,12 @@ button.instant { background: var(--gold); color: #1a1a1a; padding: 9px 10px; }
 .options button.hinted { box-shadow: 0 0 0 2px rgba(180,150,255,0.55) inset; }
 .options button .hint-mark { font-size: 13px; }
 .options button .lvl { float: right; font-size: 11px; color: var(--muted); font-weight: 600; }
+
+/* energy (cardio) in a fight */
+.side .energy { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+.side .energy > div { height: 100%; width: 100%; background: #3fb27f; transition: width 0.3s, background 0.3s; }
+.side.o .energy > div { margin-left: auto; }
+.side .energy > div.tired { background: #e3b341; }
+.side .energy > div.spent { background: #e0524f; }
+/* physical preparation in the club */
+.physical { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; margin-bottom: 8px; }
