@@ -174,7 +174,8 @@ button.instant { background: var(--gold); color: #1a1a1a; padding: 9px 10px; }
 .clock #sb-round { font: italic 800 12px/1.2 var(--display); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
 .clock #sb-clock { font: italic 800 28px/1 var(--display); }
 .pos-label { font-size: 12px; background: rgba(0,0,0,0.55); padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
-.fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 4; }
+/* Limited to the picture: on phones the cards sit below it and must stay readable. */
+.fx { position: absolute; inset: 0 0 auto 0; aspect-ratio: 16 / 9; pointer-events: none; overflow: hidden; z-index: 4; }
 .critical, .result { z-index: 3; }
 
 /* Fight effects: technique banner, score badge, screen shake */
@@ -217,7 +218,8 @@ button.instant { background: var(--gold); color: #1a1a1a; padding: 9px 10px; }
   .plate.o { padding: 3px 3px 3px 6px; }
   .portrait { width: 26px; height: 26px; border-width: 2px; border-radius: 5px; }
   .plate .name { font-size: 12px; }
-  .plate .stats, .plate .pts span, .pos-label { display: none; }
+  .plate .stats, .pos-label { display: none; }
+  .plate .pts span { display: block; font-size: 9px; line-height: 1.2; white-space: nowrap; }
   .plate .pts b { font-size: 22px; line-height: 0.9; }
   .plate .energy i { width: 5px; height: 5px; }
   .plate .energy > div { gap: 2px; margin-top: 3px; }
