@@ -5,7 +5,7 @@ import {
   createState, learnTime, effectiveLevel, canTrain, startTraining, startActivity, advance, setSpeed,
   rollCompetitionLearn, promotionStatus, promote, serialize, deserialize, competitionReady, ACTIVITIES, MAX_LEVEL,
 } from '../engine/progression.js';
-import { createFight, stepFight, chooseOption, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
+import { createFight, stepFight, chooseOption, formatLog, logLine, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
 import { makeOpponent, fighterFromState, averageLevel } from '../engine/opponent.js';
 import { createRenderer } from '../render/renderer2d.js';
 import { tickCriticalTimer } from './criticalTimer.js';
@@ -302,7 +302,10 @@ function renderScore(f) {
 function renderLog(f) {
   if (fightCtx.logLen === f.log.length) return;
   fightCtx.logLen = f.log.length;
-  $('log').innerHTML = f.log.slice(-5).map((l) => `<li class="${l.who ?? ''}">${esc(l.text)}</li>`).join('');
+  const box = $('log');
+  const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+  box.innerHTML = f.log.map((l) => `<li class="${l.who ?? ''}">${esc(logLine(l))}</li>`).join('');
+  if (atBottom) box.scrollTop = box.scrollHeight;
 }
 
 function renderCritical(f) {
@@ -312,7 +315,7 @@ function renderCritical(f) {
     fightCtx.critSeq = f.criticalCount;
     $('critical-text').textContent = c.text;
     $('critical-options').innerHTML = c.options
-      .map((o, i) => `<button data-opt="${i}"><span class="k">${i + 1}</span> <b>${esc(o.label)}</b><small>${esc(o.detail ?? '')}</small></button>`).join('');
+      .map((o, i) => `<button data-opt="${i}" class="cls-${o.cls}"><span class="k">${i + 1}</span> <b>${esc(o.label)}</b><small>${esc(o.detail ?? '')}</small></button>`).join('');
     $('critical').hidden = false;
   }
   const left = fightCtx.timer?.seq === f.criticalCount ? fightCtx.timer.left : c.timeLimit;
@@ -323,13 +326,16 @@ function choose(index) {
   const f = fightCtx?.fight;
   if (!f?.critical) return;
   const opt = index === null ? null : f.critical.options[index];
-  chooseOption(f, index);
+  const limit = f.critical.timeLimit;
+  const left = fightCtx.timer?.seq === f.criticalCount ? fightCtx.timer.left : limit;
+  const fast = opt !== null && left > (limit * 2) / 3; // answered within the first third
+  chooseOption(f, index, { fast });
   const r = f.lastResult;
   const fb = $('feedback');
   let ms = 1800;
   if (!opt) { fb.textContent = 'Prekasno!'; fb.className = 'feedback bad'; }
   else if (!opt.correct) { fb.textContent = `✘ ${opt.label} ovdje ne pomaže.`; fb.className = 'feedback bad'; }
-  else if (r.success) { fb.textContent = `✔ ${opt.label} — uspjelo! (razina ${r.myLevel} protiv ${r.theirLevel})`; fb.className = 'feedback good'; }
+  else if (r.success) { fb.textContent = `✔ ${opt.label} — uspjelo! (razina ${r.myLevel} protiv ${r.theirLevel}${fast ? ', brza odluka +10 %' : ''})`; fb.className = 'feedback good'; }
   else {
     fb.textContent = `✔ Dobar izbor, ali ${f.opponent.name} je bio jači: tvoja razina ${r.myLevel} protiv njegove ${r.theirLevel}. Treniraj ${opt.label}!`;
     fb.className = 'feedback mixed';
@@ -350,6 +356,29 @@ document.addEventListener('keydown', (ev) => {
   const n = Number(ev.key);
   if (n >= 1 && n <= 5) choose(n - 1);
 });
+
+async function copyLog() {
+  const f = fightCtx?.fight;
+  if (!f) return;
+  const text = formatLog(f);
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Log je kopiran. Zalijepi ga u chat.');
+  } catch {
+    // Clipboard API blocked (e.g. plain http on a phone): select the text so it can be copied by hand.
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.className = 'log-copy';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand && document.execCommand('copy');
+    toast(ok ? 'Log je kopiran. Zalijepi ga u chat.' : 'Označi tekst i kopiraj ga ručno.');
+    if (ok) ta.remove();
+    else ta.addEventListener('blur', () => ta.remove());
+  }
+}
+
+$('copy-log').addEventListener('click', copyLog);
 
 $('give-up').addEventListener('click', () => {
   const f = fightCtx?.fight;

@@ -166,6 +166,7 @@ function exchange(f) {
 
 function openCritical(f, critical) {
   f.critical = { ...critical, timeLimit: CRITICAL_TIME_LIMIT };
+  say(f, `⚡ Odluka: ${critical.text} [${critical.options.map((o) => `${o.label}${o.correct ? ' ✔' : ''}`).join(' | ')}]`);
   f.criticalCount += 1;
   f.lastCriticalAt = f.elapsed;
   f.seq += 1;
@@ -284,6 +285,7 @@ export function chooseOption(f, index, { fast = false } = {}) {
   f.critical = null;
   const opt = index === null || index === undefined ? null : c.options[index];
   f.lastResult = { kind: c.kind, option: opt, correct: !!opt?.correct, seq: f.seq + 1 };
+  say(f, opt ? `Tvoj izbor: ${opt.label}${fast ? ' (brzo, +10 %)' : ''}` : 'Tvoj izbor: ništa (isteklo vrijeme)', 'p');
   if (c.kind === 'defense') {
     const threat = ACTION_BY_ID[c.actionId];
     if (!opt) { say(f, 'Nisi reagirao na vrijeme!', 'o'); applyMistake(f, { effect: 'threat' }, threat); return; }

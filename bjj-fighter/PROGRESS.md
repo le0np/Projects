@@ -69,13 +69,23 @@ Testna verzija je igriva u pregledniku, na računalu i mobitelu:
 - Kad dobar izbor ne uspije zbog razine, igra to jasno kaže (narančasta poruka s tvojom i protivnikovom razinom).
 - Natjecanje traži barem po jedan potez iz napada, obrane i kontrole.
 
+### 2. krug, korak 1: pravila borbe
+Dizajn: `docs/superpowers/specs/2026-11-14-round2-step1-fight-rules-design.md`, plan: `docs/superpowers/plans/2026-11-14-round2-step1-fight-rules.md`.
+- Potez za potez: inicijativa se strogo izmjenjuje, a propali potez predaje red drugome.
+- Oba borca griješe po pojasu i razini poteza: bijeli 25 %, plavi 18 %, ljubičasti 12 %, smeđi 8 %, crni 5 %, uz −1,5 postotna boda po razini iznad 1 i najmanje 2 %. Greška protivnika daje igraču kritični trenutak „pogriješio je — prilika”.
+- Odluka se traži u oko 30 % razmjena (70/30), a razmjene idu svakih 6–9 s.
+- Odgovor u prvoj trećini roka daje +10 % šanse.
+- Kartice opcija u bojama: napad crveno, obrana plavo, kontrola zeleno, pozicija žuto. Iznad opcija je legenda.
+- Cijeli log borbe sa scrollom, rundom i satom. Bodovi su razloženi (npr. „Flower sweep 2 + mount 4”). U logu su i ponuđene opcije (točne s ✔) i tvoj izbor. Gumb „Kopiraj log” kopira sve s rezultatom.
+- Simulacija: igrač s 75 % točnih odabira pobjeđuje u oko 60 % sparinga.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 14. studenog 2026.:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` | 50/50 prolazi |
+| `npm test` | 58/58 prolazi |
 | `npm start` | server odgovara 200 na `/` i module |
 | Playwright e2e (1100 px) | trening uz 10x završi, sparing odigran do rezultata, reload zadrži napredak, 0 grešaka u konzoli |
 | Playwright mobitel (iPhone 13) | nema horizontalnog scrolla ni u karijeri ni u borbi |
@@ -92,7 +102,8 @@ Provedeno 14. studenog 2026.:
 
 ## Sljedeći koraci
 
-1. Vlasnik isproba testnu verziju i javi što treba podesiti (učestalost kritičnih trenutaka, težina, trajanja).
+1. Korak 2 drugog kruga: pobjede samo s natjecanja za promociju, granice razina po pojasu, novi seminari (instruktori 1–5 ★, 40–90 %, trening pauziran). Korak 3: stil borbe, energija, ozljede.
+2. Vlasnik isproba testnu verziju i javi što treba podesiti (učestalost kritičnih trenutaka, težina, trajanja).
 2. Prava verzija: početak bez otključanih poteza, bez testnog panela.
 3. Animacije pojedinih tehnika i više poza.
 4. Kondicija, klub koji se nadograđuje, karijera.
