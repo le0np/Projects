@@ -20,8 +20,10 @@ Igra u kojoj igrač gradi borca od nule: kreće kao početnik bez vještina, tre
 - **Prikaz borbe:** 2D, uz mogućnost kasnijeg prelaska na 3D. Logika borbe mora biti odvojena od prikaza da se prikaz može zamijeniti.
 - **Disciplina:** prvo BJJ, MMA kasnije. BJJ je **no-gi** varijanta (rashguard i šorc, bez hvatova za kimono).
 - **Bodovanje:** kao u pravom BJJ-u (IBJJF no-gi pravila): takedown 2, sweep 2, koljeno na trbuhu 2, prolaz garda 3, mount 4, leđa 4. Bodovi se dobivaju tek kad se pozicija zadrži 3 sekunde. Uz to postoje prednosti (advantage) i kazne. Pobjeđuje se submissionom, a ako ga nema, bodovima.
+- **Trajanje borbe:** 3 runde po 3 minute ili do submissiona.
+- **Spremanje napretka:** za sada samo u pregledniku. Račun dolazi kasnije.
 - **Izgled lika:** za sada jednostavan, ali dovoljno dobar da borbe izgledaju zanimljivo.
-- **Testna i prava verzija:** testna verzija ima ubrzano vrijeme i sve otključano. Prava verzija ima napredovanje kroz vrijeme, gdje svaki sljedeći razvoj vještine traje duže od prethodnog, kao u drugim igrama tog tipa.
+- **Testna i prava verzija:** testna verzija ima sve otključano i vrijeme ubrzano do 10x (igrač bira ubrzanje). Prava verzija ima napredovanje kroz vrijeme, gdje svaki sljedeći razvoj vještine traje duže od prethodnog, kao u drugim igrama tog tipa.
 
 ### Borba
 Borba teče sama, ovisno o vještinama oba borca. U kritičnim trenucima (protivnik kreće u submission, otvori se prilika za sweep ili prolaz garda, kraj runde...) vrijeme se uspori i igrač dobije pet opcija. Jedna ili više može biti točna, a jedna ili više kriva. Odluka ima ograničeno vrijeme. Ishod ovisi o izboru:
@@ -42,13 +44,12 @@ Prijedlozi:
 
 Mogućnost za razmotriti: vještine lika utječu na to koje se opcije nude i koliko su uspješne.
 
-Trajanje treninga raste sa svakom razinom (npr. razina 1 traje minute, a više razine sate, pa i dane). U testnoj verziji isti sustav radi s ubrzanim vremenom.
+Trajanje treninga raste sa svakom razinom (npr. razina 1 traje minute, a više razine sate, pa i dane). U testnoj verziji isti sustav radi s vremenom ubrzanim do 10x.
 
 ### Prvi korak (MVP = testna verzija)
-Jedan borac jednostavnog, ali živog 2D izgleda. Nekoliko vještina s treninzima na timer (ubrzano vrijeme, sve otključano). Desetak no-gi pozicija i tehnika. Borba protiv AI protivnika s kritičnim trenucima, pet opcija i pravim BJJ bodovanjem. Napredak se sprema u pregledniku.
+Jedan borac jednostavnog, ali živog 2D izgleda. Nekoliko vještina s treninzima na timer (ubrzano vrijeme, sve otključano). Desetak no-gi pozicija i tehnika. Borba protiv AI protivnika (3 runde po 3 minute ili do submissiona) s kritičnim trenucima, pet opcija i pravim BJJ bodovanjem. Napredak se sprema u pregledniku.
 
 ### Otvoreno
 - tehnologija prikaza (npr. Phaser za 2D)
 - customizacija izgleda borca
-- spremanje napretka: samo lokalno ili račun na serveru
-- koliko traju treninzi i borbe
+- točna trajanja treninga po razinama
