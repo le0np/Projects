@@ -18,7 +18,10 @@ Igra u kojoj igrač gradi borca od nule: kreće kao početnik bez vještina, tre
 - **Platforma:** browser (mobitel i računalo, bez instalacije).
 - **Protivnici:** AI protivnici kroz karijeru/turnire. PvP možda kasnije.
 - **Prikaz borbe:** 2D, uz mogućnost kasnijeg prelaska na 3D. Logika borbe mora biti odvojena od prikaza da se prikaz može zamijeniti.
-- **Disciplina:** prvo BJJ, MMA kasnije.
+- **Disciplina:** prvo BJJ, MMA kasnije. BJJ je **no-gi** varijanta (rashguard i šorc, bez hvatova za kimono).
+- **Bodovanje:** kao u pravom BJJ-u (IBJJF no-gi pravila): takedown 2, sweep 2, koljeno na trbuhu 2, prolaz garda 3, mount 4, leđa 4. Bodovi se dobivaju tek kad se pozicija zadrži 3 sekunde. Uz to postoje prednosti (advantage) i kazne. Pobjeđuje se submissionom, a ako ga nema, bodovima.
+- **Izgled lika:** za sada jednostavan, ali dovoljno dobar da borbe izgledaju zanimljivo.
+- **Testna i prava verzija:** testna verzija ima ubrzano vrijeme i sve otključano. Prava verzija ima napredovanje kroz vrijeme, gdje svaki sljedeći razvoj vještine traje duže od prethodnog, kao u drugim igrama tog tipa.
 
 ### Borba
 Borba teče sama, ovisno o vještinama oba borca. U kritičnim trenucima (protivnik kreće u submission, otvori se prilika za sweep ili prolaz garda, kraj runde...) vrijeme se uspori i igrač dobije pet opcija. Jedna ili više može biti točna, a jedna ili više kriva. Odluka ima ograničeno vrijeme. Ishod ovisi o izboru:
@@ -26,7 +29,7 @@ Borba teče sama, ovisno o vještinama oba borca. U kritičnim trenucima (protiv
 - loša odluka → gubitak pozicije, negativni bodovi, poraz submissionom
 - (MMA kasnije: KO, nokdaun)
 
-Prijedlog: pozicije su graf (stojeći, zatvoreni gard, polugard, side control, mount, leđa...). Svaka ima svoje moguće akcije, prijelaze i submissione. Bodovanje je kao u BJJ-u (takedown/sweep 2, prolaz garda 3, mount/leđa 4) uz pobjedu submissionom.
+Prijedlog: pozicije su graf (stojeći, zatvoreni gard, polugard, butterfly gard, side control, koljeno na trbuhu, mount, leđa...). Svaka ima svoje moguće akcije, prijelaze i submissione. No-gi naglašava tehnike poput heel hooka i drugih leg lockova, guillotine, darcea i rear naked chokea.
 
 ### Razvoj lika
 Razvoj je u stilu Clash Royalea (building strategy): treninzi i nadogradnje traju određeno stvarno vrijeme i odvijaju se dok igrač nije u igri. Igrač ne mora stalno igrati: navrati, pokrene trening, vrati se kad završi.
@@ -39,11 +42,13 @@ Prijedlozi:
 
 Mogućnost za razmotriti: vještine lika utječu na to koje se opcije nude i koliko su uspješne.
 
-### Prvi korak (MVP)
-Jedan borac, nekoliko vještina s timer-treninzima, desetak BJJ pozicija i tehnika, borba protiv AI protivnika s kritičnim trenucima i pet opcija, spremanje napretka u pregledniku.
+Trajanje treninga raste sa svakom razinom (npr. razina 1 traje minute, a više razine sate, pa i dane). U testnoj verziji isti sustav radi s ubrzanim vremenom.
+
+### Prvi korak (MVP = testna verzija)
+Jedan borac jednostavnog, ali živog 2D izgleda. Nekoliko vještina s treninzima na timer (ubrzano vrijeme, sve otključano). Desetak no-gi pozicija i tehnika. Borba protiv AI protivnika s kritičnim trenucima, pet opcija i pravim BJJ bodovanjem. Napredak se sprema u pregledniku.
 
 ### Otvoreno
 - tehnologija prikaza (npr. Phaser za 2D)
-- izgled borca (customizacija?) i likovni stil
+- customizacija izgleda borca
 - spremanje napretka: samo lokalno ili račun na serveru
 - koliko traju treninzi i borbe
