@@ -990,7 +990,7 @@ export function dropItem(s, from, slot, to, target, events = []) {
   if (problem) return fail(events, problem, { id: it.id });
   if (there && there.id !== it.id) return moveItem(s, from, slot, to, events);
   const k = Math.min(it.n, STACK_MAX - (there?.n ?? 0));
-  if (!k) return fail(events, `${to}full`);
+  if (!k) return moveItem(s, from, slot, to, events); // that stack is full: the first free slot
   if (there) there.n += k;
   else dst[target] = { id: it.id, n: k };
   it.n -= k;
@@ -1958,15 +1958,15 @@ export function patPet(s, events = []) {
 // Produce in the chest loses a class now and then, unless the chest is a cold room.
 function agingChest(s, events) {
   if (s.upgrades.coldroom) return;
-  const moved = [];
+  // a stack loses a class where it lies, so the player's own layout stays ("Sortiraj" merges later)
+  let n = 0;
   s.chest.forEach((it, k) => {
     const p = it && parseItem(it.id);
     if (!p || p.kind !== 'crop' || p.tier <= 1 || rand(s) >= CHEST_DECAY) return;
-    moved.push({ id: cropItem(p.crop, p.tier - 1), n: it.n });
-    s.chest[k] = null;
+    s.chest[k] = { id: cropItem(p.crop, p.tier - 1), n: it.n };
+    n++;
   });
-  for (const m of moved) addItem(s.chest, m.id, m.n);
-  if (moved.length) events.push({ type: 'chestdecay', n: moved.length });
+  if (n) events.push({ type: 'chestdecay', n });
 }
 
 // ---------------------------------------------------------------- customers' orders at the stand

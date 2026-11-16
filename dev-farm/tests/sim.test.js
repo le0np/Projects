@@ -2137,3 +2137,22 @@ test('drag between grids: lands on the chosen slot, follows the move rules', () 
   s.market.trips.farmer = { phase: 'sell' };
   assert.equal(dropItem(s, 'chest', 6, 'bag', 3).reason, 'intown');
 });
+
+test('drag onto a full stack of the same thing: goes to a free slot, no false "full"', () => {
+  const s = createState();
+  s.bag[0] = { id: 'wood', n: 5 };
+  s.chest[3] = { id: 'wood', n: 99 };
+  const events = [];
+  assert.ok(dropItem(s, 'bag', 0, 'chest', 3, events).ok, JSON.stringify(events));
+  assert.equal(s.bag[0], null);
+  assert.deepEqual(s.chest[0], { id: 'wood', n: 5 });
+  assert.ok(!events.some((e) => e.type === 'fail'));
+});
+
+test('produce losing quality in the chest stays where the player put it', () => {
+  const s = createState();
+  s.chest[5] = { id: 'crop:radish:3', n: 4 };
+  for (let d = 0; d < 30 && s.chest[5]?.id === 'crop:radish:3'; d++) nextDay(s);
+  assert.deepEqual(s.chest[5], { id: 'crop:radish:2', n: 4 }, 'decayed one class, same slot');
+  assert.ok(s.chest.every((it, k) => k === 5 || it === null));
+});
