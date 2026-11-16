@@ -397,6 +397,10 @@ function workKind(s, t) {
     case 'jobwater': return needsWater(p) && s.water > 0 ? 'water' : null;
     case 'jobfert': return unfertilized(p) && fertDoses(s) ? 'fertilize' : null;
     case 'jobmulch': return unmulched(p) && hasMulch(s) ? 'mulch' : null;
+    case 'jobseries':
+      if (t.step === 'plant') return !p.crop && seriesSeed(s, t.crop) ? 'plant' : null;
+      if (t.step === 'water') return needsWater(p) && s.water > 0 ? 'water' : null;
+      return ripe ? 'harvest' : null;
     default: return null;
   }
 }
@@ -433,6 +437,7 @@ function doTask(s, t, events) {
   else if (t.type === 'jobharvest') continueJob(s, jobHarvest(s, t.x, t.y, events), events);
   else if (t.type === 'jobwater') continueJob(s, jobWater(s, t.x, t.y, events), events);
   else if (t.type === 'jobfert') continueJob(s, jobFert(s, t.x, t.y, events), events);
+  else if (t.type === 'jobseries') continueJob(s, jobSeries(s, t, events), events);
   else if (t.type === 'jobrefill') {
     s.water = canSize(s);
     events.push({ type: 'refill', water: s.water });
@@ -530,7 +535,7 @@ function route(s, tiles) {
 }
 
 const JOB_STOP = new Set(['tired', 'bagfull', 'noseeds', 'nofert', 'nomulch']);
-const JOB_TASK = { plant: 'jobplant', harvest: 'jobharvest', water: 'jobwater', fertilize: 'jobfert', mulch: 'jobmulch' };
+const JOB_TASK = { plant: 'jobplant', harvest: 'jobharvest', water: 'jobwater', fertilize: 'jobfert', mulch: 'jobmulch', series: 'jobseries' };
 const unmulched = (p) => Boolean(p.crop) && !p.rotten && p.progress < 1 && !p.mulch;
 
 function jobMulch(s, x, y, events) {
@@ -589,6 +594,41 @@ export function startJobOn(s, kind, tiles, events = []) {
   return { ok: true, total: targets.length };
 }
 
+// Series: harvest a plot, plant it again and water it. The same crop goes back in; without
+// that seed the one chosen in the pouch; without any seed the plot stays empty and the series
+// goes on to the next plot.
+const seriesSeed = (s, crop) => (s.seeds[crop] > 0 ? crop : s.seeds[s.seed] > 0 ? s.seed : null);
+
+function jobSeries(s, t, events) {
+  const { x, y } = t;
+  const i = idx(x, y);
+  const p = s.plots[i];
+  const skip = { ok: false, reason: 'skip' };
+  if (!p) return skip;
+  const queue = s.farmer.queue;
+  if (t.step === 'plant') {
+    const crop = seriesSeed(s, t.crop);
+    if (p.crop || !crop) return skip;
+    const r = plant(s, i, crop, events);
+    if (r.ok) queue.unshift({ type: 'jobseries', x, y, step: 'water' });
+    return r.ok ? { ok: true, step: true } : r;
+  }
+  if (t.step === 'water') {
+    if (!needsWater(p)) return skip;
+    if (s.water <= 0) {
+      queue.unshift({ type: 'jobrefill' }, t);
+      return { ok: false, reason: 'refill' };
+    }
+    const r = waterPlot(s, i, events);
+    return r.ok ? { ok: true, step: true } : r;
+  }
+  if (!p.crop || p.rotten || p.progress < 1) return skip;
+  const crop = p.crop;
+  const r = harvestHand(s, i, events);
+  if (r.ok) queue.unshift({ type: 'jobseries', x, y, step: 'plant', crop });
+  return r;
+}
+
 function jobPlant(s, x, y, events) {
   const i = idx(x, y);
   if (!s.plots[i] || s.plots[i].crop) return { ok: false, reason: 'skip' };
@@ -629,7 +669,7 @@ function continueJob(s, result, events) {
   const f = s.farmer;
   const job = f.job;
   if (!job) return;
-  if (result?.ok) job.done++;
+  if (result?.ok && !result.step) job.done++; // a series counts each plot once, at its harvest
   const seedsLeft = job.crop ? s.seeds[job.crop] : totalSeeds(s);
   if ((result && JOB_STOP.has(result.reason)) || (job.kind === 'plant' && !seedsLeft && f.queue.length)) {
     events.push({ type: 'jobend', kind: job.kind, done: job.done, total: job.total, reason: result?.reason ?? 'noseeds' });

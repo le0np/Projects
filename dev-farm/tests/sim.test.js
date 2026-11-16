@@ -743,6 +743,62 @@ test('a drag with another tool replaces the running job; in town it is refused',
   assert.equal(startJobOn(t, 'plant', [xy(PLOTS_A[0])]).reason, 'intown');
 });
 
+test('series: harvest, plant the same crop and water, plot by plot', () => {
+  const s = withSeeds(3);
+  for (const i of PLOTS_A.slice(0, 3)) s.plots[i] = ripePlot('radish');
+  const events = [];
+  assert.ok(startJob(s, 'series', null, events).ok);
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1, events);
+  for (const i of PLOTS_A.slice(0, 3)) {
+    assert.equal(s.plots[i].crop, 'radish');
+    assert.equal(s.plots[i].progress, 0);
+    assert.ok(s.plots[i].wet);
+  }
+  assert.equal(s.seeds.radish, 0);
+  assert.equal(countWhere(s.bag, (id) => id.startsWith('crop:radish')), 3 * CROPS.find((c) => c.id === 'radish').yield);
+  assert.equal(events.find((e) => e.type === 'jobend').done, 3);
+});
+
+test('series: no seed of that crop → the chosen seed; no seeds at all → harvest only', () => {
+  const s = createState();
+  s.seeds.carrot = 1;
+  s.seed = 'carrot';
+  for (const i of PLOTS_A.slice(0, 2)) s.plots[i] = ripePlot('radish');
+  startJob(s, 'series');
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1);
+  const crops = PLOTS_A.slice(0, 2).map((i) => s.plots[i].crop).sort();
+  assert.deepEqual(crops, ['carrot', null]);
+  assert.equal(ripeCount(s), 0, 'both were harvested');
+});
+
+test('series on a rainy day does not use the can; running out of energy stops cleanly', () => {
+  const s = withSeeds(2);
+  s.weather = 'rain';
+  const water = s.water;
+  for (const i of PLOTS_A.slice(0, 2)) s.plots[i] = ripePlot('radish');
+  startJob(s, 'series');
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1);
+  assert.equal(s.water, water);
+
+  const t = withSeeds(3);
+  for (const i of PLOTS_A.slice(0, 3)) t.plots[i] = ripePlot('radish');
+  t.energy = 4; // harvest 1 + plant 2 + water 1 = one plot
+  const events = [];
+  startJob(t, 'series', null, events);
+  for (let i = 0; i < 3000 && t.farmer.job; i++) tick(t, 0.1, events);
+  assert.equal(events.find((e) => e.type === 'jobend').reason, 'tired');
+  assert.equal(t.energy, 0);
+  assert.equal(ripeCount(t), 2);
+});
+
+test('shift-drag with the hands runs the series on the marked plots only', () => {
+  const s = withSeeds(5);
+  for (const i of PLOTS_A.slice(0, 4)) s.plots[i] = ripePlot('radish');
+  startJobOn(s, 'series', PLOTS_A.slice(0, 2).map(xy));
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1);
+  assert.equal(ripeCount(s), 2);
+});
+
 test('water all: waters every dry plant and refills the can when it runs dry', () => {
   const s = createState();
   s.water = 2;

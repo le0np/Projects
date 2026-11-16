@@ -253,6 +253,8 @@ export function createUI(cb) {
   // Seeds and the can are split buttons: the tool itself works plant by plant,
   // the ▾ next to it runs the bulk job (everything, or one kind of crop).
   const SPLIT = TOOL_JOB;
+  // the series (harvest, plant, water) lives under the hands
+  const jobOf = (job) => (job?.kind === 'series' ? 'harvest' : job?.kind);
   const toolEls = new Map();
   const moreBtns = new Map();
   for (const t of tools) {
@@ -261,7 +263,7 @@ export function createUI(cb) {
     const kind = SPLIT[t.id];
     if (kind) {
       const wrap = el('div', 'tool-split');
-      const more = button('▾', () => (lastState?.farmer.job?.kind === kind ? cb.onJob(kind) : openMenu(kind, wrap)), { cls: 'tool-more bulk' });
+      const more = button('▾', () => (jobOf(lastState?.farmer.job) === kind ? cb.onJob(kind) : openMenu(kind, wrap)), { cls: 'tool-more bulk' });
       wrap.append(b, more);
       els.hotbar.append(wrap);
       moreBtns.set(kind, { more, tool: t.id });
@@ -298,13 +300,17 @@ export function createUI(cb) {
       if (n > 0 || (kind === 'plant' && s.seeds[c.id] > 0)) options.push({ crop: c.id, label: c.name, n });
     }
     const unit = { harvest: 'zrelih', water: 'suhih', fertilize: 'za gnojivo', plant: 'parcela', mulch: 'bez malča' }[kind];
-    menu.replaceChildren(el('div', 'job-menu-title', `${j.name} sve…`), ...options.map((o) => {
-      const b = button('', () => { closeMenu(); cb.onJob(kind, o.crop); }, { cls: 'job-option', disabled: o.n === 0 });
+    const item = (o, job) => {
+      const b = button('', () => { closeMenu(); cb.onJob(job, o.crop); }, { cls: 'job-option', disabled: o.n === 0 });
       if (o.crop) b.append(icon(o.crop, 'px-icon small-icon'));
       b.append(el('span', 'grow', o.label), el('span', 'muted', `${o.n} ${unit}`));
       b.setAttribute('role', 'menuitem');
       return b;
-    }));
+    };
+    // under the hands: the same choices once more for the series (harvest, plant again, water)
+    const series = kind === 'harvest'
+      ? [el('div', 'job-menu-title', 'Serija: poberi, posadi, zalij…'), ...options.map((o) => item(o, 'series'))] : [];
+    menu.replaceChildren(el('div', 'job-menu-title', `${j.name} sve…`), ...options.map((o) => item(o, kind)), ...series);
     menu.dataset.kind = kind;
     menu.hidden = false;
     const r = anchor.getBoundingClientRect();
@@ -387,7 +393,7 @@ export function createUI(cb) {
     lastState = s;
     const running = s.farmer.job;
     for (const [kind, { b, j, tool }] of jobEls) {
-      const mine = running?.kind === kind;
+      const mine = jobOf(running) === kind;
       const n = jobTargets(s, kind).length;
       b.classList.toggle('running', mine);
       b.disabled = !mine && (Boolean(running) || n === 0);
@@ -401,9 +407,9 @@ export function createUI(cb) {
           mulch: { stop: 'malčiranje', do: 'Malčiraj', what: `bez malča: ${n}`, none: 'Nema malča ili parcela bez malča', ing: 'malčira' },
         }[kind];
         setText(b, mine ? '■' : '▾');
-        b.title = mine ? `Prekini ${verb.stop} (Esc)` : n ? `${verb.do} sve ili jednu vrstu · ${verb.what} (${j.key})` : verb.none;
+        b.title = mine ? `Prekini ${running.kind === 'series' ? 'seriju' : verb.stop} (Esc)` : n ? `${verb.do} sve ili jednu vrstu · ${verb.what} (${j.key})` : verb.none;
         b.parentElement.classList.toggle('running', mine);
-        if (mine) setText(toolEls.get(tool).sub, `${verb.ing} ${running.done}/${running.total}`);
+        if (mine) setText(toolEls.get(tool).sub, `${running.kind === 'series' ? 'serija' : verb.ing} ${running.done}/${running.total}`);
       }
     }
     if (running && !menu.hidden) closeMenu();

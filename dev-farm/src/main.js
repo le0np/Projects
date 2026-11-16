@@ -351,17 +351,22 @@ function report(events) {
         ui.say(`${e.n} ${e.n < 5 ? 'sjemenke' : 'sjemenki'} (${name(e.crop)}).`, e.n >= 7 ? 'happy' : '');
         break;
       case 'jobstart':
-        jobTally = e.kind === 'harvest' ? {} : null;
-        ui.say(e.kind === 'plant' ? `Idem sijati: ${e.total} ${plots(e.total)}.`
-          : e.kind === 'water' ? `Idem zalijevati: ${e.total} ${plots(e.total)}.`
-            : e.kind === 'fertilize' ? `Idem gnojiti: ${e.total} ${plots(e.total)}.` : `Idem brati, zrelih: ${e.total}.`);
+        jobTally = e.kind === 'harvest' || e.kind === 'series' ? {} : null;
+        ui.say({
+          plant: `Idem sijati: ${e.total} ${plots(e.total)}.`,
+          water: `Idem zalijevati: ${e.total} ${plots(e.total)}.`,
+          fertilize: `Idem gnojiti: ${e.total} ${plots(e.total)}.`,
+          mulch: `Idem malčirati: ${e.total} ${plots(e.total)}.`,
+          series: `Idem: berba, sadnja i zalijevanje, ${e.total} ${plots(e.total)}.`,
+        }[e.kind] ?? `Idem brati, zrelih: ${e.total}.`);
         break;
       case 'jobcancel':
         jobTally = null;
-        ui.say(`Dobro, prekidam ${{ plant: 'sadnju', harvest: 'berbu', water: 'zalijevanje', fertilize: 'gnojenje' }[e.kind]}.`);
+        ui.say(`Dobro, prekidam ${{ plant: 'sadnju', harvest: 'berbu', water: 'zalijevanje', fertilize: 'gnojenje', mulch: 'malčiranje', series: 'seriju' }[e.kind]}.`);
         break;
       case 'jobend': {
-        const what = `${{ plant: 'Posađeno', harvest: 'Ubrano', water: 'Zaliveno', fertilize: 'Pognojeno' }[e.kind]} ${e.done}`;
+        const what = e.kind === 'series' ? `Serija na ${e.done} ${plots(e.done)}`
+          : `${{ plant: 'Posađeno', harvest: 'Ubrano', water: 'Zaliveno', fertilize: 'Pognojeno', mulch: 'Malčirano' }[e.kind]} ${e.done}`;
         const detail = jobTally && e.done ? ` (${tallyText(jobTally)})` : '';
         jobTally = null;
         if (e.reason) ui.say(`${farmerSays(e)} ${what} od ${e.total}${detail}.`, 'sad');
@@ -721,7 +726,8 @@ const fishing = () => state.farmer.busy?.what === 'fish';
 // Dragging over the field with a tool marks plots; on release the farmer works them in order.
 let drag = null; // { kind, last: [x, y], tiles, moved }
 let swallowClick = false; // the click that ends a drag is not a click on a plot
-const dragJob = (d) => d.kind;
+// Shift while dragging with the hands: the whole series instead of just the harvest
+const dragJob = (d, e) => (d.kind === 'harvest' && e.shiftKey ? 'series' : d.kind);
 function endDrag() {
   drag = null;
   renderer.setDragTiles(null);
