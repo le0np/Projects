@@ -10,7 +10,7 @@ import {
   matsText, stopFishing, placeItem, removeItem, fulfillRequest, sellBack, buybackList, adoptPet, patPet, walkFn, requestPay,
   owns, chestSize, hensMax, feederCap, levelValue, cropDays,
   buildOnline, onlineProblem, packOrder, goToPost, postTripProblem, parcelsReady, orderPay,
-  tilesBetween, dragTargets, startJobOn, rottenCount,
+  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -2082,4 +2082,58 @@ test('web shop: a market trip takes the parcels along; everything survives a rel
   const { state: v } = deserialize(serialize(u));
   assert.equal(v.gigs.active.online, 'seo');
   assert.equal(v.gigs.active.pay, 0);
+});
+
+test('sort: most first, stacks merged, no gaps', () => {
+  const s = createState();
+  s.chest[0] = { id: 'wood', n: 3 };
+  s.chest[2] = { id: 'crop:radish:2', n: 40 };
+  s.chest[5] = { id: 'stone', n: 7 };
+  s.chest[7] = { id: 'crop:radish:2', n: 40 };
+  s.chest[9] = { id: 'crop:radish:2', n: 40 };
+  sortSlots(s, 'chest');
+  assert.deepEqual(s.chest.slice(0, 5), [
+    { id: 'crop:radish:2', n: 99 }, { id: 'crop:radish:2', n: 21 }, { id: 'stone', n: 7 }, { id: 'wood', n: 3 }, null,
+  ]);
+  assert.ok(s.chest.slice(4).every((it) => it === null));
+});
+
+test('sort: equal amounts go by name', () => {
+  const s = createState();
+  s.bag[3] = { id: 'wood', n: 5 };
+  s.bag[1] = { id: 'stone', n: 5 };
+  sortSlots(s, 'bag', (id) => ({ wood: 'drva', stone: 'kamen' }[id]));
+  assert.deepEqual(s.bag.slice(0, 2).map((it) => it.id), ['wood', 'stone']);
+});
+
+test('drag inside a grid: move to empty, swap with another item, merge the same one', () => {
+  const s = createState();
+  s.bag[0] = { id: 'wood', n: 3 };
+  s.bag[1] = { id: 'stone', n: 2 };
+  assert.ok(dropItem(s, 'bag', 0, 'bag', 5).ok);
+  assert.deepEqual([s.bag[0], s.bag[5]], [null, { id: 'wood', n: 3 }]);
+  dropItem(s, 'bag', 5, 'bag', 1);
+  assert.deepEqual([s.bag[1], s.bag[5]], [{ id: 'wood', n: 3 }, { id: 'stone', n: 2 }]);
+  s.bag[2] = { id: 'wood', n: 98 };
+  dropItem(s, 'bag', 1, 'bag', 2);
+  assert.deepEqual([s.bag[1], s.bag[2]], [{ id: 'wood', n: 2 }, { id: 'wood', n: 99 }], 'only what fits moves');
+  dropItem(s, 'bag', 2, 'bag', 2);
+  assert.deepEqual(s.bag[2], { id: 'wood', n: 99 }, 'onto itself: nothing');
+});
+
+test('drag between grids: lands on the chosen slot, follows the move rules', () => {
+  const s = createState();
+  s.bag[0] = { id: 'crop:radish:2', n: 4 };
+  s.bag[1] = { id: 'wood', n: 2 };
+  s.chest[0] = { id: 'stone', n: 1 };
+  assert.ok(dropItem(s, 'bag', 0, 'chest', 6).ok);
+  assert.deepEqual([s.bag[0], s.chest[6]], [null, { id: 'crop:radish:2', n: 4 }]);
+  dropItem(s, 'bag', 1, 'chest', 0); // occupied by stone → first free slot
+  assert.deepEqual(s.chest[1], { id: 'wood', n: 2 });
+  assert.equal(s.chest[0].id, 'stone');
+  s.bag[2] = { id: 'wood', n: 1 };
+  assert.equal(dropItem(s, 'bag', 2, 'stand', 0).reason, 'notsellable');
+  assert.equal(dropItem(s, 'bag', 7, 'chest', 0).reason, 'noitem', 'an empty (stale) source slot');
+  s.market.trips.farmer = { phase: 'sell' };
+  assert.equal(dropItem(s, 'chest', 6, 'bag', 3).reason, 'intown');
 });

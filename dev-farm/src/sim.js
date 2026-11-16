@@ -926,18 +926,76 @@ export function coffee(s, events = []) {
 }
 
 // Move a whole stack between 'bag', 'chest' and 'stand'.
+// Why item `it` can't go from one place to another (null = it can).
+function moveProblem(s, from, it, to) {
+  if (s.market.trips.farmer && (from === 'bag' || to === 'bag')) return 'intown';
+  if ((from === 'cargo' || to === 'cargo') && (!s.market.van || s.market.trips.van)) return 'novan';
+  if ((to === 'stand' || to === 'cargo') && !isSellable(it.id)) return 'notsellable';
+  return null;
+}
+
 export function moveItem(s, from, slot, to, events = [], amount = Infinity) {
   const src = s[from];
   const it = src?.[slot];
   if (!it || !s[to] || from === to) return fail(events, 'noitem');
-  if (s.market.trips.farmer && (from === 'bag' || to === 'bag')) return fail(events, 'intown');
-  if ((from === 'cargo' || to === 'cargo') && (!s.market.van || s.market.trips.van)) return fail(events, 'novan');
-  if ((to === 'stand' || to === 'cargo') && !isSellable(it.id)) return fail(events, 'notsellable', { id: it.id });
+  const problem = moveProblem(s, from, it, to);
+  if (problem) return fail(events, problem, { id: it.id });
   const added = addItem(s[to], it.id, Math.min(it.n, amount));
   if (!added) return fail(events, `${to}full`);
   it.n -= added;
   if (it.n === 0) src[slot] = null;
   events.push({ type: 'moved', from, to, id: it.id, n: added });
+  return { ok: true };
+}
+
+// The "Sortiraj" button: stacks of the same thing merged, the thing there is most of first
+// (then by name), no gaps; empty slots at the end.
+export function sortSlots(s, which, nameOf = (id) => id, events = []) {
+  const slots = s[which];
+  const totals = new Map();
+  for (const it of slots) if (it) totals.set(it.id, (totals.get(it.id) ?? 0) + it.n);
+  const order = [...totals.keys()].sort((a, b) => totals.get(b) - totals.get(a) || String(nameOf(a)).localeCompare(String(nameOf(b)), 'hr'));
+  slots.fill(null);
+  let k = 0;
+  for (const id of order) {
+    for (let left = totals.get(id); left > 0; left -= STACK_MAX) slots[k++] = { id, n: Math.min(left, STACK_MAX) };
+  }
+  events.push({ type: 'sorted', which });
+  return { ok: true };
+}
+
+// Dragging an item with the mouse onto slot `target` of `to` (the same grid or another one).
+// Same grid: an empty slot takes it, the same item merges (what fits), another item swaps.
+// Another grid: the move rules apply; an empty slot or the same item takes it right there,
+// another item sends it to the first free slot.
+export function dropItem(s, from, slot, to, target, events = []) {
+  const src = s[from];
+  const dst = s[to];
+  const it = src?.[slot];
+  if (!it || !dst || target < 0 || target >= dst.length) return fail(events, 'noitem');
+  const there = dst[target];
+  if (from === to) {
+    if (slot === target) return { ok: true };
+    if (there && there.id === it.id) {
+      const k = Math.min(it.n, STACK_MAX - there.n);
+      there.n += k;
+      it.n -= k;
+      if (!it.n) src[slot] = null;
+    } else {
+      [src[slot], dst[target]] = [there, it];
+    }
+    return { ok: true };
+  }
+  const problem = moveProblem(s, from, it, to);
+  if (problem) return fail(events, problem, { id: it.id });
+  if (there && there.id !== it.id) return moveItem(s, from, slot, to, events);
+  const k = Math.min(it.n, STACK_MAX - (there?.n ?? 0));
+  if (!k) return fail(events, `${to}full`);
+  if (there) there.n += k;
+  else dst[target] = { id: it.id, n: k };
+  it.n -= k;
+  if (!it.n) src[slot] = null;
+  events.push({ type: 'moved', from, to, id: it.id, n: k });
   return { ok: true };
 }
 
