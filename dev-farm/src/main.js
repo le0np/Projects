@@ -7,11 +7,12 @@ import {
   countWhere, extractSeeds, makeCompost, orderSeeds, startJob, upgrade, fillTank, orderItem, feedHens, acceptGig, sprinklerAt,
   goWork, goodById, forageById, shopItemById, matCount, matsText, cancelOrder, stopFishing, fishById,
   placeItem, removeItem, fulfillRequest, sellBack, adoptPet, patPet, dayNameGen, rentStall, buyVan, hireWorker, goToMarket, sendVan, comeBack,
-  buildOnline, packOrder, goToPost, channelById,
+  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn,
 } from './sim.js';
 import { ONLINE } from './data.js';
 import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES, UPGRADES, TANK_SIZE } from './data.js';
 import { SAVE_KEY, OLDER_KEYS, serialize, deserialize } from './save.js';
+import { isPlotTile } from './world.js';
 import { createRenderer } from './render.js';
 import { createUI, itemName, stars, formatMoney, plots } from './ui.js';
 
@@ -91,6 +92,7 @@ function farmerSays(e) {
     case 'standfull': return 'Štand je pun.';
     case 'needtool': return 'Raste. Mogu je zaliti kantom (3) ili pognojiti (4).';
     case 'nofreeplots': return 'Nema slobodnih parcela.';
+    case 'nothingthere': return 'Na tim parcelama nemam što raditi s ovim alatom.';
     case 'tooearly': return 'Još je rano za spavanje. Ima posla do večeri.';
     case 'nothingdry': return 'Sve je već zaliveno.';
     case 'coopbroken': return 'Kokoši mogu doći tek kad popravim kokošinjac.';
@@ -716,7 +718,36 @@ function onReset() {
 
 const fishing = () => state.farmer.busy?.what === 'fish';
 
+// Dragging over the field with a tool marks plots; on release the farmer works them in order.
+let drag = null; // { kind, last: [x, y], tiles, moved }
+let swallowClick = false; // the click that ends a drag is not a click on a plot
+const dragJob = (d) => d.kind;
+function endDrag() {
+  drag = null;
+  renderer.setDragTiles(null);
+}
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button !== 0 || ui.state.placing || state.market.trips.farmer) return;
+  const kind = TOOL_JOB[state.tool];
+  const t = renderer.tileFromClient(e.clientX, e.clientY);
+  if (!kind || !t || !isPlotTile(t[0], t[1])) return;
+  drag = { kind, last: t, tiles: [t], moved: false };
+});
+window.addEventListener('mouseup', (e) => {
+  if (!drag) return;
+  const d = drag;
+  endDrag();
+  if (!d.moved) return; // a plain click: the click handler does it
+  swallowClick = e.target === canvas;
+  ui.state.panel = null;
+  act((ev) => startJobOn(state, dragJob(d, e), d.tiles, ev));
+});
+
 canvas.addEventListener('click', (e) => {
+  if (swallowClick) {
+    swallowClick = false;
+    return;
+  }
   const c = renderer.cornerFromClient(e.clientX, e.clientY);
   const placing = ui.state.placing;
   if (placing && placing !== true) {
@@ -755,11 +786,18 @@ canvas.addEventListener('click', (e) => {
 
 canvas.addEventListener('mousemove', (e) => {
   hoverTile = renderer.tileFromClient(e.clientX, e.clientY);
+  if (drag && hoverTile && (hoverTile[0] !== drag.last[0] || hoverTile[1] !== drag.last[1])) {
+    drag.tiles.push(...tilesBetween(drag.last, hoverTile).slice(1));
+    drag.last = hoverTile;
+    drag.moved = true;
+  }
+  if (drag?.moved) renderer.setDragTiles(dragTargets(state, dragJob(drag, e), drag.tiles));
   hoverCorner = renderer.cornerFromClient(e.clientX, e.clientY);
   renderer.setHover(hoverTile);
   renderer.setCorner(hoverCorner);
 });
 canvas.addEventListener('mouseleave', () => {
+  endDrag();
   hoverTile = null;
   hoverCorner = null;
   renderer.setHover(null);
@@ -783,6 +821,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === '+' || e.key === '=') onZoom(1);
   else if (e.key === '-') onZoom(-1);
   else if (e.key === 'Escape') {
+    endDrag();
     if (fishing()) act((ev) => stopFishing(state, ev));
     cancelJob();
     ui.state.placing = false;

@@ -13,7 +13,7 @@ import {
   upgradeProblem, nextStep, levelValue, matsText, pumpCapacity, tankDoses, runningSprinklers, irrigationMissing, fishById, fertDoses, requestHave, requestPay, orderPick, orderPay, dayName, dayNameGen,
   buybackList, hiveAt, decorAt, farmerTripProblem, vanTripProblem, pumpStatus, orderPack, shopItemById,
   owns, recipeAmount, hensMax, feederCap, hiveCap, chestSize, cropDays, hasTap,
-  onlineProblem, parcelsReady, postTripProblem, hasWebshop,
+  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB,
 } from './sim.js';
 import { idx, objectAt, isPlotTile, OBJECTS, TAP } from './world.js';
 import { iconUrl } from './render.js';
@@ -252,7 +252,7 @@ export function createUI(cb) {
   ];
   // Seeds and the can are split buttons: the tool itself works plant by plant,
   // the ▾ next to it runs the bulk job (everything, or one kind of crop).
-  const SPLIT = { hand: 'harvest', seed: 'plant', can: 'water', fert: 'fertilize', mulch: 'mulch' };
+  const SPLIT = TOOL_JOB;
   const toolEls = new Map();
   const moreBtns = new Map();
   for (const t of tools) {

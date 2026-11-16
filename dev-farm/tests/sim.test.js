@@ -10,6 +10,7 @@ import {
   matsText, stopFishing, placeItem, removeItem, fulfillRequest, sellBack, buybackList, adoptPet, patPet, walkFn, requestPay,
   owns, chestSize, hensMax, feederCap, levelValue, cropDays,
   buildOnline, onlineProblem, packOrder, goToPost, postTripProblem, parcelsReady, orderPay,
+  tilesBetween, dragTargets, startJobOn,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -701,6 +702,45 @@ test('bulk jobs can be narrowed to one crop', () => {
   for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1);
   assert.equal(ripeCount(s), 1);
   assert.equal(s.plots[PLOTS_A[21]].crop, 'carrot');
+});
+
+test('tilesBetween fills the gap a fast mouse leaves', () => {
+  assert.deepEqual(tilesBetween([0, 0], [3, 0]), [[0, 0], [1, 0], [2, 0], [3, 0]]);
+  assert.equal(tilesBetween([0, 0], [3, 3]).length >= 4, true);
+  assert.deepEqual(tilesBetween([2, 2], [2, 2]), [[2, 2]]);
+});
+
+test('dragging over the field marks only plots where the tool has work', () => {
+  const s = withSeeds(2);
+  const row = PLOTS_A.slice(0, 4).map(xy);
+  s.plots[PLOTS_A[1]] = ripePlot('radish');
+  assert.deepEqual(dragTargets(s, 'plant', row), [row[0], row[2]], 'two seeds, the ripe plot is skipped');
+  assert.deepEqual(dragTargets(s, 'harvest', [...row, [0, 0], xy(PLOTS_B[0])]), [row[1]], 'trees and the locked field are ignored');
+});
+
+test('drag-planting: the farmer works the marked plots; a second drag adds to the same job', () => {
+  const s = withSeeds(6);
+  s.tool = 'seed';
+  const events = [];
+  assert.equal(startJobOn(s, 'plant', PLOTS_A.slice(0, 2).map(xy), events).total, 2);
+  startJobOn(s, 'plant', PLOTS_A.slice(1, 4).map(xy), events);
+  assert.equal(s.farmer.job.total, 4, 'the overlap is not counted twice');
+  assert.equal(events.filter((e) => e.type === 'jobstart').length, 1);
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1, events);
+  assert.equal(PLOTS_A.slice(0, 4).filter((i) => s.plots[i].crop === 'radish').length, 4);
+});
+
+test('a drag with another tool replaces the running job; in town it is refused', () => {
+  const s = withSeeds(6);
+  s.plots[PLOTS_A[10]] = { ...makePlot(), crop: 'radish', progress: 0.3 };
+  startJobOn(s, 'plant', PLOTS_A.slice(0, 3).map(xy));
+  const events = [];
+  startJobOn(s, 'water', [xy(PLOTS_A[10])], events);
+  assert.equal(s.farmer.job.kind, 'water');
+  assert.ok(events.some((e) => e.type === 'jobcancel'));
+  const t = createState();
+  t.market.trips.farmer = { phase: 'sell' };
+  assert.equal(startJobOn(t, 'plant', [xy(PLOTS_A[0])]).reason, 'intown');
 });
 
 test('water all: waters every dry plant and refills the can when it runs dry', () => {

@@ -921,6 +921,12 @@ export function createRenderer(canvas) {
       corners(tx * TS + 6 - pulse, ty * TS + 6 - pulse, 20 + pulse * 2, 20 + pulse * 2, 4, 'rgba(255,240,180,.85)');
     }
     if (fx.hover) corners(fx.hover[0] * TS + 1, fx.hover[1] * TS + 1, TS - 2, TS - 2, 6, 'rgba(255,255,255,.85)');
+    // plots marked by dragging the mouse over the field
+    if (fx.drag?.length) {
+      ctx.strokeStyle = 'rgba(255, 214, 90, .95)';
+      ctx.lineWidth = 2;
+      for (const [x, y] of fx.drag) ctx.strokeRect(x * TS + 2, y * TS + 2, TS - 4, TS - 4);
+    }
   }
 
   function drawNight(s, now, cx, cy, u) {
@@ -1012,6 +1018,7 @@ export function createRenderer(canvas) {
       return Math.abs(wx - (petState.x * TS + 16)) < 13 && Math.abs(wy - (petState.y * TS + 21)) < 11;
     },
     setHover(t) { fx.hover = t; },
+    setDragTiles(tiles) { fx.drag = tiles; },
     setCorner(c) { fx.corner = c; },
     // nearest plot crossing to the mouse; near = close enough to mean "this sprinkler"
     cornerFromClient(clientX, clientY) {

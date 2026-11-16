@@ -450,44 +450,63 @@ function needsWater(p) {
   return Boolean(p.crop) && !p.rotten && p.progress < 1 && !p.wet;
 }
 
-function freePlots(s) {
-  return Object.keys(s.plots).map(Number)
-    .filter((i) => plotUnlocked(s, i) && !s.plots[i].crop && findAt(s, ...xy(i)) < 0)
-    .map(xy);
+// Does bulk job `kind` have work on plot i? `crop` narrows it to one kind (null = everything).
+function jobFits(s, kind, i, crop = null) {
+  const p = s.plots[i];
+  if (!p || !plotUnlocked(s, i)) return false;
+  if (kind === 'plant') return !p.crop && findAt(s, ...xy(i)) < 0;
+  if (crop && p.crop !== crop) return false;
+  if (kind === 'water') return needsWater(p);
+  if (kind === 'fertilize') return unfertilized(p);
+  if (kind === 'mulch') return unmulched(p);
+  return Boolean(p.crop) && !p.rotten && p.progress >= 1; // harvest
 }
 
-function ripePlots(s) {
-  return Object.keys(s.plots).map(Number)
-    .filter((i) => plotUnlocked(s, i) && s.plots[i].crop && !s.plots[i].rotten && s.plots[i].progress >= 1)
-    .map(xy);
-}
-
-function thirstyPlots(s, crop) {
-  return Object.keys(s.plots).map(Number)
-    .filter((i) => plotUnlocked(s, i) && needsWater(s.plots[i]) && (!crop || s.plots[i].crop === crop))
-    .map(xy);
+// How many plots a job can do at most: seeds, fertilizer doses or mulch in the bag.
+function jobCap(s, kind, crop = null) {
+  if (kind === 'plant') return crop ? s.seeds[crop] : totalSeeds(s);
+  if (kind === 'fertilize') return fertDoses(s);
+  if (kind === 'mulch') return countWhere(s.bag, (id) => id === 'mulch');
+  return Infinity;
 }
 
 // Plots a bulk job would visit; `crop` narrows it to one kind (null = everything).
 export function jobTargets(s, kind, crop = null) {
-  if (kind === 'mulch') {
-    const doses = countWhere(s.bag, (id) => id === 'mulch');
-    return Object.keys(s.plots).map(Number)
-      .filter((i) => plotUnlocked(s, i) && unmulched(s.plots[i]) && (!crop || s.plots[i].crop === crop))
-      .map(xy).slice(0, doses);
+  return Object.keys(s.plots).map(Number)
+    .filter((i) => jobFits(s, kind, i, kind === 'plant' ? null : crop))
+    .map(xy).slice(0, jobCap(s, kind, crop));
+}
+
+// What each tool does when you drag it over the field.
+export const TOOL_JOB = { hand: 'harvest', seed: 'plant', can: 'water', fert: 'fertilize', mulch: 'mulch' };
+
+// Every tile on the straight line from a to b (both included): a fast mouse skips tiles between events.
+export function tilesBetween([x0, y0], [x1, y1]) {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  const out = [];
+  for (let k = 0; k <= n; k++) {
+    const t = n ? k / n : 0;
+    const x = Math.round(x0 + (x1 - x0) * t);
+    const y = Math.round(y0 + (y1 - y0) * t);
+    if (!out.length || out[out.length - 1][0] !== x || out[out.length - 1][1] !== y) out.push([x, y]);
   }
-  if (kind === 'fertilize') {
-    const bags = fertDoses(s);
-    return Object.keys(s.plots).map(Number)
-      .filter((i) => plotUnlocked(s, i) && unfertilized(s.plots[i]) && (!crop || s.plots[i].crop === crop))
-      .map(xy).slice(0, bags);
+  return out;
+}
+
+// The dragged-over tiles where job `kind` has work, in the order they were dragged; planting
+// uses the seed chosen in the pouch.
+export function dragTargets(s, kind, tiles) {
+  const crop = kind === 'plant' ? s.seed : null;
+  const seen = new Set();
+  const out = [];
+  for (const [x, y] of tiles) {
+    if (x < 0 || y < 0 || x >= W || y >= H) continue;
+    const i = idx(x, y);
+    if (seen.has(i) || !jobFits(s, kind, i)) continue;
+    seen.add(i);
+    out.push([x, y]);
   }
-  if (kind === 'plant') {
-    const free = freePlots(s).length;
-    return free ? freePlots(s).slice(0, crop ? s.seeds[crop] : totalSeeds(s)) : [];
-  }
-  if (kind === 'water') return thirstyPlots(s, crop);
-  return ripePlots(s).filter(([x, y]) => !crop || s.plots[idx(x, y)].crop === crop);
+  return out.slice(0, jobCap(s, kind, crop));
 }
 
 // Visit tiles nearest-first from the farmer, which walks the field in tidy rows.
@@ -525,9 +544,9 @@ export function startJob(s, kind, crop = null, events = []) {
   if (s.market.trips.farmer) return fail(events, 'intown');
   let targets;
   if (kind === 'plant') {
-    const seeds = crop ? s.seeds[crop] : totalSeeds(s);
+    const seeds = jobCap(s, 'plant', crop);
     if (!seeds) return fail(events, 'noseeds', { crop });
-    targets = freePlots(s);
+    targets = Object.keys(s.plots).map(Number).filter((i) => jobFits(s, 'plant', i)).map(xy);
     if (!targets.length) return fail(events, 'nofreeplots');
     targets = route(s, targets).slice(0, seeds);
   } else {
@@ -540,6 +559,30 @@ export function startJob(s, kind, crop = null, events = []) {
   f.busy = null;
   f.queue = targets.map(([x, y]) => ({ type: JOB_TASK[kind], x, y }));
   f.job = { kind, crop, done: 0, total: targets.length };
+  f.task = null;
+  events.push({ type: 'jobstart', kind, total: targets.length });
+  continueJob(s, null, events);
+  return { ok: true, total: targets.length };
+}
+
+// A job on the plots dragged over with the mouse. Dragging again with the same tool while the
+// farmer works adds the new plots to the end of his list; another tool replaces the job.
+export function startJobOn(s, kind, tiles, events = []) {
+  const f = s.farmer;
+  if (s.market.trips.farmer) return fail(events, 'intown');
+  let targets = dragTargets(s, kind, tiles);
+  if (f.job?.kind === kind) {
+    const planned = new Set([...f.queue, f.task, f.busy?.task].filter((t) => t && t.x !== undefined).map((t) => idx(t.x, t.y)));
+    targets = targets.filter(([x, y]) => !planned.has(idx(x, y)));
+    f.queue.push(...route(s, targets).map(([x, y]) => ({ type: JOB_TASK[kind], x, y })));
+    f.job.total += targets.length;
+    return { ok: true, total: targets.length };
+  }
+  if (!targets.length) return fail(events, 'nothingthere');
+  if (f.job) events.push({ type: 'jobcancel', kind: f.job.kind, done: f.job.done });
+  f.busy = null;
+  f.queue = route(s, targets).map(([x, y]) => ({ type: JOB_TASK[kind], x, y }));
+  f.job = { kind, crop: kind === 'plant' ? s.seed : null, done: 0, total: targets.length };
   f.task = null;
   events.push({ type: 'jobstart', kind, total: targets.length });
   continueJob(s, null, events);
