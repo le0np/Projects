@@ -251,19 +251,25 @@ export function createRenderer(canvas) {
     }
   }
 
-  function personImage(kind, look, dir, frame) {
+  function personImage(kind, look, dir, frame, pose) {
     const d = dir === 'left' || dir === 'right' ? 'side' : dir;
-    return art(`${kind}:${look}:${d}:${frame}`, () => A.person({
-      dir: d, frame, farmer: kind === 'farmer', ...(kind === 'villager' ? A.VILLAGERS[look % A.VILLAGERS.length] : {}),
+    return art(`${kind}:${look}:${d}:${frame}:${pose ?? ''}`, () => A.person({
+      dir: d, frame, farmer: kind === 'farmer', pose, ...(kind === 'villager' ? A.VILLAGERS[look % A.VILLAGERS.length] : {}),
     }));
   }
 
+  // plot work: watering and filling the can are done standing with the can held out, the rest crouched
+  const POUR = new Set(['water', 'refill']);
+  const workPose = (e) => (e.busy?.what === 'work' ? (POUR.has(e.busy.act) ? 'pour' : 'bend') : undefined);
+
   function drawPerson(e, now, kind, look) {
-    const moving = e.path?.length > 0 || (Boolean(e.busy) && e.busy.what !== 'fish');
-    const frame = moving ? Math.floor(now / 120) % 4 : 0;
-    const pic = personImage(kind, look, e.dir, frame);
+    const pose = workPose(e);
+    const moving = e.path?.length > 0 || (Boolean(e.busy) && e.busy.what !== 'fish' && !pose);
+    const frame = pose === 'bend' ? Math.floor(now / 300) % 2 : moving ? Math.floor(now / 120) % 4 : 0;
+    const pic = personImage(kind, look, e.dir, frame, pose);
     const px = Math.round(e.x * TS + 4);
     const py = Math.round(e.y * TS - 2);
+    if (pose === 'pour') drawPouringCan(e, now, px, py);
     if (e.dir === 'left') {
       ctx.save();
       ctx.translate(px + pic.width, py);
@@ -272,6 +278,28 @@ export function createRenderer(canvas) {
       ctx.restore();
     } else {
       ctx.drawImage(pic, px, py);
+    }
+  }
+
+  // the can held out in front of the farmer, tipped; water drips from the spout while watering
+  function drawPouringCan(e, now, px, py) {
+    const pic = art('icon:can', () => A.icon('can'));
+    const left = e.dir === 'left';
+    const front = e.dir === 'down' || e.dir === 'up';
+    const cx = front ? px + 22 : left ? px - 10 : px + 22;
+    const cy = py + (front ? 14 : 10);
+    ctx.save();
+    ctx.translate(cx + 8, cy + 8);
+    if (left) ctx.scale(-1, 1);
+    ctx.rotate(0.45);
+    ctx.drawImage(pic, -8, -8);
+    ctx.restore();
+    if (e.busy.act !== 'water') return;
+    const sx = left ? cx - 2 : cx + 17;
+    for (let k = 0; k < 4; k++) {
+      const t = (now / 450 + k / 4) % 1;
+      ctx.fillStyle = `rgba(150, 205, 255, ${0.9 - t * 0.6})`;
+      ctx.fillRect(Math.round(sx + (k % 2)), Math.round(cy + 10 + t * 12), 1, 2);
     }
   }
 
@@ -462,7 +490,8 @@ export function createRenderer(canvas) {
     else if (s.farmer.busy) {
       const b = s.farmer.busy;
       const fxp = Math.round(s.farmer.x * TS + 2);
-      const fyp = Math.round(s.farmer.y * TS - 16);
+      // plot work: a bar under the feet, where the farmer's speech bubble can't cover it
+      const fyp = Math.round(s.farmer.y * TS + (b.what === 'work' ? 31 : -16));
       ctx.fillStyle = '#1a140f';
       ctx.fillRect(fxp - 1, fyp - 1, 30, 7);
       ctx.fillStyle = '#3a3226';

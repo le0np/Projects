@@ -937,6 +937,13 @@ test('all art generates: correct sizes, nothing empty', async () => {
       check(A.person({ dir, frame, farmer: true }), 24, 32, `farmer ${dir} ${frame}`);
       check(A.person({ dir, frame, ...A.VILLAGERS[frame] }), 24, 32, `villager ${dir} ${frame}`);
     }
+    // working poses: drawn, and not just the standing farmer
+    const stand = A.person({ dir, farmer: true }).d.join();
+    for (const [pose, frame] of [['bend', 0], ['bend', 1], ['pour', 0]]) {
+      const pic = A.person({ dir, frame, farmer: true, pose });
+      check(pic, 24, 32, `farmer ${dir} ${pose} ${frame}`);
+      assert.notEqual(pic.d.join(), stand, `farmer ${dir} ${pose} looks like standing`);
+    }
   }
   for (const c of CROPS) {
     for (const stage of ['sprout', 'young', 'ripe', 'rotten']) check(A.crop(c.id, stage), 24, 28, `${c.id} ${stage}`);

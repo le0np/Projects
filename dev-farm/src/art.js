@@ -1054,12 +1054,17 @@ export function drone(frame) {
 
 const WALK = { legLift: [0, 1, 0, 1], side: [0, 1, 0, -1] };
 
-export function person({ dir = 'down', frame = 0, farmer = false, hair = HAIR[0], shirt = RAMP.redShirt, pants = RAMP.denim, style = 'short' }) {
-  const p = new Pix(24, 32);
+// pose: undefined (standing/walking), 'bend' (crouched over a plot, hands to the soil; frame 0/1
+// moves the hands) or 'pour' (standing, the front arm held out with the can).
+export function person({ dir = 'down', frame = 0, farmer = false, hair = HAIR[0], shirt = RAMP.redShirt, pants = RAMP.denim, style = 'short', pose }) {
+  const base = new Pix(24, 32);
+  let p = base;
   const S = RAMP.skin;
   const side = dir === 'side';
-  const step = [0, 1, 0, 2][frame];
-  const swing = [0, 1, 0, -1][frame];
+  const bend = pose === 'bend';
+  const step = pose ? 0 : [0, 1, 0, 2][frame];
+  const swing = pose ? 0 : [0, 1, 0, -1][frame];
+  const dy = bend ? 4 : 0; // a crouch lowers everything above the legs
 
   // legs and boots
   const leg = (x, lift, dark = 0) => {
@@ -1067,13 +1072,19 @@ export function person({ dir = 'down', frame = 0, farmer = false, hair = HAIR[0]
     for (let y = 23; y < end - 1; y++) for (let k = 0; k < 3; k++) p.set(x + k, y, pick(pants, 0.55 - k * 0.15 - dark, x + k, y));
     for (let y = end - 1; y <= end; y++) for (let k = -1; k < 3; k++) p.set(x + k, y, pick(RAMP.boot, 0.6 - (k + 1) * 0.12 - dark, x + k, y));
   };
-  if (side) {
+  if (bend) {
+    // knees out, boots on the ground
+    if (side) { leg(7, 0, 0.18); leg(13, 0); } else { leg(6, 0); leg(15, 0, 0.1); }
+  } else if (side) {
     leg(10 - swing * 2, 0, 0.18);
     leg(10 + swing * 2, swing ? 1 : 0);
   } else {
     leg(8, step === 1 ? 1 : 0);
     leg(13, step === 2 ? 1 : 0);
   }
+
+  // everything above the legs is drawn on its own layer, so a crouch can lower it
+  p = new Pix(24, 32);
 
   // body
   const x0 = side ? 8 : 7;
@@ -1107,7 +1118,16 @@ export function person({ dir = 'down', frame = 0, farmer = false, hair = HAIR[0]
     for (let y = 15 + dy; y < 21 + dy; y++) for (let k = 0; k < 2; k++) p.set(x + k, y, pick(shirt, 0.55 - k * 0.2 - dark, x + k, y));
     for (let y = 21 + dy; y < 23 + dy; y++) for (let k = 0; k < 2; k++) p.set(x + k, y, pick(S, 0.6 - k * 0.2 - dark, x + k, y));
   };
-  if (side) arm(11 + swing, 0);
+  if (bend) {
+    // hands down in the soil, working
+    const h = frame % 2 ? 4 : 3;
+    if (side) arm(13, h);
+    else { arm(6, h + (frame % 2 ? -1 : 0)); arm(16, h, 0.15); }
+  } else if (pose === 'pour') {
+    // the front arm held out with the can
+    if (side) for (let x = 12; x < 19; x++) for (let k = 0; k < 2; k++) p.set(x, 17 + k, x > 16 ? S[2 - k] : pick(shirt, 0.55 - k * 0.2, x, 17 + k));
+    else { arm(5, 0); arm(17, -2, 0.15); }
+  } else if (side) arm(11 + swing, 0);
   else {
     arm(5, -swing);
     arm(17, swing, 0.15);
@@ -1155,7 +1175,8 @@ export function person({ dir = 'down', frame = 0, farmer = false, hair = HAIR[0]
     p.ellipse(side ? 11.8 : 11.5, 3.6, 4.9, 3.4, (nx, ny, x, y) => (y > 6 ? null : straw(nx, ny, x, y)));
     for (let x = 7; x <= 16; x++) if (p.alpha(x, 5)) p.set(x, 5, pick(RAMP.redShirt, 0.55 - (x - 7) * 0.04, x, 5));
   }
-  return p.outline(0.38);
+  base.blit(p, 0, dy);
+  return base.outline(0.38);
 }
 
 export const VILLAGERS = [
