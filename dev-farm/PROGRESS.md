@@ -406,7 +406,7 @@ Provedeno 16. studenog 2026. nakon vraćanja v25–v34 u `dev`: `npm test` 82/82
 
 Ideje koje su predložene, a još nisu napravljene:
 
-1. **Korak 3, drugi dio**: Joža poslijepodne, nakon tržnice, vozi pakete na poštu za dodatnu dnevnicu (jedini trošak dostave; kupac plaća samo online cijenu, bez poštarine). **Treći dio**: drugi kombi s drugim vozačem samo za dostavu i zaposlenik koji pakira pakete (vidi v27).
+1. **Korak 3, drugi dio**: Joža vozi pakete na poštu **prije tržnice** (odluka vlasnika 16. 11.: ionako stigne ranije i čeka da se tržnica otvori) za dodatnu dnevnicu (jedini trošak dostave; kupac plaća samo online cijenu, bez poštarine). **Treći dio**: drugi kombi s drugim vozačem samo za dostavu i zaposlenik koji pakira pakete (vidi v27).
 2. Isprobati igranjem novu ravnotežu (nadogradnje iz koraka 1 i 2, tržnica, kiša, malč, med i tegle, narudžbe, hladnjača) i po potrebi prilagoditi brojke u `src/data.js`.
 3. Grad kao vlastita scena po kojoj farmer hoda (tržnica s drugim prodavačima, trgovina); tržnica bi mogla imati dnevnu potražnju po vrsti ploda.
 4. **Lov (ideja vlasnika):** u šumi divljač (zec, fazan, divlja svinja); treba nešto napraviti ili kupiti (npr. luk i strijele ili lovačka dozvola), idle kao pecanje, meso za prodaju ili jelo, ograničen broj po danu.
