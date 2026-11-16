@@ -23,8 +23,8 @@ export const SLEEP_FROM = 18 * 60; // no napping through the day: crops grow per
 export const SHOP_OPEN = 8 * 60;
 export const SHOP_CLOSE = 19 * 60;
 
-export const WALK_SPEED = 4; // tiles per second (an unhurried farmer's pace)
-export const NPC_SPEED = 3;
+export const NPC_SPEED = 3; // tiles per second
+export const WALK_SPEED = NPC_SPEED; // owner: the farmer walks like everyone else on the map
 export const DRONE_COOLDOWN = [3, 2, 1]; // seconds the drone rests after each plot, by engine level
 
 // Crops grow once per day, every morning: a full day if the plot was watered the day
@@ -37,6 +37,8 @@ export const RIPE_PENALTY = [0, 10, 25, 40]; // quality points lost after 0, 1, 
 export const ROT_DAY = 4; // rotten on the 4th morning after ripening
 
 export const ENERGY_COST = { plant: 2, water: 1, fertilize: 1, harvest: 1, clear: 1 };
+// Work on a plot takes time (real seconds; 1 s = 2 game minutes). Energy is spent when it is done.
+export const WORK_SECONDS = { plant: 1.5, harvest: 1.5, clear: 1.5, refill: 2, water: 1, fertilize: 1, mulch: 1 };
 export const COFFEE = { price: 1.5, energy: 35 };
 export const EAT_ENERGY = [0, 6, 10, 15, 20, 25]; // per kg eaten, by quality tier
 

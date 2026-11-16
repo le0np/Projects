@@ -18,7 +18,7 @@ import {
 import { findPath } from '../src/path.js';
 import {
   BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZE, UPGRADES, CROPS, START_FINDS, HOUSE_SEEDS,
-  RECIPES, zl, ROT_DAY, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
+  RECIPES, zl, ROT_DAY, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
 } from '../src/data.js';
 
 const [AX, AY] = xy(PLOTS_A[0]);
@@ -27,7 +27,7 @@ const ripePlot = (crop, over = {}) => ({ ...makePlot(), crop, progress: 1, growD
 const walkTo = (s, x, y, mode) => {
   const events = [];
   const r = command(s, x, y, mode, events);
-  for (let i = 0; i < 400 && s.farmer.path.length; i++) tick(s, 0.1, events);
+  for (let i = 0; i < 2000 && (s.farmer.path.length || s.farmer.busy?.what === 'work'); i++) tick(s, 0.1, events);
   return { r, events };
 };
 const withSeeds = (n = 10, crop = 'radish') => {
@@ -103,6 +103,66 @@ test('farmer walks to a clicked plot and plants one counted seed there', () => {
   assert.equal(s.money, START, 'planting costs a seed, not money');
   assert.equal(s.energy, MAX_ENERGY - 2);
   assert.ok(events.some((e) => e.type === 'plant'));
+});
+
+test('the farmer walks as fast as the customers', () => {
+  assert.equal(WALK_SPEED, NPC_SPEED);
+  assert.equal(WALK_SPEED, 3);
+});
+
+test('a plot action takes its time; energy is spent when it is done', () => {
+  const s = withSeeds(5);
+  s.tool = 'seed';
+  s.farmer.x = AX; s.farmer.y = AY; // already standing on the plot
+  command(s, AX, AY);
+  assert.equal(s.farmer.busy?.what, 'work');
+  assert.equal(s.farmer.busy.act, 'plant');
+  advance(s, 1.4);
+  assert.equal(plotOf(s).crop, null, 'not planted yet');
+  assert.equal(s.energy, MAX_ENERGY);
+  advance(s, 0.2);
+  assert.equal(plotOf(s).crop, 'radish');
+  assert.equal(s.energy, MAX_ENERGY - 2);
+  assert.equal(s.farmer.busy, null);
+});
+
+test('a new click interrupts the work and spends nothing', () => {
+  const s = withSeeds(5);
+  s.tool = 'seed';
+  s.farmer.x = AX; s.farmer.y = AY;
+  command(s, AX, AY);
+  advance(s, 1);
+  const events = [];
+  command(s, HOUSE_DOOR[0], HOUSE_DOOR[1], 'auto', events);
+  advance(s, 2);
+  assert.equal(plotOf(s).crop, null);
+  assert.equal(s.seeds.radish, 5);
+  assert.equal(s.energy, MAX_ENERGY);
+  assert.ok(!events.some((e) => e.type === 'buildcancel'));
+});
+
+test('if the plot changed during the work (drone, someone faster), it is skipped', () => {
+  const s = createState();
+  s.plots[idx(AX, AY)] = ripePlot('radish');
+  s.farmer.x = AX; s.farmer.y = AY;
+  const before = countWhere(s.bag, () => true);
+  command(s, AX, AY);
+  assert.equal(s.farmer.busy.act, 'harvest');
+  s.plots[idx(AX, AY)] = makePlot(); // the drone took it
+  advance(s, 2);
+  assert.equal(s.energy, MAX_ENERGY);
+  assert.equal(countWhere(s.bag, () => true), before);
+});
+
+test('sleep, passing out or leaving for town clears the work in progress', () => {
+  const s = withSeeds(5);
+  s.tool = 'seed';
+  s.farmer.x = AX; s.farmer.y = AY;
+  command(s, AX, AY);
+  s.clock = PASS_OUT - 0.5; // passes out during the work
+  advance(s, 2);
+  assert.equal(s.farmer.busy, null);
+  assert.equal(plotOf(s).crop, null);
 });
 
 test('clicking a tree does nothing; empty plot without the seed tool explains why', () => {
@@ -595,7 +655,7 @@ test('plant all: the farmer walks the field and plants every seed he has', () =>
   s.seed = 'carrot';
   const events = [];
   assert.ok(startJob(s, 'plant', null, events).ok);
-  for (let i = 0; i < 400 && s.farmer.job; i++) tick(s, 0.1, events);
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1, events);
   const planted = Object.values(s.plots).filter((p) => p.crop);
   assert.equal(planted.length, 6);
   assert.equal(planted.filter((p) => p.crop === 'carrot').length, 2, 'the chosen seed goes first');
@@ -610,7 +670,7 @@ test('harvest all picks every ripe crop and stops when the bag is full', () => {
   for (const i of PLOTS_A.slice(0, 5)) s.plots[i] = ripePlot('radish');
   const events = [];
   startJob(s, 'harvest', null, events);
-  for (let i = 0; i < 400 && s.farmer.job; i++) tick(s, 0.1, events);
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1, events);
   assert.equal(ripeCount(s), 0);
   assert.equal(s.bag[0].n, 5);
 
@@ -619,7 +679,7 @@ test('harvest all picks every ripe crop and stops when the bag is full', () => {
   for (const i of PLOTS_A.slice(0, 3)) full.plots[i] = ripePlot('radish');
   const ev = [];
   startJob(full, 'harvest', null, ev);
-  for (let i = 0; i < 400 && full.farmer.job; i++) tick(full, 0.1, ev);
+  for (let i = 0; i < 3000 && full.farmer.job; i++) tick(full, 0.1, ev);
   assert.equal(ev.find((e) => e.type === 'jobend').reason, 'bagfull');
   assert.equal(ripeCount(full), 3);
   assert.equal(startJob(createState(), 'harvest').reason, 'nothingripe');
@@ -629,7 +689,7 @@ test('bulk jobs can be narrowed to one crop', () => {
   const s = withSeeds(5);
   s.seeds.carrot = 3;
   startJob(s, 'plant', 'carrot');
-  for (let i = 0; i < 400 && s.farmer.job; i++) tick(s, 0.1);
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1);
   const crops = Object.values(s.plots).filter((p) => p.crop).map((p) => p.crop);
   assert.deepEqual([...new Set(crops)], ['carrot']);
   assert.equal(crops.length, 3);
@@ -638,7 +698,7 @@ test('bulk jobs can be narrowed to one crop', () => {
   s.plots[PLOTS_A[20]] = ripePlot('radish');
   s.plots[PLOTS_A[21]] = ripePlot('carrot');
   startJob(s, 'harvest', 'radish');
-  for (let i = 0; i < 400 && s.farmer.job; i++) tick(s, 0.1);
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1);
   assert.equal(ripeCount(s), 1);
   assert.equal(s.plots[PLOTS_A[21]].crop, 'carrot');
 });
@@ -664,7 +724,7 @@ test('fertilize all uses the doses in the bag and stops when they run out', () =
   s.plots[PLOTS_A[5]] = { ...makePlot(), crop: 'carrot', progress: 0.2, fert: true };
   const events = [];
   assert.equal(startJob(s, 'fertilize', null, events).total, 3, 'only as many as there are doses');
-  for (let i = 0; i < 400 && s.farmer.job; i++) tick(s, 0.1, events);
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1, events);
   assert.equal(PLOTS_A.slice(0, 6).filter((i) => s.plots[i].fert).length, 4);
   assert.equal(events.find((e) => e.type === 'jobend').done, 3);
   assert.equal(startJob(s, 'fertilize').reason, 'nofert');

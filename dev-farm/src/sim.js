@@ -5,7 +5,7 @@ import {
   SAVE_VERSION, START_MONEY, MAX_ENERGY, BAG_SIZE, CHEST_SIZE, STAND_SIZE, STACK_MAX, zl,
   GAME_MIN_PER_SEC, DAY_START, NIGHT_START, PASS_OUT, SLEEP_FROM, SHOP_OPEN, SHOP_CLOSE,
   WALK_SPEED, NPC_SPEED, DRONE_COOLDOWN, DRY_RATE,
-  CAN_SIZE, UPGRADES, TANK_SIZE, ENERGY_COST, COFFEE, EAT_ENERGY,
+  CAN_SIZE, UPGRADES, TANK_SIZE, ENERGY_COST, WORK_SECONDS, COFFEE, EAT_ENERGY,
   TIER_PRICE, CUSTOMER_INTERVAL, CUSTOMER_KG, POLLEN_BONUS,
   CROPS, RECIPES, RIPE_PENALTY, ROT_DAY, SEEDS_FROM_FRUIT, SEED_PACK, HOUSE_SEEDS, START_FINDS,
   DAILY_FIND_CHANCE, FERTILIZER_PRICE, WELL_BUILD, HOSE_PER_SPRINKLER,
@@ -297,8 +297,11 @@ export function command(s, x, y, mode = 'auto', events = [], itemId = null) {
     f.queue = [];
   }
   if (f.busy) {
-    events.push(f.busy.what === 'fish' ? { type: 'fishstop', reason: 'stop', caught: s.pond.caught }
-      : { type: f.busy.what === 'gig' ? 'gigpause' : 'buildcancel', what: f.busy.what });
+    // plot work just stops (a running job already said so above)
+    if (f.busy.what !== 'work') {
+      events.push(f.busy.what === 'fish' ? { type: 'fishstop', reason: 'stop', caught: s.pond.caught }
+        : { type: f.busy.what === 'gig' ? 'gigpause' : 'buildcancel', what: f.busy.what });
+    }
     f.busy = null;
   }
   let task = null;
@@ -352,10 +355,68 @@ export function command(s, x, y, mode = 'auto', events = [], itemId = null) {
   return { ok: true, task };
 }
 
+// Which piece of plot work task `t` would do right now ('plant', 'harvest', …), or null when
+// there is nothing to do there or no energy for it: then it runs at once and says why.
+export function workAct(s, t) {
+  if (!t) return null;
+  const act = workKind(s, t);
+  if (!act) return null;
+  const cost = { clear: ENERGY_COST.clear, harvest: ENERGY_COST.harvest, plant: ENERGY_COST.plant, water: ENERGY_COST.water,
+    fertilize: ENERGY_COST.fertilize, mulch: ENERGY_COST.fertilize, refill: 0 }[act];
+  return s.energy < cost ? null : act;
+}
+
+const hasMulch = (s) => countWhere(s.bag, (id) => id === 'mulch') > 0;
+const seedFor = (s, only) => (only ? s.seeds[only] > 0 : totalSeeds(s) > 0);
+
+function workKind(s, t) {
+  if (t.type === 'jobrefill') return 'refill';
+  if (t.type === 'object') {
+    const id = t.id;
+    const source = (id === 'pond' && !(s.tool === 'rod' && s.upgrades.rod))
+      || (id === 'well' && s.upgrades.well && (s.upgrades.pump || !countWhere(s.bag, (k) => k === 'pump')))
+      || (id === 'tap' && hasTap(s));
+    return source && s.water < canSize(s) ? 'refill' : null;
+  }
+  if (t.x === undefined) return null;
+  const i = idx(t.x, t.y);
+  const p = s.plots[i];
+  if (!p || !plotUnlocked(s, i)) return null;
+  const ripe = Boolean(p.crop) && !p.rotten && p.progress >= 1;
+  switch (t.type) {
+    case 'plot':
+      if (p.rotten) return 'clear';
+      if (ripe) return 'harvest';
+      if (!p.crop) return s.tool === 'seed' && s.seeds[s.seed] > 0 ? 'plant' : null;
+      if (s.tool === 'can') return !p.wet && s.water > 0 ? 'water' : null;
+      if (s.tool === 'fert') return !p.fert && fertDoses(s) ? 'fertilize' : null;
+      if (s.tool === 'mulch') return !p.mulch && hasMulch(s) ? 'mulch' : null;
+      return null;
+    case 'jobplant': return !p.crop && seedFor(s, s.farmer.job?.crop) ? 'plant' : null;
+    case 'jobharvest': return ripe ? 'harvest' : null;
+    case 'jobwater': return needsWater(p) && s.water > 0 ? 'water' : null;
+    case 'jobfert': return unfertilized(p) && fertDoses(s) ? 'fertilize' : null;
+    case 'jobmulch': return unmulched(p) && hasMulch(s) ? 'mulch' : null;
+    default: return null;
+  }
+}
+
+// The farmer got where he was going: plot work takes its time first, everything else happens now.
 function arrive(s, events) {
-  const t = s.farmer.task;
-  s.farmer.task = null;
+  const f = s.farmer;
+  const t = f.task;
+  f.task = null;
   if (!t) return;
+  const act = workAct(s, t);
+  if (!act) {
+    doTask(s, t, events);
+    return;
+  }
+  if (t.x !== undefined && t.x === Math.round(f.x) && t.y === Math.round(f.y)) f.dir = 'down';
+  f.busy = { what: 'work', act, left: WORK_SECONDS[act], total: WORK_SECONDS[act], task: t };
+}
+
+function doTask(s, t, events) {
   if (t.type === 'plot') plotAction(s, t.x, t.y, events);
   else if (t.type === 'object') objectAction(s, t.id, events);
   else if (t.type === 'place') placeSprinkler(s, t.x, t.y, events);
@@ -2054,6 +2115,10 @@ function build(s, dt, events) {
   if (b.what === 'gig' && s.gigs.active) s.gigs.active.left = Math.max(0, b.left);
   if (b.left > 0) return;
   s.farmer.busy = null;
+  if (b.what === 'work') {
+    doTask(s, b.task, events);
+    return;
+  }
   if (b.what === 'gig') {
     finishGig(s, events);
     return;

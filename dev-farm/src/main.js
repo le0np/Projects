@@ -690,6 +690,7 @@ function cancelJob() {
   f.queue = [];
   f.path = f.path.slice(0, 1); // finish the step in progress
   f.task = null;
+  if (f.busy?.what === 'work') f.busy = null; // drop the plot work in progress, nothing is spent
   refresh();
 }
 
