@@ -1437,6 +1437,23 @@ export function icon(name) {
       ball(p, 6, 10, 4.6, 3.6, RAMP.stone, 0.12);
       ball(p, 11, 8, 3.8, 3.2, RAMP.stone, 0.12);
       break;
+    case 'iron':
+      // three iron bars, stacked: lit from the top left, dark ends
+      for (const [x, y] of [[2, 10], [7, 10], [4.5, 6]]) {
+        p.rect(x, y, 7, 3, (px, py) => pick(RAMP.metal, 0.85 - (py - y) * 0.28 - (px - x) * 0.04, px, py));
+        p.rect(x, y + 3, 7, 1, RAMP.metal[1]);
+        p.rect(x + 6, y, 1, 3, RAMP.metal[2]);
+      }
+      break;
+    case 'plastic':
+      // a small stack of plastic sheets: blue, white and green
+      [['#3f7fd0', '#7fb2ee'], ['#e8ecef', '#ffffff'], ['#3fa25a', '#7fd28f']].forEach(([c, hi], k) => {
+        const y = 11 - k * 3;
+        p.rect(2 + k, y, 12 - k, 3, c);
+        p.rect(2 + k, y, 12 - k, 1, hi);
+        p.rect(2 + k, y + 3, 12 - k, 1, '#2a2f36');
+      });
+      break;
     case 'phone':
       p.rect(4, 1, 8, 14, (x, y) => (x === 4 || x === 11 || y === 1 || y === 14 ? RAMP.metal[1] : null));
       p.rect(5, 2, 6, 12, (x, y) => pick(RAMP.glass, 0.95 - (y - 2) * 0.05 + (x + y === 12 ? 0.2 : 0), x, y));
@@ -1486,6 +1503,12 @@ export function icon(name) {
       p.rect(2, 4, 12, 3, (x, y) => pick(RAMP.roof, 0.7 - (y - 4) * 0.1, x, y));
       p.rect(6, 12, 4, 1, '#2a1a10');
       p.set(13, 3, '#f2c14b'); p.set(14, 2, '#2a1a10');
+      break;
+    case 'jar':
+      // an empty glass jar with a lid
+      p.rect(4, 5, 8, 10, (x, y) => pick(RAMP.glass, 0.9 - (x - 4) * 0.06 + (x === 5 ? 0.15 : 0), x, y));
+      p.rect(5, 6, 6, 8, (x, y) => (x === 5 ? '#eef8ff' : '#c9e4f28c'));
+      p.rect(4, 3, 8, 2, (x, y) => pick(RAMP.metal, 0.75 - (y - 3) * 0.3, x, y));
       break;
     case 'honey':
       p.rect(4, 5, 8, 10, (x, y) => pick(RAMP.gold, 0.75 - (x - 4) * 0.05 + (x === 5 ? 0.2 : 0), x, y));
@@ -1625,6 +1648,18 @@ export function mulchOverlay() {
     if (k % 3 === 0) p.set(x, y + 1, chips[(k + 1) % chips.length]);
   }
   return p;
+}
+
+// the tap on the field's fence: a standpipe with a red wheel and a drip (20 × 30)
+export function tap() {
+  const p = new Pix(20, 30);
+  p.rect(8, 6, 4, 22, (x, y) => pick(RAMP.metal, x === 8 ? 0.8 : x === 11 ? 0.25 : 0.5, x, y)); // pipe
+  p.rect(12, 9, 5, 3, (x, y) => pick(RAMP.metal, y === 9 ? 0.75 : 0.4, x, y)); // spout
+  p.rect(15, 12, 2, 2, RAMP.metal[2]);
+  p.set(16, 15, '#93c9ec');
+  p.ellipse(10, 4, 4, 2.2, (nx, ny, x, y) => pick(['#5a1a1a', '#8a2626', '#b53a32', '#d4584a'], 0.3 + sphere(nx, ny) * 0.7, x, y)); // wheel
+  p.rect(6, 27, 8, 2, (x, y) => pick(RAMP.stone, y === 27 ? 0.7 : 0.4, x, y));
+  return p.outline(0.42);
 }
 
 // a wooden beehive: two boxes, a little roof and the entrance (28 × 34)

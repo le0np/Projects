@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša i radi s četiri alata (ruke, sjeme, kanta, gnojivo); svaki radi biljku po biljku ili, preko ▾, na cijelom polju. Može otkrivati sjeme, saditi, zalijevati, gnojiti i brati, a plodove prodaje na štandu uz cestu ili na tržnici u gradu (sam, ili kasnije kombijem i zaposlenikom). Usjevi rastu po danima: dan traje 10 minuta, a rast se događa svako jutro. Kvaliteta ploda (★ do ★★★★) ovisi o zalijevanju, gnojivu i pravodobnoj berbi, a cijena o kvaliteti. Novac su zlatnici i srebrenjaci s omjerima prema stvarnim tržišnim cijenama u Hrvatskoj. Na radnom stolu se izrađuju izumi: plan bunara, prskalice s 10 razina navodnjavanja, dron, replant.py, SEO ploča i drugo polje. Mobitel služi za obavijesti i dostavu sjemena i gnojiva, a farmer u oblačiću govori što radi i što ne može. Sva grafika je pixel art generiran u kodu.
+Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša i radi sa šest alata (ruke, sjeme, kanta, gnojivo, pecaljka, malč); svaki radi biljku po biljku ili, preko ▾, na cijelom polju. Sadi, zalijeva, gnoji i bere, skuplja u šumi, peca, drži kokoši i pčele, a plodove prodaje na štandu uz cestu ili na tržnici u gradu (sam, ili kombijem i zaposlenikom). Usjevi rastu po danima (dan traje 10 minuta, rast svako jutro), uz kišu i prognozu. Kvaliteta ploda ima pet klasa (★ do ★★★★★) i ovisi o zalijevanju, gnojivu, berbi na vrijeme i oprašivanju. Novac su zlatnici i srebrenjaci s omjerima prema hrvatskim tržišnim cijenama. Na radnom stolu se izrađuju izumi i zgrade (bunar, kokošinjac, navodnjavanje, dron, replant.py, hladnjača, pecaljka, košnica, malč, Reklame i plakati, drugo polje), a gotovo sve ima nadogradnje (tablica `UPGRADES`; koraci 1 i 2 su gotovi). Web shop s laptopa u kući donosi online narudžbe koje se pakiraju na parkiralištu i nose na poštu (korak 3, prvi dio). Mobitel služi za obavijesti, Dostavu (web shop s brojačem, otkup, uređenje, ljubimac), honorarce i priručnik, a farmer u oblačiću govori što radi i što ne može. Sva grafika je pixel art generiran u kodu.
 
 ## Napravljeno 12. studenog 2026.
 
@@ -221,13 +221,151 @@ Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša i rad
 - priručnik: 9 novih tema (vrijeme, malč, narudžbe, hladnjača, otkup, pčele, uređenje, ljubimac, obavijesti)
 - testovi: 8 novih (kiša i prognoza, malč, škrinja i hladnjača, narudžbe, otkup, pčele i ukrasi, zatvaranje puta, ljubimac)
 
+## Napravljeno 13. studenog 2026.
+
+### v25 – Dostava kao web shop
+
+Vlasnik je javio: kod naručivanja sjemena popis u Dostavi „skoči“ pa ga svaki put treba ponovno spuštati; na mobitelu želi brojač „− broj +“ kao u web shopovima, sitnije cijene i bez zelenog okvira oko cijene.
+
+- **uzrok skakanja**: položaj klizača se čuvao, ali na vrh Dostave se kod svake nove narudžbe dodavao (i rastao) okvir „📦 Stiže sutra ujutro“ s redom po narudžbi, pa je sav katalog ispod odlazio prema dolje
+- okvir s popisom narudžbi i oznaka „naručeno N“ su maknuti; umjesto njih na vrhu je **traka košarice** fiksne visine u jednom retku („📦 Sutra stiže 3 stavke · 2 zl“ ili „📦 Košarica je prazna“), pa se popis pri naručivanju ne pomiče ni za piksel (provjereno mjerenjem položaja reda prije i poslije klika)
+- svaki artikl (vrt, navodnjavanje, kokoš, sjeme, ukrasi) ima **cijenu kao običan tekst** (11 px, manji novčići, bez gumba) i **brojač − broj +**; broj su paketi koji stižu sutra, + naruči još jedan (`orderSeeds`/`orderItem`), − otkaže jedan uz puni povrat (`cancelOrder`); tooltip na + kaže koliko novca fali ili zašto je zaključan (pumpa, kokošinjac)
+- pravila u `sim.js` nisu mijenjana; priručnik (tema Dostava) i README opisuju novi brojač
+- udomljavanje ljubimca i Otkup i dalje imaju gumbe s cijenom (to nije naručivanje u košaricu)
+
+### v26 – sporiji hod, brži kombi
+
+Vlasnik: farmer bi mogao hodati malo sporije, a Joža bi kombijem trebao stići u grad brže nego farmer pješice.
+
+- `WALK_SPEED` 5 → 4 polja u sekundi (ljubimac i dalje stigne farmera, kupci hodaju 3)
+- `MARKET.travel` (60 min za oboje) zamijenjen s `MARKET.walk` (60 min, farmer pješice) i `MARKET.drive` (20 min, kombi); `tripMinutes(who)` u `sim.js` bira trajanje za odlazak, povratak, rani povratak i provjeru „prekasno“, pa kombi može krenuti do 12:40, a farmer do 12:00
+- animacija kombija i učitavanje spremanja koriste nova trajanja; tekstovi na parkiralištu, u gornjoj traci („Kombi se vraća oko 13:20“) i u priručniku pokazuju oba trajanja
+- novi test: kombi i farmer krenu zajedno, kombi stiže prvi; pješice je prekasno kad kombi još može
+
+### v27 – nadogradnje izuma, korak 1: automatizacija
+
+Vlasnik je tražio da svaki izum s radnog stola ima nadogradnje, a dron da bere od ★★ do ★★★★★. Dogovoren je plan u tri koraka: (1) automatizacija, (2) ostali izumi, (3) online prodaja i dostava. Ovo je korak 1.
+
+- **zajednički sustav nadogradnji**: tablica `UPGRADES` u `data.js` (linija → `of` izum, `values` po razinama, `steps` s cijenom, drvom i kamenom, `text`), razine u `s.levels`; `upgrade(s, line)`, `upgradeProblem`, `nextStep`, `levelValue` u `sim.js`. Izrađeni izum ostaje na radnom stolu kao kartica „✔ ime“ s linijama nadogradnji (mjerač, „Sad: …“, „Razina N: …“, gumb s cijenom)
+- **dron**: kupnja 600 → 300 zl. Kamera ★★/★★★/★★★★/★★★★★ (bere samo plodove do te kvalitete; bolje ostavlja i ujutro javi „ostavio N parcela“; kad im kvaliteta čekanjem padne na njegovu razinu, pobere ih ipak). Motori 6/9/12 polja/s uz predah 3/2/1 s. Košara 1/3/6 parcela: dron sad stvarno nosi urod (`drone.load`) i leti do krova kad je pun ili nema više posla, pa istovari u škrinju; dok nosi, ispod njega visi sanduk
+- **replant.py**: v1 posadi, v2 i zalije, v3 i pognoji najboljim gnojivom iz škrinje
+- **velika kanta**: 30 → 50 → 80 zalijevanja
+- **navodnjavanje iznova**: prskalica uvijek zalije 4 parcele oko križanja. Nadogradnje: **Pumpa** 6/12/24 prskalice (višak stoji blijed, postavljanje preko kapaciteta javlja „pumpa pogoni najviše…“) i **Mlaznice** 50 %/80 %/100 % ručnog zalijevanja, 4. razina fertigacija: spremnik kod pumpe (60 doza) puni se gumbom „Ulij gnojivo iz torbe“, a prskalice svako jutro pognoje nepognojeno, prvo najboljim
+- **greška**: kartica nadogradnje prskalica nikad se nije prikazivala (bila je vezana uz recept „Prskalica“ koji je nestao kad su prskalice prešle u Dostavu); sad je kartica „Navodnjavanje“ na radnom stolu čim je bunar sazidan
+- **greška**: popisi na pločama (radni stol, Dostava) skakali su na vrh kad bi se ploča iscrtala iznova, npr. kad se pri naručivanju promijeni novac. To je vjerojatno bio pravi uzrok vlasnikova prigovora „radni stol se resetira kad naručujem sjeme“. `renderIfChanged` sad pamti i vraća položaj svih pomičnih popisa
+- **spremanje v7**: `levels`, `tank`, `drone.load`. Prijenos iz v6: dron dobiva kameru ★★★ (kao prije), mlaznice 80 % (stara voda je vrijedila 75 %; uz staru razinu navodnjavanja 5+ dobiva 100 %), pumpa dovoljno jaka za već postavljene prskalice
+- priručnik: nova tema „Nadogradnje izuma“, prepravljene teme Navodnjavanje, Voda, Kvaliteta i Radni stol
+- testovi: 4 nova (pumpa i mlaznice, fertigacija, dron s kamerom, košarom i motorima, replant v1–v3, kanta) i prijenos v6 spremanja; stari test 10 razina dosega maknut
+- usput: pri izradi se jedna skripta greškom ispraznila `src/sim.js`; vraćen je iz gita i ponovno su primijenjene promjene iz v26 i v27 (testovi to potvrđuju)
+
+Dogovoreno za sljedeće korake (vlasnik je odobrio sve):
+- **korak 2**: pecaljka (štap: više ★★★, mamac: kraće čekanje, mreža: do 7 riba dnevno), malč (drobilica 20 doza, kora 3 dana), košnica (veća 10 kg, med svaki dan, oprašivanje susjednih parcela) + **tegle za med** (narudžba u Dostavi, 1 tegla po kg; bez tegli med ostaje u košnici; cijena meda malo viša), hladnjača (36 i 48 mjesta), kokošinjac (15 kokoši, hranilica 60 kg, inkubator), bunar (slavina uz polje), polje (staklenik: dan brže), **„Reklame i plakati“** umjesto SEO ploče: 5 razina po +10 % kupaca na štandu (plakat, letci, novine, radio, jumbo plakat); postojeća SEO ploča → razina 5
+- **korak 3**: online prodaja na laptopu u kući (webshop, Google Business, SEO, društvene mreže; farmer ih radi sam kao honorarce, troše vrijeme i energiju); online narudžbe ujutro, plaćaju oko +30 %; paketi idu u kutiju za dostavu; Joža vozi pakete poslijepodne nakon tržnice uz dodatnu dnevnicu, kasnije drugi kombi s drugim vozačem samo za dostavu, i **zaposlenik za pakiranje paketa** kad Joži bude previše posla
+
+### v28 – željezo i plastika za strojeve
+
+Vlasnik: umjesto kamena za prskalice, dron i slične elemente koristiti metal, željezo ili plastiku.
+
+- novi materijali **željezo** i **plastika** (`MATERIALS` u `data.js`, uz drva i kamen); `hasMats`, `useMats` i novi `matsText` u `sim.js` rade s bilo kojim materijalom, pa se novi dodaje samo u tablicu
+- izvori: Dostava → „Materijal za strojeve“ (5 kom željeza 8 zl, 5 kom plastike 6 zl; stižu u škrinju, otkup za pola cijene) i odbačeni dijelovi u šumi (sad češći; osim crijeva i prskalice daju 1–3 željeza ili plastike)
+- kamen ostaje samo za gradnju (bunar, kokošinjac); strojevi sad traže: dron 3 željeza + 3 plastike, kamera drona 3/6/10 plastike, motori 3/6 željeza, kanta 2/4 željeza, pumpa 4/8 željeza, mlaznice 2/4/8 plastike, hladnjača 6 željeza + 4 plastike (umjesto 8 kamena); košara drona i dalje drvo
+- pixel art ikone: tri željezne šipke, hrpa plastičnih ploča (plava, bijela, zelena)
+- poruke i priručnik govore odakle se željezo i plastika nabavljaju
+- test: narudžba, dostava, otkup i tekst materijala; postojeći testovi strojeva sad dodaju željezo i plastiku
+
+### v29 – nadogradnje izuma, korak 2: ostali izumi
+
+Vlasnik je rekao „nastavi“, pa je napravljen dogovoreni korak 2 iz v27. Sve nove linije su retci u `UPGRADES` (`data.js`); radni stol ih sam crta.
+
+- **čije su nadogradnje**: `of` sad može biti i zgrada (`well`, `coop`), `field` (uvijek tu) ili recept koji se radi više puta (`mulch`, `hive`; nadograđuje se i prije prve izrade). `owns()` u `sim.js` je jedno mjesto za tu provjeru. Radni stol ima nove kartice „✔ Bunar“, „✔ Kokošinjac“ i „Polje“, a malč i košnica imaju linije ispod svog recepta
+- **pecaljka**: Štap 30/50/70 % ulova ★★★ (ostatak ★ i ★★ kao prije, 2 : 5), Mamac riba grize ×0,7 i ×0,5 brže, Mreža za ribu do 7 riba na dan (dnevna sreća 0–5 se razvuče na 0–7, pa loš dan ostaje loš)
+- **malč**: Drobilica (2 drva → 20 doza; recept ima `nLine`), Kora (vlažno 3 dana). Parcela pamti koliko dana drži njen malč (`p.mulch` je broj), pa nadogradnja ne mijenja već malčirane parcele
+- **košnica**: Nastavak 10 kg, Matica med svaki dan, Roj: pčele oprašuju parcele do 5 polja od košnice (+4 boda kvalitete, `p.pollen`); savršena parcela s ★★ gnojivom tako stiže do 98 = ★★★★★. **Tegle za med** u Dostavi (10 kom 3 zl): med se skuplja samo u tegle iz torbe, tegla po kilogramu, bez tegli ostaje u košnici. Med poskupio 10 → 12 zl/kg
+- **hladnjača**: Police 24 → 36 → 48 mjesta (škrinja se produži odmah)
+- **kokošinjac**: Prostor 9 → 12 → 15 kokoši, Hranilica 20 → 40 → 60 kg, Inkubator: jaje iz kokošinjca grije se 3 jutra i izleže se kokoš, samo dok ima mjesta (računajući i naručene kokoši)
+- **bunar**: Slavina uz polje na južnoj ogradi prvog polja (`TAP` u `world.js`, pločica ograde, pa ne zaprečuje ništa); kanta se puni s staze ili iz polja, a skupno zalijevanje ide po vodu na najbliži izvor, sad i na slavinu. Crtež: cijev s crvenim kolom na ogradi
+- **polje**: Staklenik (350 zl, 10 drva, 12 plastike): sve dozrijeva dan brže, najmanje 1 dan (`cropDays`); na mapi stakleni okvir nad poljima
+- **Reklame i plakati** umjesto SEO ploče: plakat 20 zl (+10 %), pa letci, oglas u novinama, reklama na radiju i jumbo plakat (svaka +10 %, ukupno +50 %). Stara SEO ploča (+60 %) postaje 5. razina
+- **spremanje v8**: nove razine u `levels`, `coop.hatch`, `p.pollen`, `p.mulch` kao broj dana. Prijenos iz v7: `mulch: true` → 2 dana, `seo` → Reklame 5. razina, škrinja dobiva mjesta prema policama
+- poruke: „nemam tegle“, izlegla se kokoš, kokošinjac pun (s brojem iz nadogradnje); kokošinjac pokazuje jaje u inkubatoru, škrinja broj mjesta hladnjače, opis košnice koliko je meda i ima li tegli
+- priručnik: nove rečenice u temama Usjevi (staklenik), Malč, Bunar, Pecanje, Kokošinjac, Štand (reklame), Hladnjača i Pčele; popis nadogradnji sad piše čija je koja linija („Pecaljka · Štap: …“)
+- usput: tekst košare drona „6 parcele“ → „6 parcela“
+- testovi: 9 novih (vlasnik svake linije, pecaljka, malč, košnica i oprašivanje, police, kokošinjac i inkubator, slavina i skupno zalijevanje, staklenik, reklame i prijenos SEO ploče); test crteža pokriva slavinu i ikonu tegle
+
+### v30 – na mobitel samo bitne obavijesti, sitnice na mapi
+
+Vlasnik: na mobitelu je previše obavijesti. Ondje trebaju samo bitne (npr. dronu je nestalo gnojiva), a tko je što kupio na štandu i koliko je dron ubrao neka se piše iznad štanda, drona i drugih odgovarajućih objekata.
+
+- **oznake na mapi**: `renderer.note(mjesto, tekst, ton)` u `render.js`. Kratka oznaka se pojavi iznad mjesta (štand, dron, kokošinjac, škrinja, parkiralište, bunar, kuća), najviše 3 po mjestu (novija dolje, starije gore), i nestane za 5 s. Crta se zadnja, u pikselima ekrana: ista veličina na svakom zoomu, čitljiva i noću, ne izlazi preko ruba mape; oznaka drona putuje s dronom
+- **preseljeno na mapu**: kupnja na štandu („🛒 3 kg mrkva ★★★ · +3 zl 51 sr“), kupac bez robe, otvaranje i zatvaranje štanda; dron („🚁 1 parcela · 4 kg u škrinju“ pri istovaru, „ostavio N parcela“ ujutro); jaja, dostavljene i izlegle kokoši; dostava u škrinju; kombi (polazak s dnevnicom, prazan kombi, povratak s prodanim kg i novcem, zaposlen/otpušten); fertigacija; kiša; plaćen honorarac
+- **maknuto s mobitela** (oblačić, traka ili sam mobitel to već pokazuju): prognoza, ulov i kraj pecanja, polazak i dolazak na tržnicu, narudžba i otkazivanje u Dostavi, otkup, predana narudžba kupca, udomljen ljubimac, nove ponude poslova (značka na kartici Poslovi), niknulo u šumi i samoniklo sjeme, broj zalivenih parcela u jutarnjem izvještaju, zbirna poruka „Dron je ubrao N“ svakih 10 s
+- **ostaje na mobitelu** (i iskače u kutu mape): problemi i ono što traži igrača: škrinja puna za dron, štand prazan, gladne kokoši, trulež, plodovi u škrinji gube kvalitetu, nova i propala narudžba kupca, Joža bez dnevnice, novo u katalogu, sazidan bunar ili kokošinjac i montirana pumpa, jutarnji izvještaj, uvodni savjeti
+- **nova upozorenja** (`sim.js`): `droneshort` kad replant.py nema sjemena ili (v3) gnojiva u škrinji, `tankempty` kad je spremnik fertigacije prazan, a prskalice dosežu nepognojene parcele. Na mobitel stižu jednom na dan po vrsti (`warnOnce` u `main.js`), da se ne ponavljaju svaki let drona. `unloaded` (koliko je dron istovario) hrani oznaku iznad drona
+- priručnik: nova tema „Obavijesti: mobitel i mapa“; README i uvodni savjet opisuju podjelu
+- test: upozorenja drona (sjeme, gnojivo, ništa kad svega ima), istovar s brojem parcela i kg, prazan spremnik fertigacije
+
+### v31 – korak 3, prvi dio: web shop i online narudžbe
+
+v25–v30 su prvo commitani (`8ace00f`). Vlasnik je pitao što je s web shopom i odobrio da se krene; korak 3 je podijeljen na tri dijela (1. laptop i web shop, 2. Joža vozi pakete, 3. drugi kombi i pakirer). Ovo je prvi dio.
+
+- **laptop u kući** (panel kuće): četiri kanala iz `ONLINE.channels` u `data.js`: Web shop (4 h), Google Business profil (1 h), SEO za web shop (3 h), Društvene mreže (2 h); ostali traže web shop. Rade se kao honorarac bez plaće (`buildOnline` stavi posao u `s.gigs.active` s poljem `online`; `finishGig` tada uključi kanal umjesto isplate). Troše 6 ⚡ po satu
+- **online narudžbe** (`onlineOrders` u jutru): svaki gotov kanal ima svoju šansu za novu narudžbu (0,6 / 0,4 / 0,5 / 0,5), najviše 5 otvorenih. Narudžba traži plod iz kataloga u klasi ★★–★★★★ (jaja i med u ★★, ako ima kokoši ili košnica), rok 2–4 dana, plaća 30 % više od štanda (`orderPay`)
+- **kutija za pakete** na parkiralištu (panel „Put u grad“): popis narudžbi, „Spakiraj iz torbe“ (1 ⚡, najslabija dovoljno dobra klasa, kao narudžbe na štandu) i „Odnesi N paketa na poštu“. Spakirani paketi se vide kao kartonske kutije kraj putokaza
+- **pošta u gradu**: novi put `goToPost` koristi postojeći put farmera u grad (`trips.farmer` s `post: true`): pješice 1 h, predaja, odmah natrag; pošta radi do 17 h. Kad farmer ide na tržnicu, pakete preda pri dolasku. Plaća se na pošti (`postParcels`)
+- **rok**: ujutro nakon roka narudžba propada; spakirani paket se vrati u škrinju (`items` pamti što je u njemu)
+- poruke: nova online narudžba i propala narudžba idu na mobitel (traže igrača); poslani paketi kao oznaka iznad parkirališta i oblačić; gornja traka „📮 Farmer nosi pakete na poštu“; mobitel → Poslovi ima popis online narudžbi
+- **spremanje v9**: `online` (kanali, narudžbe sa spakiranim sadržajem); posao na kanalu se nastavlja nakon ponovnog učitavanja
+- priručnik: nova tema „Web shop i online narudžbe“; jaja i med dobili su genitiv („6 kom jaja“, „2 kg meda“)
+- testovi: 4 nova (izrada kanala bez plaće, narudžbe po kanalima i cijena, pakiranje, pošta, rok i povrat u škrinju, paketi na putu na tržnicu i nastavak nakon učitavanja)
+
+### v32 – narudžbe plaćaju klasu koju predaš (povratna informacija vlasnika)
+
+Vlasnik: narudžbe na štandu i online ne skaliraju. Kupac traži npr. ★★ ili bolje za 10 zl; ako dobije ★★★★★, treba platiti vrijednost robe ★★★★★ plus dodatak (online +30 %).
+
+- `goodsPay(crop, items, extra)` u `sim.js`: svaka predana jedinica po cijeni na štandu za svoju klasu, zbroj puta (1 + dodatak)
+- **štand**: `fulfillRequest` plaća predanu robu + `REQUESTS.bonus` (50 %, nepromijenjeno); `requestPay(r)` bez robe je najmanja cijena (sve u traženoj klasi)
+- **online**: `packOrder` upisuje u `o.pay` vrijednost paketa + `ONLINE.markup` (30 %); pošta isplaćuje taj iznos. `orderPay(o)` računa iz `o.items` kad je paket spakiran, pa učitavanje spremljene igre zadrži višu cijenu
+- `orderPick(s, r)`: što bi se uzelo iz torbe (najslabija dovoljno dobra klasa prva), bez uzimanja; koriste ga predaja, pakiranje i prikaz
+- kartice narudžbi (štand, kutija za pakete): „Plaća vrijednost robe +50 %/+30 %, najmanje X. U torbi: N kg → Y“, gdje je Y iznos za ono što bi se sad predalo; spakirani paket pokazuje svoj stvarni iznos
+- priručnik: teme „Narudžbe kupaca“ i „Web shop i online narudžbe“ opisuju novo plaćanje
+- testovi: bolja klasa na štandu plaća svoju cijenu + 50 %, mješavina ★★ i ★★★★★, paket ★★★ + ★★★★, paket ★★★★★ zadrži višu cijenu nakon učitavanja
+
+### v33 – ljestvica cijena: štand najjeftiniji (pravilo vlasnika)
+
+Vlasnik je pitao zašto online plaća +30 %, a narudžba na štandu +50 %. Te dvije brojke su bile odvojene odluke (štand v24 moja procjena, online iz plana za korak 3) i nisu bile usklađene. Pravilo vlasnika: štand je najjeftiniji jer nema dodatnih troškova; online, tržnica i dostava su skuplji zbog troškova tih usluga.
+
+- ljestvica: štand cijena klase → narudžba na štandu **+10 %** (`REQUESTS.bonus`, bilo 50 %) → tržnica **+20 %** (novo `MARKET.markup`; dosad iste cijene kao štand) → online **+30 %** (`ONLINE.markup`, nepromijenjeno)
+- `sellOne` dobio parametar dodatka; tržnica (farmer i kombi) prodaje s `MARKET.markup`, štand bez dodatka
+- priručnik (Tržnica) i README (tržnica, narudžbe, web shop, odjeljak „Ljestvica cijena“) usklađeni
+- test: svaka prodaja na tržnici plaća cijenu štanda +20 %; ljestvica narudžba < tržnica < online
+
+### v34 – tržnica +10 %, dostava bez poštarine (odluka vlasnika)
+
+Vlasnik je pitao je li +20 % za tržnicu previše. Puni tržni dan proda oko 160 kg (oko 40 kupaca po 2–6 kg), 320–400 zl prometa: +20 % donosi 65–80 zl više od štanda, više nego dvostruko više od Jožine dnevnice (30 zl), a +10 % otprilike koliko iznosi dnevnica. Prednost tržnice je količina, a ne cijena.
+
+- tržnica **+10 %** (`MARKET.markup`), narudžba na štandu **+5 %** (`REQUESTS.bonus`), da ostane jeftinija od tržnice; online ostaje +30 %
+- **odluka vlasnika za korak 3, drugi dio**: dostava paketa košta samo Jožinu dnevnicu; kupac plaća samo online cijenu, bez poštarine. Ne komplicirati
+
+## Napravljeno 16. studenog 2026.
+
+### Vraćanje v25–v34 u `dev`
+
+Rad od v25 do v34 (commit `223ac71` i lokalni backup `d764ab8` od 14. 11.) ostao je samo na lokalnoj grani `backup-lokalno`: kad je `dev` usklađen s GitHubom, dev-farm na `dev` vratio se na v24. Vlasnik je to primijetio jer dron nije brao ★★★★★, a prskalice nisu gnojile. Mapa `dev-farm/` vraćena je iz `backup-lokalno` (samo ona, ostali projekti s te grane nisu dirani); na `dev` nije bilo dev-farm promjena kojih nema na backupu, pa nije bilo sukoba.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 12. studenog 2026. nakon v24:
+Provedeno 16. studenog 2026. nakon vraćanja v25–v34 u `dev`: `npm test` 82/82, igra se učitava u headless Chromiumu bez JS grešaka (spremanje v9, sve linije nadogradnji u stanju). Provedeno 13. studenog 2026. nakon v34: `npm test` 82/82 i učitavanje igre u headless Chromiumu bez JS grešaka. Nakon v33 isto. Nakon v32 (`npm test` i učitavanje igre u headless Chromiumu bez JS grešaka; kartice narudžbi nisu klikane u pregledniku, logika je pokrivena testovima). Ranije, nakon v31:
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm test` u `dev-farm/` | 63/63 testova prolazi |
+| `npm test` u `dev-farm/` | 82/82 testova prolazi |
+| Headless Chromium (v31) | bez JS grešaka; kuća pokazuje „💻 Laptop“ s četiri kanala (ostali „prvo web shop“); „Napravi · 4 h · 24 ⚡“ → farmer kodira, web shop online (energija 76) i poruka na mobitelu; nakon dva jutra dvije narudžbe („vrtić Sunce: 5 kg rajčice ★★★ ili bolje, poslati do subote“, 25 zl 35 sr); kutija za pakete na parkiralištu, „Spakiraj iz torbe“ → „✔ Spakirano, čeka poštu“, gumb „Odnesi 1 paket na poštu“, gornja traka „📮 Farmer nosi pakete na poštu“, novac +25 zl 35 sr i farmer se vraća; mobitel → Poslovi prikazuje preostalu online narudžbu |
+| Headless Chromium (v30) | bez JS grešaka; nova farma, štand s mrkvom i rotkvicom, dron s replant.py v3 bez sjemena i gnojiva, 3 sata igre: na mobitel su stigle samo 2 poruke („Dron nema sjemena (rotkvica)…“, „Dron nema gnojiva…“), iznad štanda tri oznake kupnji („🛒 3 kg mrkva ★★★ · +3 zl 51 sr“), iznad drona „🚁 1 parcela · 4 kg u škrinju“; oznake su iste veličine na svakom zoomu i ne izlaze preko ruba mape |
+| Headless Chromium (v29) | bez JS grešaka; radni stol pokazuje kartice „✔ Bunar“, „✔ Kokošinjac“, „Polje“, „✔ Pecaljka“, „✔ Hladnjača“, „✔ Reklame i plakati“ i linije pod Malčem i Košnicom (22 linije); klikovi na „Nadogradi“ dovedu svih 13 novih linija do najviše razine (škrinja 48 mjesta, oblačić „Reklame, razina 5: jumbo plakat: +50 % kupaca na štandu.“); klik na slavinu na ogradi: farmer stane ispod nje i napuni kantu (12/12); staklenik se vidi nad poljem; Dostava ima „Tegle za med · 10 kom · 3“ s ikonom tegle; kokošinjac „Kokoši: 10/15“ i „U inkubatoru se grije jaje: kokoš se izleže za 2 dana“; hladnjača s 36 mjesta |
+| Headless Chromium (v28) | bez JS grešaka; radni stol: „Hladnjača 150 · 6 željeza, 4 plastike“, „harvest-drone 300 · 3 željeza, 3 plastike“, gumbi „Nadogradi · 120 · 4 željeza“ (pumpa) i „Nadogradi · 80 · 2 plastike“ (mlaznice); Dostava ima grupu „Materijal za strojeve“ s ikonama šipki i ploča, Otkup nudi višak željeza i plastike |
+| Headless Chromium (v27) | bez JS grešaka; radni stol s karticama „✔ Velika kanta“, „✔ harvest-drone“, „✔ replant.py“ i „Navodnjavanje · water.sh“; klik na „Nadogradi“ (pumpa → 12 prskalica, oblačić „Pumpa, razina 2: pogoni 12 prskalica.“) uz popis spušten na 500 px ostaje na 500 px; mlaznice do fertigacije, kamera do ★★★★★, motori i košara; „Ulij gnojivo iz torbe“ puni spremnik (10 × ★★★); dron nosi urod sa sandukom ispod sebe; v6 spremanje (dron, navodnjavanje v7, 9 prskalica) učitano s kamerom ★★★, mlaznicama 100 % i pumpom za 12 |
+| Headless Chromium (v26) | bez JS grešaka; farmer u 1 s prijeđe 4 polja; farmer i kombi poslani zajedno u 6:05: kombi na tržnici u 6:25, farmer u 7:05; parkiralište piše „pješice 1 h, kombijem 20 min“ |
+| Headless Chromium (v25) | bez JS grešaka; na 1400 i 640 px: + na krumpiru dvaput (brojač 2, traka „2 stavke“), + na mrkvi, − na krumpiru (brojač 1, novac vraćen), + na crijevu i pumpi (+ pumpe zatim zaključan „već naručena“); red na kojem se klika ostaje na istom položaju na ekranu |
 | Headless Chromium (v24) | bez JS grešaka; kišni dan (🌧️ uz sat, prognoza u opisu sata, kiša na mapi), alat malča „7 doza“ i iverje na parcelama, Dostava u grupama s Uređenjem, Ljubimcem i Otkupom (prodana pumpa +35), 11 ukrasa i košnica postavljeni klikovima kroz torbu (staza, ograda, gredica, klupa, patuljak, lampion), lampion noću svijetli, pas prati farmera i maženje daje +5 ⚡, narudžba na štandu predana uz bonus, napomena o kvarenju u škrinji; stari scenariji (tržnica, cijeli dan) bez regresija |
 | Headless Chromium (v23) | bez JS grešaka; kompost od 5 kg rajčica ★★★ daje vreću ★★★ (10 doza), alat gnojiva „★★★ · 10 doza“, rotkvica s ★★★ gnojivom, zalivena i ubrana na vrijeme je ★★★★★ „za sajam“ (ljubičaste zvjezdice u torbi), gnojivo u Dostavi „★★ (vreća) · 10 doza“ |
 | Headless Chromium (v22) | bez JS grešaka; sa 150 nepročitanih obavijesti sve četiri kartice mobitela unutar mobitela na 1400, 900 i 640 px, značka „99+“ |
@@ -245,8 +383,16 @@ Provedeno 12. studenog 2026. nakon v24:
 ## Poznata ograničenja
 
 - Tempo i ekonomija nisu isprobani stvarnim igranjem; cijene, trajanje rasta i cijene izuma su procjene u `src/data.js`.
+- Cijene nadogradnji (v27, v29) su procjene. Staklenik, Roj i Inkubator mogu znatno ubrzati zaradu; nije isprobano igranjem koliko.
+- Ravnoteža web shopa (šanse po kanalu, +30 %, rok, trajanje izrade) nije isprobana igranjem.
+- Postoci ljestvice cijena (+5 / +10 / +30 %) su procjene i nisu isprobani igranjem. Kanali se rade samo jednom i nemaju nadogradnje.
+- Online narudžbe ne traže ribu, gljive ni kupine, samo plodove iz kataloga, jaja i med.
+- Slavina je samo na prvom polju; drugo polje se zalijeva s nje ili s bunara.
+- Nadogradnje košnice i malča mogu se kupiti i prije prve košnice ili vreće malča.
+- Cijene nadogradnji (v27) su procjene. Nova farma sad počinje sa slabijom vodom iz prskalica (50 % umjesto 75 %) i dronom koji bere samo ★★, pa rana automatizacija vrijedi manje nego prije v27.
 - Prva berba stiže drugo jutro (rotkvica, mrkva); prvi dan igru nose šuma, kokošinjac i honorarci. Novi tempo rasta nije isproban igranjem.
 - Ako se dvije farmerove poruke dogode istovremeno, druga zamijeni prvu u oblačiću.
+- Oznake na mapi vide se samo kad je to mjesto u kadru; što se dogodi izvan kadra (npr. kupnja dok je farmer na polju) nigdje ne ostaje zapisano. Upozorenja koja stižu jednom na dan pamte se samo do ponovnog učitavanja stranice.
 - Glatkoća zooma nije provjerena automatski, samo da konačni prikaz radi.
 - Dijelovi pločica ribnjaka uz uglove izgledaju kao trava, ali farmer na njih ne može.
 - Ime aplikacije na mobitelu još nije odabrano (zasad „📱 Mobitel“).
@@ -260,12 +406,13 @@ Provedeno 12. studenog 2026. nakon v24:
 
 Ideje koje su predložene, a još nisu napravljene:
 
-1. Isprobati igranjem novu ravnotežu (tržnica, kiša, malč, med, narudžbe, hladnjača) i po potrebi prilagoditi brojke u `src/data.js`.
-2. Grad kao vlastita scena po kojoj farmer hoda (tržnica s drugim prodavačima, trgovina); tržnica bi mogla imati dnevnu potražnju po vrsti ploda.
-3. **Lov (ideja vlasnika):** u šumi divljač (zec, fazan, divlja svinja); treba nešto napraviti ili kupiti (npr. luk i strijele ili lovačka dozvola), idle kao pecanje, meso za prodaju ili jelo, ograničen broj po danu.
-4. Odabrati ime aplikacije na mobitelu.
-5. Biranje gnojiva pri gnojenju (sad se uvijek prvo troši najbolje).
-6. Ime ljubimca po izboru; ljubimac s nekom korisnom navikom (pas tjera vrane, mačka miševe iz škrinje).
+1. **Korak 3, drugi dio**: Joža poslijepodne, nakon tržnice, vozi pakete na poštu za dodatnu dnevnicu (jedini trošak dostave; kupac plaća samo online cijenu, bez poštarine). **Treći dio**: drugi kombi s drugim vozačem samo za dostavu i zaposlenik koji pakira pakete (vidi v27).
+2. Isprobati igranjem novu ravnotežu (nadogradnje iz koraka 1 i 2, tržnica, kiša, malč, med i tegle, narudžbe, hladnjača) i po potrebi prilagoditi brojke u `src/data.js`.
+3. Grad kao vlastita scena po kojoj farmer hoda (tržnica s drugim prodavačima, trgovina); tržnica bi mogla imati dnevnu potražnju po vrsti ploda.
+4. **Lov (ideja vlasnika):** u šumi divljač (zec, fazan, divlja svinja); treba nešto napraviti ili kupiti (npr. luk i strijele ili lovačka dozvola), idle kao pecanje, meso za prodaju ili jelo, ograničen broj po danu.
+5. Odabrati ime aplikacije na mobitelu.
+6. Biranje gnojiva pri gnojenju (sad se uvijek prvo troši najbolje).
+7. Ime ljubimca po izboru; ljubimac s nekom korisnom navikom (pas tjera vrane, mačka miševe iz škrinje).
 
 ## Handoff za novi chat
 
@@ -274,6 +421,6 @@ Ideje koje su predložene, a još nisu napravljene:
 3. Pokretanje: `cd dev-farm && npm start` (http://localhost:8080). Testovi: `npm test`.
 4. Arhitektura: `src/data.js` (brojke) → `src/sim.js` (čista pravila, testirana) → `src/render.js` + `src/art.js` (crtanje) i `src/ui.js` (DOM) → `src/main.js` (petlja, ulaz, poruke). Pravila ne smiju ovisiti o DOM-u.
 5. Novac se u stanju čuva u srebrenjacima (cijeli brojevi), cijene se u `data.js` pišu u zlatnicima (`zl()`).
-6. Format spremanja je v6 (`src/save.js`); kod promjene stanja dodati prijenos starijih spremanja.
+6. Format spremanja je v9 (`src/save.js`); kod promjene stanja dodati prijenos starijih spremanja. Nadogradnje izuma su u `UPGRADES` (`data.js`), razine u `s.levels`; nova linija se dodaje samo u tablicu, radni stol je sam crta. `of` kaže čija je linija (`owns()` u `sim.js`): izum s `once`, `well`, `coop`, `field` ili recept koji se radi više puta (`mulch`, `hive`).
 7. Provjera u browseru: `devFarm.skip(sekunde)` premota vrijeme; headless Chromium je u `~/.cache/ms-playwright/chromium-1208/` i može se voziti preko DevTools protokola (Node 24 ima ugrađen `WebSocket`).
 8. Nakon svake promjene ažurirati ovaj dokument (novi odjeljak, zadnja provjera, ograničenja, sljedeći koraci).

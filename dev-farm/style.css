@@ -322,6 +322,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .fruit-row { align-items: center; }
 .parts { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: 12px; color: var(--muted); }
 .parts .ok { color: var(--green); }
+.recipe p.ok { color: var(--green); margin: 4px 0 0; }
 .catalog-head { margin: 10px 2px 2px !important; color: var(--muted); font-weight: 700; }
 .gig { display: flex; gap: 8px; align-items: center; padding: 6px 2px; border-bottom: 1px solid #23252a; font-size: 12px; }
 .gig .grow { flex: 1; }
@@ -384,11 +385,16 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .hud .trip:disabled { cursor: default; opacity: 1; }
 .hud .trip[hidden] { display: none; }
 
-/* deliveries on the way, at the top of the delivery tab */
-.orders { margin: 4px 0 8px; padding: 6px 8px; border: 1px solid #4f73a8; border-radius: 10px; background: #1b2433; }
-.orders .orders-head { margin: 0 0 2px !important; color: var(--blue); font-weight: 700; }
-.orders .catalog-row:last-of-type { border-bottom: 0; }
-.ordered-tag { padding: 1px 6px; border-radius: 8px; background: #1b2433; border: 1px solid #4f73a8; color: var(--blue); font-size: 10px; white-space: nowrap; }
+/* the delivery tab works like a web shop: a price and a "− count +" stepper on every row */
+.cart { box-sizing: border-box; height: 28px; margin: 4px 2px 2px !important; padding: 5px 8px; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid #4f73a8; border-radius: 8px; background: #1b2433; color: var(--blue); font-weight: 700; }
+.catalog-price { font-size: 11px; color: var(--text); white-space: nowrap; }
+.catalog-price .coin-i { width: 13px; height: 13px; vertical-align: -2px; }
+.stepper { display: inline-flex; align-items: center; flex: none; border: 1px solid #3c3f44; border-radius: 6px; overflow: hidden; }
+.stepper .step { width: 24px; height: 24px; padding: 0; background: #22252a; border: 0; border-radius: 0; font-size: 14px; line-height: 1; }
+.stepper .step:hover:not(:disabled) { background: #365a3b; }
+.stepper .step:disabled { color: #4a4e55; cursor: default; }
+.step-n { min-width: 22px; text-align: center; font-size: 12px; color: var(--muted); }
+.step-n.on { color: var(--text); font-weight: 700; }
 
 /* the handbook on the phone */
 .phone-guide { display: flex; flex-direction: column; gap: 6px; }
@@ -415,3 +421,14 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .coin-i { width: 16px; height: 16px; margin: 0 1px 0 2px; vertical-align: -3px; image-rendering: pixelated; }
 .catalog-name { display: block; }
 .catalog-sub { display: block; color: var(--muted); font-size: 11px; }
+
+/* upgrades of what was made at the workbench */
+.recipe.owned { border: 1px solid #2c3a30; }
+.upgrade { display: grid; gap: 4px; padding: 6px 0 2px; border-top: 1px solid #2a2d33; }
+.upgrade p { margin: 0; }
+.upgrade-head { display: flex; align-items: center; gap: 8px; }
+.upgrade-name { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.upgrade-head .meter { flex: 1; }
+.upgrade-next { align-items: center; }
+.upgrade-next .grow { flex: 1; min-width: 120px; }
+.upgrade-next .btn { padding: 4px 8px; font-size: 12px; }

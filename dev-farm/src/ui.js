@@ -4,16 +4,18 @@
 import {
   CROPS, RECIPES, MAX_ENERGY, COFFEE, EAT_ENERGY, TIER_NAMES, SHOP_OPEN, SHOP_CLOSE, ROT_DAY,
   SEEDS_FROM_FRUIT, SEED_PACK, WELL_BUILD, zl, SLEEP_FROM, COOP, SHOP_ITEMS, HOSE_PER_SPRINKLER, BUILDINGS, MARKET,
-  COMPOST_KG, FERT_DOSES, DECOR, PETS, REQUESTS, HIVES,
+  COMPOST_KG, FERT_DOSES, DECOR, PETS, REQUESTS, HIVES, UPGRADES, TANK_SIZE, MATERIALS, ONLINE, GIG_ENERGY_PER_HOUR,
 } from './data.js';
 import {
   parseItem, isUnlocked, canSize, countWhere, canCraft, salePrice, isSellable, cropById,
   plotUnlocked, qualityScore, tierOf, ripeCount, shopOpen, packPrice, findAt, jobTargets,
-  totalSeeds, sprinklerReach, irrigationCost, daysLeft, goodById, forageAt, forageById, matCount,
-  IRRIGATION_LEVELS, irrigationMissing, fishById, fertDoses, requestHave, requestPay, dayName, dayNameGen,
+  totalSeeds, daysLeft, goodById, forageAt, forageById, matCount,
+  upgradeProblem, nextStep, levelValue, matsText, pumpCapacity, tankDoses, runningSprinklers, irrigationMissing, fishById, fertDoses, requestHave, requestPay, orderPick, orderPay, dayName, dayNameGen,
   buybackList, hiveAt, decorAt, farmerTripProblem, vanTripProblem, pumpStatus, orderPack, shopItemById,
+  owns, recipeAmount, hensMax, feederCap, hiveCap, chestSize, cropDays, hasTap,
+  onlineProblem, parcelsReady, postTripProblem, hasWebshop,
 } from './sim.js';
-import { idx, objectAt, isPlotTile, OBJECTS } from './world.js';
+import { idx, objectAt, isPlotTile, OBJECTS, TAP } from './world.js';
 import { iconUrl } from './render.js';
 import { guideTopics, searchGuide } from './guide.js';
 
@@ -51,12 +53,12 @@ export function itemName(id) {
   if (p.kind === 'fertilizer') return `Gnojivo ${stars(p.tier)}`;
   if (p.kind === 'mulch') return 'Malč';
   if (p.kind === 'hive') return 'Košnica';
+  if (p.kind === 'jar') return 'Tegla za med';
   if (p.kind === 'deco') return DECOR[p.deco].name;
   if (p.kind === 'sprinkler') return 'Prskalica (water.sh)';
-  if (p.kind === 'wood') return 'Drva';
+  if (MATERIALS[p.kind]) return MATERIALS[p.kind].name;
   if (p.kind === 'hose') return 'Crijevo';
   if (p.kind === 'pump') return 'Vodena pumpa';
-  if (p.kind === 'stone') return 'Kamenje';
   return tiered(p.crop) ? `${goodById[p.crop].name} ${stars(p.tier)}` : goodById[p.crop].name;
 }
 
@@ -116,11 +118,17 @@ function slotButton(it, onClick, { label = '' } = {}) {
 const badgeText = (n) => (!n ? '' : n > 99 ? '99+' : String(n));
 
 // Rebuild an element only when its content signature changed (keeps clicks reliable).
+// Lists inside that scroll keep their position: rebuilding must not jump back to the top.
 function renderIfChanged(node, sig, build) {
   if (node.dataset.sig === sig) return;
   node.dataset.sig = sig;
+  const scrolled = [node, ...node.querySelectorAll('*')].filter((e) => e.scrollTop > 0).map((e) => [e === node ? null : e.className, e.scrollTop]);
   node.replaceChildren(...build());
   coinify(node);
+  for (const [cls, top] of scrolled) {
+    const target = cls === null ? node : [...node.querySelectorAll('*')].find((e) => e.className === cls);
+    if (target) target.scrollTop = top;
+  }
 }
 
 // Prices are shown with coins instead of "zl" and "sr": "3 zl 50 sr" → 3 (gold coin) 50 (silver coin).
@@ -352,13 +360,14 @@ export function createUI(cb) {
 
     // who is on the way to / at / back from the town market
     const { farmer: tf, van: tv } = s.market.trips;
-    const tripText = (t) => (t.phase === 'go' ? 'putuje u grad'
+    const tripText = (t) => (t.post ? (t.phase === 'go' ? 'nosi pakete na poštu' : 'se vraća s pošte')
+      : t.phase === 'go' ? 'putuje u grad'
       : t.phase === 'sell' ? (s.clock < MARKET.open ? 'čeka otvaranje tržnice' : `na tržnici · ${t.kg} kg · ${formatMoney(t.money)}`)
         : `se vraća · ${t.kg} kg · ${formatMoney(t.money)}`);
     els.trip.hidden = !tf && !tv;
-    setText(els.trip, [tf && `🧺 Farmer ${tripText(tf)}${tf.phase !== 'back' ? ' · ↩' : ''}`, tv && `🚐 ${MARKET.worker} ${tripText(tv)}`].filter(Boolean).join('  ·  '));
+    setText(els.trip, [tf && `${tf.post ? '📮' : '🧺'} Farmer ${tripText(tf)}${tf.phase !== 'back' ? ' · ↩' : ''}`, tv && `🚐 ${MARKET.worker} ${tripText(tv)}`].filter(Boolean).join('  ·  '));
     els.trip.disabled = !tf || tf.phase === 'back';
-    els.trip.title = tf && tf.phase !== 'back' ? 'Klik: farmer spakira robu i vrati se kući' : 'Kombi se vraća oko 14 h';
+    els.trip.title = tf && tf.phase !== 'back' ? 'Klik: farmer spakira robu i vrati se kući' : `Kombi se vraća oko ${formatClock(MARKET.close + MARKET.drive)}`;
 
     for (const t of tools) {
       const { b, sub } = toolEls.get(t.id);
@@ -411,7 +420,7 @@ export function createUI(cb) {
   // ---- seed pouch: only what you actually have, with counts
   function pouch(s) {
     const owned = CROPS.filter((c) => s.seeds[c.id] > 0 || c.id === s.seed);
-    const sig = JSON.stringify([s.seeds, s.seed]);
+    const sig = JSON.stringify([s.seeds, s.seed, s.levels.greenhouse]);
     renderIfChanged(els.seeds, sig, () => {
       if (!Object.values(s.seeds).some((n) => n > 0)) {
         return [el('span', 'pouch-empty', 'Vrećica sa sjemenom je prazna. Potraži ga po imanju ili naruči dostavu na mobitelu.')];
@@ -420,7 +429,7 @@ export function createUI(cb) {
         const n = s.seeds[c.id];
         const b = button('', () => cb.onSeed(c.id), { cls: 'seed', disabled: n <= 0 });
         b.classList.toggle('selected', s.seed === c.id);
-        b.title = `${c.name}: ${n} ${n === 1 ? 'sjemenka' : 'sjemenki'} · raste ${days(c.days)} · ${c.yield} kg po parceli`;
+        b.title = `${c.name}: ${n} ${n === 1 ? 'sjemenka' : 'sjemenki'} · raste ${days(cropDays(s, c.id))} · ${c.yield} kg po parceli`;
         b.append(icon(c.id, ''), el('span', 'seed-name', c.name), el('span', 'seed-count', `× ${n}`));
         return b;
       });
@@ -461,7 +470,9 @@ export function createUI(cb) {
       const out = [el('p', 'item-title', `${itemName(it.id)} · ${it.n} ${unit}`)];
       const row = el('div', 'row');
       if (p.kind === 'wood' || p.kind === 'stone') {
-        out.push(el('p', 'muted', 'Materijal za radni stol: kokošinjac, bunar i drugo.'));
+        out.push(el('p', 'muted', 'Materijal za gradnju: kokošinjac, bunar, košnica i drugo.'));
+      } else if (p.kind === 'iron' || p.kind === 'plastic') {
+        out.push(el('p', 'muted', 'Materijal za strojeve na radnom stolu: dron, pumpa, mlaznice, hladnjača. Naručuje se na mobitelu ili nađe u šumi.'));
       } else if (p.kind === 'crop') {
         const tier = tiered(p.crop) ? `${TIER_NAMES[p.tier]} · ` : '';
         out.push(el('p', 'muted', `${tier}na štandu ${formatMoney(salePrice(p.crop, p.tier))}/${unit}${p.tier === 1 ? ', i to samo kad nema boljeg' : ''}`));
@@ -475,12 +486,15 @@ export function createUI(cb) {
       } else if (p.kind === 'pump') {
         out.push(el('p', 'muted', s.upgrades.well ? 'Klikni bunar: farmer će je montirati.' : 'Ide na bunar, a bunar se prvo mora sazidati.'));
       } else if (p.kind === 'mulch') {
-        out.push(el('p', 'muted', 'Malčirana zemlja ostaje vlažna dva dana: dovoljno je zalijevati svaki drugi dan. Jedna doza = jedna parcela, a malč ostaje do berbe.'));
+        const md = levelValue(s, 'mulchDays');
+        out.push(el('p', 'muted', `Malčirana zemlja ostaje vlažna ${md} dana: dovoljno je zalijevati svaki ${md === 2 ? 'drugi' : 'treći'} dan. Jedna doza = jedna parcela, a malč ostaje do berbe.`));
         row.append(button('Uzmi u ruku (6)', () => cb.onTool('mulch')));
       } else if (p.kind === 'hive' || p.kind === 'deco') {
         const d = p.kind === 'deco' ? DECOR[p.deco] : null;
-        out.push(el('p', 'muted', p.kind === 'hive' ? `Ide na travu. Svaki drugi dan 1 kg meda (najviše ${HIVES.cap} kg), najviše ${HIVES.max} košnica.` : d.block ? 'Ide na travu i zaprečuje prolaz (ne smije zatvoriti put).' : 'Ide na travu; preko njega se može hodati.'));
+        out.push(el('p', 'muted', p.kind === 'hive' ? `Ide na travu. ${UPGRADES.hiveRate.text(levelValue(s, 'hiveRate'))} (najviše ${hiveCap(s)} kg), najviše ${HIVES.max} košnica. Med se skuplja u tegle (Dostava).` : d.block ? 'Ide na travu i zaprečuje prolaz (ne smije zatvoriti put).' : 'Ide na travu; preko njega se može hodati.'));
         row.append(button('Postavi na travu', () => cb.onPlaceItem(it.id)));
+      } else if (p.kind === 'jar') {
+        out.push(el('p', 'muted', 'Za med: klik na košnicu napuni jednu teglu po kilogramu. Tegle moraju biti u torbi.'));
       } else if (p.kind === 'fertilizer') {
         out.push(el('p', 'muted', `Jedna doza pognoji jednu parcelu; vreća ima ${FERT_DOSES} doza. ${p.tier === 3 ? 'Samo ovo gnojivo može dati plod ★★★★★.' : 'Za plod ★★★★★ treba ★★★ gnojivo (kompost od I. klase ili boljeg).'}`));
         row.append(button('Uzmi u ruku (4)', () => cb.onTool('fert')));
@@ -508,10 +522,12 @@ export function createUI(cb) {
     if (ui.panel === 'house') {
       const canSleep = s.clock >= SLEEP_FROM;
       const gig = s.gigs.active;
-      const sig = JSON.stringify(['house', s.money >= zl(COFFEE.price), s.energy >= MAX_ENERGY, canSleep, gig?.title, Boolean(s.farmer.busy)]);
+      const sig = JSON.stringify(['house', s.money >= zl(COFFEE.price), s.energy >= MAX_ENERGY, canSleep, gig?.title, Boolean(s.farmer.busy),
+        s.online.channels, s.online.orders.length, s.market.trips.farmer ? 1 : 0]);
       renderIfChanged(els.panel, sig, () => [
         head(),
         ...(gig && !s.farmer.busy ? [button(`💻 Nastavi posao: ${gig.title}`, cb.onGoWork, { cls: 'btn' })] : []),
+        ...laptop(s),
         el('p', 'muted', 'Spavanjem završavaš dan i spremaš igru. Usjevi rastu preko noći, a zreli te strpljivo čekaju. Ujutro stiže naručena dostava.'),
         button(canSleep ? 'Spavaj do 06:00 i spremi' : `Spava se od ${formatClock(SLEEP_FROM)}`, cb.onSleep, { cls: 'btn primary', disabled: !canSleep }),
         button(`Skuhaj kavu · ${formatMoney(zl(COFFEE.price))} · +${COFFEE.energy} ⚡`, cb.onCoffee, {
@@ -520,23 +536,24 @@ export function createUI(cb) {
       ]);
     } else if (ui.panel === 'coop') {
       const c = s.coop;
-      renderIfChanged(els.panel, JSON.stringify(['coop', c]), () => [
+      renderIfChanged(els.panel, JSON.stringify(['coop', c, s.levels]), () => [
         head(),
-        el('p', '', `🐔 Kokoši: ${c.hens}/${COOP.maxHens} · 🥚 čeka: ${c.eggs}`),
+        el('p', '', `🐔 Kokoši: ${c.hens}/${hensMax(s)} · 🥚 čeka: ${c.eggs}`),
+        ...(c.hatch ? [el('p', 'small', `🐣 U inkubatoru se grije jaje: kokoš se izleže za ${days(levelValue(s, 'incubator') - c.hatch)}.`)] : []),
         ...(c.hens ? [] : [el('p', 'small', 'Kokošinjac je prazan. Kokoši se naručuju na mobitelu (Dostava → Kokoš nesilica), jedna po jedna.')]),
         (() => {
           const daily = c.hens * COOP.feedPerHen;
           const left = daily ? Math.floor(c.feed / daily + 1e-9) : 0;
           return el('p', '', `Hranilica: ${kgText(c.feed)} kg${!c.hens ? '' : left < 1 ? ' · premalo za sutra!' : ` · dosta za ${days(left)}`}`);
         })(),
-        el('p', 'muted small', `Kokoš pojede oko ${COOP.feedPerHen * 1000} g na dan: 1 kg ploda nahrani ${Math.round(1 / COOP.feedPerHen)} kokoši. Svaka nahranjena kokoš ujutro snese jaje. Jaja se skupe klikom na kokošinjac. Hranilica drži najviše ${COOP.feedCap} kg.`),
+        el('p', 'muted small', `Kokoš pojede oko ${COOP.feedPerHen * 1000} g na dan: 1 kg ploda nahrani ${Math.round(1 / COOP.feedPerHen)} kokoši. Svaka nahranjena kokoš ujutro snese jaje. Jaja se skupe klikom na kokošinjac. Hranilica drži najviše ${feederCap(s)} kg.`),
       ]);
     } else if (ui.panel === 'chest') {
       renderIfChanged(els.panel, JSON.stringify(['chest', s.chest, s.upgrades.coldroom]), () => {
         const grid = el('div', 'slots chest');
         s.chest.forEach((it, i) => grid.append(slotButton(it, it ? () => cb.onMove('chest', i, 'bag') : null)));
         return [head(), el('p', 'muted', 'Klik na stvar u škrinji vrati je u torbu.'), grid,
-          el('p', 'small muted', s.upgrades.coldroom ? '❄️ Hladnjača: plodovi u njoj ne gube kvalitetu.' : 'Plodovi u škrinji polako gube kvalitetu (klasu na otprilike svako drugo jutro). Hladnjača s radnog stola ih čuva.')];
+          el('p', 'small muted', s.upgrades.coldroom ? `❄️ Hladnjača (${chestSize(s)} mjesta): plodovi u njoj ne gube kvalitetu.` : 'Plodovi u škrinji polako gube kvalitetu (klasu na otprilike svako drugo jutro). Hladnjača s radnog stola ih čuva.')];
       });
     } else if (ui.panel === 'stand') {
       const reqSig = s.requests.map((r) => [r.id, requestHave(s, r)]);
@@ -559,8 +576,9 @@ export function createUI(cb) {
     } else if (ui.panel === 'workbench') {
       const fruits = s.bag.map((it, i) => [it, i]).filter(([it]) => it && parseItem(it.id).kind === 'crop' && cropById[parseItem(it.id).crop]);
       const pending = Object.entries(BUILDINGS).filter(([id, b]) => s.upgrades[b.plan] && !(id === 'coop' ? s.coop.built : s.upgrades[id]));
-      const have = [Math.floor(s.money / 100), matCount(s, 'wood'), matCount(s, 'stone'), Math.floor(s.energy)];
-      const sig = JSON.stringify(['wb', RECIPES.map((r) => canCraft(s, r.id)), fruits, pending.map(([id]) => id), have]);
+      const have = [Math.floor(s.money / 100), ...Object.keys(MATERIALS).map((m) => matCount(s, m)), Math.floor(s.energy)];
+      const sig = JSON.stringify(['wb', RECIPES.map((r) => canCraft(s, r.id)), fruits, pending.map(([id]) => id), have,
+        s.levels, s.tank, s.upgrades, s.coop.built, s.sprinklers.length, matCount(s, 'hose'), matCount(s, 'sprinkler'), fertDoses(s)]);
       renderIfChanged(els.panel, sig, () => {
         const list = el('div', 'recipes');
         // plans already sketched: what the build needs and what is still missing
@@ -595,9 +613,29 @@ export function createUI(cb) {
           seedBox.append(row);
         }
         list.append(seedBox);
+        if (s.upgrades.well) list.append(irrigationCard(s));
+        // buildings and the fields have upgrades too, on cards of their own
+        for (const [key, title, note] of [['well', 'Bunar', 'sazidan'], ['coop', 'Kokošinjac', 'popravljen'], ['field', 'Polje', 'parcele']]) {
+          if (!owns(s, key)) continue;
+          const card = el('div', `recipe${key === 'field' ? '' : ' owned'}`);
+          const top = el('div', 'recipe-head');
+          top.append(el('code', '', `${key === 'field' ? '' : '✔ '}${title}`), el('span', 'muted', note));
+          card.append(top, ...Object.keys(UPGRADES).filter((k) => UPGRADES[k].of === key).map((k) => upgradeLine(s, k)));
+          list.append(card);
+        }
         for (const r of RECIPES) {
           const problem = canCraft(s, r.id);
-          if (problem === 'owned') continue;
+          if (problem === 'owned') {
+            // made already: what it can still become
+            const lines = Object.keys(UPGRADES).filter((k) => UPGRADES[k].of === r.once);
+            if (!lines.length) continue;
+            const card = el('div', 'recipe owned');
+            const top = el('div', 'recipe-head');
+            top.append(el('code', '', `✔ ${r.name}`), el('span', 'muted', 'nadogradnje'));
+            card.append(top, ...lines.map((k) => upgradeLine(s, k)));
+            list.append(card);
+            continue;
+          }
           const card = el('div', 'recipe');
           const top = el('div', 'recipe-head');
           top.append(el('code', '', r.name), el('span', 'muted', [r.price ? formatMoney(zl(r.price)) : '', matsText(r.mats)].filter(Boolean).join(' · ')));
@@ -608,13 +646,70 @@ export function createUI(cb) {
           }[problem];
           const bld = Object.values(BUILDINGS).find((b) => b.plan === r.id);
           if (bld) top.lastChild.textContent = `gradnja ${formatMoney(zl(bld.price))} · ${matsText(bld)} · ${bld.energy} ⚡`;
-          card.append(top, el('p', 'small', r.desc), button(why ?? (bld ? 'Skiciraj plan' : 'Izradi'), () => cb.onCraft(r.id), { disabled: Boolean(problem) }));
+          const desc = r.nLine ? `${r.desc} Vreća ima ${recipeAmount(s, r)} doza.` : r.desc;
+          card.append(top, el('p', 'small', desc), button(why ?? (bld ? 'Skiciraj plan' : 'Izradi'), () => cb.onCraft(r.id), { disabled: Boolean(problem) }));
+          // things made many times (mulch, hives) are upgraded on their own card
+          card.append(...Object.keys(UPGRADES).filter((k) => UPGRADES[k].of === r.id).map((k) => upgradeLine(s, k)));
           list.append(card);
-          if (r.id === 'sprinkler') list.append(irrigationCard(s));
         }
         return [head(), button('📖 Kako se što radi (priručnik)', () => openGuide('workbench'), { cls: 'btn guide-link' }), list];
       });
     }
+  }
+
+  // The laptop at home: the farmer builds the web shop and the channels that bring online orders.
+  function laptop(s) {
+    const out = [el('p', 'small catalog-head', '💻 Laptop: prodaja preko interneta')];
+    out.push(el('p', 'small muted', hasWebshop(s)
+      ? `Online narudžbe stižu ujutro i plaćaju ${Math.round(ONLINE.markup * 100)} % više od štanda. Pakiraju se u kutiju za pakete na parkiralištu, a farmer ih nosi na poštu u grad.`
+      : `Farmer sam napravi web shop farme (radi za laptopom, bez plaće). Zatim stižu online narudžbe koje plaćaju ${Math.round(ONLINE.markup * 100)} % više od štanda.`));
+    for (const c of ONLINE.channels) {
+      const row = el('div', 'row fruit-row');
+      const done = s.online.channels[c.id];
+      const label = el('span', 'small grow');
+      label.append(el('span', '', `${done ? '✔ ' : ''}${c.name}`), el('span', 'muted', ` · ${c.desc}`));
+      row.append(label);
+      if (!done) {
+        const problem = onlineProblem(s, c.id);
+        const why = { nowebshop: 'prvo web shop', gigbusy: 'već radiš posao', intown: 'farmer je u gradu' }[problem];
+        row.append(button(why ?? `Napravi · ${c.hours} h · ${c.hours * GIG_ENERGY_PER_HOUR} ⚡`, () => cb.onBuildOnline(c.id), { disabled: Boolean(problem) }));
+      }
+      out.push(row);
+    }
+    if (hasWebshop(s)) {
+      const n = s.online.orders.length;
+      out.push(el('p', 'small', n ? `🌐 Otvorenih narudžbi: ${n}, spakirano ${parcelsReady(s)}. Popis je na mobitelu (Poslovi) i kod kutije za pakete.` : '🌐 Trenutno nema online narudžbi.'));
+    }
+    return out;
+  }
+
+  // Online orders at the parcel box: pack from the bag, then take the parcels to the post office.
+  function parcelBox(s) {
+    const out = [el('p', 'small catalog-head', '📦 Kutija za pakete (web shop)')];
+    if (!hasWebshop(s)) {
+      out.push(el('p', 'small muted', 'Ovdje se pakiraju online narudžbe. Web shop se radi na laptopu u kući.'));
+      return out;
+    }
+    if (!s.online.orders.length) out.push(el('p', 'small muted', 'Nema online narudžbi. Nove stižu ujutro.'));
+    for (const o of s.online.orders) {
+      const card = el('div', 'recipe');
+      const when = o.due === s.day ? 'danas' : `do ${dayNameGen(o.due)} (dan ${o.due})`;
+      const unit = goodById[o.crop].unit;
+      const have = requestHave(s, o);
+      card.append(
+        el('div', 'small', `${o.who}: ${o.kg} ${unit} ${goodById[o.crop].gen ?? goodById[o.crop].name.toLowerCase()}${o.tier > 2 || cropById[o.crop] ? ` ${stars(o.tier)} ili bolje` : ''}, poslati ${when}`),
+        el('div', 'small muted', o.packed ? `Plaća ${formatMoney(o.pay)} (vrijednost paketa +${Math.round(ONLINE.markup * 100)} %).`
+          : `Plaća vrijednost robe +${Math.round(ONLINE.markup * 100)} %, najmanje ${formatMoney(o.pay)}. U torbi: ${have} ${unit}${have >= o.kg ? ` → ${formatMoney(orderPay({ ...o, items: orderPick(s, o) }))}` : ''}.`),
+        o.packed ? el('p', 'small ok', '✔ Spakirano, čeka poštu')
+          : button(have >= o.kg ? `Spakiraj iz torbe · ${ONLINE.packEnergy} ⚡` : `Fali još ${o.kg - have} ${unit}`, () => cb.onPack(o.id), { disabled: have < o.kg }),
+      );
+      out.push(card);
+    }
+    const pp = postTripProblem(s);
+    const why = { noparcels: 'Nema spakiranih paketa', intown: 'Farmer je u gradu', posttoolate: `Prekasno: pošta radi do ${formatClock(ONLINE.postClose)}` }[pp];
+    out.push(el('p', 'small', `Pošta je u gradu (pješice ${MARKET.walk / 60} h, radi do ${formatClock(ONLINE.postClose)}). Pakete nosi i kad ide na tržnicu.`));
+    out.push(button(why ?? `Odnesi ${parcelsReady(s)} ${parcelsReady(s) === 1 ? 'paket' : parcelsReady(s) < 5 ? 'paketa' : 'paketa'} na poštu`, cb.onGoPost, { cls: 'btn primary', disabled: Boolean(pp) }));
+    return out;
   }
 
   // Customers' orders: what, by when, the extra pay, and a button to hand it over from the bag.
@@ -627,7 +722,7 @@ export function createUI(cb) {
       const when = r.due === s.day ? 'danas' : `do ${dayNameGen(r.due)} (dan ${r.due})`;
       card.append(
         el('div', 'small', `${r.who}: ${r.kg} kg ${cropById[r.crop].gen} ${stars(r.tier)} ili bolje, ${when}`),
-        el('div', 'small muted', `Plaća ${formatMoney(requestPay(r))} (+${Math.round(REQUESTS.bonus * 100)} %). U torbi: ${have} kg.`),
+        el('div', 'small muted', `Plaća vrijednost robe +${Math.round(REQUESTS.bonus * 100)} %, najmanje ${formatMoney(requestPay(r))}. U torbi: ${have} kg${have >= r.kg ? ` → ${formatMoney(requestPay(r, orderPick(s, r)))}` : ''}.`),
         button(have >= r.kg ? 'Predaj iz torbe' : `Fali još ${r.kg - have} kg`, () => cb.onFulfill(r.id), { disabled: have < r.kg }),
       );
       out.push(card);
@@ -643,9 +738,9 @@ export function createUI(cb) {
     const vp = vanTripProblem(s);
     const goods = countWhere(s.bag, isSellable);
     const sig = JSON.stringify(['market', m.stall, m.van, m.worker, tv && [tv.phase, tv.kg, tv.money], s.cargo, fp, vp, goods,
-      s.money >= zl(MARKET.van), s.money >= zl(MARKET.stall)]);
+      s.money >= zl(MARKET.van), s.money >= zl(MARKET.stall), s.online, s.online.orders.map((o) => requestHave(s, o)), postTripProblem(s), s.day]);
     renderIfChanged(els.panel, sig, () => {
-      const out = [head(), el('p', 'muted', `Cesta na sjever vodi u grad, ${MARKET.travel / 60} h vožnje. Tržnica radi ${formatClock(MARKET.open)}–${formatClock(MARKET.close)}: kupaca je puno više nego na štandu uz cestu i uzimaju po ${MARKET.kg[0]}–${MARKET.kg[1]} kg. Cijene su iste.`)];
+      const out = [head(), ...parcelBox(s), el('p', 'muted', `Cesta na sjever vodi u grad: pješice ${MARKET.walk / 60} h, kombijem ${MARKET.drive} min. Tržnica radi ${formatClock(MARKET.open)}–${formatClock(MARKET.close)}: kupaca je puno više nego na štandu uz cestu i uzimaju po ${MARKET.kg[0]}–${MARKET.kg[1]} kg. Cijene su iste.`)];
       out.push(el('p', 'small catalog-head', '🧺 Klupa na tržnici'));
       if (!m.stall) {
         out.push(el('p', 'small', 'Klupa se zakupljuje jednom, za cijelu sezonu.'));
@@ -661,7 +756,7 @@ export function createUI(cb) {
 
       out.push(el('p', 'small catalog-head', '🚐 Kombi i zaposlenik'));
       if (!m.van) {
-        out.push(el('p', 'small', `S kombijem i zaposlenikom roba sama ide na tržnicu: ${MARKET.worker} svako jutro u 6 h odveze ono što je utovareno i vrati se oko 14 h s novcem.`));
+        out.push(el('p', 'small', `S kombijem i zaposlenikom roba sama ide na tržnicu: ${MARKET.worker} svako jutro u 6 h odveze ono što je utovareno i vrati se oko ${formatClock(MARKET.close + MARKET.drive)} s novcem.`));
         out.push(button(`Kupi rabljeni kombi · ${formatMoney(zl(MARKET.van))}`, cb.onBuyVan, { disabled: s.money < zl(MARKET.van) }));
         return out;
       }
@@ -690,32 +785,55 @@ export function createUI(cb) {
     });
   }
 
-  const matsText = (m) => (m ? [m.wood && `${m.wood} drva`, m.stone && `${m.stone} kamena`].filter(Boolean).join(', ') : '');
 
+  // One upgrade line: name, level meter, what it gives now and next, and the button.
+  function upgradeLine(s, line) {
+    const u = UPGRADES[line];
+    const level = s.levels[line];
+    const max = u.values.length;
+    const box = el('div', 'upgrade');
+    const head = el('div', 'upgrade-head');
+    const meter = el('span', 'meter');
+    meter.style.gridTemplateColumns = `repeat(${max}, 1fr)`;
+    for (let l = 1; l <= max; l++) meter.append(el('span', l <= level ? 'on' : ''));
+    head.append(el('span', 'upgrade-name', `${u.name} ${level}/${max}`), meter);
+    box.append(head, el('p', 'small', `Sad: ${u.text(levelValue(s, line), level)}.`));
+    const step = nextStep(s, line);
+    if (step) {
+      const problem = upgradeProblem(s, line);
+      const mats = matsText(step);
+      const first = { pump: 'prvo montiraj pumpu', coop: 'prvo popravi kokošinjac', well: 'prvo sazidaj bunar' }[u.of] ?? 'prvo izradi';
+      const why = { requires: first, nomats: `u torbi treba ${mats}`, coins: 'nedovoljno novca' }[problem];
+      const row = el('div', 'row upgrade-next');
+      row.append(el('span', 'small muted grow', `Razina ${level + 1}: ${u.text(u.values[level], level + 1)}`),
+        button(why ?? `Nadogradi · ${[formatMoney(zl(step.price)), mats].filter(Boolean).join(' · ')}`, () => cb.onUpgrade(line), { disabled: Boolean(problem) }));
+      box.append(row);
+    } else box.append(el('p', 'small muted', 'Najviša razina.'));
+    return box;
+  }
+
+  // Irrigation: the parts, how many sprinklers the pump drives, the nozzles and the fertilizer tank.
   function irrigationCard(s) {
     const card = el('div', 'recipe');
     const top = el('div', 'recipe-head');
-    const level = s.irrigation;
-    const cost = irrigationCost(s);
-    const max = IRRIGATION_LEVELS;
     const hose = matCount(s, 'hose');
+    const cap = pumpCapacity(s);
     const parts = el('ul', 'parts');
     for (const [ok, text] of [
       [s.upgrades.well, 'bunar'],
-      [s.upgrades.pump, 'vodena pumpa na bunaru'],
+      [s.upgrades.pump, 'vodena pumpa na bunaru (Dostava)'],
       [hose >= HOSE_PER_SPRINKLER, `crijevo: ${hose} m u torbi (${HOSE_PER_SPRINKLER} m po prskalici)`],
-      [matCount(s, 'sprinkler') > 0 || s.sprinklers.length > 0, `prskalice: ${matCount(s, 'sprinkler')} u torbi, ${s.sprinklers.length} postavljeno`],
+      [matCount(s, 'sprinkler') > 0 || s.sprinklers.length > 0, `prskalice: ${matCount(s, 'sprinkler')} u torbi, ${s.sprinklers.length} od ${cap} postavljeno`],
     ]) parts.append(el('li', ok ? 'ok' : '', `${ok ? '✔' : '○'} ${text}`));
-    const now = sprinklerReach(level, 0, 0).length;
-    top.append(el('code', '', `Navodnjavanje · water.sh v${level}`), el('span', 'muted', cost === null ? 'max' : formatMoney(cost)));
-    const meter = el('div', 'meter');
-    for (let l = 1; l <= max; l++) meter.append(el('span', l <= level ? 'on' : ''));
-    const next = cost === null ? 'Najviša razina.' : `Sljedeća razina: ${sprinklerReach(level + 1, 0, 0).length} parcela po prskalici.`;
-    card.append(top, el('p', 'small', 'Sustav se slaže od dijelova: pumpa, crijevo i prskalice (Dostava na mobitelu, ponešto se nađe u šumi). Prskalica stoji na križanju četiri parcele, pa ne zauzima nijednu.'), parts, meter,
-      el('p', 'small', `Svaka prskalica sada zalijeva ${now} parcela oko sebe. ${next}`));
-    if (cost !== null) {
-      const why = !s.upgrades.well ? 'prvo sazidaj bunar' : s.money < cost ? 'nedovoljno novca' : null;
-      card.append(button(why ?? `Nadogradi na v${level + 1}`, () => cb.onIrrigation(), { disabled: Boolean(why) }));
+    top.append(el('code', '', 'Navodnjavanje · water.sh'), el('span', 'muted', s.upgrades.pump ? `${runningSprinklers(s).length} prskalica radi` : 'čeka pumpu'));
+    card.append(top, el('p', 'small', 'Prskalica stoji na križanju četiri parcele i svako jutro zalije te četiri. Pumpa određuje koliko prskalica radi, a mlaznice koliko dobro zalijevaju (ručno zalijevanje je 100 %).'),
+      parts, upgradeLine(s, 'pump'), upgradeLine(s, 'nozzles'));
+    if (s.levels.nozzles >= 4) {
+      const tank = el('div', 'upgrade');
+      const have = [3, 2, 1].filter((t) => s.tank[t]).map((t) => `${s.tank[t]} × ${stars(t)}`).join(', ');
+      tank.append(el('p', 'small', `🧪 Spremnik gnojiva: ${tankDoses(s)}/${TANK_SIZE} doza${have ? ` (${have})` : ''}. Prskalice svako jutro pognoje ono što raste a nije pognojeno, prvo najboljim.`),
+        button(fertDoses(s) ? `Ulij gnojivo iz torbe (${fertDoses(s)} doza)` : 'Nemaš gnojiva u torbi', () => cb.onFillTank(), { disabled: !fertDoses(s) || tankDoses(s) >= TANK_SIZE }));
+      card.append(tank);
     }
     return card;
   }
@@ -752,38 +870,51 @@ export function createUI(cb) {
     const sig = JSON.stringify(['shop', s.money, s.totalEarned, s.orders, s.coop.built, pump, buybackList(s), s.pet, ui.placing === 'remove']);
     renderIfChanged(els.shopTab, sig, () => {
       const out = [];
-      // what is already on its way, first: so nothing gets ordered twice by mistake
-      const ordered = (o) => (o.item ? `${o.n} ${shopItemById[o.item].unit} · ${shopItemById[o.item].name}` : `${o.n}× sjeme · ${cropById[o.crop].name}`);
-      if (s.orders.length) {
-        const box = el('div', 'orders');
-        box.append(el('p', 'small orders-head', '📦 Stiže sutra ujutro'));
-        s.orders.forEach((o, k) => {
-          const row = el('div', 'catalog-row');
-          const pack = orderPack(o);
-          row.append(icon(o.item ? (o.item === 'hen' ? 'egg' : o.item) : o.crop), el('span', 'grow', ordered(o)),
-            button(`Otkaži ${pack.n < o.n ? '1 paket' : ''}`.trim(), () => cb.onCancelOrder(k), { title: `Vrati ${formatMoney(pack.price)}` }));
-          box.append(row);
-        });
-        box.append(el('p', 'small muted', 'Do jutra se svaka narudžba može otkazati, novac se vraća u cijelosti.'));
-        out.push(box);
-      }
-      out.push(el('p', 'small muted', `Sve stiže sutra ujutro. Sjeme (paket od ${SEED_PACK}) ide u vrećicu, kokoši u kokošinjac, ostalo u škrinju.`));
-      const onWay = (match) => s.orders.filter(match).reduce((a, o) => a + o.n, 0);
-      const tag = (n, unit) => (n ? el('span', 'ordered-tag', `naručeno ${n}${unit ? ` ${unit}` : ''}`) : '');
+      // Like a web shop: every row has its price and a "− count +" stepper. The count is how many
+      // packs are on their way; "−" cancels one (money back), "+" orders one more. Nothing above
+      // the catalogue grows when ordering, so the row being clicked stays where it is.
+      const orderIndex = (match) => s.orders.findIndex(match);
+      const packs = (o) => (o ? Math.ceil(o.n / orderPack(o).n) : 0);
+      const paid = s.orders.reduce((a, o) => a + Math.round((orderPack(o).price * o.n) / orderPack(o).n), 0);
+      const totalPacks = s.orders.reduce((a, o) => a + packs(o), 0);
+      out.push(el('p', 'small cart', totalPacks
+        ? `📦 Sutra stiže ${totalPacks} ${totalPacks % 10 === 1 && totalPacks % 100 !== 11 ? 'stavka' : plots(totalPacks) === 'parcele' ? 'stavke' : 'stavki'} · ${formatMoney(paid)}`
+        : '📦 Košarica je prazna'));
+      out.push(el('p', 'small muted', `Sve stiže sutra ujutro i do jutra se može otkazati (−), novac se vraća u cijelosti. Sjeme (paket od ${SEED_PACK}) ide u vrećicu, kokoši u kokošinjac, ostalo u škrinju.`));
+      const stepper = (k, o, plus, { plusOff, plusTitle }) => {
+        const box = el('div', 'stepper');
+        const n = packs(o);
+        box.append(
+          button('−', () => cb.onCancelOrder(k), { cls: 'step', disabled: !n, title: n ? `Otkaži jedan (vrati ${formatMoney(orderPack(o).price)})` : 'Ništa nije naručeno' }),
+          el('span', `step-n${n ? ' on' : ''}`, String(n)),
+          button('+', plus, { cls: 'step', disabled: plusOff, title: plusTitle }));
+        return box;
+      };
+      const nameBox = (title, sub) => {
+        const name = el('span', 'grow');
+        name.append(el('span', 'catalog-name', title), el('span', 'catalog-sub', sub));
+        return name;
+      };
+      const price = (sr) => el('span', 'catalog-price', formatMoney(sr));
       const shopRow = (it) => {
         const row = el('div', 'catalog-row');
         const why = it.id === 'hen' && !s.coop.built ? 'treba kokošinjac'
           : it.id === 'pump' && pump ? { installed: 'već je na bunaru', ordered: 'već naručena', have: 'već je imaš' }[pump] : '';
-        const name = el('span', 'grow', `${it.name} · ${it.n} ${it.unit}${why ? ` · ${why}` : ''}`);
-        row.append(icon(it.id === 'hen' ? 'egg' : it.id), name, tag(onWay((o) => o.item === it.id), it.unit === 'kom' ? '' : it.unit),
-          button(formatMoney(zl(it.price)), () => cb.onOrderItem(it.id), { disabled: Boolean(why) || s.money < zl(it.price) }));
+        const k = orderIndex((o) => o.item === it.id);
+        const cost = zl(it.price);
+        row.append(icon(it.id === 'hen' ? 'egg' : it.id), nameBox(it.name, `${it.n} ${it.unit}${why ? ` · ${why}` : ''}`), price(cost),
+          stepper(k, s.orders[k], () => cb.onOrderItem(it.id), {
+            plusOff: Boolean(why) || s.money < cost,
+            plusTitle: why || (s.money < cost ? `Fali ti ${formatMoney(cost - s.money)}` : 'Naruči još jedan'),
+          }));
         return row;
       };
       const group = (title, ids) => {
         out.push(el('p', 'small catalog-head', title));
         for (const id of ids) out.push(shopRow(shopItemById[id]));
       };
-      group('Vrt', ['fertilizer', 'mulch']);
+      group('Vrt', ['fertilizer', 'mulch', 'jar']);
+      group('Materijal za strojeve', ['iron', 'plastic']);
       group('Navodnjavanje', ['pump', 'hose', 'sprinkler']);
       group('Kokošinjac', ['hen']);
       out.push(el('p', 'small catalog-head', `Sjeme (paket od ${SEED_PACK} sjemenki)`));
@@ -791,12 +922,14 @@ export function createUI(cb) {
         const row = el('div', 'catalog-row');
         row.append(icon(c.id));
         if (isUnlocked(s, c.id)) {
-          const price = packPrice(c.id);
+          const cost = packPrice(c.id);
+          const k = orderIndex((o) => !o.item && o.crop === c.id);
           // what the crop sells for next to what the seeds cost, so they can be compared
-          const name = el('span', 'grow');
-          name.append(el('span', 'catalog-name', c.name), el('span', 'catalog-sub', `plod ${formatMoney(zl(c.price))}/kg · ${c.yield} kg po parceli`));
-          row.append(name, tag(onWay((o) => !o.item && o.crop === c.id)),
-            button(formatMoney(price), () => cb.onOrder(c.id), { disabled: s.money < price, title: `Paket od ${SEED_PACK} sjemenki` }));
+          row.append(nameBox(c.name, `plod ${formatMoney(zl(c.price))}/kg · ${c.yield} kg po parceli`), price(cost),
+            stepper(k, s.orders[k], () => cb.onOrder(c.id), {
+              plusOff: s.money < cost,
+              plusTitle: s.money < cost ? `Fali ti ${formatMoney(cost - s.money)}` : `Naruči još jedan paket (${SEED_PACK} sjemenki)`,
+            }));
         } else {
           row.classList.add('locked');
           row.append(el('span', 'grow', `${c.name} · 🔒 kad ukupno zaradiš ${formatMoney(zl(c.unlock))}`));
@@ -835,14 +968,14 @@ export function createUI(cb) {
 
   function gigsTab(s) {
     const g = s.gigs.active;
-    const sig = JSON.stringify(['gigs', s.gigs.offers, g && [g.title, Math.round(g.left)], s.farmer.busy?.what, s.energy >= (g?.energy ?? 0), s.requests, s.day]);
+    const sig = JSON.stringify(['gigs', s.gigs.offers, g && [g.title, Math.round(g.left)], s.farmer.busy?.what, s.energy >= (g?.energy ?? 0), s.requests, s.day, s.online.orders]);
     renderIfChanged(els.gigsTab, sig, () => {
       const out = [el('p', 'small muted', 'Honorarci za susjede i lokalne firme. Farmer ih radi kod kuće za laptopom: troše vrijeme i energiju, a plaćaju odmah.')];
       if (g) {
         const total = (g.hours * 60) / 2;
         const pct = Math.round((1 - g.left / total) * 100);
         const row = el('div', 'gig active');
-        row.append(el('span', 'grow', `💻 ${g.title} · ${pct} %`), el('span', 'muted', formatMoney(g.pay)));
+        row.append(el('span', 'grow', `💻 ${g.title} · ${pct} %`), el('span', 'muted', g.online ? 'za farmu' : formatMoney(g.pay)));
         out.push(row);
         out.push(s.farmer.busy?.what === 'gig' ? el('p', 'small', 'Farmer radi u kući…') : button('Nastavi raditi', cb.onGoWork, { cls: 'btn' }));
       }
@@ -862,6 +995,16 @@ export function createUI(cb) {
         const when = r.due === s.day ? 'danas' : `do ${dayNameGen(r.due)}`;
         row.append(icon(r.crop, 'px-icon small-icon'), el('span', 'grow', `${r.who}: ${r.kg} kg ${stars(r.tier)}+ · ${when}`), el('span', 'muted', formatMoney(requestPay(r))));
         out.push(row);
+      }
+      if (hasWebshop(s)) {
+        out.push(el('p', 'small catalog-head', 'Online narudžbe (pakiraju se kod kutije na parkiralištu)'));
+        if (!s.online.orders.length) out.push(el('p', 'small muted', 'Trenutno nema online narudžbi.'));
+        for (const o of s.online.orders) {
+          const row = el('div', 'gig');
+          const when = o.due === s.day ? 'danas' : `do ${dayNameGen(o.due)}`;
+          row.append(icon(o.crop, 'px-icon small-icon'), el('span', 'grow', `${o.who}: ${o.kg} ${goodById[o.crop].unit}${cropById[o.crop] ? ` ${stars(o.tier)}+` : ''} · ${when}${o.packed ? ' · 📦' : ''}`), el('span', 'muted', formatMoney(o.pay)));
+          out.push(row);
+        }
       }
       return out;
     });
@@ -930,10 +1073,12 @@ export function createUI(cb) {
     } else if (ui.placing && ui.placing !== true) {
       text = `Postavljanje: ${itemName(ui.placing)} (imaš ${countWhere(s.bag, (k) => k === ui.placing)}). Klikni travu; zeleno može, crveno ne. Esc za kraj.`;
     } else if (corner?.near && s.sprinklers.some((p) => p.x === corner.x && p.y === corner.y)) {
-      text = `Prskalica (water.sh v${s.irrigation}): svako jutro zalije ${sprinklerReach(s.irrigation, 0, 0).length} parcela oko sebe${s.upgrades.pump ? '' : ' (kad pumpa bude na bunaru)'}. Klik: farmer je pokupi s crijevom.`;
+      const k = s.sprinklers.findIndex((p) => p.x === corner.x && p.y === corner.y);
+      const why = !s.upgrades.pump ? ' (kad pumpa bude na bunaru)' : k >= pumpCapacity(s) ? ` · ne radi: pumpa pogoni samo ${pumpCapacity(s)}, nadogradi je na radnom stolu` : '';
+      text = `Prskalica: svako jutro zalije 4 parcele oko sebe, ${Math.round(levelValue(s, 'nozzles') * 100)} % ručnog zalijevanja${why}. Klik: farmer je pokupi s crijevom.`;
     } else if (tile) {
       const [x, y] = tile;
-      const obj = objectAt(x, y);
+      const obj = objectAt(x, y) ?? (hasTap(s) && x === TAP[0] && y === TAP[1] ? 'tap' : null);
       const i = idx(x, y);
       const p = s.plots[i];
       const f = s.finds[findAt(s, x, y)];
@@ -941,7 +1086,8 @@ export function createUI(cb) {
       const hv = s.hives[hiveAt(s, x, y)];
       const dc = s.decor[decorAt(s, x, y)];
       if (hv) {
-        text = `Košnica: ${hv.honey} kg meda${hv.honey ? '. Klik: farmer ga skupi.' : '. Pčele rade, med je za dan-dva.'}`;
+        const jars = countWhere(s.bag, (id) => id === 'jar');
+        text = `Košnica: ${hv.honey}/${hiveCap(s)} kg meda${!hv.honey ? '. Pčele rade, med je za dan-dva.' : jars ? `. Klik: farmer ga skupi u tegle (u torbi ${jars}).` : '. Za med trebaju tegle u torbi (Dostava → Tegle za med).'}`;
       } else if (dc && dc.kind !== 'path') {
         text = `${DECOR[dc.kind].name}. Ukloniti se može na mobitelu (Dostava → Uređenje → Ukloni).`;
       } else if (fo) {
@@ -963,6 +1109,7 @@ export function createUI(cb) {
           pond: !s.upgrades.rod ? 'Ribnjak: ovdje se puni kanta. S pecaljkom (radni stol) ovdje se i peca.'
             : s.tool === 'rod' ? `Ribnjak: klik i farmer peca sam do mraka (sporo troši energiju). Klik drugdje ga zove natrag. Ulov danas: ${s.pond.caught}.`
               : 'Ribnjak: ovdje se puni kanta. Za pecanje uzmi pecaljku (5).',
+          tap: 'Slavina uz polje: klik napuni kantu.',
           market: s.market.van ? 'Parkiralište: kombi, utovar robe i put u grad na tržnicu.' : 'Put u grad: tržnica (zakup klupe), kasnije kombi i zaposlenik.',
         }[obj];
       } else if (isPlotTile(x, y) && !plotUnlocked(s, i)) {
@@ -978,7 +1125,7 @@ export function createUI(cb) {
         text = `${cropById[p.crop].name} je zrela: sad bi bila ${stars(tier)} (${TIER_NAMES[tier]})${late ? ' i gubi kvalitetu' : ''}. Istrune za ${days(ROT_DAY - p.ripeDays)}.`;
       } else if (p) {
         const care = [p.wet ? (p.wetLeft > 1 ? 'vlažna još sutra (malč)' : 'danas zalivena') : 'danas suha 💧', p.fert ? `pognojena (${stars(p.fert === true ? 2 : p.fert)})` : 'bez gnojiva', ...(p.mulch ? ['malč'] : [])].join(', ');
-        const left = daysLeft(p);
+        const left = daysLeft(p, s);
         text = `${cropById[p.crop].name}: još ${days(left)} uz zalijevanje · ${care}`;
       }
     }

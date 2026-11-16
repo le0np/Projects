@@ -4,11 +4,13 @@
 
 import {
   createState, tick, advance, command, sleep, coffee, eat, moveItem, craft, cropById, recipeById,
-  countWhere, extractSeeds, makeCompost, orderSeeds, startJob, upgradeIrrigation, orderItem, feedHens, acceptGig, sprinklerAt,
-  goWork, goodById, forageById, shopItemById, matCount, cancelOrder, stopFishing, fishById,
+  countWhere, extractSeeds, makeCompost, orderSeeds, startJob, upgrade, fillTank, orderItem, feedHens, acceptGig, sprinklerAt,
+  goWork, goodById, forageById, shopItemById, matCount, matsText, cancelOrder, stopFishing, fishById,
   placeItem, removeItem, fulfillRequest, sellBack, adoptPet, patPet, dayNameGen, rentStall, buyVan, hireWorker, goToMarket, sendVan, comeBack,
+  buildOnline, packOrder, goToPost, channelById,
 } from './sim.js';
-import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES } from './data.js';
+import { ONLINE } from './data.js';
+import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES, UPGRADES, TANK_SIZE } from './data.js';
 import { SAVE_KEY, OLDER_KEYS, serialize, deserialize } from './save.js';
 import { createRenderer } from './render.js';
 import { createUI, itemName, stars, formatMoney, plots } from './ui.js';
@@ -33,9 +35,9 @@ if (savedZoom > 0) renderer.setZoom(savedZoom);
 
 const ui = createUI({
   onTool, onSeed, onMove, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
-  onIrrigation, onOrderItem, onAcceptGig, onGoWork, onSetting,
+  onUpgrade, onFillTank, onOrderItem, onAcceptGig, onGoWork, onSetting,
   onRentStall, onBuyVan, onHire, onGoMarket, onSendVan, onComeBack, onCancelOrder, onCompost,
-  onPlaceItem, onRemoveMode, onFulfill, onSellBack, onAdopt, onNotifySetting,
+  onPlaceItem, onRemoveMode, onFulfill, onSellBack, onAdopt, onNotifySetting, onBuildOnline, onPack, onGoPost,
   onClosePanel: closePanel,
   onChange: refresh,
 });
@@ -92,13 +94,21 @@ function farmerSays(e) {
     case 'tooearly': return 'Još je rano za spavanje. Ima posla do večeri.';
     case 'nothingdry': return 'Sve je već zaliveno.';
     case 'coopbroken': return 'Kokoši mogu doći tek kad popravim kokošinjac.';
-    case 'nomats': if (e.what && BUILDINGS[e.what]) return buildingNeeds(e.what);
-      return e.mats ? `Za ovo trebam ${e.mats.wood} drva i ${e.mats.stone} kamena u torbi. Ima ih uz rub šume.` : 'Nemam dovoljno materijala.';
+    case 'nomats': {
+      if (e.what && BUILDINGS[e.what]) return buildingNeeds(e.what);
+      const need = matsText(e.mats);
+      if (!need) return 'Nemam dovoljno materijala.';
+      const machine = e.mats.iron || e.mats.plastic;
+      return `Za ovo trebam ${need} u torbi. ${machine ? 'Željezo i plastika se naručuju na mobitelu (Dostava), a ponekad se nađu među odbačenim dijelovima u šumi.' : 'Drva i kamenja ima uz rub šume.'}`;
+    }
+    case 'pumpfull': return `Pumpa pogoni najviše ${UPGRADES.pump.values[state.levels.pump - 1]} prskalica. Jaču pumpu nadograđujem na radnom stolu (Navodnjavanje).`;
+    case 'tankfull': return `Spremnik gnojiva je pun (${TANK_SIZE} doza).`;
+    case 'max': return 'To je već najbolje što može biti.';
     case 'notfood': return 'To kokoši ne jedu.';
     case 'feederfull': return 'Hranilica je puna.';
     case 'nothingtofert': return 'Nema ništa za pognojiti.';
     case 'noplan': return e.what === 'coop' ? 'Stari kokošinjac. Za popravak trebam plan: skicirat ću ga na radnom stolu.' : 'Ovdje bi bio dobar bunar, ali treba mi plan. Skicirat ću ga na radnom stolu.';
-    case 'coopfull': return 'U kokošinjcu ima mjesta za najviše 9 kokoši.';
+    case 'coopfull': return `U kokošinjcu ima mjesta za najviše ${e.max} kokoši. Proširuje se na radnom stolu (Kokošinjac).`;
     case 'nothingripe': return 'Još ništa nije zrelo.';
     case 'nomulch': return 'Nemam malča u torbi. Radim ga na radnom stolu od 2 drva ili ga naručim.';
     case 'mulched': return 'Ova je već malčirana.';
@@ -109,12 +119,17 @@ function farmerSays(e) {
     case 'hivemax': return `Više od ${HIVES.max} košnica ne treba.`;
     case 'noremove': return null;
     case 'nohoney': return 'Pčele još rade. Med će biti za dan-dva.';
+    case 'nojars': return `Med je spreman (${e.honey} kg), ali nemam tegle u torbi. Naručit ću ih na mobitelu (Dostava → Tegle za med).`;
     case 'requestshort': return `Za narudžbu mi fali još ${e.request.kg} kg dovoljno dobrog ploda u torbi.`;
     case 'fishdark': return 'Prekasno je za pecanje, već je mrak. Sutra ujutro.';
     case 'norod': return 'Nemam pecaljku. Napravit ću je na radnom stolu od 2 drva (📖 Priručnik → Pecanje).';
     case 'nostall': return 'Prvo moram zakupiti klupu na tržnici.';
     case 'nothingtosell': return 'Nemam ništa za prodaju u torbi.';
     case 'toolate': return 'Prekasno je za tržnicu, dok stignem bit će zatvorena.';
+    case 'noparcels': return 'Nemam spakiranih paketa. Pakiraju se kod kutije na parkiralištu.';
+    case 'posttoolate': return 'Prekasno je za poštu, dok stignem bit će zatvorena. Sutra ujutro.';
+    case 'nowebshop': return 'Prvo trebam napraviti web shop.';
+    case 'packed': return 'To je već spakirano.';
     case 'chestfull': return null; // the drone's problem: goes to the phone
     default: return null;
   }
@@ -146,8 +161,18 @@ async function onNotifySetting(on) {
 
 // ------------------------------------------------------------------ routing events
 
-let droneBatch = 0;
 let lastAwayNote = -1e9;
+// Routine news goes on the map, above the place it is about (the stand, the drone, the coop…);
+// the phone only gets what needs the player: a problem, a missed order, something to refill.
+const mapNote = (at, text, tone = 'info') => renderer.note(at, text, tone);
+// warnings that could repeat all day (the drone out of seeds…) go to the phone once a day
+const warned = new Set();
+function warnOnce(key, text) {
+  const k = `${state.day}:${key}`;
+  if (warned.has(k)) return;
+  warned.add(k);
+  ui.notify(text, 'err');
+}
 let jobTally = null; // quality counts while "harvest all" runs
 
 const tallyText = (t) => [5, 4, 3, 2, 1].filter((k) => t[k]).map((k) => `${stars(k)} ${t[k]} kg`).join(', ');
@@ -179,10 +204,7 @@ function report(events) {
         break;
       }
       case 'rain':
-        ui.notify(`🌧️ Danas pada kiša: zalila je sve posađeno (${e.n}). Kupaca će biti manje.`, 'info');
-        break;
-      case 'forecast':
-        ui.notify(`🌤️ Prognoza za sutra: ${e.tomorrow === 'rain' ? 'kiša 🌧️' : 'sunčano ☀️'}.`, 'info');
+        mapNote('house', `🌧️ Kiša je zalila sve posađeno (${e.n})`);
         break;
       case 'chestdecay':
         ui.notify(`📦 Plodovi u škrinji gube kvalitetu (${e.n} ${e.n === 1 ? 'hrpa' : 'hrpe'} pale za klasu). Hladnjača s radnog stola ih čuva.`, 'err');
@@ -196,10 +218,6 @@ function report(events) {
         break;
       case 'requestdone':
         ui.say(`Narudžba predana! ${e.who} plaća +${formatMoney(e.pay)}.`, 'happy');
-        ui.notify(`📝 Predano: ${e.kg} kg ${cropById[e.crop].gen} za ${e.who} · +${formatMoney(e.pay)}`, 'ok');
-        break;
-      case 'soldback':
-        ui.notify(`♻️ Otkup: ${itemName(e.id).toLowerCase()} × ${e.n} · +${formatMoney(e.money)}`, 'ok');
         break;
       case 'placeditem':
         break;
@@ -207,11 +225,13 @@ function report(events) {
         ui.say(`${itemName(e.id)} je natrag u torbi.`);
         break;
       case 'honey':
-        ui.say(`Med! +${e.n} kg.`, 'happy');
+        ui.say(`Med! +${e.n} kg u teglama.${e.left ? ` U košnici je ostalo još ${e.left} kg: fale tegle.` : ''}`, 'happy');
+        break;
+      case 'hatched':
+        mapNote('coop', `🐣 Izlegla se kokoš (sad ${e.hens})`, 'ok');
         break;
       case 'adopted':
         ui.say(`Dobrodošao${e.kind === 'cat' ? 'la' : ''}, ${e.name}!`, 'happy');
-        ui.notify(`${e.kind === 'dog' ? '🐕' : '🐈'} ${e.name} je stigao${e.kind === 'cat' ? 'la' : ''} na farmu. Klik na ${e.kind === 'dog' ? 'njega' : 'nju'} za maženje.`, 'ok');
         break;
       case 'patted':
         ui.say(e.gain ? `${e.kind === 'dog' ? 'Dobar pas' : 'Dobra maca'}, ${e.name}! +${e.gain} ⚡` : `${e.kind === 'dog' ? 'Vau!' : 'Mjau.'} 💛`, 'happy');
@@ -225,13 +245,11 @@ function report(events) {
         break;
       case 'caught':
         ui.say(`Upecao sam! ${goodById[e.fish].name} ${stars(e.tier)}, ${e.kg} kg.`, 'happy');
-        ui.notify(`🎣 Ulov: ${goodById[e.fish].name} ${stars(e.tier)}, ${e.kg} kg.`, 'ok');
         break;
       case 'fishstop': {
         const catchText = e.caught ? `Ulov danas: ${e.caught} ${e.caught === 1 ? 'riba' : e.caught < 5 ? 'ribe' : 'riba'}.` : 'Danas ništa nije zagrizlo.';
         if (e.reason === 'dark') {
           ui.say(`Pao je mrak, spremam pecaljku. ${catchText}`);
-          ui.notify(`🎣 Farmer je završio s pecanjem. ${catchText}`, 'info');
         } else if (e.reason === 'tired') ui.say(`Previše sam umoran za pecanje. ${catchText}`, 'sad');
         else if (e.reason !== 'bagfull') ui.say(`Spremam pecaljku. ${catchText}`);
         break;
@@ -240,40 +258,29 @@ function report(events) {
         ui.say('Klupa na tržnici je moja! Sad samo napuniti torbu.', 'happy');
         break;
       case 'vanbought':
-        ui.say('Kombi! Malo je star, ali vozi.', 'happy');
-        ui.notify('🚐 Kombi je na parkiralištu. Zaposli vozača i utovari robu: svako jutro vozi na tržnicu.', 'ok');
+        ui.say('Kombi! Malo je star, ali vozi. Sad još vozač i roba u kombiju.', 'happy');
         break;
       case 'hired':
-        ui.notify(`🚐 ${MARKET.worker} je zaposlen. Vozi svako jutro u 6 h, ako u kombiju ima robe.`, 'ok');
+        mapNote('lot', `🚐 ${MARKET.worker} je zaposlen: vozi u 6 h`, 'ok');
         break;
       case 'fired':
-        ui.notify(`🚐 ${MARKET.worker} više ne vozi. Kombi ostaje na parkiralištu.`, 'info');
+        mapNote('lot', `🚐 ${MARKET.worker} više ne vozi`);
         break;
       case 'tripstart':
         if (e.who === 'farmer') {
           closePanel();
-          ui.notify('🧺 Farmer je krenuo u grad na tržnicu. Farma za to vrijeme radi bez njega.', 'info');
-        } else ui.notify(`🚐 ${MARKET.worker} je krenuo kombijem na tržnicu (dnevnica −${formatMoney(e.wage)}).`, 'info');
+        } else mapNote('lot', `🚐 ${MARKET.worker} vozi na tržnicu · dnevnica −${formatMoney(e.wage)}`);
         break;
-      case 'triparrive':
-        ui.notify(e.who === 'farmer' ? '🧺 Farmer je stigao na tržnicu i slaže klupu.' : `🚐 ${MARKET.worker} je stigao na tržnicu.`, 'info');
-        break;
-      case 'tripback': {
-        const who = e.who === 'farmer' ? '🧺 Farmer' : `🚐 ${MARKET.worker}`;
-        const why = e.early ? 'pakira ranije' : e.soldOut ? 'je sve prodao' : 'tržnica se zatvara';
-        ui.notify(`${who}: ${why}, prodano ${e.kg} kg · ${formatMoney(e.money)}. Vraća se kući.`, 'ok');
-        break;
-      }
       case 'tripdone':
         if (e.who === 'farmer') {
           ui.say(e.kg ? `Doma sam! Na tržnici prodano ${e.kg} kg, +${formatMoney(e.money)}.` : 'Doma sam.', e.kg ? 'happy' : '');
         } else {
-          ui.notify(`🚐 ${MARKET.worker} se vratio: prodano ${e.kg} kg · +${formatMoney(e.money)}.${e.left ? ` U kombiju je ostalo ${e.left} (ide opet sutra).` : ' Kombi je prazan.'}`, 'ok');
+          mapNote('lot', `🚐 Prodano ${e.kg} kg · +${formatMoney(e.money)}${e.left ? ` · ostalo ${e.left}` : ''}`, 'ok');
           browserNote('🚐 Kombi se vratio', `Prodano ${e.kg} kg · +${formatMoney(e.money)}`);
         }
         break;
       case 'vanidle':
-        ui.notify(`🚐 Kombi je prazan pa ${MARKET.worker} danas ne vozi (dnevnica se ne plaća). Robu utovari na parkiralištu.`, 'info');
+        mapNote('lot', '🚐 Kombi je prazan, danas ne vozi');
         break;
       case 'open':
         ui.state.panel = e.panel;
@@ -286,15 +293,12 @@ function report(events) {
         break;
       case 'foraged': {
         const f = forageById[e.what];
-        const what = { wood: `${e.n} drva`, stone: `${e.n} kamena`, hose: `${e.n} m crijeva`, sprinkler: 'cijela prskalica' }[e.item] ?? `${e.n} kg`;
+        const what = { wood: `${e.n} drva`, stone: `${e.n} kamena`, iron: `${e.n} željeza`, plastic: `${e.n} plastike`, hose: `${e.n} m crijeva`, sprinkler: 'cijela prskalica' }[e.item] ?? `${e.n} kg`;
         ui.say(`${f.name[0].toUpperCase()}${f.name.slice(1)}! +${what}.`, 'happy');
         break;
       }
-      case 'forage':
-        ui.notify(`🍄 U šumi je preko noći niknulo: ${e.n}.`, 'info');
-        break;
       case 'laid':
-        if (e.n) ui.notify(`🐔 Kokoši su snijele ${e.n} ${e.n === 1 ? 'jaje' : 'jaja'}.`, 'ok');
+        if (e.n) mapNote('coop', `🥚 +${e.n} ${e.n === 1 ? 'jaje' : 'jaja'}`, 'ok');
         if (e.hungry) ui.notify(`🐔 Gladnih kokoši: ${e.hungry}. Stavi plodove u hranilicu.`, 'err');
         break;
       case 'eggs':
@@ -303,11 +307,30 @@ function report(events) {
       case 'fed':
         ui.say(`Hranilica: +${e.n} kg.`);
         break;
-      case 'gigoffers':
-        ui.notify(`💼 Novi poslovi: ${e.n}. Pogledaj karticu Poslovi.`, 'info');
-        break;
       case 'gigaccepted':
-        ui.say('Prihvaćeno. Idem doma za laptop.');
+        ui.say(e.online ? `Idem doma raditi: ${e.title}.` : 'Prihvaćeno. Idem doma za laptop.');
+        break;
+      case 'onlinebuilt': {
+        const c = channelById[e.channel];
+        ui.say(`${c.name} je gotov! 🌐`, 'happy');
+        ui.notify(e.channel === 'webshop'
+          ? `🌐 Web shop farme je online. Narudžbe stižu ujutro i plaćaju ${Math.round(ONLINE.markup * 100)} % više; pakiraju se u kutiju na parkiralištu i nose na poštu u grad.`
+          : `🌐 ${c.name} je gotov: online narudžbi će biti više.`, 'ok');
+        break;
+      }
+      case 'onlineorder':
+        ui.notify(`🌐 Online narudžba: ${e.who} želi ${e.kg} ${goodById[e.crop].unit} ${goodById[e.crop].gen}${cropById[e.crop] ? ` ${stars(e.tier)} ili bolje` : ''}, poslati do ${dayNameGen(e.due)} · ${formatMoney(e.pay)}. Pakira se kod kutije na parkiralištu.`, 'info');
+        browserNote('🌐 Online narudžba', `${e.who}: ${e.kg} ${goodById[e.crop].unit} ${goodById[e.crop].gen}`);
+        break;
+      case 'onlinemissed':
+        ui.notify(`🌐 Online narudžba je propala: ${e.who} nije dobio ${e.kg} ${goodById[e.crop].unit} ${goodById[e.crop].gen}.${e.packed ? ' Paket se vratio u škrinju.' : ''}`, 'err');
+        break;
+      case 'packed':
+        ui.say(`Spakirano za ${e.who}. 📦`, 'happy');
+        break;
+      case 'posted':
+        mapNote('lot', `📮 Pošta: ${e.n} ${e.n === 1 ? 'paket' : 'paketa'} · +${formatMoney(e.money)}`, 'ok');
+        ui.say(`Paketi su poslani! +${formatMoney(e.money)}`, 'happy');
         break;
       case 'gigstart':
         ui.say('Kodiram… 💻');
@@ -317,10 +340,7 @@ function report(events) {
         break;
       case 'gigdone':
         ui.say(`Gotovo! +${formatMoney(e.pay)}`, 'happy');
-        ui.notify(`💼 Plaćeno: ${e.title} · +${formatMoney(e.pay)}`, 'ok');
-        break;
-      case 'newfind':
-        ui.notify('🌱 Na imanju je nešto niknulo samo od sebe. Možda sjeme?', 'info');
+        mapNote('house', `💼 Plaćeno: +${formatMoney(e.pay)}`, 'ok');
         break;
       case 'composted':
         ui.say(`Kompost je gotov: vreća gnojiva ${stars(e.tier)}, ${e.doses} doza.${e.tier === 3 ? ' S ovim plod može biti za sajam!' : ''}`, 'happy');
@@ -347,15 +367,15 @@ function report(events) {
         break;
       }
       case 'harvest':
-        if (e.by === 'drone') droneBatch++;
-        else if (jobTally) jobTally[e.tier] = (jobTally[e.tier] ?? 0) + e.kg;
+        if (e.by === 'drone') break;
+        if (jobTally) jobTally[e.tier] = (jobTally[e.tier] ?? 0) + e.kg;
         else ui.say(`${cropById[e.crop].name} ${stars(e.tier)}, ${TIER_NAMES[e.tier]}! ${e.kg} kg.`, e.tier >= 3 ? 'happy' : e.tier === 1 ? 'sad' : '');
         break;
       case 'sale':
-        ui.notify(`🛒 Kupac je kupio ${e.qty} ${goodById[e.crop].unit}: ${goodById[e.crop].name}${cropById[e.crop] || fishById[e.crop] ? ` ${stars(e.tier)}` : ''} · +${formatMoney(e.money)}`, 'ok');
+        mapNote('stand', `🛒 ${e.qty} ${goodById[e.crop].unit} ${goodById[e.crop].name.toLowerCase()}${cropById[e.crop] || fishById[e.crop] ? ` ${stars(e.tier)}` : ''} · +${formatMoney(e.money)}`, 'ok');
         break;
       case 'nosale':
-        ui.notify('🛒 Kupac je došao do praznog štanda i otišao.', 'info');
+        mapNote('stand', '🛒 Kupac nije našao ništa');
         break;
       case 'refill':
         ui.say(`Kanta je puna (${e.water}).`);
@@ -366,17 +386,9 @@ function report(events) {
       case 'unlock':
         ui.notify(`📦 Novo u katalogu dostave: ${cropById[e.crop].name}.`, 'ok');
         break;
-      case 'ordered':
-        ui.notify(e.item
-          ? `📦 Naručeno: ${shopItemById[e.item].name.toLowerCase()} · ${e.n} ${shopItemById[e.item].unit} (−${formatMoney(e.price)}). Stiže sutra ujutro u škrinju.`
-          : `📦 Naručeno: ${e.n}× sjeme, ${cropById[e.crop].name} (−${formatMoney(e.price)}). Stiže sutra ujutro.`);
-        break;
-      case 'cancelled':
-        ui.notify(`📦 Otkazano: ${e.item ? `${e.n} ${shopItemById[e.item].unit} ${shopItemById[e.item].name.toLowerCase()}` : `${e.n}× sjeme, ${cropById[e.crop].name}`} · vraćeno ${formatMoney(e.price)}.`, 'info');
-        break;
       case 'delivered':
-        if (e.item === 'hen') ui.notify(`🐔 Stigle su kokoši (${e.n}), već su u kokošinjcu.`, 'ok');
-        else ui.notify(e.item ? `📦 Dostava je stigla u škrinju: ${shopItemById[e.item].name.toLowerCase()} · ${e.n} ${shopItemById[e.item].unit}.` : `📦 Dostava je stigla: ${e.n}× sjeme (${name(e.crop)}).`, 'ok');
+        if (e.item === 'hen') mapNote('coop', `🐔 Stiglo kokoši: ${e.n}`, 'ok');
+        else mapNote('chest', e.item ? `📦 ${shopItemById[e.item].name} · ${e.n} ${shopItemById[e.item].unit}` : `📦 Sjeme: ${name(e.crop)} × ${e.n}`, 'ok');
         break;
       case 'buildstart':
         ui.say({ pump: 'Montiram pumpu na bunar…', coop: 'Popravljam kokošinjac…' }[e.what] ?? 'Plan je tu. Zidam bunar…');
@@ -396,8 +408,29 @@ function report(events) {
           ui.notify('🪣 Bunar je sazidan. Za navodnjavanje trebaju pumpa, crijevo i prskalice (Dostava na mobitelu).', 'ok');
         }
         break;
-      case 'irrigation':
-        ui.say(`water.sh v${e.level}: svaka prskalica sad zalijeva ${e.reach} parcela.`, 'happy');
+      case 'upgraded': {
+        const u = UPGRADES[e.line];
+        ui.say(`${u.name}, razina ${e.level}: ${u.text(e.value, e.level)}.`, 'happy');
+        break;
+      }
+      case 'tankfilled':
+        ui.say(`Ulio sam ${e.n} doza gnojiva u spremnik (sad ${e.total}). Prskalice ga svako jutro razvode.`, 'happy');
+        break;
+      case 'fertigated':
+        mapNote('well', `🧪 Pognojeno ${e.n} ${plots(e.n)} · u spremniku ${e.left}`);
+        break;
+      case 'tankempty':
+        warnOnce('tank', '🧪 Spremnik gnojiva kod pumpe je prazan, a ima nepognojenih parcela. Ulij gnojivo na radnom stolu (Navodnjavanje).');
+        break;
+      case 'droneshort':
+        if (e.what === 'fert') warnOnce('dronefert', '🚁 Dron nema gnojiva: replant.py gnoji iz škrinje, a ondje ga više nema. Stavi gnojivo u škrinju.');
+        else warnOnce(`droneseeds:${e.crop}`, `🚁 Dron nema sjemena (${name(e.crop)}): parcela ostaje prazna. Naruči ga ili izvadi iz plodova.`);
+        break;
+      case 'unloaded':
+        mapNote('drone', `🚁 ${e.plots} ${plots(e.plots)} · ${e.kg} kg u škrinju`, 'ok');
+        break;
+      case 'droneleft':
+        mapNote('drone', `🚁 Ostavio ${e.n} ${plots(e.n)} (bolje od ${stars(e.tier)})`);
         break;
       case 'craft': {
         const r = recipeById[e.recipe];
@@ -426,7 +459,7 @@ function report(events) {
         ui.say(`Njam. +${e.gain} ⚡`);
         break;
       case 'shop':
-        ui.notify(e.open ? '🏪 Štand je otvoren, kupci dolaze.' : '🏪 Štand je zatvoren za danas.', 'info');
+        mapNote('stand', e.open ? '🏪 Otvoreno' : '🏪 Zatvoreno za danas');
         break;
       case 'slept':
       case 'passout':
@@ -448,22 +481,16 @@ function nightReport(e) {
     parts.push(`Preko noći sazrelo: ${e.summary.ripened}.`);
     browserNote('🌾 Sazrelo je', `Za berbu: ${e.summary.ripened}. Dan ${e.day}.`);
   }
-  if (e.summary.sprinkled) parts.push(`Prskalice su zalile ${e.summary.sprinkled} ${plots(e.summary.sprinkled)}.`);
   if (e.summary.rotted) parts.push(`Istrunulo: ${e.summary.rotted}.`);
   ui.notify(parts.join(' '), e.type === 'passout' ? 'err' : 'ok');
 }
 
-function flushDrone() {
-  if (!droneBatch) return;
-  ui.notify(`🚁 Dron je ubrao ${droneBatch} i odnio u škrinju.`, 'info');
-  droneBatch = 0;
-}
 
 function intro() {
   ui.toggle('phone', true); // a new farm starts with the phone open, so the first tips can be read in peace
   ui.notify('👋 Dobrodošlica na farmu! Klikni bilo gdje na mapi i farmer ode tamo. Klik na parcelu radi ono što farmer drži u ruci (tipke 1–4): ruke beru, sjeme sadi, kanta zalijeva, gnojivo gnoji. ▾ uz svaki alat radi to na svim parcelama ili samo za jednu vrstu. Kotačić miša mijenja zoom.', 'info');
   ui.notify('📖 Ne znaš kako se nešto radi ili pravi? Mobitel → Priručnik (npr. gnojivo, bunar, kokoši, prskalice).', 'info');
-  ui.notify('🎒📱 Torba i mobitel su ikone desno na mapi, ispod zooma (tipke T i M). Nove poruke iskaču u kutu mape, a sve ostaju ovdje na mobitelu.', 'info');
+  ui.notify('🎒📱 Torba i mobitel su ikone desno na mapi, ispod zooma (tipke T i M). Važne poruke (nešto fali ili treba tvoju pažnju) iskaču u kutu mape i ostaju ovdje na mobitelu. Sitnice, poput prodaje na štandu ili berbe drona, pišu se na mapi iznad štanda, drona, kokošinjca i škrinje.', 'info');
   ui.notify(`🌱 Sjeme se broji: nađi ga na imanju, izvadi iz plodova na radnom stolu ili naruči ovdje, pod "Dostava".`, 'info');
   ui.notify('🌲 Dok usjevi rastu: uz rub šume skupljaj gljive, kupine, drva i kamenje, popravi stari kokošinjac kod kuće, a na mobitelu pod Poslovi uzmi koji honorarac.', 'info');
   ui.notify('🌙 Usjevi rastu preko noći: svako jutro jedan dan ako su dan prije bili zaliveni, pola dana ako nisu. Dovoljno je zaliti jednom dnevno.', 'info');
@@ -522,6 +549,17 @@ function onComeBack() { act((ev) => comeBack(state, 'farmer', ev)); }
 function onGoMarket() {
   act((ev) => goToMarket(state, ev));
   if (state.farmer.task?.type === 'town') ui.say('Idem u grad na tržnicu!');
+}
+
+// ---- selling online
+function onBuildOnline(id) {
+  ui.state.panel = null;
+  act((ev) => buildOnline(state, id, ev));
+}
+function onPack(id) { act((ev) => packOrder(state, id, ev)); }
+function onGoPost() {
+  act((ev) => goToPost(state, ev));
+  if (state.farmer.task?.type === 'town') ui.say('Nosim pakete na poštu!');
 }
 
 // ---- settings, and time passing while the game is not on screen
@@ -628,8 +666,12 @@ function onJob(kind, crop = null) {
   act((ev) => startJob(state, kind, crop, ev));
 }
 
-function onIrrigation() {
-  act((ev) => upgradeIrrigation(state, ev));
+function onUpgrade(line) {
+  act((ev) => upgrade(state, line, ev));
+}
+
+function onFillTank() {
+  act((ev) => fillTank(state, ev));
 }
 
 function onCancelOrder(k) {
@@ -784,7 +826,6 @@ function frame(now) {
 
 // quiet autosave so closing the tab never loses much; sleeping is the "real" save
 setInterval(save, 30_000);
-setInterval(flushDrone, 10_000);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) save();
   else catchUp();

@@ -1,9 +1,9 @@
 // Draws the world with a camera that follows the farmer.
 // Art comes from art.js (generated once and cached as canvases); game state from sim.js.
 
-import { W, H, MAP, HOUSE, STAND, COOP_AREA, LOT, POND_CENTER, HOUSE_DOOR, xy } from './world.js';
+import { W, H, MAP, HOUSE, STAND, COOP_AREA, LOT, POND_CENTER, HOUSE_DOOR, TAP, FIELD_A, FIELD_B, xy } from './world.js';
 import { MARKET, GAME_MIN_PER_SEC, DECOR } from './data.js';
-import { plotUnlocked, parseItem, sprinklerReach, sprinklerAt, placeProblem, decorAt } from './sim.js';
+import { plotUnlocked, parseItem, sprinklerReach, sprinklerAt, placeProblem, decorAt, pumpCapacity, hasTap, levelValue } from './sim.js';
 import { Pix, hash01, withAlpha } from './pixel.js';
 import * as A from './art.js';
 
@@ -43,7 +43,7 @@ const shadowSprite = (w) => art(`shadow:${w}`, () => {
 
 // ------------------------------------------------------------------ static props (y-sorted with people)
 
-function buildProps(field2, hasWell, coopBuilt, hasPump, cold) {
+function buildProps(field2, hasWell, coopBuilt, hasPump, cold, tap) {
   const list = [];
   const at = (x, y) => (x >= 0 && y >= 0 && x < W && y < H ? MAP[y][x] : '');
   for (let ty = 0; ty < H; ty++) {
@@ -71,6 +71,7 @@ function buildProps(field2, hasWell, coopBuilt, hasPump, cold) {
     ? { img: art('well', A.well), x: 15 * TS - 4, y: 6 * TS - 20, base: 6 * TS + 30 }
     : { img: art('wellSite', A.wellSite), x: 15 * TS - 4, y: 6 * TS - 20, base: 6 * TS + 30 });
   if (hasPump) list.push({ img: art('pumpProp', A.pumpProp), x: 16 * TS + 2, y: 6 * TS + 8, base: 6 * TS + 28 });
+  if (tap) list.push({ img: art('tap', A.tap), x: TAP[0] * TS + 6, y: TAP[1] * TS - 16, base: TAP[1] * TS + 31 });
   list.push({ img: art('workbench', A.workbench), x: 3 * TS - 6, y: 8 * TS - 8, base: 8 * TS + 30 });
   if (!field2) list.push({ img: art('sign', A.sign), x: 21 * TS, y: 13 * TS - 8, base: 13 * TS + 30 });
   list.push({ img: art('townSign', A.townSign), x: LOT.x * TS - 12, y: LOT.y * TS - 30, base: LOT.y * TS + 8 });
@@ -100,6 +101,22 @@ const LIGHTS = [
 
 const TIER_COLORS = ['', '#c9c2b6', '#f1ece0', '#a8ec7e', '#ffd84a', '#d9a8ff'];
 
+const NOTE_MS = 5000;
+const NOTE_MAX = 3;
+const NOTE_TONES = { ok: '#a8ec7e', info: '#8cc6f0', err: '#ff8f7f' };
+// world pixel just above each place that gets notes (the drone's moves with it)
+function noteAnchor(s, at) {
+  if (at === 'drone') return [s.drone.x * TS + 16, s.drone.y * TS - 22];
+  return {
+    stand: [(STAND.x + 1) * TS, STAND.y * TS - 26],
+    coop: [(COOP_AREA.x + 1) * TS, COOP_AREA.y * TS - 26],
+    chest: [11 * TS + 16, 8 * TS - 4],
+    lot: [(LOT.x + 1) * TS, LOT.y * TS - 32],
+    well: [15 * TS + 16, 6 * TS - 22],
+    house: [(HOUSE.x + HOUSE.w / 2) * TS, HOUSE.y * TS - 20],
+  }[at] ?? [s.farmer.x * TS + 16, s.farmer.y * TS - 30];
+}
+
 // ------------------------------------------------------------------ renderer
 
 export function createRenderer(canvas) {
@@ -116,7 +133,7 @@ export function createRenderer(canvas) {
   let props = [];
   let builtFor = null;
   const cam = { x: 0, y: 0, ready: false };
-  const fx = { floats: [], splashes: [], sprays: [], smoke: [], hover: null, last: 0, smokeTimer: 0 };
+  const fx = { floats: [], notes: [], splashes: [], sprays: [], smoke: [], hover: null, last: 0, smokeTimer: 0 };
 
   const waterTiles = [];
   const fireflyHomes = [];
@@ -279,10 +296,10 @@ export function createRenderer(canvas) {
   function draw(s, now, opts = {}) {
     const dt = fx.last ? Math.min(0.1, (now - fx.last) / 1000) : 0;
     fx.last = now;
-    const key = `${s.upgrades.field2}|${s.upgrades.well}|${s.coop.built}|${s.upgrades.pump}|${s.upgrades.coldroom}`;
+    const key = `${s.upgrades.field2}|${s.upgrades.well}|${s.coop.built}|${s.upgrades.pump}|${s.upgrades.coldroom}|${hasTap(s)}`;
     if (builtFor !== key) {
       if (!ground || !builtFor || builtFor.split('|')[0] !== String(s.upgrades.field2)) ground = toCanvas(A.terrain(s.upgrades.field2));
-      props = buildProps(s.upgrades.field2, s.upgrades.well, s.coop.built, s.upgrades.pump, s.upgrades.coldroom);
+      props = buildProps(s.upgrades.field2, s.upgrades.well, s.coop.built, s.upgrades.pump, s.upgrades.coldroom, hasTap(s));
       builtFor = key;
     }
     updateCamera(s, dt);
@@ -312,19 +329,38 @@ export function createRenderer(canvas) {
         if (s.plots[i] && plotUnlocked(s, i)) drawPlot(s, i, now);
       }
     }
+    // the greenhouse: glass panes on a light frame over the fields
+    if (levelValue(s, 'greenhouse')) {
+      for (const f of s.upgrades.field2 ? [FIELD_A, FIELD_B] : [FIELD_A]) {
+        const gx = (f.x + 1) * TS;
+        const gy = (f.y + 1) * TS;
+        const gw = (f.w - 2) * TS;
+        const gh = (f.h - 2) * TS;
+        ctx.fillStyle = 'rgba(205,235,255,.10)';
+        ctx.fillRect(gx, gy, gw, gh);
+        ctx.fillStyle = 'rgba(235,248,255,.38)';
+        for (let k = 0; k <= f.w - 2; k += 2) ctx.fillRect(gx + k * TS - (k ? 1 : 0), gy, 1, gh);
+        for (let k = 0; k <= f.h - 2; k += 2) ctx.fillRect(gx, gy + k * TS - (k ? 1 : 0), gw, 1);
+        ctx.fillStyle = 'rgba(255,255,255,.16)'; // a glint across each pane
+        for (let k = 0; k < f.w - 2; k += 2) ctx.fillRect(gx + k * TS + 10, gy + 4, 3, gh - 8);
+      }
+    }
     fx.sprays = fx.sprays.filter((sp) => now - sp.t0 < 1200);
     // sprinklers stand on plot crossings: (x, y) is a grid corner
-    for (const sp of s.sprinklers) {
+    // the ones the pump can't drive stand there faded
+    s.sprinklers.forEach((sp, k) => {
       const spraying = fx.sprays.some((f) => f.x === sp.x && f.y === sp.y);
       const frame = spraying ? Math.floor(now / 80) % 4 : 0;
+      if (k >= pumpCapacity(s)) ctx.globalAlpha = 0.45;
       img(art(`sprinkler${frame}`, () => A.sprinkler(frame)), sp.x * TS - 16, sp.y * TS - 26);
-    }
+      ctx.globalAlpha = 1;
+    });
 
     // which plots a sprinkler reaches (hovering one, or choosing where to put one)
     const c = fx.corner;
     if (c && (opts.placing === true || (c.near && sprinklerAt(s, c.x, c.y) >= 0))) {
       ctx.fillStyle = 'rgba(90,175,255,.22)';
-      for (const [x, y] of sprinklerReach(s.irrigation, c.x, c.y)) {
+      for (const [x, y] of sprinklerReach(c.x, c.y)) {
         if (s.plots[y * W + x] && plotUnlocked(s, y * W + x)) ctx.fillRect(x * TS + 1, y * TS + 1, TS - 2, TS - 2);
       }
       if (opts.placing === true) {
@@ -403,6 +439,19 @@ export function createRenderer(canvas) {
       const dx = Math.round(d.x * TS + 1);
       const dy = Math.round(d.y * TS - 20 + bob);
       img(art(`drone${Math.floor(now / 45) % 2}`, () => A.drone(Math.floor(now / 45) % 2)), dx, dy);
+      // a crate under it while it carries produce to the chest
+      if (d.load?.length) {
+        ctx.fillStyle = '#3a2614';
+        ctx.fillRect(dx + 9, dy + 13, 12, 8);
+        ctx.fillStyle = '#9a6a3a';
+        ctx.fillRect(dx + 10, dy + 14, 10, 6);
+        ctx.fillStyle = '#c8894a';
+        ctx.fillRect(dx + 10, dy + 16, 10, 1);
+        ctx.fillStyle = '#e04a3a';
+        ctx.fillRect(dx + 12, dy + 12, 3, 2);
+        ctx.fillStyle = '#6fbf4a';
+        ctx.fillRect(dx + 16, dy + 12, 2, 2);
+      }
       if (Math.floor(now / 380) % 2) {
         ctx.fillStyle = '#7dff8a';
         ctx.fillRect(dx + 14, dy + 7, 2, 1);
@@ -428,11 +477,31 @@ export function createRenderer(canvas) {
     }
 
     drawBees(s, now);
+    drawParcels(s);
     drawPlacing(s, opts, now);
     drawEffects(s, now, dt, cx, cy, viewW, viewH);
     if (s.weather === 'rain') drawRain(now, cx, cy, viewW, viewH);
     drawMarkers(s, now);
     drawNight(s, now, cx, cy, u);
+    drawNotes(s, now, cx, cy);
+  }
+
+  // Packed parcels wait in a stack by the town sign until the farmer takes them to the post office.
+  function drawParcels(s) {
+    const n = Math.min(5, s.online.orders.filter((o) => o.packed).length);
+    const spots = [[0, 0], [11, 0], [5, -7], [16, -7], [10, -14]];
+    for (let k = 0; k < n; k++) {
+      const x = LOT.x * TS - 26 + spots[k][0];
+      const y = LOT.y * TS + 22 + spots[k][1];
+      ctx.fillStyle = '#1a120b';
+      ctx.fillRect(x - 1, y - 1, 12, 10);
+      ctx.fillStyle = '#b8874f';
+      ctx.fillRect(x, y, 10, 8);
+      ctx.fillStyle = '#d6a96b';
+      ctx.fillRect(x, y, 10, 2);
+      ctx.fillStyle = '#e9dcc0'; // tape
+      ctx.fillRect(x + 4, y, 2, 8);
+    }
   }
 
   // Fishing: the rod held out over the water, the line and a bobber that dips when a fish bites.
@@ -611,7 +680,7 @@ export function createRenderer(canvas) {
   function vanPose(s) {
     if (!s.market.van) return null;
     const t = s.market.trips.van;
-    const travel = MARKET.travel / GAME_MIN_PER_SEC;
+    const travel = MARKET.drive / GAME_MIN_PER_SEC;
     const park = (LOT.x + 1) * TS;
     const ground = (LOT.y + LOT.h) * TS - 4;
     const north = 44 * TS + 16; // northbound lane
@@ -745,6 +814,41 @@ export function createRenderer(canvas) {
     }
     ctx.globalAlpha = 1;
     ctx.textAlign = 'center';
+  }
+
+  // Small notes above the place they are about: what a customer bought at the stand, what the
+  // drone brought to the chest… The phone only gets what needs the player. Newest sits lowest,
+  // older ones are pushed up; at most NOTE_MAX per place, each fades out after NOTE_MS.
+  // Drawn last, in screen pixels: the same small size at any zoom, readable at night, kept inside the map.
+  function drawNotes(s, now, cx, cy) {
+    fx.notes = fx.notes.filter((n) => now - n.t0 < NOTE_MS);
+    if (!fx.notes.length) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.font = 'bold 11px ui-monospace, Menlo, Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const stack = {};
+    for (let k = fx.notes.length - 1; k >= 0; k--) {
+      const n = fx.notes[k];
+      const [wx, wy] = noteAnchor(s, n.at);
+      const x = (wx - cx) * view;
+      const y = (wy - cy) * view;
+      const row = (stack[n.at] = (stack[n.at] ?? -1) + 1);
+      if (y < 0 || y > cssH + 40 || x < -200 || x > cssW + 200) continue; // that place is out of view
+      const age = now - n.t0;
+      const rise = Math.min(1, age / 250);
+      ctx.globalAlpha = Math.min(rise, Math.max(0, (NOTE_MS - age) / 700));
+      const w = Math.ceil(ctx.measureText(n.text).width) + 12;
+      const bx = Math.round(Math.max(4, Math.min(cssW - 4 - w, x - w / 2)));
+      const by = Math.max(2 + row * 19, Math.round(y - 16 - row * 19 - rise * 4));
+      ctx.fillStyle = 'rgba(22,20,17,.88)';
+      ctx.fillRect(bx, by, w, 17);
+      ctx.fillStyle = NOTE_TONES[n.tone] ?? NOTE_TONES.info;
+      ctx.fillRect(bx, by + 16, w, 1);
+      ctx.fillText(n.text, bx + w / 2, by + 9);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textBaseline = 'alphabetic';
   }
 
   // "+3 (gold coin) 50 (silver coin)", centred on x, text baseline at y
@@ -896,6 +1000,12 @@ export function createRenderer(canvas) {
     canZoom(dir) {
       const levels = zoomLevels();
       return dir > 0 ? zoom < levels[levels.length - 1] : zoom > levels[0];
+    },
+    // a note on the map above a place: 'stand', 'drone', 'coop', 'chest', 'lot', 'well', 'house'
+    note(at, text, tone = 'info') {
+      fx.notes.push({ at, text, tone, t0: performance.now() });
+      const here = fx.notes.filter((n) => n.at === at);
+      if (here.length > NOTE_MAX) fx.notes.splice(fx.notes.indexOf(here[0]), 1);
     },
     // CSS position of a world pixel, relative to the canvas
     worldToCanvas(wx, wy) {

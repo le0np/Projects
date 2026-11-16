@@ -1,9 +1,12 @@
 // Turning state into a string and back. Anything unexpected falls back to safe values.
 
-import { createState, shopItemById, cropById, parseItem, isSellable, TOOLS, canSize, forageById, isCornerSpot } from './sim.js';
 import {
-  SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, IRRIGATION_R2, COOP, FORAGE_MAX, GIGS, MARKET, GAME_MIN_PER_SEC, FISHING,
-  REQUESTS, HIVES, DECOR, PETS,
+  createState, shopItemById, cropById, parseItem, isSellable, TOOLS, canSize, forageById, isCornerSpot,
+  chestSize, hensMax, feederCap, hiveCap, levelValue, goodById, channelById, orderPay,
+} from './sim.js';
+import {
+  SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, UPGRADES, TANK_SIZE, COOP, FORAGE_MAX, GIGS, MARKET, GAME_MIN_PER_SEC, FISHING,
+  REQUESTS, HIVES, DECOR, PETS, ONLINE,
 } from './data.js';
 import { W, H, isWalkable, isPlotTile, OBJECTS, charAt } from './world.js';
 
@@ -55,7 +58,7 @@ export function deserialize(raw) {
   // v2/v3 used plain coins (1 coin = 40 sr) and grew crops by the second.
   const fromV2 = d.version === 2;
   const legacy = d.version === 2 || d.version === 3;
-  if (d.version !== SAVE_VERSION && d.version !== 4 && d.version !== 5 && !legacy) return fresh;
+  if (d.version !== SAVE_VERSION && ![4, 5, 6, 7, 8].includes(d.version) && !legacy) return fresh;
 
   const s = fresh.state;
   const big = Number.MAX_SAFE_INTEGER;
@@ -77,9 +80,28 @@ export function deserialize(raw) {
     s.orders = d.orders.slice(0, 20).filter((o) => o && (o.item ? shopItemById[o.item] : cropById[o.crop]))
       .map((o) => (o.item ? { item: o.item, n: int(o.n, 1, 999, 1) } : { crop: o.crop, n: int(o.n, 1, 999, 5) }));
   }
-  s.irrigation = int(d.irrigation, 1, IRRIGATION_R2.length, 1);
   // before v5 sprinklers worked without a pump: keep old farms watering
   if (d.version < 5 && Array.isArray(d.sprinklers) && d.sprinklers.length) s.upgrades.pump = true;
+  // upgrade levels (v7)
+  for (const [k, u] of Object.entries(UPGRADES)) s.levels[k] = int(d.levels?.[k], 1, u.values.length, 1);
+  for (const t of [1, 2, 3]) s.tank[t] = int(d.tank?.[t], 0, TANK_SIZE, 0);
+  if (!d.levels) {
+    // before v7: the drone picked up to ★★★, irrigation had 10 levels of reach and sprinkler
+    // water counted 75 %. Nobody loses anything: ★★★ camera, 80 % nozzles (more for those who
+    // had upgraded a lot), and a pump that drives the sprinklers already placed.
+    if (s.upgrades.drone) s.levels.droneTier = 2;
+    const irr = int(d.irrigation, 1, 10, 1);
+    if (s.upgrades.pump || irr > 1) s.levels.nozzles = irr >= 5 ? 3 : 2;
+    const placed = Array.isArray(d.sprinklers) ? d.sprinklers.length : 0;
+    s.levels.pump = placed > 12 ? 3 : placed > 6 ? 2 : 1;
+  }
+  // before v8 the stand had an SEO board (+60 % customers): it is now the top level of advertising
+  if (d.upgrades?.seo === true) {
+    s.upgrades.ads = true;
+    s.levels.ads = UPGRADES.ads.values.length;
+  }
+  // the cold room's shelves (v8) make the chest bigger
+  while (s.chest.length < chestSize(s)) s.chest.push(null);
 
   // the woods: keep the saved spots (older saves keep the fresh ones)
   if (Array.isArray(d.forage)) {
@@ -88,17 +110,23 @@ export function deserialize(raw) {
   }
   if (d.coop && typeof d.coop === 'object') {
     s.coop.built = d.coop.built === true;
-    s.coop.hens = s.coop.built ? int(d.coop.hens, 0, COOP.maxHens, COOP.hens) : 0;
-    s.coop.feed = Math.round(num(d.coop.feed, 0, COOP.feedCap, 0) * 10) / 10;
+    s.coop.hens = s.coop.built ? int(d.coop.hens, 0, hensMax(s), COOP.hens) : 0;
+    s.coop.feed = Math.round(num(d.coop.feed, 0, feederCap(s), 0) * 10) / 10;
     s.coop.eggs = int(d.coop.eggs, 0, COOP.eggCap, 0);
+    s.coop.hatch = levelValue(s, 'incubator') ? int(d.coop.hatch, 0, levelValue(s, 'incubator'), 0) : 0;
   }
   const titles = new Set(GIGS.map((g) => g.title));
-  const gig = (g) => (g && titles.has(g.title) ? {
-    id: int(g.id, 1, big, 1), title: g.title, hours: int(g.hours, 1, 8, 1),
-    pay: int(g.pay, 0, 1e6, 0), energy: int(g.energy, 0, MAX_ENERGY, 0),
-  } : null);
+  // a gig, or own work on the web shop (online: the channel being built, unpaid)
+  const gig = (g) => {
+    const own = channelById[g?.online];
+    if (!g || (!titles.has(g.title) && !own)) return null;
+    return {
+      id: int(g.id, 1, big, 1), title: own ? own.name : g.title, hours: int(g.hours, 1, 8, 1),
+      pay: own ? 0 : int(g.pay, 0, 1e6, 0), energy: int(g.energy, 0, MAX_ENERGY, 0), ...(own ? { online: own.id } : {}),
+    };
+  };
   if (d.gigs && typeof d.gigs === 'object') {
-    s.gigs.offers = Array.isArray(d.gigs.offers) ? d.gigs.offers.slice(0, 5).map(gig).filter(Boolean) : [];
+    s.gigs.offers = Array.isArray(d.gigs.offers) ? d.gigs.offers.slice(0, 5).map(gig).filter((g) => g && !g.online) : [];
     const a = gig(d.gigs.active);
     s.gigs.active = a ? { ...a, left: num(d.gigs.active.left, 0, a.hours * 60, a.hours * 30) } : null;
     s.gigs.done = int(d.gigs.done, 0, big, 0);
@@ -111,7 +139,7 @@ export function deserialize(raw) {
   }
   s.water = int(d.water, 0, canSize(s), canSize(s));
   if (d.pond && typeof d.pond === 'object') {
-    s.pond.fish = int(d.pond.fish, 0, FISHING.daily.length - 1, s.pond.fish);
+    s.pond.fish = int(d.pond.fish, 0, levelValue(s, 'rodNet'), s.pond.fish);
     s.pond.caught = int(d.pond.caught, 0, 99, 0);
   }
   if (s.tool === 'rod' && !s.upgrades.rod) s.tool = 'hand';
@@ -138,10 +166,12 @@ export function deserialize(raw) {
         wetDays: legacy ? growDays : num(p.wetDays, 0, growDays, 0),
         growDays,
         fert: p.fert === true ? 2 : int(p.fert, 0, 3, 0),
-        mulch: p.mulch === true,
+        // before v8 mulch was just on or off (two days)
+        mulch: p.mulch === true ? 2 : int(p.mulch, 0, 3, 0),
         wetLeft: p.wetLeft === undefined ? (p.wet === true && !legacy ? 1 : 0) : int(p.wetLeft, 0, 3, 0),
         ripeDays: legacy ? 0 : int(p.ripeDays, 0, 99, 0),
         rotten: p.rotten === true,
+        pollen: p.pollen === true,
       };
     }
   }
@@ -154,7 +184,7 @@ export function deserialize(raw) {
   if (d.market && typeof d.market === 'object') {
     for (const k of ['stall', 'van', 'worker']) s.market[k] = d.market[k] === true;
     s.market.worker = s.market.worker && s.market.van;
-    const travel = MARKET.travel / GAME_MIN_PER_SEC;
+    const travel = Math.max(MARKET.walk, MARKET.drive) / GAME_MIN_PER_SEC;
     const trip = (t) => (t && ['go', 'sell', 'back'].includes(t.phase) ? {
       phase: t.phase, left: num(t.left, 0, travel, 0), timer: num(t.timer, 0, 60, 1),
       kg: int(t.kg, 0, big, 0), money: int(t.money, 0, big, 0),
@@ -172,6 +202,24 @@ export function deserialize(raw) {
       kg: int(r.kg, 1, 99, 1), tier: int(r.tier, 1, 5, 2), due: int(r.due, 1, 1e6, s.day),
     }));
   }
+  // selling online (v9)
+  if (d.online && typeof d.online === 'object') {
+    for (const c of ONLINE.channels) s.online.channels[c.id] = d.online.channels?.[c.id] === true;
+    if (!s.online.channels.webshop) for (const c of ONLINE.channels) s.online.channels[c.id] = false;
+    if (Array.isArray(d.online.orders)) {
+      s.online.orders = d.online.orders.slice(0, ONLINE.max).filter((o) => o && goodById[o.crop]).map((o) => {
+        const order = {
+          id: int(o.id, 1, big, 1), who: typeof o.who === 'string' ? o.who.slice(0, 40) : 'kupac', crop: o.crop,
+          kg: int(o.kg, 1, 99, 1), tier: int(o.tier, 1, 5, 2), due: int(o.due, 1, 1e6, s.day), packed: o.packed === true, items: [],
+        };
+        if (order.packed && Array.isArray(o.items)) {
+          order.items = o.items.slice(0, 6).filter((it) => it && isSellable(it.id)).map((it) => ({ id: it.id, n: int(it.n, 1, 999, 1) }));
+        }
+        order.pay = orderPay(order);
+        return order;
+      });
+    }
+  }
   const freeGrass = (x, y, taken) => ['.', '*'].includes(charAt(x, y)) && !taken.has(`${x},${y}`);
   const taken = new Set();
   if (Array.isArray(d.hives)) {
@@ -180,7 +228,7 @@ export function deserialize(raw) {
       const y = int(h?.y, 0, H - 1, -1);
       if (!freeGrass(x, y, taken)) continue;
       taken.add(`${x},${y}`);
-      s.hives.push({ x, y, honey: int(h.honey, 0, HIVES.cap, 0), days: int(h.days, 0, 1e6, 0) });
+      s.hives.push({ x, y, honey: int(h.honey, 0, hiveCap(s), 0), days: int(h.days, 0, 1e6, 0) });
     }
   }
   if (Array.isArray(d.decor)) {
@@ -209,6 +257,11 @@ export function deserialize(raw) {
 
   s.drone.x = num(d.drone?.x, 0, W - 1, s.drone.x);
   s.drone.y = num(d.drone?.y, 0, H - 1, s.drone.y);
+  // what the drone was carrying goes on to the chest after a reload
+  if (Array.isArray(d.drone?.load)) {
+    s.drone.load = d.drone.load.slice(0, 12).filter((it) => it && isSellable(it.id)).map((it) => ({ id: it.id, n: int(it.n, 1, 999, 1) }));
+    s.drone.carried = s.drone.load.length ? int(d.drone.carried, 1, 99, 1) : 0;
+  }
   s.rng = int(d.rng, 1, 2147483646, s.rng);
   s.nextId = int(d.nextId, 1, big, 1);
   s.stats.harvested = int(d.stats?.harvested, 0, big, 0);

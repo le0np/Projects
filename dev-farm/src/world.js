@@ -21,6 +21,8 @@ export const CUSTOMER_SPOT = [40, 12];
 export const SPAWNS = [[43, 0], [44, 31]];
 export const FIELD_A = { x: 18, y: 4, w: 10, h: 8 }; // including the fence
 export const FIELD_B = { x: 18, y: 15, w: 10, h: 8 };
+// the tap on the field's fence (the well's upgrade): water for the can right by the plots
+export const TAP = [25, 11];
 
 function build() {
   const g = Array.from({ length: H }, () => Array(W).fill('.'));
@@ -136,6 +138,7 @@ export const OBJECTS = {
   workbench: { name: 'Radni stol', access: [[3, 9]] },
   pond: { name: 'Ribnjak', access: pondAccess() },
   market: { name: 'Put u grad', access: [[41, 13], [42, 13], [43, 14], [43, 15]] },
+  tap: { name: 'Slavina', access: [[TAP[0], TAP[1] + 1], [TAP[0], TAP[1] - 1]] }, // only once it is built
 };
 
 const CHAR_OBJECT = { H: 'house', S: 'stand', C: 'chest', W: 'well', B: 'workbench', K: 'coop', V: 'market', '~': 'pond' };

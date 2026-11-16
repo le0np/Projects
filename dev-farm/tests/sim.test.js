@@ -4,19 +4,21 @@ import assert from 'node:assert/strict';
 import {
   createState, command, plotAction, objectAction, advance, tick, sleep, craft, moveItem, eat,
   coffee, addItem, qualityScore, tierOf, cropItem, makePlot, isSellable, ripeCount, extractSeeds,
-  orderSeeds, packPrice, salePrice, startJob, sprinklerReach, upgradeIrrigation, orderFertilizer,
+  orderSeeds, packPrice, salePrice, startJob, sprinklerReach, upgrade, upgradeProblem, fillTank, runningSprinklers, irrigationMissing, orderFertilizer,
   daysLeft, matCount, forageAt, feedHens, acceptGig, goWork, orderItem, countWhere,
   rentStall, buyVan, hireWorker, goToMarket, sendVan, comeBack, farmerTripProblem, cancelOrder, pumpStatus, makeCompost,
-  stopFishing, placeItem, removeItem, fulfillRequest, sellBack, buybackList, adoptPet, patPet, walkFn, requestPay,
+  matsText, stopFishing, placeItem, removeItem, fulfillRequest, sellBack, buybackList, adoptPet, patPet, walkFn, requestPay,
+  owns, chestSize, hensMax, feederCap, levelValue, cropDays,
+  buildOnline, onlineProblem, packOrder, goToPost, postTripProblem, parcelsReady, orderPay,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
-  W, H, MAP, idx, isWalkable, OBJECTS, PLOTS_A, PLOTS_B, HOUSE_DOOR, SPAWNS, CUSTOMER_SPOT, xy, TOWN_EXIT,
+  W, H, MAP, idx, isWalkable, OBJECTS, PLOTS_A, PLOTS_B, HOUSE_DOOR, SPAWNS, CUSTOMER_SPOT, xy, TOWN_EXIT, TAP,
 } from '../src/world.js';
 import { findPath } from '../src/path.js';
 import {
-  BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZES, CROPS, START_FINDS, HOUSE_SEEDS,
-  RECIPES, zl, ROT_DAY, FORAGE_START, FORAGE_MAX, MARKET, FISHING,
+  BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZE, UPGRADES, CROPS, START_FINDS, HOUSE_SEEDS,
+  RECIPES, zl, ROT_DAY, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
 } from '../src/data.js';
 
 const [AX, AY] = xy(PLOTS_A[0]);
@@ -41,6 +43,7 @@ const nextDay = (s, events = []) => {
   return events;
 };
 const START = zl(30);
+const recipeOf = (id) => RECIPES.find((r) => r.id === id);
 
 test('map: correct size, every place is reachable from the house door', () => {
   assert.equal(MAP.length, H);
@@ -268,7 +271,7 @@ test('watering uses the can; the pond refills it, the well only once it is built
   plotAction(s, AX, AY);
   s.tool = 'can';
   assert.ok(plotAction(s, AX, AY).ok);
-  assert.equal(s.water, CAN_SIZES[0] - 1);
+  assert.equal(s.water, CAN_SIZE - 1);
   s.water = 0;
   plotOf(s).wet = false;
   assert.equal(plotAction(s, AX, AY).reason, 'canempty');
@@ -277,7 +280,7 @@ test('watering uses the can; the pond refills it, the well only once it is built
   assert.ok(events.some((e) => e.reason === 'noplan'), 'no well yet, and no plan');
   assert.equal(s.water, 0);
   objectAction(s, 'pond');
-  assert.equal(s.water, CAN_SIZES[0]);
+  assert.equal(s.water, CAN_SIZE);
 
   s.water = 0;
   s.money = zl(500);
@@ -292,7 +295,7 @@ test('watering uses the can; the pond refills it, the well only once it is built
   assert.equal(s.money, zl(350));
   assert.equal(matCount(s, 'stone') + matCount(s, 'wood'), 0, 'materials used up');
   walkTo(s, 15, 6);
-  assert.equal(s.water, CAN_SIZES[0]);
+  assert.equal(s.water, CAN_SIZE);
 });
 
 test('walking away stops the building, nothing is paid', () => {
@@ -311,16 +314,67 @@ test('walking away stops the building, nothing is paid', () => {
   assert.equal(s.money, zl(500));
 });
 
-test('irrigation has 10 levels, each reaching more plots', () => {
-  const reach = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((l) => sprinklerReach(l, 0, 0).length);
-  assert.deepEqual(reach, [4, 12, 16, 24, 32, 44, 52, 60, 68, 80]);
+test('irrigation: the pump drives a limited number of sprinklers, the nozzles decide how much their water counts', () => {
+  assert.equal(sprinklerReach(20, 7).length, 4, 'a sprinkler waters the four plots around its crossing');
   const s = createState();
   s.money = zl(1e5);
-  assert.equal(upgradeIrrigation(s).reason, 'requires');
+  assert.equal(upgradeProblem(s, 'pump'), 'requires', 'no upgrades before the pump is on the well');
   s.upgrades.well = true;
-  for (let l = 2; l <= 10; l++) assert.ok(upgradeIrrigation(s).ok);
-  assert.equal(s.irrigation, 10);
-  assert.equal(upgradeIrrigation(s).reason, 'owned');
+  s.upgrades.pump = true;
+  // 7 sprinklers on the crossings of field A (x 19–26, y 5–10), but the first pump drives 6
+  const spots = [20, 22, 24, 26].flatMap((x) => [6, 8, 10].map((y) => ({ x, y })));
+  s.sprinklers.push(...spots.slice(0, 7));
+  assert.equal(runningSprinklers(s).length, 6);
+  addItem(s.bag, 'sprinkler', 1);
+  addItem(s.bag, 'hose', 10);
+  assert.equal(irrigationMissing(s), 'pumpfull');
+  assert.equal(upgrade(s, 'pump').reason, 'nomats', 'the stronger pump needs iron');
+  addItem(s.bag, 'iron', 12);
+  addItem(s.bag, 'plastic', 14);
+  assert.ok(upgrade(s, 'pump').ok);
+  assert.equal(runningSprinklers(s).length, 7);
+  assert.equal(irrigationMissing(s), null);
+
+  // sprinkler water counts 50 %, then 80 %, then like watering by hand
+  // a freshly planted pumpkin, watered by the sprinkler that morning, then two nights
+  const credit = () => {
+    const p = s.plots[idx(19, 5)] = { ...makePlot(), crop: 'pumpkin' };
+    nextDay(s);
+    assert.equal(p.wetBy, 'auto');
+    nextDay(s);
+    nextDay(s);
+    return Math.round(p.wetDays * 10) / 10;
+  };
+  assert.equal(credit(), 1, '0.5 per watered day');
+  assert.ok(upgrade(s, 'nozzles').ok);
+  assert.equal(credit(), 1.6);
+  assert.ok(upgrade(s, 'nozzles').ok);
+  assert.equal(credit(), 2);
+});
+
+test('fertigation: nozzles at level 4 feed the plots from a tank filled with fertilizer from the bag', () => {
+  const s = createState();
+  s.money = zl(1e5);
+  Object.assign(s.upgrades, { well: true, pump: true });
+  s.sprinklers.push({ x: 20, y: 7 });
+  addItem(s.bag, 'plastic', 14);
+  assert.equal(fillTank(s).reason, 'requires');
+  for (let l = 2; l <= 4; l++) assert.ok(upgrade(s, 'nozzles').ok);
+  assert.equal(upgrade(s, 'nozzles').reason, 'max');
+  assert.equal(fillTank(s).reason, 'nofert');
+  addItem(s.bag, 'fertilizer:3', 2);
+  addItem(s.bag, 'fertilizer:1', 5);
+  assert.ok(fillTank(s).ok);
+  assert.deepEqual(s.tank, { 1: 5, 2: 0, 3: 2 });
+  assert.equal(countWhere(s.bag, (id) => id.startsWith('fertilizer')), 0);
+  for (const [x, y] of [[19, 6], [20, 6], [19, 7]]) s.plots[idx(x, y)] = { ...makePlot(), crop: 'carrot' };
+  s.plots[idx(20, 7)] = { ...makePlot(), crop: 'carrot', fert: 2 };
+  s.plots[idx(25, 6)] = { ...makePlot(), crop: 'carrot' }; // out of reach
+  const events = nextDay(s);
+  assert.equal(events.find((e) => e.type === 'fertigated').n, 3);
+  assert.deepEqual([[19, 6], [20, 6], [19, 7], [20, 7]].map(([x, y]) => s.plots[idx(x, y)].fert), [3, 3, 1, 2], 'the best first; fed plots are left alone');
+  assert.equal(s.plots[idx(25, 6)].fert, 0);
+  assert.deepEqual(s.tank, { 1: 4, 2: 0, 3: 0 });
 });
 
 test('irrigation is built from parts: pump on the well, hose and sprinklers', () => {
@@ -353,7 +407,7 @@ test('irrigation is built from parts: pump on the well, hose and sprinklers', ()
   assert.ok(events.some((e) => e.type === 'sprinkle' && e.tiles.length === 4));
   assert.equal(s.plots[idx(19, 6)].wetBy, 'auto');
   nextDay(s);
-  assert.equal(s.plots[idx(19, 6)].wetDays, 0.75);
+  assert.equal(s.plots[idx(19, 6)].wetDays, UPGRADES.nozzles.values[0]);
 
   // picking it up gives back the sprinkler and the hose
   assert.ok(walkTo(s, cx, cy, 'pickup').events.some((e) => e.type === 'pickup'));
@@ -408,24 +462,103 @@ test('customers take the best on the stand; ★ only when nothing better is left
   assert.equal(s.money, START + sales.reduce((a, e) => a + e.money, 0));
 });
 
-test('harvest-drone brings crops to the chest, never above ★★★, and replants from seeds', () => {
+test('harvest-drone picks only what its camera allows, leaves the best for the farmer, carries the load to the chest', () => {
   const s = withSeeds(1);
-  s.money = zl(2000);
+  s.money = zl(5000);
   assert.equal(craft(s, 'replant').reason, 'requires');
+  assert.equal(craft(s, 'drone').reason, 'nomats', 'a drone needs iron and plastic');
+  addItem(s.bag, 'iron', 3);
+  addItem(s.bag, 'plastic', 3);
+  assert.ok(craft(s, 'drone').ok);
+  assert.equal(matCount(s, 'iron') + matCount(s, 'plastic'), 0);
+  assert.equal(craft(s, 'drone').reason, 'owned');
+  const two = { wetDays: 1 }; // 35 + 15 = 50 → ★★
+  s.plots[idx(AX, AY)] = ripePlot('carrot', { fert: 3 }); // ★★★★★
+  s.plots[idx(AX + 1, AY)] = ripePlot('carrot', two);
+  s.plots[idx(AX + 2, AY)] = ripePlot('carrot', two);
+  // basket of 1: the drone takes one plot to the chest, then flies out for the next
+  let events = advance(s, 2.5);
+  const first = events.find((e) => e.type === 'harvest');
+  assert.equal(first.by, 'drone');
+  assert.equal(first.tier, 2);
+  assert.equal(s.drone.carried, 1);
+  assert.equal(s.chest[0], null, 'still in the basket');
+  events = advance(s, 20);
+  assert.deepEqual(s.chest[0], { id: cropItem('carrot', 2), n: 8 }, 'both ★★ plots end up in the chest');
+  assert.deepEqual(s.drone.load, []);
+  assert.equal(plotOf(s).crop, 'carrot', 'the ★★★★★ crop is left for the farmer');
+  events = nextDay(s);
+  assert.deepEqual(events.find((e) => e.type === 'droneleft'), { type: 'droneleft', n: 1, tier: 2 });
+
+  // a better camera: up to ★★★★★
+  assert.equal(upgrade(s, 'droneTier').reason, 'nomats');
+  addItem(s.bag, 'plastic', 19);
+  for (let k = 0; k < 3; k++) assert.ok(upgrade(s, 'droneTier').ok);
+  assert.equal(upgrade(s, 'droneTier').reason, 'max');
+  s.plots[idx(AX, AY)] = ripePlot('carrot', { fert: 3 });
+  advance(s, 20);
+  assert.equal(s.chest.find((it) => it?.id === cropItem('carrot', 5))?.n, 4);
+
+  // faster engines and a bigger basket
+  addItem(s.bag, 'iron', 3);
+  assert.ok(upgrade(s, 'droneSpeed').ok);
+  addItem(s.bag, 'wood', 4);
+  assert.ok(upgrade(s, 'droneLoad').ok);
+  assert.deepEqual([s.levels.droneSpeed, s.levels.droneLoad], [2, 2]);
+});
+
+test('replant.py plants the same seed again; v2 also waters, v3 also feeds from the chest', () => {
+  const s = withSeeds(3);
+  s.money = zl(5000);
+  addItem(s.bag, 'iron', 3);
+  addItem(s.bag, 'plastic', 3);
   assert.ok(craft(s, 'drone').ok);
   assert.ok(craft(s, 'replant').ok);
-  assert.equal(craft(s, 'drone').reason, 'owned');
-  s.plots[idx(AX, AY)] = ripePlot('carrot', { fert: 3 });
-  const events = advance(s, 10);
-  const h = events.find((e) => e.type === 'harvest');
-  assert.equal(h.by, 'drone');
-  assert.equal(h.tier, 3);
-  assert.deepEqual(s.chest[0], { id: cropItem('carrot', 3), n: 4 });
-  assert.equal(s.seeds.radish, 1, 'no carrot seeds, so no replanting');
-  s.plots[idx(AX + 1, AY)] = ripePlot('radish');
+  s.plots[idx(AX, AY)] = ripePlot('carrot', { wetDays: 1 });
+  advance(s, 10);
+  assert.equal(s.seeds.radish, 3, 'no carrot seeds, so no replanting');
+  assert.equal(plotOf(s).crop, null);
+  s.plots[idx(AX + 1, AY)] = ripePlot('radish', { wetDays: 1 });
   advance(s, 10);
   assert.equal(plotOf(s, AX + 1, AY).crop, 'radish', 'replanted');
-  assert.equal(s.seeds.radish, 0);
+  assert.ok(!plotOf(s, AX + 1, AY).wet);
+  assert.equal(s.seeds.radish, 2);
+
+  assert.ok(upgrade(s, 'replant').ok);
+  assert.ok(upgrade(s, 'replant').ok);
+  addItem(s.chest, 'fertilizer:3', 1);
+  s.plots[idx(AX + 2, AY)] = ripePlot('radish', { wetDays: 1 });
+  advance(s, 10);
+  const p = plotOf(s, AX + 2, AY);
+  assert.deepEqual([p.crop, p.wet, p.wetBy, p.fert], ['radish', true, 'hand', 3]);
+  assert.equal(countWhere(s.chest, (id) => id === 'fertilizer:3'), 0);
+});
+
+test('iron and plastic: ordered on the phone, delivered to the chest, sold back, named in the needs', () => {
+  const s = createState();
+  s.money = zl(100);
+  assert.ok(orderItem(s, 'iron').ok);
+  assert.ok(orderItem(s, 'plastic').ok);
+  nextDay(s);
+  assert.equal(countWhere(s.chest, (id) => id === 'iron'), 5);
+  assert.equal(countWhere(s.chest, (id) => id === 'plastic'), 5);
+  assert.ok(isSellable('iron') === false, 'materials are not produce');
+  assert.ok(buybackList(s).some((b) => b.id === 'iron'));
+  assert.equal(matsText({ iron: 4, plastic: 3, price: 9 }), '4 željeza, 3 plastike');
+});
+
+test('the big watering can grows with upgrades', () => {
+  const s = createState();
+  s.money = zl(500);
+  assert.equal(upgrade(s, 'can').reason, 'requires');
+  assert.ok(craft(s, 'bigCan').ok);
+  assert.equal(s.water, 30);
+  assert.equal(upgrade(s, 'can').reason, 'nomats');
+  addItem(s.bag, 'iron', 6);
+  assert.ok(upgrade(s, 'can').ok);
+  assert.equal(s.water, 50, 'filled up');
+  assert.ok(upgrade(s, 'can').ok);
+  assert.equal(s.water, 80);
 });
 
 test('compost: 5 kg of produce make a bag (10 doses) of the same quality, ★★★ at most; git clone polje opens field B', () => {
@@ -693,6 +826,14 @@ test('save round trip, older farms carried over, broken saves fall back safely',
   assert.ok(v2.upgrades.well && v2.upgrades.drone, 'old farms keep their well');
   assert.equal(v2.seeds.radish, 10);
 
+  // v6: nobody loses anything to the new upgrades
+  const sprinklers = [20, 22, 24, 26].flatMap((x) => [6, 8].map((y) => ({ x, y })));
+  const v6 = deserialize(JSON.stringify({ version: 6, upgrades: { drone: true, well: true, pump: true }, irrigation: 6, sprinklers })).state;
+  assert.equal(v6.sprinklers.length, 8);
+  assert.deepEqual([v6.levels.droneTier, v6.levels.nozzles, v6.levels.pump], [2, 3, 2], '★★★ drone, 100 % nozzles, a pump for 8');
+  const v6b = deserialize(JSON.stringify({ version: 6, upgrades: { well: true, pump: true }, irrigation: 1 })).state;
+  assert.deepEqual([v6b.levels.droneTier, v6b.levels.nozzles, v6b.levels.pump], [1, 2, 1], '80 % beats the old 75 %');
+
   assert.equal(deserialize('{nope').restored, false);
   assert.equal(deserialize(JSON.stringify({ version: 1 })).restored, false);
   const evil = deserialize(JSON.stringify({
@@ -741,7 +882,8 @@ test('all art generates: correct sizes, nothing empty', async () => {
     for (const stage of ['sprout', 'young', 'ripe', 'rotten']) check(A.crop(c.id, stage), 24, 28, `${c.id} ${stage}`);
     check(A.icon(c.id), 16, 16, `icon ${c.id}`);
   }
-  for (const i of ['fertilizer', 'sprinkler', 'hand', 'seeds', 'can', 'phone', 'gold', 'silver', 'egg', 'mushroom', 'blackberry', 'wood', 'stone']) check(A.icon(i), 16, 16, i);
+  for (const i of ['fertilizer', 'sprinkler', 'hand', 'seeds', 'can', 'phone', 'gold', 'silver', 'egg', 'mushroom', 'blackberry', 'wood', 'stone', 'iron', 'plastic', 'jar', 'honey']) check(A.icon(i), 16, 16, i);
+  check(A.tap(), 20, 30, 'tap');
   check(A.coop(true), 72, 72, 'broken coop');
   check(A.coop(false), 72, 72, 'coop');
   for (const f of ['mushroom', 'blackberry', 'branches', 'rocks']) check(A.forageSprite(f), 24, 24, f);
@@ -788,8 +930,12 @@ test('market: rent a stall once, then the farmer takes the bag to town and sells
   assert.equal(s.market.trips.farmer, null);
   assert.ok(done.kg >= 40, `sold ${done.kg} kg`);
   assert.equal(s.money - before, done.money);
+  for (const e of events.filter((x) => x.type === 'marketsale')) {
+    assert.equal(e.money, Math.round(salePrice('potato', 2) * e.qty * (1 + MARKET.markup)), 'the market pays more than the stand');
+  }
+  assert.ok(MARKET.markup > REQUESTS.bonus && ONLINE.markup > MARKET.markup, 'price ladder: stand order < market < online');
   assert.equal(matCount(s, 'wood'), 5, 'only produce is sold');
-  assert.ok(s.clock <= MARKET.close + MARKET.travel + 1, 'home by 14:00');
+  assert.ok(s.clock <= MARKET.close + MARKET.walk + 1, 'home by 14:00');
   // walks down the road from where it leaves the map
   for (let i = 0; i < 400 && s.farmer.path.length; i++) tick(s, 0.1, events);
   assert.ok(OBJECTS.market.access.some(([x, y]) => x === s.farmer.x && y === s.farmer.y));
@@ -798,7 +944,7 @@ test('market: rent a stall once, then the farmer takes the bag to town and sells
 test('market: the farmer only goes while he can still make it before closing, and can come back early', () => {
   const s = marketReady();
   addItem(s.bag, 'crop:carrot:3', 20);
-  s.clock = MARKET.close - MARKET.travel + 1;
+  s.clock = MARKET.close - MARKET.walk + 1;
   assert.equal(goToMarket(s).reason, 'toolate');
   s.clock = DAY_START;
   s.farmer.x = TOWN_EXIT[0];
@@ -860,6 +1006,37 @@ test('market: the van can be sent during the day; no van without the stall, the 
   s.money = zl(100);
   assert.ok(sendVan(s).ok);
   assert.equal(sendVan(s).reason, 'vanaway');
+});
+
+test('market: the van gets to town faster than the farmer on foot, so it can still leave later', () => {
+  const s = marketReady();
+  buyVan(s);
+  hireWorker(s);
+  addItem(s.cargo, 'crop:carrot:2', 30);
+  addItem(s.bag, 'crop:carrot:2', 30);
+  s.farmer.x = TOWN_EXIT[0];
+  s.farmer.y = TOWN_EXIT[1];
+  assert.ok(MARKET.drive < MARKET.walk);
+  assert.ok(goToMarket(s).ok);
+  assert.ok(sendVan(s).ok);
+  const arrived = {};
+  const events = [];
+  for (let i = 0; i < 200 && Object.keys(arrived).length < 2; i++) {
+    events.length = 0;
+    advance(s, 0.5, events);
+    for (const e of events) if (e.type === 'triparrive') arrived[e.who] ??= s.clock;
+  }
+  assert.ok(arrived.van < arrived.farmer, `van ${arrived.van}, farmer ${arrived.farmer}`);
+
+  // too late to walk there before closing, but the van still makes it
+  const t = marketReady();
+  buyVan(t);
+  hireWorker(t);
+  addItem(t.cargo, 'crop:carrot:2', 30);
+  addItem(t.bag, 'crop:carrot:2', 30);
+  t.clock = MARKET.close - MARKET.walk + 5;
+  assert.equal(farmerTripProblem(t), 'toolate');
+  assert.ok(sendVan(t).ok);
 });
 
 test('market: a trip survives saving, and nobody stays in town overnight', () => {
@@ -947,8 +1124,8 @@ test('buildings: a failed build says what it needs, not only that money is short
 
 // ---------------------------------------------------------------- fishing and eggs
 
-const fisher = () => {
-  const s = createState();
+const fisher = (seed = 12345) => {
+  const s = createState(seed);
   addItem(s.bag, 'wood', 2);
   assert.ok(craft(s, 'rod').ok, 'the rod is made at the workbench from 2 wood');
   assert.equal(matCount(s, 'wood'), 0);
@@ -1122,6 +1299,9 @@ test('the chest: produce slowly loses quality, the cold room keeps it', () => {
   const c = createState();
   c.money = zl(500);
   addItem(c.bag, 'stone', 8);
+  assert.equal(craft(c, 'coldroom').reason, 'nomats', 'a cold room is made of iron and plastic, not stone');
+  addItem(c.bag, 'iron', 6);
+  addItem(c.bag, 'plastic', 4);
   assert.ok(craft(c, 'coldroom').ok);
   addItem(c.chest, cropItem('tomato', 4), 10);
   for (let d = 0; d < 12; d++) nextDay(c);
@@ -1136,11 +1316,19 @@ test('customers order ahead: hand it over at the stand for extra pay, or it is m
   const r = s.requests[0];
   assert.ok(r.due > s.day - 1 && r.kg >= 3 && r.tier >= 2);
   assert.equal(fulfillRequest(s, r.id).reason, 'requestshort');
-  addItem(s.bag, cropItem(r.crop, Math.min(5, r.tier + 1)), r.kg);
+  const better = Math.min(5, r.tier + 1);
+  addItem(s.bag, cropItem(r.crop, better), r.kg);
   const money = s.money;
   assert.ok(fulfillRequest(s, r.id).ok);
-  assert.equal(s.money - money, requestPay(r));
+  assert.equal(s.money - money, Math.round(salePrice(r.crop, better) * r.kg * (1 + REQUESTS.bonus)), 'a better class is paid at its own price plus the bonus');
   assert.ok(requestPay(r) > salePrice(r.crop, r.tier) * r.kg, 'pays more than the stand');
+  // a mix: the worst good-enough goes first, each unit paid at its class
+  s.requests = [{ id: 998, who: 'test', crop: 'carrot', kg: 4, tier: 2, due: s.day + 1 }];
+  addItem(s.bag, cropItem('carrot', 2), 1);
+  addItem(s.bag, cropItem('carrot', 5), 5);
+  const m2 = s.money;
+  assert.ok(fulfillRequest(s, 998).ok);
+  assert.equal(s.money - m2, Math.round((salePrice('carrot', 2) + 3 * salePrice('carrot', 5)) * (1 + REQUESTS.bonus)));
   // a missed order disappears with a message
   s.requests = [{ id: 999, who: 'test', crop: 'carrot', kg: 5, tier: 2, due: s.day }];
   const events = nextDay(s);
@@ -1177,12 +1365,16 @@ test('bees and decorations go on the grass, never closing off the farm; hives fi
   assert.equal(placeItem(s, AX, AY, 'deco:fence').reason, 'placegrass', 'not on a plot');
   assert.ok(placeItem(s, 30, 10, 'deco:fence').ok);
   assert.equal(placeItem(s, 30, 10, 'deco:fence').reason, 'placetaken');
-  // honey every second morning
+  // honey every second morning, collected into jars
   nextDay(s);
   nextDay(s);
   assert.equal(s.hives[0].honey, 1);
+  assert.ok(walkTo(s, ...spot).events.some((e) => e.reason === 'nojars'), 'no jars, the honey stays in the hive');
+  assert.equal(s.hives[0].honey, 1);
+  addItem(s.bag, 'jar', 3);
   const { events } = walkTo(s, ...spot);
   assert.ok(events.some((e) => e.type === 'honey' && e.n === 1));
+  assert.equal(matCount(s, 'jar'), 2, 'one jar per kg');
   assert.equal(countWhere(s.bag, (id) => id === 'crop:honey:2'), 1);
   assert.ok(removeItem(s, ...spot).ok);
   assert.equal(s.hives.length, 0);
@@ -1218,4 +1410,424 @@ test('the pet: adopted from the shelter, a pat once a day gives energy', () => {
   assert.equal(s.energy, 55);
   const { state: t } = deserialize(serialize(s));
   assert.equal(t.pet.kind, 'cat');
+});
+
+// ---------------------------------------------------------------- upgrades, step 2
+
+test('upgrades step 2: every line belongs to something that can be owned, and buildings must be there first', () => {
+  const s = createState();
+  s.money = zl(5000);
+  for (const [line, u] of Object.entries(UPGRADES)) {
+    assert.equal(u.steps.length, u.values.length - 1, line);
+    assert.ok(u.values.every((v, k) => typeof u.text(v, k + 1) === 'string'), line);
+  }
+  // the fields, mulch and hives can be upgraded from the start; the coop and the well once they stand
+  assert.ok(owns(s, 'field') && owns(s, 'mulch') && owns(s, 'hive'));
+  assert.equal(upgradeProblem(s, 'coopHens'), 'requires');
+  assert.equal(upgradeProblem(s, 'tap'), 'requires');
+  assert.equal(upgradeProblem(s, 'ads'), 'requires', 'advertising needs the poster first');
+  assert.equal(upgradeProblem(s, 'mulchDays'), 'nomats');
+  addItem(s.bag, 'wood', 4);
+  assert.ok(upgrade(s, 'mulchDays').ok);
+  assert.equal(upgrade(s, 'mulchDays').reason, 'max');
+});
+
+test('fishing upgrades: a better rod lands more ★★★, bait makes fish bite sooner, a net stretches lucky days to 7', () => {
+  const share = (rodLevel) => {
+    let top = 0;
+    let all = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const s = fisher(seed * 7919);
+      s.levels.rodTier = rodLevel;
+      s.pond.fish = 5;
+      objectAction(s, 'pond');
+      for (const e of fishTill(s, 26 * 60).filter((x) => x.type === 'caught')) {
+        all++;
+        if (e.tier === 3) top++;
+      }
+    }
+    return top / all;
+  };
+  const base = share(1);
+  const best = share(3);
+  assert.ok(base > 0.15 && base < 0.45, `plain rod ${base}`);
+  assert.ok(best > 0.55, `best rod ${best}`);
+
+  const bites = (bait) => {
+    const s = fisher(99);
+    s.levels.rodBait = bait;
+    s.pond.fish = 0;
+    objectAction(s, 'pond');
+    return s.farmer.busy.next;
+  };
+  assert.ok(Math.abs(bites(3) - bites(1) * UPGRADES.rodBait.values[2]) < 1e-9, 'the same wait, halved');
+
+  const s = fisher();
+  const luck = (net) => {
+    s.levels.rodNet = net;
+    const out = [];
+    for (let d = 0; d < 80; d++) out.push(nextDay(s) && s.pond.fish);
+    return out;
+  };
+  assert.ok(Math.max(...luck(1)) <= FISHING.daily.length - 1);
+  const big = luck(2);
+  assert.ok(Math.max(...big) === 7 && big.includes(0), 'up to 7 fish, and bad days stay bad');
+  s.pond.fish = 7;
+  const { state: t } = deserialize(serialize(s));
+  assert.equal(t.pond.fish, 7, 'the net\'s catch survives a reload');
+});
+
+test('mulch upgrades: the shredder makes 20 doses from 2 wood, bark keeps the soil moist for 3 days', () => {
+  const s = withSeeds(5);
+  s.levels.mulchMaker = 2;
+  s.levels.mulchDays = 2;
+  addItem(s.bag, 'wood', 2);
+  assert.ok(craft(s, 'mulch').ok);
+  assert.equal(matCount(s, 'mulch'), 20);
+  const i = PLOTS_A[0];
+  s.plots[i] = { ...makePlot(), crop: 'pumpkin' };
+  const [x, y] = xy(i);
+  s.tool = 'mulch';
+  assert.ok(plotAction(s, x, y).ok);
+  assert.equal(s.plots[i].mulch, 3);
+  s.tool = 'can';
+  plotAction(s, x, y);
+  nextDay(s);
+  nextDay(s);
+  assert.ok(s.plots[i].wet, 'still moist on the third day');
+  assert.equal(s.plots[i].wetDays, 2);
+  nextDay(s);
+  assert.equal(s.plots[i].wetDays, 3, 'three days of growth from one watering');
+  assert.ok(!s.plots[i].wet);
+  // a plot mulched before v8 (mulch: true) keeps its two days
+  const old = JSON.parse(serialize(s));
+  old.version = 7;
+  old.plots[i].mulch = true;
+  assert.equal(deserialize(JSON.stringify(old)).state.plots[i].mulch, 2);
+});
+
+test('hive upgrades: a bigger hive, honey every day, and bees that pollinate the plots nearby', () => {
+  const s = createState();
+  s.hives.push({ x: 17, y: 6, honey: 0, days: 0 });
+  s.levels.hiveRate = 2;
+  s.levels.hiveCap = 2;
+  for (let d = 0; d < 12; d++) nextDay(s);
+  assert.equal(s.hives[0].honey, 10, 'one kg every morning, up to 10');
+  // a jar per kg: with 4 jars only 4 kg come out, the rest waits
+  addItem(s.bag, 'jar', 4);
+  const { events } = walkTo(s, 17, 6);
+  assert.ok(events.some((e) => e.type === 'honey' && e.n === 4 && e.left === 6));
+  assert.equal(matCount(s, 'jar'), 0);
+
+  // pollination: a perfect plot with ★★ fertilizer near the hive reaches ★★★★★
+  const grow = (pollen) => {
+    const f = createState();
+    f.hives.push({ x: 17, y: 6, honey: 0, days: 0 });
+    f.levels.hivePollen = pollen;
+    const near = idx(19, 6);
+    f.plots[near] = { ...makePlot(), crop: 'radish', fert: 2 };
+    f.plots[near].wet = true;
+    f.plots[near].wetLeft = 1;
+    nextDay(f);
+    return f.plots[near];
+  };
+  const plain = grow(1);
+  const bees = grow(2);
+  assert.ok(!plain.pollen && bees.pollen);
+  assert.equal(qualityScore(bees), qualityScore(plain) + POLLEN_BONUS);
+  assert.equal(tierOf(qualityScore(plain)), 4);
+  assert.equal(tierOf(qualityScore(bees)), 5);
+  const far = createState();
+  far.hives.push({ x: 17, y: 6, honey: 0, days: 0 });
+  far.levels.hivePollen = 2;
+  const i = idx(26, 10); // 9 tiles away
+  far.plots[i] = { ...makePlot(), crop: 'radish' };
+  nextDay(far);
+  assert.ok(!far.plots[i].pollen, 'too far for the bees');
+});
+
+test('cold room shelves: the chest grows to 36 and 48 slots and stays that big after a reload', () => {
+  const s = createState();
+  s.money = zl(1000);
+  addItem(s.bag, 'iron', 16);
+  addItem(s.bag, 'plastic', 10);
+  assert.equal(upgradeProblem(s, 'coldSize'), 'requires');
+  assert.ok(craft(s, 'coldroom').ok);
+  assert.equal(s.chest.length, CHEST_SIZE);
+  assert.ok(upgrade(s, 'coldSize').ok);
+  assert.equal(s.chest.length, 36);
+  assert.ok(upgrade(s, 'coldSize').ok);
+  assert.equal(s.chest.length, 48);
+  assert.equal(chestSize(s), 48);
+  s.chest[47] = { id: cropItem('tomato', 3), n: 5 };
+  const { state: t } = deserialize(serialize(s));
+  assert.equal(t.chest.length, 48);
+  assert.deepEqual(t.chest[47], { id: cropItem('tomato', 3), n: 5 });
+});
+
+test('coop upgrades: room for 15 hens, a 60 kg feeder, and an incubator that hatches an egg into a hen', () => {
+  const s = createState();
+  s.coop.built = true;
+  s.money = zl(2000);
+  s.coop.hens = COOP.maxHens;
+  assert.equal(orderItem(s, 'hen').reason, 'coopfull');
+  s.levels.coopHens = 3;
+  s.levels.coopFeeder = 3;
+  assert.equal(hensMax(s), 15);
+  assert.equal(feederCap(s), 60);
+  assert.ok(orderItem(s, 'hen').ok);
+  addItem(s.bag, cropItem('carrot', 1), 80);
+  const slot = s.bag.findIndex((it) => it?.id === cropItem('carrot', 1));
+  assert.equal(feedHens(s, slot).n, 60);
+
+  s.levels.incubator = 2;
+  const events = [];
+  nextDay(s, events); // the hen arrives (10), eggs are laid, one goes into the incubator
+  assert.equal(s.coop.hens, 10);
+  assert.equal(s.coop.hatch, 1);
+  nextDay(s, events);
+  nextDay(s, events);
+  assert.ok(events.some((e) => e.type === 'hatched'));
+  assert.equal(s.coop.hens, 11);
+  // full coop: the incubator waits
+  s.coop.hens = 15;
+  nextDay(s);
+  assert.equal(s.coop.hatch, 0);
+  const { state: t } = deserialize(serialize(s));
+  assert.equal(t.coop.hens, 15, 'saved hens are kept up to the bigger coop');
+});
+
+test('the tap on the field fence: the can is filled right by the plots, also during "water all"', () => {
+  const s = createState();
+  s.upgrades.well = true;
+  s.money = zl(200);
+  addItem(s.bag, 'iron', 3);
+  addItem(s.bag, 'plastic', 2);
+  assert.ok(upgrade(s, 'tap').ok);
+  s.water = 0;
+  const { events } = walkTo(s, ...TAP);
+  assert.ok(events.some((e) => e.type === 'refill'));
+  assert.equal(s.water, CAN_SIZE);
+  assert.ok(OBJECTS.tap.access.some(([x, y]) => x === s.farmer.x && y === s.farmer.y), 'stands by the tap');
+  // no tap without the upgrade: the fence is just a fence
+  const n = createState();
+  assert.equal(command(n, ...TAP).reason, 'blocked');
+  // water all: the farmer refills at the tap, not at the well
+  for (const i of PLOTS_A.slice(0, 20)) s.plots[i] = { ...makePlot(), crop: 'potato' };
+  s.farmer.x = TAP[0];
+  s.farmer.y = TAP[1] + 1;
+  s.water = 1;
+  s.energy = MAX_ENERGY;
+  const ev = [];
+  startJob(s, 'water', null, ev);
+  let refilledAt = null;
+  for (let k = 0; k < 4000 && s.farmer.job; k++) {
+    const e = [];
+    tick(s, 0.1, e);
+    if (e.some((x) => x.type === 'refill') && !refilledAt) refilledAt = [s.farmer.x, s.farmer.y];
+  }
+  assert.ok(refilledAt && OBJECTS.tap.access.some(([x, y]) => x === refilledAt[0] && y === refilledAt[1]), `refilled at ${refilledAt}`);
+});
+
+test('the greenhouse: everything ripens a day sooner, but nothing in less than a day', () => {
+  const s = createState();
+  assert.equal(cropDays(s, 'tomato'), 3);
+  s.money = zl(500);
+  addItem(s.bag, 'wood', 10);
+  addItem(s.bag, 'plastic', 12);
+  assert.ok(upgrade(s, 'greenhouse').ok);
+  assert.equal(cropDays(s, 'tomato'), 2);
+  assert.equal(cropDays(s, 'radish'), 1);
+  const i = PLOTS_A[0];
+  s.plots[i] = { ...makePlot(), crop: 'tomato', wet: true, wetLeft: 1 };
+  assert.equal(daysLeft(s.plots[i], s), 2);
+  nextDay(s);
+  s.plots[i].wet = true;
+  s.plots[i].wetLeft = 1;
+  nextDay(s);
+  assert.equal(s.plots[i].progress, 1, 'a tomato in two days');
+});
+
+test('advertising replaces the SEO board: +10 % customers a level; an old SEO board becomes the jumbo poster', () => {
+  const s = createState();
+  s.money = zl(1000);
+  assert.ok(craft(s, 'ads').ok);
+  assert.equal(levelValue(s, 'ads'), 1.1);
+  for (let k = 0; k < 4; k++) assert.ok(upgrade(s, 'ads').ok);
+  assert.equal(levelValue(s, 'ads'), 1.5);
+  const old = JSON.parse(serialize(createState()));
+  old.version = 7;
+  old.upgrades.seo = true;
+  delete old.upgrades.ads;
+  delete old.levels.ads;
+  const { state: t, restored } = deserialize(JSON.stringify(old));
+  assert.ok(restored);
+  assert.ok(t.upgrades.ads);
+  assert.equal(t.levels.ads, 5);
+  assert.equal(recipeOf('seo'), undefined, 'the SEO board is gone from the workbench');
+});
+
+test('warnings for the phone: the drone out of seeds or fertilizer, the fertigation tank empty; the unload is reported for the map', () => {
+  const run = (seeds, fert) => {
+    const s = createState();
+    s.upgrades.drone = true;
+    s.upgrades.replant = true;
+    s.levels.replant = 3;
+    s.seeds.radish = seeds;
+    if (fert) addItem(s.chest, 'fertilizer:2', 5);
+    s.plots[PLOTS_A[0]] = ripePlot('radish', { wetDays: 1 }); // ★★: what the drone's first camera picks
+    const events = [];
+    for (let k = 0; k < 600 && !events.some((e) => e.type === 'unloaded'); k++) tick(s, 0.1, events);
+    return events;
+  };
+  const noSeeds = run(0, false);
+  assert.ok(noSeeds.some((e) => e.type === 'droneshort' && e.what === 'seeds' && e.crop === 'radish'));
+  const unload = noSeeds.find((e) => e.type === 'unloaded');
+  assert.equal(unload.plots, 1);
+  assert.equal(unload.kg, CROPS.find((c) => c.id === 'radish').yield);
+  const noFert = run(3, false);
+  assert.ok(noFert.some((e) => e.type === 'droneshort' && e.what === 'fert'));
+  assert.ok(!noFert.some((e) => e.what === 'seeds'));
+  assert.ok(!run(3, true).some((e) => e.type === 'droneshort'), 'nothing missing, nothing to say');
+
+  const s = createState();
+  Object.assign(s.upgrades, { well: true, pump: true });
+  s.levels.nozzles = 4;
+  const [x, y] = xy(PLOTS_A[0]);
+  s.sprinklers.push({ x: x + 1, y: y + 1 });
+  s.plots[PLOTS_A[0]] = { ...makePlot(), crop: 'potato' };
+  assert.ok(nextDay(s).some((e) => e.type === 'tankempty'));
+  s.tank[2] = 10;
+  assert.ok(!nextDay(s).some((e) => e.type === 'tankempty'), 'fed from the tank instead');
+});
+
+// ---------------------------------------------------------------- selling online
+
+// work at the laptop until the farmer is done (he walks home first)
+const workDone = (s, events = []) => {
+  for (let k = 0; k < 6000 && s.gigs.active; k++) tick(s, 0.1, events);
+  return events;
+};
+const withShop = () => {
+  const s = createState();
+  assert.ok(buildOnline(s, 'webshop').ok);
+  workDone(s);
+  return s;
+};
+
+test('web shop: built on the laptop at home like an unpaid gig; the other channels need it first', () => {
+  const s = createState();
+  assert.equal(onlineProblem(s, 'seo'), 'nowebshop');
+  const money = s.money;
+  const events = [];
+  assert.ok(buildOnline(s, 'webshop', events).ok);
+  assert.equal(onlineProblem(s, 'google'), 'nowebshop');
+  workDone(s, events);
+  assert.ok(events.some((e) => e.type === 'onlinebuilt' && e.channel === 'webshop'));
+  assert.ok(s.online.channels.webshop);
+  assert.equal(s.money, money, 'own work: nothing paid');
+  assert.equal(s.energy, MAX_ENERGY - ONLINE.channels[0].hours * GIG_ENERGY_PER_HOUR);
+  assert.equal(s.gigs.done, 0, 'not counted as a gig for someone else');
+  assert.equal(onlineProblem(s, 'webshop'), 'owned');
+  assert.equal(onlineProblem(s, 'google'), null);
+});
+
+test('web shop: orders come in the morning, more with every channel, and pay 30 % more than the stand', () => {
+  const count = (channels) => {
+    const s = createState(4242);
+    s.totalEarned = zl(1000);
+    for (const c of channels) s.online.channels[c] = true;
+    let n = 0;
+    for (let d = 0; d < 40; d++) {
+      n += nextDay(s).filter((e) => e.type === 'onlineorder').length;
+      s.online.orders = []; // keep room for new ones
+    }
+    return n;
+  };
+  assert.equal(count([]), 0, 'no web shop, no orders');
+  const one = count(['webshop']);
+  const all = count(['webshop', 'google', 'seo', 'social']);
+  assert.ok(one > 10 && one < 40, `web shop alone ${one}`);
+  assert.ok(all > one * 2, `all channels ${all}`);
+
+  const s = withShop();
+  for (let d = 0; d < 30 && !s.online.orders.length; d++) nextDay(s);
+  const o = s.online.orders[0];
+  assert.ok(o);
+  assert.equal(o.pay, Math.round(salePrice(o.crop, o.tier) * o.kg * (1 + ONLINE.markup)));
+  assert.ok(o.due > s.day - 1 && !o.packed);
+});
+
+test('web shop: pack from the bag into the parcel box, take it to the post office, get paid; late orders are lost', () => {
+  const s = withShop();
+  s.energy = MAX_ENERGY;
+  const o = { id: 900, who: 'test', crop: 'carrot', kg: 4, tier: 3, due: s.day + 2, packed: false, items: [] };
+  o.pay = orderPay(o);
+  s.online.orders.push(o);
+  assert.equal(postTripProblem(s), 'noparcels');
+  addItem(s.bag, cropItem('carrot', 2), 10);
+  assert.equal(packOrder(s, 900).reason, 'requestshort', '★★ is not good enough');
+  addItem(s.bag, cropItem('carrot', 3), 3);
+  addItem(s.bag, cropItem('carrot', 4), 5);
+  assert.ok(packOrder(s, 900).ok);
+  assert.equal(countWhere(s.bag, (id) => id === cropItem('carrot', 3)), 0, 'the worst good-enough produce goes first');
+  assert.equal(countWhere(s.bag, (id) => id === cropItem('carrot', 4)), 4);
+  assert.equal(parcelsReady(s), 1);
+  assert.equal(o.pay, Math.round((3 * salePrice('carrot', 3) + salePrice('carrot', 4)) * (1 + ONLINE.markup)), 'the parcel is paid for what is in it');
+  assert.equal(packOrder(s, 900).reason, 'packed');
+
+  s.clock = 16 * 60 + 10;
+  assert.equal(postTripProblem(s), 'posttoolate', 'the post office closes at 17 h');
+  s.clock = 9 * 60;
+  const money = s.money;
+  const events = [];
+  assert.ok(goToPost(s, events).ok);
+  for (let k = 0; k < 8000 && (s.farmer.task || s.farmer.path.length || s.market.trips.farmer); k++) tick(s, 0.1, events);
+  const posted = events.find((e) => e.type === 'posted');
+  assert.ok(posted && posted.n === 1);
+  assert.equal(s.money - money, o.pay);
+  assert.equal(s.online.orders.length, 0);
+  assert.ok(events.some((e) => e.type === 'tripdone'), 'and back home');
+
+  // a packed parcel that missed its day goes back to the chest; an unpacked order is just lost
+  const late = { id: 901, who: 'x', crop: 'carrot', kg: 2, tier: 2, due: s.day, packed: false, items: [] };
+  late.pay = orderPay(late);
+  s.online.orders.push(late);
+  assert.ok(packOrder(s, 901).ok);
+  s.online.orders.push({ ...late, id: 902, packed: false, items: [] });
+  const missed = nextDay(s).filter((e) => e.type === 'onlinemissed');
+  assert.equal(missed.length, 2);
+  assert.ok(countWhere(s.chest, (id) => id.startsWith('crop:carrot:')) >= 2);
+});
+
+test('web shop: a market trip takes the parcels along; everything survives a reload', () => {
+  const s = withShop();
+  s.market.stall = true;
+  const o = { id: 950, who: 'test', crop: 'radish', kg: 1, tier: 2, due: s.day + 3, packed: false, items: [] };
+  o.pay = orderPay(o);
+  s.online.orders.push(o, { ...o, id: 951 });
+  addItem(s.bag, cropItem('radish', 5), 1);
+  assert.ok(packOrder(s, 950).ok);
+  addItem(s.bag, cropItem('radish', 2), 5); // something to sell at the market
+  assert.deepEqual(o.items, [{ id: cropItem('radish', 5), n: 1 }]);
+  const { state: t } = deserialize(serialize(s));
+  assert.equal(t.online.orders[0].pay, o.pay, 'a parcel of better produce keeps its higher pay');
+  assert.ok(t.online.orders[0].pay > t.online.orders[1].pay);
+  assert.ok(t.online.channels.webshop);
+  assert.equal(t.online.orders.length, 2);
+  assert.ok(t.online.orders[0].packed);
+  assert.deepEqual(t.online.orders[0].items, [{ id: cropItem('radish', 5), n: 1 }]);
+  // to the market with the bag: the parcel is posted on arrival
+  t.clock = 6 * 60 + 30;
+  const events = [];
+  assert.ok(goToMarket(t, events).ok);
+  for (let k = 0; k < 4000 && !events.some((e) => e.type === 'posted'); k++) tick(t, 0.1, events);
+  assert.equal(events.find((e) => e.type === 'posted')?.n, 1);
+  assert.equal(t.online.orders.length, 1, 'the unpacked order waits');
+  // building a channel survives a reload half done
+  const u = withShop();
+  assert.ok(buildOnline(u, 'seo').ok);
+  const { state: v } = deserialize(serialize(u));
+  assert.equal(v.gigs.active.online, 'seo');
+  assert.equal(v.gigs.active.pay, 0);
 });
