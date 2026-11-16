@@ -392,7 +392,7 @@ function workKind(s, t) {
       if (s.tool === 'fert') return !p.fert && fertDoses(s) ? 'fertilize' : null;
       if (s.tool === 'mulch') return !p.mulch && hasMulch(s) ? 'mulch' : null;
       return null;
-    case 'jobplant': return !p.crop && seedFor(s, s.farmer.job?.crop) ? 'plant' : null;
+    case 'jobplant': return !p.crop && seedFor(s, t.crop) ? 'plant' : null;
     case 'jobharvest': return ripe ? 'harvest' : null;
     case 'jobwater': return needsWater(p) && s.water > 0 ? 'water' : null;
     case 'jobfert': return unfertilized(p) && fertDoses(s) ? 'fertilize' : null;
@@ -433,7 +433,7 @@ function doTask(s, t, events) {
   else if (t.type === 'removeitem') removeItem(s, t.x, t.y, events);
   else if (t.type === 'hive') collectHoney(s, t.x, t.y, events);
   else if (t.type === 'jobmulch') continueJob(s, jobMulch(s, t.x, t.y, events), events);
-  else if (t.type === 'jobplant') continueJob(s, jobPlant(s, t.x, t.y, events), events);
+  else if (t.type === 'jobplant') continueJob(s, jobPlant(s, t, events), events);
   else if (t.type === 'jobharvest') continueJob(s, jobHarvest(s, t.x, t.y, events), events);
   else if (t.type === 'jobwater') continueJob(s, jobWater(s, t.x, t.y, events), events);
   else if (t.type === 'jobfert') continueJob(s, jobFert(s, t.x, t.y, events), events);
@@ -535,6 +535,7 @@ function route(s, tiles) {
 }
 
 const JOB_STOP = new Set(['tired', 'bagfull', 'noseeds', 'nofert', 'nomulch']);
+const jobTask = (kind, x, y, crop) => ({ type: JOB_TASK[kind], x, y, ...(kind === 'plant' ? { crop } : {}) });
 const JOB_TASK = { plant: 'jobplant', harvest: 'jobharvest', water: 'jobwater', fertilize: 'jobfert', mulch: 'jobmulch', series: 'jobseries' };
 const unmulched = (p) => Boolean(p.crop) && !p.rotten && p.progress < 1 && !p.mulch;
 
@@ -562,7 +563,7 @@ export function startJob(s, kind, crop = null, events = []) {
     targets = route(s, targets);
   }
   f.busy = null;
-  f.queue = targets.map(([x, y]) => ({ type: JOB_TASK[kind], x, y }));
+  f.queue = targets.map(([x, y]) => jobTask(kind, x, y, crop));
   f.job = { kind, crop, done: 0, total: targets.length };
   f.task = null;
   events.push({ type: 'jobstart', kind, total: targets.length });
@@ -579,14 +580,14 @@ export function startJobOn(s, kind, tiles, events = []) {
   if (f.job?.kind === kind) {
     const planned = new Set([...f.queue, f.task, f.busy?.task].filter((t) => t && t.x !== undefined).map((t) => idx(t.x, t.y)));
     targets = targets.filter(([x, y]) => !planned.has(idx(x, y)));
-    f.queue.push(...route(s, targets).map(([x, y]) => ({ type: JOB_TASK[kind], x, y })));
+    f.queue.push(...route(s, targets).map(([x, y]) => jobTask(kind, x, y, s.seed)));
     f.job.total += targets.length;
     return { ok: true, total: targets.length };
   }
   if (!targets.length) return fail(events, 'nothingthere');
   if (f.job) events.push({ type: 'jobcancel', kind: f.job.kind, done: f.job.done });
   f.busy = null;
-  f.queue = route(s, targets).map(([x, y]) => ({ type: JOB_TASK[kind], x, y }));
+  f.queue = route(s, targets).map(([x, y]) => jobTask(kind, x, y, s.seed));
   f.job = { kind, crop: kind === 'plant' ? s.seed : null, done: 0, total: targets.length };
   f.task = null;
   events.push({ type: 'jobstart', kind, total: targets.length });
@@ -629,13 +630,14 @@ function jobSeries(s, t, events) {
   return r;
 }
 
-function jobPlant(s, x, y, events) {
-  const i = idx(x, y);
+// A planting task names its seed (t.crop), or plants whatever there is (null): the chosen
+// seed first. Without that seed the plot is skipped; the job stops when no task can be planted.
+function jobPlant(s, t, events) {
+  const i = idx(t.x, t.y);
   if (!s.plots[i] || s.plots[i].crop) return { ok: false, reason: 'skip' };
-  const only = s.farmer.job?.crop;
-  const crop = only ? (s.seeds[only] > 0 ? only : null)
+  const crop = t.crop ? (s.seeds[t.crop] > 0 ? t.crop : null)
     : s.seeds[s.seed] > 0 ? s.seed : CROPS.find((c) => s.seeds[c.id] > 0)?.id;
-  if (!crop) return fail(events, 'noseeds');
+  if (!crop) return { ok: false, reason: 'skip' };
   return plant(s, i, crop, events);
 }
 
@@ -670,9 +672,10 @@ function continueJob(s, result, events) {
   const job = f.job;
   if (!job) return;
   if (result?.ok && !result.step) job.done++; // a series counts each plot once, at its harvest
-  const seedsLeft = job.crop ? s.seeds[job.crop] : totalSeeds(s);
-  if ((result && JOB_STOP.has(result.reason)) || (job.kind === 'plant' && !seedsLeft && f.queue.length)) {
-    events.push({ type: 'jobend', kind: job.kind, done: job.done, total: job.total, reason: result?.reason ?? 'noseeds' });
+  const stopped = result && JOB_STOP.has(result.reason);
+  const outOfSeed = job.kind === 'plant' && f.queue.length && !f.queue.some((t) => t.type === 'jobplant' && seedFor(s, t.crop));
+  if (stopped || outOfSeed) {
+    events.push({ type: 'jobend', kind: job.kind, done: job.done, total: job.total, reason: stopped ? result.reason : 'noseeds' });
     f.job = null;
     f.queue = [];
     return;
@@ -2199,7 +2202,9 @@ function build(s, dt, events) {
   if (b.left > 0) return;
   s.farmer.busy = null;
   if (b.what === 'work') {
-    doTask(s, b.task, events);
+    // only finish what was started: if the plot changed meanwhile (drone, rain, another tool), skip it
+    if (workAct(s, b.task) === b.act) doTask(s, b.task, events);
+    else if (b.task.type.startsWith('job')) continueJob(s, { ok: false, reason: 'skip' }, events);
     return;
   }
   if (b.what === 'gig') {

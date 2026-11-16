@@ -691,7 +691,14 @@ function onOrderItem(id) {
 
 function cancelJob() {
   const f = state.farmer;
-  if (!f.job) return;
+  if (!f.job) {
+    // Esc also stops a single piece of plot work; nothing is spent
+    if (f.busy?.what === 'work') {
+      f.busy = null;
+      refresh();
+    }
+    return;
+  }
   report([{ type: 'jobcancel', kind: f.job.kind, done: f.job.done }]);
   f.job = null;
   f.queue = [];
@@ -726,9 +733,11 @@ const fishing = () => state.farmer.busy?.what === 'fish';
 // Dragging over the field with a tool marks plots; on release the farmer works them in order.
 let drag = null; // { kind, last: [x, y], tiles, moved }
 let swallowClick = false; // the click that ends a drag is not a click on a plot
+let dragCancelled = false; // Esc or leaving the map dropped a drag: its release is not a click either
 // Shift while dragging with the hands: the whole series instead of just the harvest
 const dragJob = (d, e) => (d.kind === 'harvest' && e.shiftKey ? 'series' : d.kind);
-function endDrag() {
+function endDrag(cancel = false) {
+  if (cancel && drag?.moved) dragCancelled = true;
   drag = null;
   renderer.setDragTiles(null);
 }
@@ -740,6 +749,11 @@ canvas.addEventListener('mousedown', (e) => {
   drag = { kind, last: t, tiles: [t], moved: false };
 });
 window.addEventListener('mouseup', (e) => {
+  if (dragCancelled) {
+    dragCancelled = false;
+    swallowClick = e.target === canvas;
+    return;
+  }
   if (!drag) return;
   const d = drag;
   endDrag();
@@ -803,7 +817,7 @@ canvas.addEventListener('mousemove', (e) => {
   renderer.setCorner(hoverCorner);
 });
 canvas.addEventListener('mouseleave', () => {
-  endDrag();
+  endDrag(true);
   hoverTile = null;
   hoverCorner = null;
   renderer.setHover(null);
@@ -827,7 +841,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === '+' || e.key === '=') onZoom(1);
   else if (e.key === '-') onZoom(-1);
   else if (e.key === 'Escape') {
-    endDrag();
+    endDrag(true);
     if (fishing()) act((ev) => stopFishing(state, ev));
     cancelJob();
     ui.state.placing = false;

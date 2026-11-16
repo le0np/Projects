@@ -155,6 +155,32 @@ test('if the plot changed during the work (drone, someone faster), it is skipped
   assert.equal(countWhere(s.bag, () => true), before);
 });
 
+test('a single click: if the plot changes during the work, nothing else happens instead', () => {
+  const s = withSeeds(5);
+  s.tool = 'seed'; // seeds in hand, but the click was on a ripe plot: a harvest
+  s.plots[idx(AX, AY)] = ripePlot('radish');
+  s.farmer.x = AX; s.farmer.y = AY;
+  command(s, AX, AY);
+  assert.equal(s.farmer.busy.act, 'harvest');
+  s.plots[idx(AX, AY)] = makePlot(); // the drone took it
+  const events = [];
+  advance(s, 2, events);
+  assert.equal(plotOf(s).crop, null, 'not planted instead');
+  assert.equal(s.seeds.radish, 5);
+  assert.equal(s.energy, MAX_ENERGY);
+  assert.ok(!events.some((e) => e.type === 'fail' || e.type === 'plant'), JSON.stringify(events));
+
+  const t = createState();
+  t.tool = 'can';
+  t.plots[idx(AX, AY)] = { ...makePlot(), crop: 'radish', progress: 0.3 };
+  t.farmer.x = AX; t.farmer.y = AY;
+  command(t, AX, AY);
+  t.plots[idx(AX, AY)].wet = true; // rain got there first
+  const ev = [];
+  advance(t, 2, ev);
+  assert.ok(!ev.some((e) => e.type === 'fail'), 'no "already wet" complaint');
+});
+
 test('sleep, passing out or leaving for town clears the work in progress', () => {
   const s = withSeeds(5);
   s.tool = 'seed';
@@ -728,6 +754,21 @@ test('drag-planting: the farmer works the marked plots; a second drag adds to th
   assert.equal(events.filter((e) => e.type === 'jobstart').length, 1);
   for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1, events);
   assert.equal(PLOTS_A.slice(0, 4).filter((i) => s.plots[i].crop === 'radish').length, 4);
+});
+
+test('pick another seed and keep dragging: the new plots get the new seed', () => {
+  const s = createState();
+  s.seeds.radish = 1;
+  s.seeds.carrot = 5;
+  s.seed = 'radish';
+  const events = [];
+  startJobOn(s, 'plant', [xy(PLOTS_A[0])], events);
+  s.seed = 'carrot';
+  startJobOn(s, 'plant', PLOTS_A.slice(1, 4).map(xy), events);
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1, events);
+  const crops = PLOTS_A.slice(0, 4).map((i) => s.plots[i].crop);
+  assert.deepEqual(crops, ['radish', 'carrot', 'carrot', 'carrot']);
+  assert.equal(events.find((e) => e.type === 'jobend').done, 4);
 });
 
 test('a drag with another tool replaces the running job; in town it is refused', () => {
