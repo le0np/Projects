@@ -11,6 +11,7 @@ import {
   RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, BUYBACK,
   HOSE_PER_SPRINKLER, ROT_DAY, SHOP_OPEN, SHOP_CLOSE, SLEEP_FROM, BAG_SIZE, CHEST_SIZE,
   STAND_SIZE, CUSTOMER_KG, AD_NAMES, ONLINE, POLLEN_BONUS, GIG_ENERGY_PER_HOUR, MAX_ENERGY, FISH, FISHING, GAME_MIN_PER_SEC,
+  WORK_SECONDS, WALK_SPEED,
 } from './data.js';
 
 // zlatnici (as written in data.js) → "3 zl 50 sr"
@@ -26,6 +27,7 @@ const shop = (id) => SHOP_ITEMS.find((i) => i.id === id);
 const recipe = (id) => RECIPES.find((r) => r.id === id);
 const build = (b) => `${zl(b.price)}, ${b.wood} drva, ${b.stone} kamena i ${b.energy} ⚡`;
 const stars = (n) => '★'.repeat(n);
+const secs = (n) => `${String(n).replace('.', ',')} s`; // 1.5 → "1,5 s"
 const up = (line) => UPGRADES[line].values; // what an upgrade line gives, level by level
 const upText = (line) => up(line).map((v, k) => UPGRADES[line].text(v, k + 1)).join(' → ');
 // whose card an upgrade line is on at the workbench
@@ -90,6 +92,15 @@ export function guideTopics() {
         `Cijena prema kvaliteti: ★ ${Math.round(TIER_PRICE[1] * 100)} %, ★★ tržišna cijena, ${[3, 4, 5].map((t) => `${stars(t)} +${Math.round((TIER_PRICE[t] - 1) * 100)} %`).join(', ')}. Kupci škart uzimaju samo kad nema boljeg.`,
         `Dron bere samo plodove do razine svoje kamere (${stars(UPGRADES.droneTier.values[0])} na početku, nadogradnjama do ${stars(UPGRADES.droneTier.values.at(-1))}); bolje ostavlja tebi za ručnu berbu. Voda iz prskalice vrijedi ${Math.round(UPGRADES.nozzles.values[0] * 100)} % ručnog zalijevanja dok se mlaznice ne nadograde.`,
         `Škart nije bačen: od njega je ★ gnojivo (${COMPOST_KG} kg = 1 vreća) ili hrana za kokoši.`,
+      ],
+    },
+    {
+      id: 'fieldwork', icon: '🧑‍🌾', title: 'Rad na polju: povlačenje i serija',
+      body: [
+        `Farmer hoda ${WALK_SPEED} polja u sekundi, kao i kupci, a svaki posao na parceli traje: sadnja ${secs(WORK_SECONDS.plant)}, berba ${secs(WORK_SECONDS.harvest)}, čišćenje trule parcele ${secs(WORK_SECONDS.clear)}, zalijevanje ${secs(WORK_SECONDS.water)}, gnojenje i malčiranje ${secs(WORK_SECONDS.fertilize)}, punjenje kante ${secs(WORK_SECONDS.refill)} (1 s je ${GAME_MIN_PER_SEC} minute u igri). Traka ispod farmera pokazuje koliko je ostalo; energija se troši kad je posao gotov, a klik negdje drugdje ga prekida bez troška.`,
+        'Povuci mišem preko polja (drži lijevu tipku): parcele na kojima alat ima posla dobiju žuti okvir, a kad pustiš tipku, farmer ih obiđe redom. Ruke beru, sjeme sadi vrstu iz vrećice, kanta zalijeva, gnojivo gnoji, malč malčira. Ako povučeš istim alatom dok farmer još radi, nove parcele dođu na kraj popisa.',
+        'Serija: ▾ uz ruke → „Serija: poberi, posadi, zalij“, ili povuci rukama uz pritisnut Shift. Na svakoj parceli farmer pobere plod, posadi istu vrstu (ako nje nema, onu iz vrećice; ako nema ni nje, parcela ostaje prazna) i zalije je. Kad se kanta isprazni, sam ode po vodu; na kišni dan ne zalijeva.',
+        'Ručni rad je spor, ali donosi najbolje plodove. Kad polje naraste, posao preuzimaju dron, replant.py i prskalice (vidi Nadogradnje izuma).',
       ],
     },
     {
@@ -360,6 +371,7 @@ export function guideTopics() {
         { list: [
           '1–6: ruke, sjeme, kanta, gnojivo, pecaljka, malč',
           'B, P, Z, G: poberi, posadi, zalij, pognoji sve',
+          'povlačenje mišem preko polja: posao alata na tim parcelama · Shift + povlačenje rukama: serija',
           'T: torba · M: mobitel',
           '+ / − ili kotačić: zoom',
           'Esc: prekini posao i zatvori sve',

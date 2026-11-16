@@ -36,3 +36,14 @@ test('handbook: lists every invention, building cost and crop', () => {
   for (const c of CROPS) assert.ok(all.includes(c.name), c.name);
   for (const b of Object.values(BUILDINGS)) assert.ok(all.includes(`${b.wood} drva, ${b.stone} kamena`), b.name);
 });
+
+test('handbook: field work explains dragging, the series and how long work takes', () => {
+  const [first] = searchGuide('serija');
+  assert.equal(first.id, 'fieldwork');
+  const text = topicText(first);
+  assert.match(text, /povuci/i);
+  assert.match(text, /Shift/);
+  assert.match(text, /1,5 s/, 'planting and harvesting take 1.5 s');
+  assert.match(text, /posadi istu vrstu/);
+  assert.equal(searchGuide('povlačenje')[0].id, 'fieldwork');
+});
