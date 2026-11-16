@@ -7,7 +7,7 @@ import {
   countWhere, extractSeeds, makeCompost, orderSeeds, startJob, upgrade, fillTank, orderItem, feedHens, acceptGig, sprinklerAt,
   goWork, goodById, forageById, shopItemById, matCount, matsText, cancelOrder, stopFishing, fishById,
   placeItem, removeItem, fulfillRequest, sellBack, adoptPet, patPet, dayNameGen, rentStall, buyVan, hireWorker, goToMarket, sendVan, comeBack,
-  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn,
+  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn, sortSlots, dropItem,
 } from './sim.js';
 import { ONLINE } from './data.js';
 import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES, UPGRADES, TANK_SIZE } from './data.js';
@@ -35,7 +35,7 @@ const savedZoom = Number(storage.get(ZOOM_KEY));
 if (savedZoom > 0) renderer.setZoom(savedZoom);
 
 const ui = createUI({
-  onTool, onSeed, onMove, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
+  onTool, onSeed, onMove, onSort, onDrop, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
   onUpgrade, onFillTank, onOrderItem, onAcceptGig, onGoWork, onSetting,
   onRentStall, onBuyVan, onHire, onGoMarket, onSendVan, onComeBack, onCancelOrder, onCompost,
   onPlaceItem, onRemoveMode, onFulfill, onSellBack, onAdopt, onNotifySetting, onBuildOnline, onPack, onGoPost,
@@ -546,6 +546,16 @@ function onSeed(id) {
   state.tool = 'seed';
   ui.state.placing = false;
   refresh();
+}
+
+// "Sortiraj": the thing there is most of first, by its name when amounts are equal
+function onSort(which) {
+  act((ev) => sortSlots(state, which, itemName, ev));
+}
+
+// an item dragged with the mouse onto another slot
+function onDrop(from, slot, to, target) {
+  act((ev) => dropItem(state, from, slot, to, target, ev));
 }
 
 function onMove(from, slot, to) {

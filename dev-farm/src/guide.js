@@ -292,6 +292,7 @@ export function guideTopics() {
       id: 'storage', icon: '🎒', title: 'Torba, škrinja i dostava',
       body: [
         `Torba ima ${BAG_SIZE} mjesta, škrinja kod kuće ${CHEST_SIZE}. Torba i mobitel su ikone desno na mapi (tipke T i M).`,
+        'Gumb „Sortiraj“ iznad torbe, škrinje, štanda i kombija spoji hrpe iste stvari i složi sve po količini (najviše prvo), bez praznih mjesta između. Predmet povuci mišem kamo hoćeš: na prazno mjesto, na isti predmet (spoje se) ili na drugi (zamijene mjesta); povučen iz torbe u škrinju (ili obrnuto) ide točno na mjesto gdje ga pustiš. Klik i „po 1 / po 5 / sve“ i dalje rade.',
         'Sve naručeno stiže sutra ujutro: sjeme u vrećicu, kokoši u kokošinjac, ostalo u škrinju. Svaki artikl ima cijenu i brojač − broj +: + naruči još jedan paket, − ga otkaže uz povrat novca (do jutra). Traka na vrhu Dostave pokazuje koliko stiže i koliko je plaćeno.',
       ],
     },

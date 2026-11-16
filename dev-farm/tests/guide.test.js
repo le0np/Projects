@@ -48,3 +48,10 @@ test('handbook: field work explains dragging, the series and how long work takes
   assert.match(text, /čiste trule parcele/, 'bulk clearing of rotten plots');
   assert.equal(searchGuide('povlačenje')[0].id, 'fieldwork');
 });
+
+test('handbook: the bag topic explains the sort button and dragging items', () => {
+  const t = guideTopics().find((x) => x.id === 'storage');
+  const text = topicText(t);
+  assert.match(text, /Sortiraj/);
+  assert.match(text, /povuci/i);
+});

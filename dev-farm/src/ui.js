@@ -96,12 +96,43 @@ const button = (label, onClick, { disabled = false, cls = 'btn', title = '' } = 
   return b;
 };
 
-function slotButton(it, onClick, { label = '' } = {}) {
+// Dragging items with the mouse between slots (bag, chest, stand, van): set by createUI.
+let onDropItem = null;
+
+function makeDraggable(b, it, from, slot) {
+  if (it) {
+    b.draggable = true;
+    b.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', JSON.stringify({ from, slot }));
+      e.dataTransfer.effectAllowed = 'move';
+      b.classList.add('dragging');
+    });
+    b.addEventListener('dragend', () => b.classList.remove('dragging'));
+  }
+  b.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    b.classList.add('drop-target');
+  });
+  b.addEventListener('dragleave', () => b.classList.remove('drop-target'));
+  b.addEventListener('drop', (e) => {
+    e.preventDefault();
+    b.classList.remove('drop-target');
+    let src;
+    try { src = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+    if (src && onDropItem) onDropItem(src.from, src.slot, from, slot);
+  });
+}
+
+// `from`/`slot`: where this slot is, so items can be dragged out of it and dropped on it
+function slotButton(it, onClick, { label = '', from = null, slot = -1 } = {}) {
   const b = el('button', 'slot');
   b.type = 'button';
+  if (from) makeDraggable(b, it, from, slot);
   if (!it) {
     b.classList.add('empty');
-    b.disabled = !onClick;
+    if (from) b.setAttribute('aria-disabled', 'true'); // still a drop target
+    else b.disabled = !onClick;
     b.setAttribute('aria-label', 'prazno');
   } else {
     const p = parseItem(it.id);
@@ -167,6 +198,8 @@ export function coinify(root) {
 }
 
 export function createUI(cb) {
+  onDropItem = cb.onDrop;
+  const sortButton = (which) => button('Sortiraj', () => cb.onSort(which), { cls: 'btn sort-btn' });
   const $ = (id) => document.getElementById(id);
   const els = {
     day: $('hud-day'), clock: $('hud-clock'), shop: $('hud-shop'), money: $('hud-money'), gold: $('hud-gold'), silver: $('hud-silver'),
@@ -200,6 +233,7 @@ export function createUI(cb) {
   $('phone-btn-icon').src = iconUrl('phone');
   els.bagBtn.addEventListener('click', () => toggle('bag'));
   els.phoneBtn.addEventListener('click', () => toggle('phone'));
+  $('bag-sort').addEventListener('click', () => cb.onSort('bag'));
   $('bag-close').addEventListener('click', () => { ui.bagOpen = false; if (BAG_PANELS.has(ui.panel)) ui.panel = null; cb.onChange(); });
   $('phone-close').addEventListener('click', () => toggle('phone', false));
 
@@ -453,7 +487,7 @@ export function createUI(cb) {
     const transfer = ui.panel === 'chest' || ui.panel === 'stand' || ui.panel === 'coop' || loading;
     const sig = JSON.stringify([s.bag, ui.selected, ui.panel, loading]);
     renderIfChanged(els.bag, sig, () => s.bag.map((it, i) => {
-      const b = slotButton(it, it ? () => (transfer ? cb.onMove('bag', i, ui.panel) : select(i)) : null);
+      const b = slotButton(it, it ? () => (transfer ? cb.onMove('bag', i, ui.panel) : select(i)) : null, { from: 'bag', slot: i });
       if (i === ui.selected) b.classList.add('selected');
       if (((ui.panel === 'stand' || loading) && it && !isSellable(it.id)) || (ui.panel === 'coop' && it && (parseItem(it.id).kind !== 'crop' || parseItem(it.id).crop === 'egg'))) b.classList.add('dim');
       return b;
@@ -562,8 +596,8 @@ export function createUI(cb) {
     } else if (ui.panel === 'chest') {
       renderIfChanged(els.panel, JSON.stringify(['chest', s.chest, s.upgrades.coldroom]), () => {
         const grid = el('div', 'slots chest');
-        s.chest.forEach((it, i) => grid.append(slotButton(it, it ? () => cb.onMove('chest', i, 'bag') : null)));
-        return [head(), el('p', 'muted', 'Klik na stvar u škrinji vrati je u torbu.'), grid,
+        s.chest.forEach((it, i) => grid.append(slotButton(it, it ? () => cb.onMove('chest', i, 'bag') : null, { from: 'chest', slot: i })));
+        return [head(), el('p', 'muted', 'Klik na stvar u škrinji vrati je u torbu; mišem je možeš povući kamo hoćeš.'), sortButton('chest'), grid,
           el('p', 'small muted', s.upgrades.coldroom ? `❄️ Hladnjača (${chestSize(s)} mjesta): plodovi u njoj ne gube kvalitetu.` : 'Plodovi u škrinji polako gube kvalitetu (klasu na otprilike svako drugo jutro). Hladnjača s radnog stola ih čuva.')];
       });
     } else if (ui.panel === 'stand') {
@@ -572,11 +606,12 @@ export function createUI(cb) {
         const grid = el('div', 'slots');
         s.stand.forEach((it, i) => {
           const p = it && parseItem(it.id);
-          grid.append(slotButton(it, it ? () => cb.onMove('stand', i, 'bag') : null, { label: p ? `${formatMoney(salePrice(p.crop, p.tier))}/${unitOf(it.id)}` : '' }));
+          grid.append(slotButton(it, it ? () => cb.onMove('stand', i, 'bag') : null, { label: p ? `${formatMoney(salePrice(p.crop, p.tier))}/${unitOf(it.id)}` : '', from: 'stand', slot: i }));
         });
         return [
           head(),
           el('p', 'muted', `Kupci dolaze ${formatClock(SHOP_OPEN)}–${formatClock(SHOP_CLOSE)} i uvijek uzmu najbolje što vide. Cijena ovisi o kvaliteti: ★ ide za pola cijene i samo kad nema boljeg.`),
+          sortButton('stand'),
           grid,
           el('p', 'muted small', shopOpen(s.clock) ? 'Štand je otvoren.' : 'Štand je sada zatvoren.'),
           ...requestCards(s),
@@ -776,8 +811,8 @@ export function createUI(cb) {
         out.push(el('p', '', `🚐 ${MARKET.worker} ${where} · prodano ${tv.kg} kg · ${formatMoney(tv.money)}`));
       } else {
         const grid = el('div', 'slots');
-        s.cargo.forEach((it, i) => grid.append(slotButton(it, it ? () => cb.onMove('cargo', i, 'bag') : null)));
-        out.push(el('p', 'small muted', 'U kombiju (klik vraća u torbu):'), grid);
+        s.cargo.forEach((it, i) => grid.append(slotButton(it, it ? () => cb.onMove('cargo', i, 'bag') : null, { from: 'cargo', slot: i })));
+        out.push(el('p', 'small muted', 'U kombiju (klik vraća u torbu):'), sortButton('cargo'), grid);
       }
       if (!m.worker) {
         out.push(el('p', 'small', `Dnevnica je ${formatMoney(zl(MARKET.wage))} i plaća se samo na dane kad vozi.`));
