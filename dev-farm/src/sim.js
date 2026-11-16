@@ -393,14 +393,14 @@ function workKind(s, t) {
       if (s.tool === 'mulch') return !p.mulch && hasMulch(s) ? 'mulch' : null;
       return null;
     case 'jobplant': return !p.crop && seedFor(s, t.crop) ? 'plant' : null;
-    case 'jobharvest': return ripe ? 'harvest' : null;
+    case 'jobharvest': return p.rotten ? 'clear' : ripe ? 'harvest' : null;
     case 'jobwater': return needsWater(p) && s.water > 0 ? 'water' : null;
     case 'jobfert': return unfertilized(p) && fertDoses(s) ? 'fertilize' : null;
     case 'jobmulch': return unmulched(p) && hasMulch(s) ? 'mulch' : null;
     case 'jobseries':
       if (t.step === 'plant') return !p.crop && seriesSeed(s, t.crop) ? 'plant' : null;
       if (t.step === 'water') return needsWater(p) && s.water > 0 ? 'water' : null;
-      return ripe ? 'harvest' : null;
+      return p.rotten ? 'clear' : ripe ? 'harvest' : null;
     default: return null;
   }
 }
@@ -464,7 +464,7 @@ function jobFits(s, kind, i, crop = null) {
   if (kind === 'water') return needsWater(p);
   if (kind === 'fertilize') return unfertilized(p);
   if (kind === 'mulch') return unmulched(p);
-  return Boolean(p.crop) && !p.rotten && p.progress >= 1; // harvest
+  return Boolean(p.crop) && (p.rotten || p.progress >= 1); // harvest (and the series): ripe ones, and rotten ones get cleared
 }
 
 // How many plots a job can do at most: seeds, fertilizer doses or mulch in the bag.
@@ -623,9 +623,9 @@ function jobSeries(s, t, events) {
     const r = waterPlot(s, i, events);
     return r.ok ? { ok: true, step: true } : r;
   }
-  if (!p.crop || p.rotten || p.progress < 1) return skip;
+  if (!p.crop || (!p.rotten && p.progress < 1)) return skip;
   const crop = p.crop;
-  const r = harvestHand(s, i, events);
+  const r = p.rotten ? clearPlot(s, i, events) : harvestHand(s, i, events);
   if (r.ok) queue.unshift({ type: 'jobseries', x, y, step: 'plant', crop });
   return r;
 }
@@ -649,8 +649,8 @@ function jobFert(s, x, y, events) {
 
 function jobHarvest(s, x, y, events) {
   const p = s.plots[idx(x, y)];
-  if (!p || !p.crop || p.rotten || p.progress < 1) return { ok: false, reason: 'skip' };
-  return harvestHand(s, idx(x, y), events);
+  if (!p || !p.crop || (!p.rotten && p.progress < 1)) return { ok: false, reason: 'skip' };
+  return p.rotten ? clearPlot(s, idx(x, y), events) : harvestHand(s, idx(x, y), events);
 }
 
 function jobWater(s, x, y, events) {
@@ -783,12 +783,7 @@ export function plotAction(s, x, y, events = []) {
   if (!s.plots[i]) return fail(events, 'notplot');
   if (!plotUnlocked(s, i)) return fail(events, 'locked');
   const p = s.plots[i];
-  if (p.rotten) {
-    if (!spend(s, ENERGY_COST.clear, events)) return { ok: false, reason: 'tired' };
-    s.plots[i] = makePlot();
-    events.push({ type: 'clear', x, y });
-    return { ok: true };
-  }
+  if (p.rotten) return clearPlot(s, i, events);
   if (p.crop && p.progress >= 1) return harvestHand(s, i, events);
   if (!p.crop) {
     if (s.tool !== 'seed') return fail(events, 'needseed');
@@ -2270,6 +2265,20 @@ export function sleep(s, events = [], passedOut = false) {
   events.push({ type: passedOut ? 'passout' : 'slept', day: s.day, summary });
   events.push(...night.filter((e) => ['sprinkle', 'fertigated', 'tankempty'].includes(e.type)), ...mornEvents);
   return { ok: true };
+}
+
+// Clear a rotten plot so it can be planted again.
+function clearPlot(s, i, events) {
+  if (!spend(s, ENERGY_COST.clear, events)) return { ok: false, reason: 'tired' };
+  s.plots[i] = makePlot();
+  const [x, y] = xy(i);
+  events.push({ type: 'clear', x, y });
+  return { ok: true };
+}
+
+// rotten plots waiting to be cleared
+export function rottenCount(s) {
+  return Object.keys(s.plots).filter((k) => s.plots[k].rotten && plotUnlocked(s, Number(k))).length;
 }
 
 export function ripeCount(s) {

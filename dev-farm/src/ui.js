@@ -13,7 +13,7 @@ import {
   upgradeProblem, nextStep, levelValue, matsText, pumpCapacity, tankDoses, runningSprinklers, irrigationMissing, fishById, fertDoses, requestHave, requestPay, orderPick, orderPay, dayName, dayNameGen,
   buybackList, hiveAt, decorAt, farmerTripProblem, vanTripProblem, pumpStatus, orderPack, shopItemById,
   owns, recipeAmount, hensMax, feederCap, hiveCap, chestSize, cropDays, hasTap,
-  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB,
+  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount,
 } from './sim.js';
 import { idx, objectAt, isPlotTile, OBJECTS, TAP } from './world.js';
 import { iconUrl } from './render.js';
@@ -253,6 +253,11 @@ export function createUI(cb) {
   // Seeds and the can are split buttons: the tool itself works plant by plant,
   // the ▾ next to it runs the bulk job (everything, or one kind of crop).
   const SPLIT = TOOL_JOB;
+  // the hands: what is ripe, and what has rotten and waits to be cleared
+  const handSub = (s) => {
+    const rotten = rottenCount(s);
+    return `zrelih: ${ripeCount(s)}${rotten ? ` · trulih: ${rotten}` : ''}`;
+  };
   // the series (harvest, plant, water) lives under the hands
   const jobOf = (job) => (job?.kind === 'series' ? 'harvest' : job?.kind);
   const toolEls = new Map();
@@ -299,7 +304,7 @@ export function createUI(cb) {
       const n = count(c.id);
       if (n > 0 || (kind === 'plant' && s.seeds[c.id] > 0)) options.push({ crop: c.id, label: c.name, n });
     }
-    const unit = { harvest: 'zrelih', water: 'suhih', fertilize: 'za gnojivo', plant: 'parcela', mulch: 'bez malča' }[kind];
+    const unit = { harvest: 'parcela', water: 'suhih', fertilize: 'za gnojivo', plant: 'parcela', mulch: 'bez malča' }[kind];
     const item = (o, job) => {
       const b = button('', () => { closeMenu(); cb.onJob(job, o.crop); }, { cls: 'job-option', disabled: o.n === 0 });
       if (o.crop) b.append(icon(o.crop, 'px-icon small-icon'));
@@ -386,7 +391,7 @@ export function createUI(cb) {
         : t.id === 'mulch' ? `${mulchDoses} doza`
         : t.id === 'seed' ? `${cropById[s.seed].name} × ${s.seeds[s.seed]}`
         : t.id === 'can' ? `💧 ${s.water}/${canSize(s)}`
-          : t.id === 'fert' ? fertSub(s) : `zrelih: ${jobTargets(s, 'harvest').length}`;
+          : t.id === 'fert' ? fertSub(s) : handSub(s);
       setText(sub, text);
     }
 
@@ -402,7 +407,7 @@ export function createUI(cb) {
         const verb = {
           plant: { stop: 'sadnju', do: 'Posadi', what: `parcela za sadnju: ${n}`, none: 'Nema sjemena ili slobodnih parcela', ing: 'sadi' },
           water: { stop: 'zalijevanje', do: 'Zalij', what: `suhih: ${n}`, none: 'Ništa nije suho', ing: 'zalijeva' },
-          harvest: { stop: 'berbu', do: 'Poberi', what: `zrelih: ${n}`, none: 'Ništa nije zrelo', ing: 'bere' },
+          harvest: { stop: 'berbu', do: 'Poberi', what: handSub(s), none: 'Ništa nije zrelo ni trulo', ing: 'bere' },
           fertilize: { stop: 'gnojenje', do: 'Pognoji', what: `za gnojivo: ${n}`, none: 'Nema gnojiva ili nepognojenih biljaka', ing: 'gnoji' },
           mulch: { stop: 'malčiranje', do: 'Malčiraj', what: `bez malča: ${n}`, none: 'Nema malča ili parcela bez malča', ing: 'malčira' },
         }[kind];

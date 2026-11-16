@@ -39,3 +39,13 @@ Jedan razuman put: proširiti postojeći mehanizam skupnih poslova (`f.queue`, `
 - Točan izgled poza i obruba povlačenja.
 - Kako se zapisuju trajanja u `src/data.js` (npr. `WORK_SECONDS`).
 - Prag koji razlikuje klik od povlačenja.
+
+## Dodatak (16. 11.): trule parcele
+
+Vlasnik: trule parcele mogu se čistiti samo jedna po jedna – propust. Odobreno:
+
+- Ruke ▾ → „Poberi sve“ (i tipka B, i izbor jedne vrste) obiđe zrele i trule parcele: zrele bere, trule čisti (1,5 s, 1 ⚡).
+- Povlačenje rukama isto bere zrele i čisti trule.
+- Serija na truloj parceli: očisti → posadi istu vrstu → zalij.
+- Na alatu ruku piše „zrelih: N · trulih: M“.
+- Dron i replant.py trulež ne diraju (moguća nadogradnja kasnije). Posebna stavka „Očisti trulo“ nije potrebna.

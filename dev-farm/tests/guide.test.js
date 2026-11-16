@@ -45,5 +45,6 @@ test('handbook: field work explains dragging, the series and how long work takes
   assert.match(text, /Shift/);
   assert.match(text, /1,5 s/, 'planting and harvesting take 1.5 s');
   assert.match(text, /posadi istu vrstu/);
+  assert.match(text, /čiste trule parcele/, 'bulk clearing of rotten plots');
   assert.equal(searchGuide('povlačenje')[0].id, 'fieldwork');
 });

@@ -358,21 +358,28 @@ function report(events) {
           fertilize: `Idem gnojiti: ${e.total} ${plots(e.total)}.`,
           mulch: `Idem malčirati: ${e.total} ${plots(e.total)}.`,
           series: `Idem: berba, sadnja i zalijevanje, ${e.total} ${plots(e.total)}.`,
-        }[e.kind] ?? `Idem brati, zrelih: ${e.total}.`);
+        }[e.kind] ?? `Idem u berbu: ${e.total} ${plots(e.total)} (trule čistim).`);
         break;
       case 'jobcancel':
         jobTally = null;
         ui.say(`Dobro, prekidam ${{ plant: 'sadnju', harvest: 'berbu', water: 'zalijevanje', fertilize: 'gnojenje', mulch: 'malčiranje', series: 'seriju' }[e.kind]}.`);
         break;
       case 'jobend': {
+        const cleared = jobTally?.cleared ?? 0;
+        const picked = e.done - cleared;
         const what = e.kind === 'series' ? `Serija na ${e.done} ${plots(e.done)}`
-          : `${{ plant: 'Posađeno', harvest: 'Ubrano', water: 'Zaliveno', fertilize: 'Pognojeno', mulch: 'Malčirano' }[e.kind]} ${e.done}`;
-        const detail = jobTally && e.done ? ` (${tallyText(jobTally)})` : '';
+          : e.kind === 'harvest' && cleared ? `Ubrano ${picked}, očišćeno trulih ${cleared}`
+            : `${{ plant: 'Posađeno', harvest: 'Ubrano', water: 'Zaliveno', fertilize: 'Pognojeno', mulch: 'Malčirano' }[e.kind]} ${e.done}`;
+        const tally = jobTally ? tallyText(jobTally) : '';
+        const detail = tally ? ` (${tally})` : '';
         jobTally = null;
         if (e.reason) ui.say(`${farmerSays(e)} ${what} od ${e.total}${detail}.`, 'sad');
         else ui.say(`Gotovo! ${what}${detail}.`, 'happy');
         break;
       }
+      case 'clear':
+        if (jobTally) jobTally.cleared = (jobTally.cleared ?? 0) + 1;
+        break;
       case 'harvest':
         if (e.by === 'drone') break;
         if (jobTally) jobTally[e.tier] = (jobTally[e.tier] ?? 0) + e.kg;

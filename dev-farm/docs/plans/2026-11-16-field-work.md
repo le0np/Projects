@@ -321,3 +321,14 @@ test('shift-drag with the hands runs the series on the marked plots only', () =>
 - [ ] **Step 5:** README: opis rada na polju (hod, trajanja, povlačenje, Shift, serija) i obrazloženje odluka; PROGRESS: v35, zadnja provjera, ograničenja (red i radnja u tijeku se ne spremaju; ravnoteža tempa nije isprobana igranjem), sljedeći koraci (točka 3 iz liste vlasnika).
 - [ ] **Step 6: Završna provjera:** `npm test` sve prolazi; headless Chromium bez JS grešaka: klik-sadnja s trakom i pozom, povlačenje preko 4 parcele, serija iz izbornika, prekid klikom.
 - [ ] **Step 7: Commit** – `git commit -m "dev-farm: guide, readme and progress for field work"`
+
+---
+
+### Task 6: Trule parcele u berbi, povlačenju i seriji (dodatak specu)
+
+**Files:** `src/sim.js` (`jobFits`, `workKind`, `jobHarvest`, `jobSeries`, novi `export rottenCount(s)`), `src/ui.js` (natpis ruku, jedinica u izborniku), `src/main.js` (tekstovi berbe), `src/guide.js`, `tests/sim.test.js`, README, PROGRESS.
+
+- [ ] Testovi koji padaju: „harvest all also clears rotten plots“ (2 zrele + 2 trule → sve prazne, u torbi 2 berbe, energija −4, `done` 4); „bulk harvest of one crop clears only that crop's rotten plots“; „dragging the hands over rotten plots clears them“ (`dragTargets(s, 'harvest', …)` uključuje trule); „series on a rotten plot: clear, plant the same crop, water“.
+- [ ] Izvedba: `jobFits` za `harvest`/`series` = `p.crop && (p.rotten || p.progress >= 1)`; `workKind` za `jobharvest` i korak berbe u `jobseries` vraća `'clear'` za trulu parcelu; čišćenje izdvojeno u `clearPlot(s, i, events)` (koristi ga i `plotAction`); serija nakon čišćenja sadi `p.crop` trule parcele.
+- [ ] UI: „zrelih: N · trulih: M“ na rukama, jedinica u izborniku berbe „parcela“, `jobend` za berbu dopisuje „očišćeno M“.
+- [ ] `npm test` zelen, provjera u pregledniku (Poberi sve na polju s trulim parcelama), commit.

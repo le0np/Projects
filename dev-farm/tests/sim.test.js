@@ -10,7 +10,7 @@ import {
   matsText, stopFishing, placeItem, removeItem, fulfillRequest, sellBack, buybackList, adoptPet, patPet, walkFn, requestPay,
   owns, chestSize, hensMax, feederCap, levelValue, cropDays,
   buildOnline, onlineProblem, packOrder, goToPost, postTripProblem, parcelsReady, orderPay,
-  tilesBetween, dragTargets, startJobOn,
+  tilesBetween, dragTargets, startJobOn, rottenCount,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -838,6 +838,54 @@ test('shift-drag with the hands runs the series on the marked plots only', () =>
   startJobOn(s, 'series', PLOTS_A.slice(0, 2).map(xy));
   for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1);
   assert.equal(ripeCount(s), 2);
+});
+
+test('harvest all also clears rotten plots', () => {
+  const s = createState();
+  for (const i of PLOTS_A.slice(0, 2)) s.plots[i] = ripePlot('radish');
+  for (const i of PLOTS_A.slice(2, 4)) s.plots[i] = ripePlot('radish', { rotten: true });
+  assert.equal(rottenCount(s), 2);
+  const events = [];
+  assert.equal(startJob(s, 'harvest', null, events).total, 4);
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1, events);
+  assert.ok(PLOTS_A.slice(0, 4).every((i) => !s.plots[i].crop && !s.plots[i].rotten));
+  assert.equal(events.filter((e) => e.type === 'harvest').length, 2);
+  assert.equal(events.filter((e) => e.type === 'clear').length, 2);
+  assert.equal(s.energy, MAX_ENERGY - 4);
+  assert.equal(events.find((e) => e.type === 'jobend').done, 4);
+  assert.equal(rottenCount(s), 0);
+});
+
+test('bulk harvest of one crop clears only that crop\'s rotten plots', () => {
+  const s = createState();
+  s.plots[PLOTS_A[0]] = ripePlot('radish', { rotten: true });
+  s.plots[PLOTS_A[1]] = ripePlot('carrot', { rotten: true });
+  startJob(s, 'harvest', 'radish');
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1);
+  assert.equal(s.plots[PLOTS_A[0]].crop, null);
+  assert.ok(s.plots[PLOTS_A[1]].rotten);
+});
+
+test('dragging the hands over rotten plots clears them', () => {
+  const s = createState();
+  s.plots[PLOTS_A[0]] = ripePlot('radish', { rotten: true });
+  const row = PLOTS_A.slice(0, 3).map(xy);
+  assert.deepEqual(dragTargets(s, 'harvest', row), [row[0]]);
+  startJobOn(s, 'harvest', row);
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1);
+  assert.ok(!s.plots[PLOTS_A[0]].rotten);
+});
+
+test('series on a rotten plot: clear, plant the same crop, water', () => {
+  const s = withSeeds(1);
+  s.plots[PLOTS_A[0]] = ripePlot('radish', { rotten: true });
+  startJob(s, 'series');
+  for (let i = 0; i < 3000 && s.farmer.job; i++) tick(s, 0.1);
+  const p = s.plots[PLOTS_A[0]];
+  assert.equal(p.crop, 'radish');
+  assert.ok(!p.rotten);
+  assert.equal(p.progress, 0);
+  assert.ok(p.wet);
 });
 
 test('water all: waters every dry plant and refills the can when it runs dry', () => {
