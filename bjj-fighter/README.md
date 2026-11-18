@@ -22,6 +22,8 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
 
 Prototip low-poly 3D stila (Three.js): `http://localhost:8080/tools/lowpoly.html`. Three.js 0.170 (MIT) je spremljen lokalno u `vendor/three/`, bez CDN-a i bez build alata.
 
+Pregled pravog 3D modela u BJJ pozicijama (stav, zatvoreni gard, mount, leđa, side control): `http://localhost:8080/tools/model.html`. Model je „Universal Base Characters” od Quaterniusa (CC0, `assets/models/fighter/LICENSE.txt`).
+
 ## Kako se igra
 
 - **Dvorana odozgo:** na vrhu ekrana je animirani pogled na klub iz ptičje perspektive. Usred tatamija ti (plava majica) drilaš potez koji treniraš s partnerom (rušenja stojeći, sve ostalo u parteru), uz naziv poteza, razinu i traku napretka. Fizička priprema je u teretani ili na traci za trčanje, a dok si na seminaru ili open matu stoji natpis kod izlaza. Bez treninga sjediš na klupi. Ostali članovi kluba sparaju, a trener šeta oko tatamija. Uz smanjeno kretanje u sustavu slika miruje.
@@ -68,6 +70,7 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 - **Pozicije su graf.** Svaka akcija (`src/data/positions.js`) ima potez, poziciju, ulogu (gore, dolje ili stojeći), ciljnu poziciju, obrane i tipične greške. Kritični trenutak slaže do 5 opcija samo od poteza koje igrač zna: točnih obrana ili napada i drugih poteza iz iste pozicije (ili susjedne), nikad stojećih tehnika na podu. Ako igrač ne zna obranu, odluke nema i napad se riješi po razinama.
 - **Uspjeh ovisi o razinama.** Šansa raste s razinom tvog poteza u odnosu na najbolju obranu protivnika, uz slučajnost. Konstante su podešene simulacijom: igrač koji bira dobro ima prosječno oko 10 kritičnih trenutaka po borbi i pobjeđuje u oko 60 % borbi protiv bijelog pojasa.
 - **Sva slučajnost u engineu ide kroz zadani `rng`**, pa su testovi deterministični.
+- **3D borci su pravi model s kosturom, ne likovi iz koda.** Low-poly likovi složeni od valjaka izgledali su kao štapići, pa je odabran besplatan CC0 model (Quaternius, Standard verzija, atletska građa, oko 13 tisuća trokuta). U repou je samo ono što se koristi (muški model, dvije boje kože, dvije frizure, brada; teksture smanjene na 1024 px, ukupno oko 1,5 MB). Model nema odjeću, pa se rashguard i hlačice boje u shaderu prema težinama kostiju (prsa i nadlaktice, kukovi i bedra). Poze su 3D ciljevi (`src/render/poses3d.js`: kukovi, smjer trupa, šake, stopala), a ruke i noge postavlja IK s dvije kosti s pravim duljinama kostiju modela (`src/render/fighter3d.js`). Prijelazi miješaju rotacije kostiju (slerp).
 - **HUD i efekti su HTML preko canvasa**, ne dio crteža. Logiku „što prikazati” (`src/ui/fightFx.js`) čini skup čistih funkcija nad stanjem borbe, pa HUD i efekti ostaju isti kad 2D prikaz zamijeni 3D. Font je Barlow Condensed (SIL OFL, `assets/fonts/OFL.txt`) spremljen u projekt, pa igra radi bez interneta.
 - **Borci** su 2D figure sa zglobovima u rashguardu i šorcu: igrač je plavi, protivnik crveni. Svaka pozicija ima ključnu pozu, a između njih se glatko prelazi. Kamera prati borce, a slow-motion i zatamnjenje rubova označavaju kritični trenutak.
 
@@ -84,15 +87,17 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 │   ├── engine/fight.js       # borba: bodovanje, runde, kritični trenuci
 │   ├── engine/opponent.js    # AI protivnici i igrač kao borac
 │   ├── engine/rng.js         # seedable slučajnost
-│   ├── render/               # Canvas 2D prikaz (poze, renderer borbe, dvorana odozgo)
+│   ├── render/               # Canvas 2D prikaz (poze, renderer borbe, dvorana odozgo) i 3D model (fighter3d.js, poses3d.js)
 │   ├── ui/app.js             # ekrani, petlja igre, localStorage
 │   ├── ui/fightFx.js         # natpisi, značke s bodovima i energija za HUD (bez DOM-a)
 │   └── ui/gymScene.js        # gdje si u dvorani i što radiš, za pogled odozgo (bez DOM-a)
 ├── tests/                    # node --test
 ├── assets/fonts/             # Barlow Condensed (woff2) i licenca OFL
+├── assets/models/fighter/    # 3D model boraca (Quaternius, CC0), teksture 1024 px
 ├── tools/poses.html          # pregled svih poza
 ├── tools/lowpoly.html        # prototip low-poly 3D stila
-├── vendor/three/             # Three.js (MIT), lokalno
+├── tools/model.html          # pregled 3D modela u BJJ pozicijama
+├── vendor/three/             # Three.js (MIT) i GLTFLoader, lokalno
 └── docs/                     # koncept, dizajn i plan izrade
 ```
 

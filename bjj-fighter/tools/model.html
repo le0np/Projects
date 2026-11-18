@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D model preview</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #12151d; color: #e9ecf3; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .ui { position: fixed; left: 12px; top: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; pointer-events: none; }
+  .ui > * { pointer-events: auto; }
+  .ui h1 { margin: 0 8px 0 0; font-size: 16px; background: rgba(8,10,16,0.75); padding: 6px 10px; border-radius: 8px; }
+  select, button, label { font: inherit; color: inherit; background: rgba(27,32,48,0.92); border: 1px solid #2e3650; border-radius: 8px; padding: 6px 10px; }
+  .note { position: fixed; left: 12px; bottom: 12px; right: 12px; color: #98a1b8; font-size: 13px; background: rgba(8,10,16,0.7); padding: 6px 10px; border-radius: 8px; max-width: 680px; }
+  .loading { position: fixed; inset: 0; display: grid; place-items: center; color: #98a1b8; pointer-events: none; }
+</style>
+<script type="importmap">{ "imports": { "three": "../vendor/three/three.module.min.js" } }</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="loading" id="loading">Loading the model…</div>
+<div class="ui">
+  <h1>3D model preview</h1>
+  <select id="pos" aria-label="Position"></select>
+  <label><input type="checkbox" id="auto" checked> All positions in turn</label>
+</div>
+<div class="note">Model: Universal Base Characters by Quaternius (CC0). The rashguard and shorts are painted on in the shader; poses are 3D key poses solved with IK on the model's skeleton. Drag to turn the camera, wheel or two fingers to zoom.</div>
+<script type="module">
+  import * as THREE from 'three';
+  import { createFighter3d } from '../src/render/fighter3d.js';
+  import { createMat } from '../src/render/lowpoly.js';
+  import { POSES3D } from '../src/render/poses3d.js';
+
+  const NAMES = { standing: 'Standing', closedGuard: 'Closed guard', mount: 'Mount', back: 'Back', sideControl: 'Side control' };
+  const params = new URLSearchParams(location.search);
+  const canvas = document.getElementById('c');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: params.has('shot') });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color('#1b2030');
+  scene.fog = new THREE.Fog('#1b2030', 9, 18);
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 50);
+
+  scene.add(new THREE.HemisphereLight('#dfe8ff', '#4a3a2a', 1.4));
+  const sun = new THREE.DirectionalLight('#fff4e0', 2.6);
+  sun.position.set(3, 6, 4);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.bias = -0.0005;
+  Object.assign(sun.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3 });
+  scene.add(sun);
+  const rim = new THREE.DirectionalLight('#9fb8ff', 1.0);
+  rim.position.set(-4, 3, -3);
+  scene.add(rim);
+  scene.add(createMat());
+
+  const [blue, red] = await Promise.all([
+    createFighter3d({ skin: 'light', hair: 'buzzed', hairColor: '#4a301c', shirt: '#2f6fd6', shorts: '#16181d' }),
+    createFighter3d({ skin: 'dark', hair: 'parted', beard: true, hairColor: '#17110d', shirt: '#d23f3f', shorts: '#1d1d1f' }),
+  ]);
+  scene.add(blue.object, red.object);
+  document.getElementById('loading').remove();
+
+  const sel = document.getElementById('pos');
+  const auto = document.getElementById('auto');
+  sel.innerHTML = Object.keys(POSES3D).map((k) => `<option value="${k}">${NAMES[k] ?? k}</option>`).join('');
+  if (params.get('pos')) { sel.value = params.get('pos'); auto.checked = false; }
+
+  // Each pose is solved once; transitions blend the solved bone rotations.
+  const solved = {};
+  const solve = (key) => (solved[key] ??= { blue: blue.snapshot(POSES3D[key].T), red: red.snapshot(POSES3D[key].B) });
+  let from = solve(sel.value), to = from, blend = 1;
+  function go() { const now = current(); from = now; to = solve(sel.value); blend = 0; }
+  // Capture the blended pose as a starting point for the next transition.
+  const current = () => ({
+    blue: Object.values(blue.bones).map((b) => [b.quaternion.clone(), b.position.clone()]),
+    red: Object.values(red.bones).map((b) => [b.quaternion.clone(), b.position.clone()]),
+  });
+  sel.onchange = () => { auto.checked = false; go(); };
+
+  // Orbit camera: drag to turn, wheel or pinch to zoom.
+  let yaw = Number(params.get('yaw') ?? 0.55), pitch = Number(params.get('pitch') ?? 0.38), dist = Number(params.get('dist') ?? 3.6);
+  const look = new THREE.Vector3(0, sel.value === 'standing' ? 0.85 : 0.4, 0.1);
+  const pointers = new Map();
+  let pinch = 0;
+  canvas.addEventListener('pointerdown', (e) => { canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); });
+  canvas.addEventListener('pointerup', (e) => { pointers.delete(e.pointerId); pinch = 0; });
+  canvas.addEventListener('pointercancel', (e) => { pointers.delete(e.pointerId); pinch = 0; });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    const [px, py] = pointers.get(e.pointerId);
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (pinch) dist = Math.min(9, Math.max(1.5, dist * pinch / d));
+      pinch = d;
+      return;
+    }
+    yaw -= (e.clientX - px) * 0.008;
+    pitch = Math.min(1.35, Math.max(0.05, pitch + (e.clientY - py) * 0.006));
+  });
+  canvas.addEventListener('wheel', (e) => { e.preventDefault(); dist = Math.min(9, Math.max(1.5, dist * (1 + e.deltaY * 0.001))); }, { passive: false });
+
+  function resize() {
+    const w = innerWidth, h = innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.fov = w < h ? 58 : 40;
+    camera.updateProjectionMatrix();
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  const ease = (t) => t * t * (3 - 2 * t);
+  let last = performance.now(), autoT = 0;
+  function frame(now) {
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    blend = Math.min(1, blend + dt / 0.8);
+    if (auto.checked) {
+      autoT += dt;
+      if (autoT > 3) {
+        autoT = 0;
+        const keys = Object.keys(POSES3D);
+        sel.value = keys[(keys.indexOf(sel.value) + 1) % keys.length];
+        go();
+      }
+    }
+    blue.applyBlend(from.blue, to.blue, ease(blend));
+    red.applyBlend(from.red, to.red, ease(blend));
+    look.y += ((sel.value === 'standing' ? 0.85 : 0.4) - look.y) * Math.min(1, dt * 3);
+    camera.position.set(look.x + dist * Math.cos(pitch) * Math.sin(yaw), look.y + dist * Math.sin(pitch), look.z + dist * Math.cos(pitch) * Math.cos(yaw));
+    camera.lookAt(look);
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  window.__ready = true;
+</script>
+</body>
+</html>

@@ -212,9 +212,27 @@ Vlasnik: sav tekst u igri je na engleskom. Prijevod je započet lokalno prije go
 - Imena i prezimena protivnika (Marko Horvat i sl.) namjerno ostaju hrvatska.
 - Odjeljci iznad ovoga spominju stare hrvatske natpise („BJJ KLUB”, „Odmor”, „Na seminaru si…”, „Trener Mirko”, „Trener viče s ruba”); oni su sada engleski kako je ovdje navedeno.
 
+### Pravi 3D model umjesto likova iz koda (pregled)
+Vlasnik je u low-poly prototipu vidio likove s tankim udovima (blizu „štapića” koje je ranije odbio) i krive poze na podu, pa je tražio da prije nastavka vidi humanoidni model. Predložen je Quaternius „Universal Base Characters” (CC0); vlasnik je skinuo besplatnu Standard verziju.
+- `assets/models/fighter/`: samo ono što se koristi: muški model (glTF, kostur od 65 kostiju u UE stilu), svijetla i tamna koža, frizure „buzzed” i „parted”, brada, teksture smanjene na 1024 px (normal mape iz verzije za Unity/Godot, OpenGL konvencija). Ukupno oko 1,5 MB. Licenca: `LICENSE.txt` iz paketa. ZIP paketa je u `.gitignore`.
+- `vendor/three/addons/`: `GLTFLoader.js` i `BufferGeometryUtils.js` iz three 0.170.0 (MIT), s import mapom za `three`.
+- `src/render/fighter3d.js`: učitava model i kosu (kosa i brada se vežu na kostur tijela po imenima kostiju), boja kosu, a rashguard (prsa, ključne kosti, nadlaktice) i hlačice (kukovi, bedra) boja u shaderu prema težinama kostiju. Poza: kukovi i trup iz ciljanih smjerova (prsa se miješaju između kukova i prsa, slerp), ruke i noge IK s dvije kosti uz pravu duljinu kostiju i smjer lakta/koljena, stopala prema prstima, prsti se savijaju za stisak. Prijelazi miješaju riješene rotacije kostiju.
+- `src/render/poses3d.js`: 3D poze za stav, zatvoreni gard, mount, leđa i side control (čisti podaci, `mirrorPose` za simetrične pozicije). Testovi: `tests/poses3d.test.js` (3).
+- `tools/model.html`: pregled na tatamiju (plavi i crveni rashguard), izbornik pozicija, automatsko izmjenjivanje, kamera koja se okreće i zumira.
+- `server.js` poslužuje `.gltf`, `.bin` i `.jpg`.
+- Igra (2D borba, dvorana odozgo) nije mijenjana.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 18. studenog 2026. (sav tekst na engleskom):
+Provedeno 18. studenog 2026. (pregled 3D modela):
+
+| Provjera | Rezultat |
+| --- | --- |
+| `npm test` | 114/114 prolazi |
+| Playwright (900 px, WebGL) | `tools/model.html` crta oba lika u svih 5 poza (snimke iz više kutova); gard odozgo i sa strane: noge crvenog oko struka plavog, stopala prekrižena iza leđa; 0 grešaka u konzoli |
+| Playwright mobitel (390 × 844) | automatsko izmjenjivanje prođe svih 5 pozicija s prijelazima, nema horizontalnog scrolla, 0 grešaka |
+
+Prethodna provjera (18. studenog 2026., sav tekst na engleskom):
 
 | Provjera | Rezultat |
 | --- | --- |
@@ -265,6 +283,8 @@ Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 ## Poznata ograničenja
 
 - Postoji samo testna verzija (testni panel, ubrzanje, ⚡ +1).
+- 3D model je zasad samo na stranici za pregled (`tools/model.html`), s 5 od 10 pozicija. Tijela se mjestimično malo preklapaju (npr. bedra u zatvorenom gardu), a u stavu se ruke križaju; poze treba fino doraditi kad se odobri model.
+- Rashguard je obojena koža (bez nabora i ruba tkanine), a model u besplatnoj verziji postoji samo u dvije boje kože.
 - Animacije su po vrsti tehnike (rušenje, sweep, prolaz, bijeg, submission), ne za svaku tehniku posebno. Poze su ključne poze po poziciji, 2D. Borci su još stare 2D figure dok ne stigne 3D.
 - Portreti na semaforu su siluete dok ne stigne 3D model.
 - Prasak na mjestu kontakta nije napravljen jer ovisi o položaju boraca, dolazi s 3D-om.
@@ -276,10 +296,9 @@ Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 
 ## Sljedeći koraci
 
-1. Vlasnik pregleda `tools/lowpoly.html` i javi odgovara li stil. Ako da: 3D renderer borbe s istim sučeljem kao `renderer2d.js` (HUD i efekti ostaju), 2D kao rezerva u testnom panelu, poze dorađene po poziciji; zatim dvorana u low-poly 3D-u.
+1. Vlasnik pregleda `tools/model.html` i javi odgovaraju li model i poze. Ako da: 3D renderer borbe s istim sučeljem kao `renderer2d.js` (HUD i efekti ostaju, 2D kao rezerva u testnom panelu), 3D poze za preostale pozicije (half guard, butterfly, knee on belly, north-south, kornjača) i prijelaze; zatim dvorana u 3D-u. Low-poly likovi iz koda (`tools/lowpoly.html`, `src/render/lowpoly.js`) tada se mogu maknuti.
 1. Vlasnik isproba uvod i trenera i javi treba li drukčiji ton, ime ili zaplet (npr. rival iz drugog kluba).
 1. Pogled na dvoranu: vlasnik isproba i javi treba li veći, manji ili drukčiji (npr. više članova kluba, zvukovi).
-1. Grafika, korak 2: 3D borba (Three.js, besplatan CC0 humanoidni model, poze iz igre na kosturu, prijelazi, kamera), prvo kratki dizajn s vlasnikom. Zatim korak 3: klub kao izometrijska dvorana.
 1. Korak 2 drugog kruga: granice razina po pojasu, novi seminari (instruktori 1–5 ★, 40–90 %, trening pauziran). Korak 3: stil borbe, energija, ozljede.
 2. Vlasnik isproba testnu verziju i javi što treba podesiti (učestalost kritičnih trenutaka, težina, trajanja).
 2. Prava verzija: početak bez otključanih poteza, bez testnog panela.
