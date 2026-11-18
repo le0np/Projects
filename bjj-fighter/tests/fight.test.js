@@ -64,7 +64,7 @@ test('choosing a wrong option against a submission ends the fight by submission'
   const f = idle();
   f.pos = 'back'; f.playerTop = false;
   startDefense(f, 'rnc_b');
-  const wrong = f.critical.options.findIndex((o) => !o.correct);
+  const wrong = f.critical.options.findIndex((o) => !o.correct && !o.counter);
   f.rng = () => 0; // the choke lands
   chooseOption(f, wrong);
   assert.deepEqual([f.ended.winner, f.ended.method], ['o', 'sub']);
@@ -439,7 +439,7 @@ test('a wrong answer to a submission is sometimes survived, with an advantage fo
   f.pos = 'mount'; f.playerTop = false;
   startDefense(f, 'armbar_m');
   f.rng = () => 0.99; // the submission does not land this time
-  chooseOption(f, f.critical.options.findIndex((o) => !o.correct && MISTAKES[o.mistakeId].effect === 'threat'));
+  chooseOption(f, f.critical.options.findIndex((o) => !o.correct && !o.counter && MISTAKES[o.mistakeId].effect === 'threat'));
   assert.equal(f.ended, null);
   assert.equal(f.score.o.adv, 1);
 });
@@ -571,4 +571,39 @@ test('energy recovers between rounds, more with better cardio', () => {
   assert.equal(f.energy.p, 10 + 20 + 20);
   assert.equal(f.energy.o, 10 + 20 + 2);
   assert.match(f.log.at(-1).text, /Round 2! Energy/);
+});
+
+// ---- balance: trained submissions, counter-attacks, the error chance shown ----
+test('a submission trained far above the defense almost always works when chosen', () => {
+  const f = createFight({ name: 'You', belt: 'white', levels: { armbar: 10, mountToBack: 1 } }, empty('Rival'), () => 0.9, { quiet: true });
+  f.pos = 'mount'; f.playerTop = true;
+  assert.ok(startOpportunity(f));
+  const i = f.critical.options.findIndex((o) => o.moveId === 'armbar');
+  chooseOption(f, i);
+  assert.ok(f.lastResult.chance >= 0.9, `chance ${f.lastResult.chance}`);
+  assert.deepEqual([f.ended?.winner, f.ended?.method], ['p', 'sub']);
+});
+
+test('your own attack against an escape is a counter-attack with a real chance, not a wrong card', () => {
+  const f = createFight({ name: 'You', belt: 'white', levels: { mount: 3, armbar: 10 } }, { name: 'Rival', belt: 'white', levels: { mountUpa: 2 } }, () => 0.1, { quiet: true });
+  f.pos = 'mount'; f.playerTop = true;
+  assert.ok(startDefense(f, 'mountUpa_e'));
+  const counter = f.critical.options.find((o) => o.moveId === 'armbar');
+  assert.ok(counter?.counter, 'armbar is offered as a counter');
+  chooseOption(f, f.critical.options.indexOf(counter));
+  assert.equal(f.lastResult.counter, true);
+  assert.ok(f.lastResult.chance > 0.4, `chance ${f.lastResult.chance}`);
+  assert.ok(f.log.some((l) => /Counter!/.test(l.text)));
+});
+
+test('knowing a submission well counts as half a defense against it', () => {
+  const f = createFight({ name: 'You', belt: 'white', levels: { armbar: 10 } }, { name: 'Rival', belt: 'white', levels: { armbar: 4 } }, () => 0.99, { quiet: true });
+  f.pos = 'mount'; f.playerTop = false;
+  assert.ok(!startDefense(f, 'armbar_m') || f.critical); // with no defense card the attack plays out on levels
+  assert.ok(f.log.every((l) => !/you don't know a defense/.test(l.text)));
+});
+
+test('the error chance shown before the fight counts only the moves the fighter knows', () => {
+  const levels = { mount: 10, armbar: 10, shrimp: 0, upa: 0 };
+  assert.ok(Math.abs(fighterErrorChance({ belt: 'white', levels }) - 0.6 * 0.88 ** 9) < 1e-9);
 });

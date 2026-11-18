@@ -481,7 +481,7 @@ function renderCritical(f) {
       const hinted = c.hint?.index === i;
       const dots = Array.from({ length: 10 }, (_, d) => `<i${d < o.level ? ' class="on"' : ''}></i>`).join('');
       return `<button data-opt="${i}" class="opt cls-${o.cls}${hinted ? ' hinted' : ''}">
-        <span class="opt-head"><span>${CLASS_NAMES[o.cls] ?? o.cls}</span>${hinted ? `<span class="hint-tag">${c.hint.coach ? '🥋 coach' : '💭 gut'}</span>` : ''}<span class="k">${i + 1}</span></span>
+        <span class="opt-head"><span>${CLASS_NAMES[o.cls] ?? o.cls}</span>${o.counter ? '<span class="hint-tag" title="Counter-attack: works with your level, but the timing makes it harder">↺ counter</span>' : ''}${hinted ? `<span class="hint-tag">${c.hint.coach ? '🥋 coach' : '💭 gut'}</span>` : ''}<span class="k">${i + 1}</span></span>
         <b class="opt-name">${esc(o.label)}</b>
         <span class="dots" title="Level ${o.level}">${dots}</span>
         <small>${esc(o.detail ?? '')}</small></button>`;
@@ -505,6 +505,14 @@ function choose(index) {
   const fb = $('feedback');
   let ms = 1800;
   if (!opt) { fb.textContent = 'Too late!'; fb.className = 'feedback bad'; }
+  else if (opt.counter) {
+    // A counter-attack: a real try against the timing, not a wrong card.
+    fb.textContent = r.success
+      ? `↺ Counter! ${opt.label} caught him (level ${r.myLevel} vs ${r.theirLevel}, chance ${pct(r.chance)})`
+      : `↺ The counter came too late: ${opt.label} (level ${r.myLevel} vs ${r.theirLevel}, chance ${pct(r.chance)})`;
+    fb.className = r.success ? 'feedback good' : 'feedback mixed';
+    if (!r.success) ms = 3000;
+  }
   else if (!opt.correct) {
     fb.textContent = `✘ ${opt.label} doesn't help here.`;
     fb.className = 'feedback bad';

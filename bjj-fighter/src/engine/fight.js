@@ -40,7 +40,7 @@ export function errorChance(belt, level) {
 
 // Typical error chance of a fighter (belt and average level of known moves), shown before the fight.
 export function fighterErrorChance(fighter) {
-  const l = Object.values(fighter.levels);
+  const l = Object.values(fighter.levels).filter((x) => x > 0); // moves the fighter does not know are never tried
   const avg = l.length ? l.reduce((s, x) => s + x, 0) / l.length : 1;
   return errorChance(fighter.belt, avg);
 }
@@ -128,8 +128,12 @@ function addAdvantage(f, who, why) {
   say(f, `+1 advantage: ${fighter(f, who).name} (${why})`, who);
 }
 
+// Best defense against `action`: the fighter's level in one of its defenses, or half of their own level in
+// the same technique (who knows an armbar well sees it coming and knows how to get out of it).
+const KNOW_THE_MOVE = 0.5;
 function bestDefense(f, who, action) {
-  return action.defenses.reduce((best, d) => Math.max(best, lvl(f, who, d)), 0);
+  const own = action.kind === 'sub' || action.defenses.length ? Math.floor(lvl(f, who, action.move) * KNOW_THE_MOVE) : 0;
+  return action.defenses.reduce((best, d) => Math.max(best, lvl(f, who, d)), own);
 }
 
 // Sentence with a fighter as subject: "You are ..." for the player, "Marko is ..." for the opponent.
@@ -181,7 +185,8 @@ function runAction(f, who, action, success, why = '') {
 
 function autoChance(f, who, action, bonus = 0) {
   const diff = lvl(f, who, action.move) - bestDefense(f, other(who), action);
-  const base = action.kind === 'sub' ? clamp(0.05 + 0.03 * diff, 0.02, 0.3) : clamp(0.6 + 0.07 * diff, 0.25, 0.9);
+  // A submission on its own rarely works between equals, but a much better-trained one usually does.
+  const base = action.kind === 'sub' ? clamp(0.06 + 0.045 * diff, 0.02, 0.6) : clamp(0.6 + 0.07 * diff, 0.25, 0.9);
   return clamp(base + bonus + physicalEdge(f, who), 0.01, 0.97);
 }
 
@@ -284,8 +289,8 @@ function defenseDecoys(f, pos, role, correctIds) {
 
 // null when there is nothing to decide: no right answer, or only one right answer and nothing wrong.
 // With several right answers and no wrong one the decision is which attack has the best chance.
-function fillOptions(f, correct, decoyIds, mistakeIds) {
-  if (!correct.length || (!decoyIds.length && correct.length < 2)) return null;
+function fillOptions(f, correct, decoyIds, mistakeIds, extraChoices = 0) {
+  if (!correct.length || (!decoyIds.length && correct.length < 2 && !extraChoices)) return null;
   const effects = shuffle(f.rng, mistakeIds.length ? [...new Set(mistakeIds)] : GENERIC_MISTAKES);
   const wrong = shuffle(f.rng, decoyIds).slice(0, 5 - correct.length)
     .map((id, i) => option(id, { correct: false, mistakeId: effects[i % effects.length] }));
@@ -304,7 +309,20 @@ export function startDefense(f, actionId) {
   // Counters can come from a neighbouring position (e.g. an arm inside a butterfly guard → triangle).
   const role = action.from === 'standing' ? 'neutral' : action.role === 'top' ? 'bottom' : 'top';
   const correct = known(f, action.defenses).map((d) => option(d, { correct: true }));
-  const options = fillOptions(f, correct, defenseDecoys(f, action.from, role, action.defenses), [...action.mistakes, ...GENERIC_MISTAKES]);
+  // The player's own attacks from this spot are counter-attacks: a real chance, but against the timing.
+  const counters = actionsFor(action.from, role).filter((a) => COUNTER_KINDS.has(a.kind) && lvl(f, 'p', a.move) > 0 && !action.defenses.includes(a.move));
+  const counterMoves = new Set(counters.map((a) => a.move));
+  const decoys = defenseDecoys(f, action.from, role, action.defenses).filter((id) => !counterMoves.has(id));
+  let options = fillOptions(f, correct, decoys, [...action.mistakes, ...GENERIC_MISTAKES], counters.length);
+  if (options && counters.length) {
+    // One counter-attack card: it takes a free slot, or replaces one of the wrong cards.
+    const card = option(pick(f.rng, counters).move, { correct: false, counter: null });
+    card.counter = counters.find((a) => a.move === card.moveId).id;
+    const wrongAt = options.findIndex((o) => !o.correct);
+    if (options.length < 5) options.push(card);
+    else options[wrongAt] = card;
+    options = shuffle(f.rng, options);
+  }
   if (!options) return false;
   if (action.from !== f.pos) {
     f.pos = action.from;
@@ -404,10 +422,19 @@ function escapeAfterDefense(f) {
 }
 
 const defenseChance = (mine, theirs) => clamp(0.8 + 0.05 * (mine - theirs), 0.5, 0.97);
-const attackChance = (kind, mine, theirs) => (kind === 'sub' ? clamp(0.2 + 0.05 * (mine - theirs), 0.08, 0.55) : clamp(0.6 + 0.06 * (mine - theirs), 0.25, 0.92));
+// A chosen submission: 25% between equals, 7 points per level of difference (level 10 against no defense: 95%).
+const attackChance = (kind, mine, theirs) => (kind === 'sub' ? clamp(0.25 + 0.07 * (mine - theirs), 0.08, 0.95) : clamp(0.6 + 0.06 * (mine - theirs), 0.25, 0.92));
+// A counter-attack thrown while the opponent is moving: like the attack, but the timing makes it harder.
+const COUNTER_TIMING = 0.6;
+// Only attacks can be counters; running away (an escape) while caught stays a wrong answer.
+const COUNTER_KINDS = new Set(['sub', 'sweep', 'pass', 'transition', 'takedown']);
 
 // Chance that a right option works, so the hint can point at the best one.
 function optionChance(f, c, opt) {
+  if (opt.counter) {
+    const a = ACTION_BY_ID[opt.counter];
+    return attackChance(a.kind, lvl(f, 'p', a.move), bestDefense(f, 'o', a)) * COUNTER_TIMING;
+  }
   if (!opt.correct) return 0;
   if (c.kind === 'defense') return defenseChance(lvl(f, 'p', opt.moveId), lvl(f, 'o', ACTION_BY_ID[c.actionId].move));
   const action = ACTION_BY_ID[opt.actionId];
@@ -449,6 +476,23 @@ export function chooseOption(f, index, { fast = false } = {}) {
   if (c.kind === 'defense') {
     const threat = ACTION_BY_ID[c.actionId];
     if (!opt) { say(f, "You didn't react in time!", 'o'); applyMistake(f, { effect: 'threat' }, threat); return; }
+    if (opt.counter) {
+      // Counter-attack: if it works the player's technique happens instead; if not, the opponent's goes through.
+      const action = ACTION_BY_ID[opt.counter];
+      const mine = lvl(f, 'p', action.move);
+      const theirs = bestDefense(f, 'o', action);
+      const p = clamp(attackChance(action.kind, mine, theirs) * COUNTER_TIMING + bonus + physicalEdge(f, 'p'), 0.02, 0.95);
+      const success = f.rng() < p;
+      Object.assign(f.lastResult, { counter: true, success, myLevel: mine, theirLevel: theirs, chance: Math.min(1, p) });
+      if (success) {
+        say(f, `Counter! ${f.opponent.name} goes for the ${MOVE_BY_ID[threat.move].name}, you catch him with a ${MOVE_BY_ID[action.move].name} (level ${mine} vs ${theirs}, counter chance ${pct(p)}).`, 'p');
+        runAction(f, 'p', action, true);
+      } else {
+        say(f, `The counter comes too late: your ${MOVE_BY_ID[action.move].name} (level ${mine} vs ${theirs}, counter chance ${pct(p)}) misses and ${f.opponent.name} goes through.`, 'o');
+        runAction(f, 'o', threat, true);
+      }
+      return;
+    }
     if (!opt.correct) { say(f, `${opt.label} doesn't help here.`, 'p'); applyMistake(f, MISTAKES[opt.mistakeId], threat, true); return; }
     const mine = lvl(f, 'p', opt.moveId);
     const theirs = lvl(f, 'o', threat.move);

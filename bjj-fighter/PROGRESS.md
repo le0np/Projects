@@ -241,6 +241,13 @@ Vlasnik: animacija nije fluidna („kao da se slike mijenjaju u starim crtićima
 - `tools/anim-check.html`: zadani niz od 16 pozicija i tehnika kroz 3D renderer točno 60 sličica/s; `window.result` daje najveći pomak zgloba po sličici, dubinu ispod tatamija i preklapanje (s mjestom gdje su se dogodili).
 - Pri 60 sličica/s (isti niz): najveći pomak zgloba po sličici pao je s 38 cm na 6,8 cm (pri vrhu brzine prijelaza, bez skokova), najveća trenutna dubina ispod tatamija u prijelazu sa 60 cm na 7 cm.
 
+### Ravnoteža borbe nakon vlasnikovih primjedbi
+Vlasnik: bijeli pojas s 10 poteza na maksimumu (shrimp, single leg, hip bump, half guard, knee on belly, mount, side → mount, mount → back, back escape, armbar) i svim obranama na 1 ne prolazi bijeli turnir lako; „Armbar doesn't help here” u mountu kad protivnik bježi upom; armbar razine 10 protiv obrane 0 ne uspije uz 74 %.
+- Uzroci: šansa odabranog submissiona imala je strop 55 % (automatskog 30 %), a vlastiti napadi u obrambenoj odluci bili su namjerno krive kartice; šansa greške prije borbe računala je prosjek i preko nenaučenih poteza (zato „60 %”).
+- Promjene u `fight.js`: odabrani submission 25 % + 7 %/razina (do 95 %), automatski 6 % + 4,5 %/razina (do 60 %); jedan vlastiti napad (submission, sweep, prolaz, rušenje, prijelaz) u obrambenoj odluci postaje protunapad (60 % normalne šanse; uspjeh = tvoja tehnika, neuspjeh = protivnikova prolazi), bijeg ostaje kriva kartica; obrana od tehnike je barem pola vlastite razine u njoj; šansa greške samo od naučenih poteza. U sučelju oznaka „↺ counter” i vlastite poruke.
+- Simulacija (400 borbi protiv natjecatelja bijelog pojasa, točne kartice): vlasnikov sastav 46 % → 50 % pobjeda. Više od formula pomaže širina igre: isti sastav + 7 poteza na razini 6 (zatvoreni gard, elbow-knee, upa, toreando, postura u gardu, kimura, RNC) 85 %; obrane na 5 i snaga/kondicija 4 bez novih poteza 78 %; sve zajedno 98 %. Gubitci dolaze od raznih submissiona (obrane na 1, protivnici napadi oko 4–5 i snaga 3–4) i od pozicija u kojima igrač ne zna ništa pa se bori na instinkt (60 % greške). Težina natjecatelja nije mijenjana.
+- Testovi: 4 nova u `tests/fight.test.js`.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 18. studenog 2026. (dorada 3D animacije):
