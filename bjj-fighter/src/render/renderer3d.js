@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { createFighter3d } from './fighter3d.js';
 import { createMat } from './gym3d.js';
 import { POSES3D, blendPose, poseTravel, completePose } from './poses3d.js';
-import { CLIPS, clipFor, clipAt, mirrorOffsets, mirrorAbsolute } from './techniques3d.js';
+import { CLIPS, clipFor, applyClips } from './techniques3d.js';
 import { settle, sampleSkin, overlap } from './contact3d.js';
 import { ACTION_BY_ID } from '../data/positions.js';
 import { MOVE_BY_ID } from '../data/moves.js';
@@ -38,21 +38,6 @@ function slots(view) {
   return view.playerTop ? { p: 'T', o: 'B' } : { p: 'B', o: 'T' };
 }
 
-const DIR_PAIRS = [['hipUp', 'hipFwd'], ['chestUp', 'chestFwd'], ['headUp', 'headFwd']];
-const unit = (v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
-// Rotate v by the smallest rotation that takes direction `from` to direction `to` (Rodrigues).
-function rotateLike(from, to, v) {
-  const a = unit(from);
-  const b = unit(to);
-  const axis = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-  const sin = Math.hypot(...axis);
-  const cos = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-  if (sin < 1e-6) return v;
-  const k = axis.map((x) => x / sin);
-  const kv = k[0] * v[0] + k[1] * v[1] + k[2] * v[2];
-  const kxv = [k[1] * v[2] - k[2] * v[1], k[2] * v[0] - k[0] * v[2], k[0] * v[1] - k[1] * v[0]];
-  return v.map((x, i) => x * cos + kxv[i] * sin + k[i] * kv * (1 - cos));
-}
 const clonePose = (p) => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, Array.isArray(v) ? [...v] : v]));
 const shift = (p, keys, d, k = 1) => { for (const key of keys) if (p[key]) p[key] = add(p[key], d, k); };
 
@@ -219,23 +204,8 @@ export function createRenderer3d(canvas, overlay) {
       p[h] = add(p[h], [wobble(t * 1.3, ph) * 0.05, wobble(t * 1.1, ph + 7) * 0.04, wobble(t * 1.2, ph + 11) * 0.03]);
     });
     // Technique clips: the attacker and the defender move through the technique's keyframes.
-    // First the offsets of every clip, then the tilt coupling, then the absolute targets (end shapes).
-    const before = Object.fromEntries(DIR_PAIRS.flat().map((k) => [k, p[k]]));
-    const parts = state.clips.map((c) => {
-      const off = clipAt(c.clip, c.t, c.outcome);
-      const mine = c.who === who ? off.a : off.d;
-      const abs = c.who === who ? off.A : off.D;
-      return { c, mine: c.mirror ? mirrorOffsets(mine) : mine, abs: c.mirror ? mirrorAbsolute(abs) : abs };
-    });
-    for (const { mine } of parts) for (const [k, v] of Object.entries(mine)) if (p[k]) p[k] = add(p[k], v);
-    // A clip that tilts a body part's up direction turns its front with it (sitting up turns the face
-    // forward too), so up and front never end up parallel and the body never flips.
-    for (const [up, fwd] of DIR_PAIRS) {
-      if (!before[up] || !p[up] || p[up] === before[up]) continue;
-      const turned = rotateLike(before[up], p[up], before[fwd]);
-      p[fwd] = p[fwd] === before[fwd] ? turned : add(turned, p[fwd].map((v, i) => v - before[fwd][i]));
-    }
-    for (const { abs } of parts) for (const [k, { v, w }] of Object.entries(abs)) if (p[k]) p[k] = p[k].map((x, i) => x + (v[i] - x) * w);
+    Object.assign(p, applyClips(p, state.clips.map((c) => ({ ...c, side: c.who === who ? 'a' : 'd' }))));
+    const parts = state.clips.map((c) => ({ c }));
     for (const { c } of parts) {
       if (c.kind === 'sub' && c.who !== who && c.outcome !== 'fail') {
         // the one caught in a submission fights the grip

@@ -256,9 +256,24 @@ Vlasnik: „Moramo napraviti animacije za tehnike, tako će kretanje biti puno f
 - Pregledano po sličicama: double leg, single leg, hip bump, armbar iz mounta (pravi završni oblik), armbar iz garda (iz ovog kuta kamere slabo se vidi), mount → leđa, RNC (ruka pod bradom), bijeg s leđa, neuspjeli armbar (pola zamaha pa natrag).
 - `tools/anim-check.html` sada koristi stvarne akcije iz svake pozicije, uključujući neuspjele submissione.
 
+### Manga prototip
+Vlasnik: animacije i prijelazi i dalje nisu realni; želi vidjeti borbu u anime/manga stilu, kao listanje stranica stripa. Dogovoreno: prvo prototip izgleda (prijedlog: realne prijelaze bez motion capturea ne ganjati dalje; ako se 3D zadrži, put je mocap iz snimki stvarnih tehnika).
+- `src/render/manga3d.js`: panel = sličica dvaju 3D boraca (poza, prijelaz u trenutku t, klip tehnike u trenutku t) iz zadanog kadra; post shader: obrubi iz rubova dubine i normala, tonovi (bijelo / raster / gusti raster / crno), prozirna pozadina; svjetlo prati kameru.
+- `techniques3d.js`: `applyClips()` (primjena klipova na pozu) izvučen iz `renderer3d.js`, da ga koriste i 3D borba i manga.
+- `tools/manga.html`: fiksna borba na 4 stranice (četvrtfinale: single leg, triangle iz garda s odlukom „Posture up / Armbar defense / Counter”, dvije varijante sljedeće stranice, prolaz, mount, armbar, tap, pobjeda), paneli raznih oblika, linije brzine i fokusa, raster pozadine, zvučni efekti, oblačići govora / misli / povika, natpisi, okretanje stranica klikom ili strelicama.
+- Poznato: kadrovi su ručno postavljeni za ovu borbu; lica bez izraza (model ih nema); neki paneli (tap, pobjeda) zbijeni; crni rashguard protivnika u krupnom planu postaje velika crna ploha.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 18. studenog 2026. (animacije tehnika i ravnoteža):
+Provedeno 18. studenog 2026. (manga prototip):
+
+| Provjera | Rezultat |
+| --- | --- |
+| `npm test` | 127/127 prolazi |
+| `tools/manga.html` | sve 4 stranice i obje varijante odluke iscrtane (Playwright), 0 grešaka |
+| 3D borba nakon izvlačenja `applyClips()` | e2e sparing bez grešaka, `tools/anim-check.html` isti rezultat (9 cm) |
+
+Prethodna provjera (18. studenog 2026., animacije tehnika i ravnoteža):
 
 | Provjera | Rezultat |
 | --- | --- |
@@ -359,6 +374,7 @@ Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 
 ## Sljedeći koraci
 
+1. Vlasnik pregleda `tools/manga.html`. Ako je smjer dobar: manga prikaz spojiti s pravom borbom (svaka razmjena iz loga borbe postaje 1–3 panela prema vrsti akcije: kadrovi i efekti po vrsti tehnike, odluke kao paneli s kartama), automatski raspored panela po stranici, izrazi lica (npr. 2D crtani preko glave) i različit izgled protivnika.
 1. Vlasnik isproba 3D borbu i javi što promijeniti (kamera, tempo, poze, izgled modela). Zatim: različiti izgledi protivnika (koža, kosa, brada, boja rashguarda), portreti na semaforu iz modela, dorada poza i prijelaza (preklapanja tijela), animacija po tehnici; zatim dvorana kluba u 3D-u.
 1. Vlasnik isproba uvod i trenera i javi treba li drukčiji ton, ime ili zaplet (npr. rival iz drugog kluba).
 1. Pogled na dvoranu: vlasnik isproba i javi treba li veći, manji ili drukčiji (npr. više članova kluba, zvukovi).
