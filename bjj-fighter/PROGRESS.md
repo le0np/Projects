@@ -185,9 +185,26 @@ Vlasnik: igrač ne može biti na seminaru i trenirati u dvorani u isto vrijeme, 
 - Stari save u kojem već teče više stvari odjednom pusti ih da završe; dvorana odozgo ih i dalje prikazuje kao oznake.
 - Sparing i natjecanje i dalje se mogu igrati dok nešto traje.
 
+### Osnove otključavaju sparing, trener vodi kroz početak priče
+Vlasnik: sparing bez nekoliko vještina nema smisla; početak treba biti zanimljiviji, s nečim što vodi kroz priču. Odobrio je prijedlog (osnove + trener vodič). Ime trenera nije zadao, pa je odabrano „Trener Mirko”.
+- **Osnove** (`BASICS` u `src/engine/story.js`): Shrimp, Bridge (upa), Zatvoreni gard, Postura u gardu, Elbow-knee bijeg, Hip bump sweep, sve na razini 1 (ukupno oko 85 s igre). Dok ih nemaš, kartica Sparing je zaključana i pokazuje popis s kvačicama. „Sve otključano” to zaobilazi.
+- **Uvod:** tri kartice preko ekrana (prvi dan u klubu, trener se predstavlja, plan). Može se preskočiti.
+- **Trener Mirko:** panel iznad stanja s trenutnim zadatkom, rečenicom trenera, trakom napretka i gumbom (npr. „Treniraj Shrimp”, „Kreni u sparing”). Redoslijed: osnove jedna po jedna → prvi sparing → seminar ili open mat → prvo natjecanje → plavi pojas. U dvorani odozgo trener ima bijeli oblačić („Mirko: Nauči: Shrimp”). „Preskoči vodiča” skriva trenera, ali sparing i dalje traži osnove.
+- **Prvi sparing:** lakši partner (bijeli pojas, razina 1–2, zna oko trećine poteza, snaga i kondicija 1–2), a u svakoj odluci trener viče točnu karticu („🥋 Trener viče s ruba: Zatvoreni gard!”, oznaka „🥋 trener” na kartici). Opcija `coach` u `createFight`.
+- Stanje priče je `state.story` (uvod, preskočeno, broj sparinga, aktivnosti i natjecanja). Stari save dobije priču s uvodom, a sparinzi i natjecanja izračunaju se iz omjera i medalja.
+- Testovi: `tests/story.test.js` (8).
+
 ## Zadnja automatizirana provjera
 
-Provedeno 18. studenog 2026. (jedna stvar u isto vrijeme, seminar 1 h):
+Provedeno 18. studenog 2026. (osnove i trener vodič):
+
+| Provjera | Rezultat |
+| --- | --- |
+| `npm test` | 109/109 prolazi |
+| Playwright (1100 px) | nova igra prikaže uvod, nakon njega panel trenera i oblačić u dvorani; sparing zaključan bez osnova; nakon osnova trener nudi sparing, partner je bijeli pojas, u odluci se vidi „🥋 Trener viče s ruba”; 0 grešaka u konzoli |
+| Playwright mobitel (iPhone 13) | uvod stane na ekran, nema horizontalnog scrolla |
+
+Prethodna provjera (18. studenog 2026., jedna stvar u isto vrijeme, seminar 1 h):
 
 | Provjera | Rezultat |
 | --- | --- |
@@ -220,13 +237,14 @@ Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 - Prasak na mjestu kontakta nije napravljen jer ovisi o položaju boraca, dolazi s 3D-om.
 - Reload usred borbe prekida borbu bez upisa rezultata.
 - Dok je uključeno „sve otključano”, igrač zna sve poteze pa se nude svi potezi iz pozicije.
-- Igrač bez poteza bori se samo na instinkt (male šanse); nema upozorenja prije sparinga.
+- Igrač bez poteza ne može na sparing dok ne nauči osnove; na natjecanju vrijedi stari uvjet (po jedan potez iz napada, obrane i kontrole).
 - Snaga i kondicija su jedan broj svaka (nema posebne eksplozivnosti, izdržljivosti stiska i sl.).
 - Nakon ponovnog otvaranja igre nema obavijesti o treningu ili aktivnosti koji su završili dok je igra bila zatvorena.
 
 ## Sljedeći koraci
 
-1. Dogovoreno 18. 11.: osnove (Shrimp, Bridge, Zatvoreni gard, Postura u gardu, Elbow-knee bijeg, Hip bump sweep) otključavaju sparing, uz trenera vodiča i zadatke „Prvi tjedan”; zatim prototip low-poly 3D stila u Three.js (likovi složeni u kodu od jednostavnih oblika).
+1. Dogovoreno 18. 11.: prototip low-poly 3D stila u Three.js (likovi složeni u kodu od jednostavnih oblika) na test stranici, vlasnik odobri izgled prije prebacivanja borbe.
+1. Vlasnik isproba uvod i trenera i javi treba li drukčiji ton, ime ili zaplet (npr. rival iz drugog kluba).
 1. Pogled na dvoranu: vlasnik isproba i javi treba li veći, manji ili drukčiji (npr. više članova kluba, zvukovi).
 1. Grafika, korak 2: 3D borba (Three.js, besplatan CC0 humanoidni model, poze iz igre na kosturu, prijelazi, kamera), prvo kratki dizajn s vlasnikom. Zatim korak 3: klub kao izometrijska dvorana.
 1. Korak 2 drugog kruga: granice razina po pojasu, novi seminari (instruktori 1–5 ★, 40–90 %, trening pauziran). Korak 3: stil borbe, energija, ozljede.

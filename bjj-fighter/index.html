@@ -24,6 +24,7 @@
     U mapi <code>bjj-fighter</code> pokreni <code>npm start</code> i otvori <a href="http://localhost:8080">http://localhost:8080</a>.
   </div>
   <div class="gym-view"><canvas id="gym-canvas" aria-label="Dvorana iz ptičje perspektive"></canvas></div>
+  <section class="coach" id="coach" hidden></section>
   <section class="status" id="status"></section>
   <nav class="tabs" role="tablist">
     <button role="tab" data-tab="club" class="active">Klub</button>
@@ -79,6 +80,15 @@
     </div>
   </div>
 </section>
+
+<div class="story-intro" id="story-intro" role="dialog" aria-modal="true" aria-labelledby="story-title" hidden>
+  <div class="story-card">
+    <div class="story-step" id="story-step"></div>
+    <h2 id="story-title"></h2>
+    <p id="story-text"></p>
+    <div class="story-btns"><button class="ghost" id="story-skip">Preskoči uvod</button><button id="story-next">Dalje</button></div>
+  </div>
+</div>
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <script type="module" src="src/ui/app.js"></script>

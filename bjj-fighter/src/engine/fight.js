@@ -84,9 +84,10 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const other = (who) => (who === 'p' ? 'o' : 'p');
 
 // `quiet: true` (tests only): no exchanges happen on their own.
-export function createFight(player, opponent, rng, { quiet = false } = {}) {
+// `coach: true` (your first sparring): the coach shouts the best card at every decision, always right.
+export function createFight(player, opponent, rng, { quiet = false, coach = false } = {}) {
   const f = {
-    rng, player, opponent,
+    rng, player, opponent, coach,
     round: 1, clock: 0, elapsed: 0,
     pos: 'standing', playerTop: null,
     score: { p: { pts: 0, adv: 0, pen: 0 }, o: { pts: 0, adv: 0, pen: 0 } },
@@ -255,7 +256,8 @@ function openCritical(f, critical) {
   f.critical = { ...critical, options: withLevel(f, critical.options), timeLimit: CRITICAL_TIME_LIMIT };
   f.critical.hint = giveHint(f, f.critical);
   say(f, `⚡ Odluka: ${critical.text} [${critical.options.map((o) => `${o.label}${o.correct ? ' ✔' : ''}`).join(' | ')}]`);
-  if (f.critical.hint) say(f, `💭 Osjećaj ti govori: ${critical.options[f.critical.hint.index].label} (pouzdanost osjećaja ${pct(f.critical.hint.accuracy)}).`, 'p');
+  if (f.critical.hint?.coach) say(f, `🥋 Trener viče s ruba: ${critical.options[f.critical.hint.index].label}!`, 'p');
+  else if (f.critical.hint) say(f, `💭 Osjećaj ti govori: ${critical.options[f.critical.hint.index].label} (pouzdanost osjećaja ${pct(f.critical.hint.accuracy)}).`, 'p');
   f.criticalCount += 1;
   f.lastCriticalAt = f.elapsed;
   f.seq += 1;
@@ -418,12 +420,17 @@ export function hintAccuracy(belt, avgLevel) {
   return Math.min(0.97, HINT_BASE[belt] + 0.015 * Math.max(0, avgLevel - 1));
 }
 
+function bestOption(f, c) {
+  return c.options.reduce((bi, o, i) => (optionChance(f, c, o) > optionChance(f, c, c.options[bi]) ? i : bi), 0);
+}
+
 function giveHint(f, c) {
+  if (f.coach) return { index: bestOption(f, c), accuracy: 1, coach: true };
   const levels = c.options.map((o) => lvl(f, 'p', o.moveId)).filter((x) => x > 0);
   const avg = levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : 1;
   const accuracy = hintAccuracy(f.player.belt, avg);
   if (!accuracy) return null;
-  const best = c.options.reduce((bi, o, i) => (optionChance(f, c, o) > optionChance(f, c, c.options[bi]) ? i : bi), 0);
+  const best = bestOption(f, c);
   if (f.rng() < accuracy) return { index: best, accuracy };
   const others = c.options.map((_, i) => i).filter((i) => i !== best);
   return { index: others.length ? others[Math.floor(f.rng() * others.length)] : best, accuracy };

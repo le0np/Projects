@@ -51,6 +51,11 @@ export function makeSparPartner(rng) {
   return makeOpponent(belt, rng, undefined, 0.35 + rng() * 0.55, 1 + rng() * 4); // gym partners: strength and cardio 1-5
 }
 
+// Your first sparring: the coach picks an easy partner, a white belt at level 1 who knows only a few moves.
+export function makeFirstSparPartner(rng) {
+  return makeOpponent('white', rng, 1, 0.35, 1);
+}
+
 // Competition: opponents of your belt with the skill typical for that belt, a bit stronger each round
 // (quarterfinal, semifinal, final). They do not scale with your levels, so training pays off.
 const BELT_SKILL = { white: 2, blue: 4, purple: 5.5, brown: 7, black: 8.5 };

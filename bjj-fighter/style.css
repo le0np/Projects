@@ -234,3 +234,24 @@ button.instant { background: var(--gold); color: #1a1a1a; padding: 9px 10px; }
   .fx-badge.p { left: calc(50% - 90px); }
   .fx-badge.o { right: calc(50% - 90px); }
 }
+
+/* Story start: the coach's panel and the intro cards */
+.coach { display: flex; gap: 12px; align-items: flex-start; background: linear-gradient(90deg, #2a2216, var(--card)); border: 1px solid #5a4724; border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px; }
+.coach .avatar { flex: none; width: 44px; height: 44px; border-radius: 50%; background: #111; border: 3px solid var(--gold); display: grid; place-items: center; font-size: 22px; }
+.coach .body { flex: 1; min-width: 0; }
+.coach .who { font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gold); font-weight: 700; }
+.coach .title { font-family: var(--display); font-style: italic; font-weight: 800; font-size: 20px; line-height: 1.1; margin: 2px 0 4px; }
+.coach .line { margin: 0 0 8px; }
+.coach .bar { margin: 0 0 8px; }
+.coach .bar > div { background: linear-gradient(90deg, #b8862b, var(--gold)); }
+.coach .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.coach .acts button { padding: 7px 12px; font-size: 14px; }
+.basics { list-style: none; padding: 0; margin: 6px 0 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 10px; font-size: 14px; }
+.basics li::before { content: '✘ '; color: var(--red); }
+.basics li.ok::before { content: '✔ '; color: var(--green); }
+.story-intro { position: fixed; inset: 0; z-index: 20; background: rgba(5, 7, 12, 0.82); display: grid; place-items: center; padding: 16px; }
+.story-card { max-width: 520px; width: 100%; background: var(--card); border: 1px solid #5a4724; border-radius: 16px; padding: 22px 22px 18px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.story-card h2 { font-family: var(--display); font-style: italic; font-weight: 800; font-size: 30px; margin: 4px 0 8px; color: var(--gold); }
+.story-card p { margin: 0 0 18px; font-size: 16px; line-height: 1.55; }
+.story-step { font-size: 12px; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; }
+.story-btns { display: flex; justify-content: flex-end; gap: 8px; }

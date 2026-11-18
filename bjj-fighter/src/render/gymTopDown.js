@@ -208,6 +208,25 @@ export function createGymView(canvas) {
     }
   }
 
+  // Speech bubble with the coach's short line from the story (white, so it reads as talk, not a status sign).
+  function bubble(x, y, text) {
+    ctx.font = '700 12px system-ui, sans-serif';
+    const w = ctx.measureText(text).width + 18;
+    const left = Math.max(8, Math.min(W - w - 8, x - w / 2));
+    const top = y < 60 ? y + 18 : y - 40;
+    ctx.fillStyle = 'rgba(255,255,255,0.94)';
+    rr(left, top, w, 22, 8); ctx.fill();
+    ctx.beginPath();
+    const tx = Math.max(left + 10, Math.min(left + w - 10, x));
+    if (top > y) { ctx.moveTo(tx - 5, top); ctx.lineTo(tx, top - 7); ctx.lineTo(tx + 5, top); }
+    else { ctx.moveTo(tx - 5, top + 22); ctx.lineTo(tx, top + 29); ctx.lineTo(tx + 5, top + 22); }
+    ctx.fill();
+    ctx.fillStyle = '#1a1d26';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, left + w / 2, top + 15);
+    ctx.textAlign = 'start';
+  }
+
   function coach(t) {
     // walks a loop around the mat edge
     const u = (t * 0.03) % 1;
@@ -218,6 +237,7 @@ export function createGymView(canvas) {
     else if ((d -= MAT.h) < MAT.w) { x = MAT.x + MAT.w - d; y = MAT.y + MAT.h + 2; ang = -Math.PI / 2; }
     else { d -= MAT.w; x = MAT.x - 2; y = MAT.y + MAT.h - d; ang = 0; }
     person(x, y, ang, { shirt: '#111', hair: '#555', skin: '#d9a47c' }, { reach: 0.2 + Math.abs(Math.sin(t * 5)) * 0.15, belt: 'black' });
+    return { x, y };
   }
 
   function draw(scene, dt) {
@@ -227,9 +247,10 @@ export function createGymView(canvas) {
     room();
     PAIRS.forEach((p, i) => pair(p.x, p.y, t + p.ph, { shirt: p.a[0], hair: '#2a1d14' }, { shirt: p.a[1], hair: '#111' },
       { belts: p.belts, skins: [SKINS[i % 4], SKINS[(i + 2) % 4]], tempo: 0.3 + i * 0.04, spin: (t + p.ph) * 0.2 }));
-    coach(t);
+    const c = coach(t);
     you(scene, t);
     ctx.textAlign = 'start';
+    if (scene.coach) bubble(c.x, c.y, `Mirko: ${scene.coach}`);
   }
 
   return { draw, resize };

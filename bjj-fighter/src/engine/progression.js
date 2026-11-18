@@ -24,6 +24,27 @@ export const PROMOTION = {
   black: { moves: 48, wins: 50 },
 };
 
+// Story start (see story.js): has the intro been shown, and how many spars, activities and competitions so far.
+export function newStory() {
+  return { intro: false, skipped: false, spars: 0, activities: 0, comps: 0 };
+}
+
+// An older save has no story: show the intro, count what was already done from the record.
+export function storyFromSave(raw) {
+  const n = (v, fb) => (Number.isFinite(v) && v >= 0 ? Math.floor(v) : fb);
+  const s = raw.story && typeof raw.story === 'object' ? raw.story : {};
+  const medals = raw.medals ?? {};
+  const hadComp = (raw.compWins ?? 0) > 0 || ['gold', 'silver', 'bronze'].some((k) => (medals[k] ?? 0) > 0);
+  const hadFight = (raw.wins ?? 0) + (raw.losses ?? 0) > 0;
+  return {
+    intro: s.intro === true,
+    skipped: s.skipped === true,
+    spars: n(s.spars, hadFight && !hadComp ? 1 : 0),
+    activities: n(s.activities, 0),
+    comps: n(s.comps, hadComp ? 1 : 0),
+  };
+}
+
 export function createState({ test = true, now = 0 } = {}) {
   return {
     version: SAVE_VERSION,
@@ -43,6 +64,7 @@ export function createState({ test = true, now = 0 } = {}) {
     medals: { gold: 0, silver: 0, bronze: 0 },
     training: null,
     activity: null,
+    story: newStory(),
   };
 }
 
@@ -186,6 +208,7 @@ export function advance(state, realNow, rng = Math.random) {
     const { type, chance } = state.activity;
     state.activity = null;
     const learned = rng() < chance ? learnRandomMove(state, rng) : null;
+    if (state.story) state.story.activities += 1;
     events.push({ type: 'activityDone', activity: type, learned });
   }
   return events;
@@ -222,6 +245,7 @@ export function knownMoveCount(state) {
 // Every fight counts toward the overall record; only competition wins count toward promotion.
 export function recordFight(state, mode, won) {
   if (won) state.wins += 1; else state.losses += 1;
+  if (state.story) state.story[mode === 'comp' ? 'comps' : 'spars'] += 1;
   if (won && mode === 'comp') state.compWins += 1;
 }
 
@@ -289,6 +313,7 @@ function repair(raw, realNow) {
     medals,
     // Older saves have no compWins: rebuild it from medals (a quarterfinal exit has no wins).
     compWins: Math.floor(num(raw.compWins, compWinsFromMedals(medals), 0)),
+    story: storyFromSave(raw),
     training: timer(tr) && MOVE_BY_ID[tr.moveId] && Number.isInteger(tr.toLevel) && tr.toLevel >= 1 && tr.toLevel <= MAX_LEVEL
       ? { moveId: tr.moveId, toLevel: tr.toLevel, startedAt: tr.startedAt, endsAt: tr.endsAt } : null,
     activity: timer(ac) && ACTIVITIES[ac.type] && Number.isFinite(ac.chance)

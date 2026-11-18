@@ -7,7 +7,8 @@ import {
   PHYSICAL, startWorkout, workoutTime, instantPhysicalUp, busyWith, slotProgress, slotRealLeft, finishActivityNow,
 } from '../engine/progression.js';
 import { createFight, stepFight, chooseOption, formatLog, logLine, fighterErrorChance, pct, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
-import { makeSparPartner, makeCompetitor, fighterFromState } from '../engine/opponent.js';
+import { makeSparPartner, makeFirstSparPartner, makeCompetitor, fighterFromState } from '../engine/opponent.js';
+import { COACH, BASICS, INTRO, sparringReady, storyStep, finishIntro, skipStory } from '../engine/story.js';
 import { createRenderer } from '../render/renderer2d.js';
 import { createGymView } from '../render/gymTopDown.js';
 import { gymScene } from './gymScene.js';
@@ -95,6 +96,54 @@ function renderStatus() {
   $('status').innerHTML = html || '<div class="slot"><h3>Slobodan si</h3><div class="idle">Odaberi jednu stvar: potez u klubu, teretanu, kardio, seminar ili open mat. Radiš jednu po jednu.</div></div>';
 }
 
+// ---------- story start: the coach ----------
+let introPage = 0;
+const firstSpar = () => state.story && !state.story.skipped && state.story.spars === 0;
+
+function renderIntro() {
+  const show = !!state.story && !state.story.intro;
+  $('story-intro').hidden = !show;
+  if (!show) return;
+  const page = INTRO[Math.min(introPage, INTRO.length - 1)];
+  $('story-step').textContent = `${Math.min(introPage, INTRO.length - 1) + 1} / ${INTRO.length}`;
+  $('story-title').textContent = page.title;
+  $('story-text').textContent = page.text;
+  $('story-next').textContent = introPage >= INTRO.length - 1 ? 'Na tatami' : 'Dalje';
+}
+
+function coachActions(step) {
+  if (step.id === 'basics') {
+    const check = canTrain(state, step.move);
+    return `<button data-train="${step.move}" ${check.ok ? '' : `disabled title="${esc(check.reason)}"`}>Treniraj ${esc(MOVE_BY_ID[step.move].name)}</button>`;
+  }
+  if (step.id === 'spar') return '<button data-fight="spar">Kreni u sparing</button>';
+  if (step.id === 'activity') return '<button data-go-tab="activities">Aktivnosti</button>';
+  if (step.id === 'comp' || step.id === 'belt') return '<button data-go-tab="fights">Borbe</button>';
+  return '';
+}
+
+function renderCoach() {
+  const el = $('coach');
+  const step = state.story?.intro ? storyStep(state) : null;
+  el.hidden = !step;
+  if (!step) return;
+  const bar = step.total ? `<div class="bar"><div style="width:${((step.done / step.total) * 100).toFixed(1)}%"></div></div>` : '';
+  el.innerHTML = `<div class="avatar" aria-hidden="true">🥋</div><div class="body">
+    <div class="who">${COACH}</div><div class="title">${esc(step.title)}</div>
+    <p class="line">„${esc(step.line)}”</p>${bar}
+    <div class="acts">${coachActions(step)}<button class="ghost" data-skip-story>Preskoči vodiča</button></div></div>`;
+}
+
+$('story-next').addEventListener('click', () => {
+  if (introPage < INTRO.length - 1) { introPage += 1; renderIntro(); return; }
+  finishIntro(state); save(); renderAll();
+});
+$('story-skip').addEventListener('click', () => { finishIntro(state); save(); renderAll(); });
+
+function basicsList() {
+  return `<ul class="basics">${BASICS.map((id) => `<li class="${effectiveLevel(state, id) >= 1 ? 'ok' : ''}">${esc(MOVE_BY_ID[id].name)}</li>`).join('')}</ul>`;
+}
+
 // ---------- tabs ----------
 function pips(level) {
   let html = '<span class="pips">';
@@ -166,6 +215,7 @@ function renderActivities() {
 function renderFights() {
   const st = promotionStatus(state);
   const ready = competitionReady(state);
+  const basics = sparringReady(state);
   const promo = st.next
     ? `<div class="card"><h3>Promocija: ${BELT_NAMES[st.next]} pojas</h3>
         <ul class="req"><li class="${st.have.moves >= st.need.moves ? 'ok' : 'no'}">Naučeni potezi: ${st.have.moves} / ${st.need.moves}</li>
@@ -175,9 +225,11 @@ function renderFights() {
   $('tab-fights').innerHTML = `
     <p class="hint">Borba: ${ROUNDS} runde po ${ROUND_SECONDS / 60} min (sat ide ${CLOCK_SPEED}x brže) ili do submissiona. U kritičnim trenucima vrijeme se uspori i biraš jednu od 5 opcija (tipke 1–5).</p>
     <div class="cards">
-      <div class="card"><h3>Sparing</h3><p>Borba s protivnikom tvog pojasa. Ne računa se za promociju.</p>
+      <div class="card"><h3>Sparing</h3><p>Borba s partnerom iz kluba, od bijelog do plavog pojasa. Ne računa se za promociju.</p>
         <div class="row"><span>Nagrada za pobjedu</span><b>${SPAR_REWARD} €</b></div>
-        <button data-fight="spar">Kreni u sparing</button></div>
+        ${basics.ok ? (firstSpar() ? '<p>Prvi sparing: trener ti daje lakšeg partnera i viče savjete u svakoj odluci.</p>' : '')
+    : `<p>${COACH} te ne pušta na sparing dok ne naučiš osnove (${basics.have}/${basics.need}):</p>${basicsList()}`}
+        <button data-fight="spar" ${basics.ok ? '' : 'disabled title="Prvo nauči osnove."'}>Kreni u sparing</button></div>
       <div class="card"><h3>Natjecanje</h3><p>Do 3 borbe: četvrtfinale, polufinale, finale.</p>
         <div class="row"><span>Kotizacija</span><b>${COMP_FEE} €</b></div>
         <div class="row"><span>Nagrade</span><b>🥇 ${COMP_PRIZES.gold} · 🥈 ${COMP_PRIZES.silver} · 🥉 ${COMP_PRIZES.bronze} €</b></div>
@@ -213,6 +265,8 @@ function renderTab() {
 }
 
 function renderAll() {
+  renderIntro();
+  renderCoach();
   renderHeader();
   renderStatus();
   renderTab();
@@ -263,6 +317,12 @@ $('career').addEventListener('click', (ev) => {
     const r = finishActivityNow(state, Date.now());
     if (!r.ok) toast(r.reason);
     else handleEvents(advance(state, Date.now()));
+  } else if ('skipStory' in t.dataset) {
+    skipStory(state);
+    toast('Vodič je isključen. Sparing i dalje traži osnove.');
+  } else if (t.dataset.goTab) {
+    document.querySelector(`.tabs button[data-tab="${t.dataset.goTab}"]`).click();
+    return;
   } else if (t.dataset.fight) {
     startFightFlow(t.dataset.fight);
     return;
@@ -273,6 +333,7 @@ $('career').addEventListener('click', (ev) => {
   } else if ('reset' in t.dataset) {
     if (!confirm('Obrisati sav napredak?')) return;
     state = createState({ test: true, now: Date.now() });
+    introPage = 0;
   } else return;
   save();
   renderAll();
@@ -298,6 +359,7 @@ $('career').addEventListener('change', (ev) => {
 
 // ---------- fights ----------
 function startFightFlow(mode) {
+  if (mode === 'spar' && !sparringReady(state).ok) { toast('Prvo nauči osnove: trener te još ne pušta na sparing.'); return; }
   if (mode === 'comp') {
     const ready = competitionReady(state);
     if (!ready.ok) { toast(`Za natjecanje trebaš znati barem jedan potez iz: ${ready.missing.join(', ')}.`); return; }
@@ -311,8 +373,10 @@ function startFightFlow(mode) {
 function openFight(mode, stage) {
   const me = fighterFromState(state);
   // Sparring: a random partner from the gym (white to blue belt). Competition: your belt, typical skill for it.
-  const opponent = mode === 'spar' ? makeSparPartner(rng) : makeCompetitor(state.belt, stage, rng);
-  const fight = createFight(me, opponent, rng);
+  // Your first sparring (story start): an easy partner and the coach shouts the best card at every decision.
+  const coached = mode === 'spar' && firstSpar();
+  const opponent = mode === 'spar' ? (coached ? makeFirstSparPartner(rng) : makeSparPartner(rng)) : makeCompetitor(state.belt, stage, rng);
+  const fight = createFight(me, opponent, rng, { coach: coached });
   fightCtx = { fight, mode, stage, timer: null, feedbackUntil: 0, logLen: -1, critSeq: -1, done: false, fx: createFxMemo(fight) };
   $('fx').innerHTML = '';
   $('career').hidden = true;
@@ -375,13 +439,14 @@ function renderCritical(f) {
   if (fightCtx.critSeq !== f.criticalCount) {
     fightCtx.critSeq = f.criticalCount;
     // From blue belt on: a gut feeling about the best card, not always right.
-    const hint = c.hint ? `<span class="hint-line">💭 Osjećaj ti govori: <b>${esc(c.options[c.hint.index].label)}</b> · pouzdanost ${pct(c.hint.accuracy)}</span>` : '';
+    const hint = c.hint?.coach ? `<span class="hint-line">🥋 Trener viče s ruba: <b>${esc(c.options[c.hint.index].label)}!</b></span>`
+      : c.hint ? `<span class="hint-line">💭 Osjećaj ti govori: <b>${esc(c.options[c.hint.index].label)}</b> · pouzdanost ${pct(c.hint.accuracy)}</span>` : '';
     $('critical-text').innerHTML = `${esc(c.text)}${hint}`;
     $('critical-options').innerHTML = c.options.map((o, i) => {
       const hinted = c.hint?.index === i;
       const dots = Array.from({ length: 10 }, (_, d) => `<i${d < o.level ? ' class="on"' : ''}></i>`).join('');
       return `<button data-opt="${i}" class="opt cls-${o.cls}${hinted ? ' hinted' : ''}">
-        <span class="opt-head"><span>${CLASS_NAMES[o.cls] ?? o.cls}</span>${hinted ? '<span class="hint-tag">💭 osjećaj</span>' : ''}<span class="k">${i + 1}</span></span>
+        <span class="opt-head"><span>${CLASS_NAMES[o.cls] ?? o.cls}</span>${hinted ? `<span class="hint-tag">${c.hint.coach ? '🥋 trener' : '💭 osjećaj'}</span>` : ''}<span class="k">${i + 1}</span></span>
         <b class="opt-name">${esc(o.label)}</b>
         <span class="dots" title="Razina ${o.level}">${dots}</span>
         <small>${esc(o.detail ?? '')}</small></button>`;
