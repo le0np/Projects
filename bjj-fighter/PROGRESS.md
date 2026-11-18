@@ -177,9 +177,24 @@ Vlasnik: „Bilo bi dobro gledati iz ptičje perspektive dvoranu kada se trenira
 - Odluka: ravni 2D crtež u Canvasu, isti pristup kao trenutni renderer borbe, jer je jeftin i ne čeka 3D. Kad stigne „korak 3: klub kao izometrijska dvorana”, ovaj prikaz se može zamijeniti, a `src/ui/gymScene.js` (tko je gdje, čista funkcija, 5 testova) ostaje.
 - Kod: `src/render/gymTopDown.js`, `src/ui/gymScene.js`, `tests/gym-scene.test.js`.
 
+### Jedna stvar u isto vrijeme i seminar od sat vremena
+Vlasnik: igrač ne može biti na seminaru i trenirati u dvorani u isto vrijeme, ne može raditi snagu ili kardio uz nešto drugo, a seminar traje 1 h stvarnog vremena. Odabrao je da se novo ne može pokrenuti dok staro traje (bez pauziranja).
+- Trening poteza, teretana, kardio, seminar i open mat međusobno se isključuju (`busyWith` u `progression.js`). Gumbi su sivi i pišu što trenutno radiš („Na seminaru si. Jedna stvar u isto vrijeme.”). Gore je jedna kartica stanja umjesto tri.
+- Seminar traje 3600 stvarnih sekundi: tajmer ima `clock: 'real'` (vrijeme u ms), ne ovisi o testnom ubrzanju i završi i dok je igra zatvorena. Open mat i treninzi ostaju u vremenu igre.
+- Testni panel ima „⚡ Završi odmah” za seminar i open mat (aktivnost ipak baca kocku za novi potez).
+- Stari save u kojem već teče više stvari odjednom pusti ih da završe; dvorana odozgo ih i dalje prikazuje kao oznake.
+- Sparing i natjecanje i dalje se mogu igrati dok nešto traje.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 18. studenog 2026. (nakon pogleda na dvoranu):
+Provedeno 18. studenog 2026. (jedna stvar u isto vrijeme, seminar 1 h):
+
+| Provjera | Rezultat |
+| --- | --- |
+| `npm test` | 101/101 prolazi |
+| Playwright (1100 px) | dok traje trening, teretana i seminar su sivi s razlogom; seminar pokazuje „još 1 h” i blokira trening; „⚡ Završi odmah” završi seminar uz poruku; 0 grešaka u konzoli |
+
+Prethodna provjera (18. studenog 2026., nakon pogleda na dvoranu):
 
 | Provjera | Rezultat |
 | --- | --- |
@@ -211,6 +226,7 @@ Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 
 ## Sljedeći koraci
 
+1. Dogovoreno 18. 11.: osnove (Shrimp, Bridge, Zatvoreni gard, Postura u gardu, Elbow-knee bijeg, Hip bump sweep) otključavaju sparing, uz trenera vodiča i zadatke „Prvi tjedan”; zatim prototip low-poly 3D stila u Three.js (likovi složeni u kodu od jednostavnih oblika).
 1. Pogled na dvoranu: vlasnik isproba i javi treba li veći, manji ili drukčiji (npr. više članova kluba, zvukovi).
 1. Grafika, korak 2: 3D borba (Three.js, besplatan CC0 humanoidni model, poze iz igre na kosturu, prijelazi, kamera), prvo kratki dizajn s vlasnikom. Zatim korak 3: klub kao izometrijska dvorana.
 1. Korak 2 drugog kruga: granice razina po pojasu, novi seminari (instruktori 1–5 ★, 40–90 %, trening pauziran). Korak 3: stil borbe, energija, ozljede.

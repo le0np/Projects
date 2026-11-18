@@ -23,16 +23,16 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
 ## Kako se igra
 
 - **Dvorana odozgo:** na vrhu ekrana je animirani pogled na klub iz ptičje perspektive. Usred tatamija ti (plava majica) drilaš potez koji treniraš s partnerom (rušenja stojeći, sve ostalo u parteru), uz naziv poteza, razinu i traku napretka. Fizička priprema je u teretani ili na traci za trčanje, a dok si na seminaru ili open matu stoji natpis kod izlaza. Bez treninga sjediš na klupi. Ostali članovi kluba sparaju, a trener šeta oko tatamija. Uz smanjeno kretanje u sustavu slika miruje.
-- **Klub:** popis poteza po skupinama (kretanje, rušenja, gardovi, sweepovi, prolazi, gornje pozicije, prijelazi, bijegovi, submissioni, obrane). Svaki potez ima razine 1–10. „Nauči” ili „Treniraj” pokreće trening. Istovremeno ide jedan trening, a traka gore pokazuje koliko je ostalo.
+- **Klub:** popis poteza po skupinama (kretanje, rušenja, gardovi, sweepovi, prolazi, gornje pozicije, prijelazi, bijegovi, submissioni, obrane). Svaki potez ima razine 1–10. „Nauči” ili „Treniraj” pokreće trening. Igrač radi jednu stvar u isto vrijeme (potez, teretana, kardio, seminar ili open mat), a traka gore pokazuje koliko je ostalo.
   - Razina n traje `osnovno vrijeme × 2^(n−1)`. Prvi potezi traju 5–60 s, napredni potezi viših pojaseva nekoliko minuta.
   - Viši pojas uči brže od bijelog: plavi 20 %, ljubičasti 45 %, smeđi 65 %, crni 85 %.
   - Potez višeg pojasa koji još ne znaš ne može se trenirati u klubu.
-- **Aktivnosti:** idu usporedno s treningom, jedna po jedna.
-  - Seminar: 50 €, 2 min, 90 % šanse za nasumičan novi potez.
+- **Aktivnosti:** dok si na aktivnosti ne treniraš u klubu, i obrnuto.
+  - Seminar: 50 €, 1 h stvarnog vremena (ne ubrzava se i teče i dok je igra zatvorena), 90 % šanse za nasumičan novi potez.
   - Open mat: besplatan, 1 min, 10–20 % šanse.
   - Novi potez može biti i višeg pojasa, npr. heel hook.
 - **Borbe:**
-  - Fizička priprema: teretana (snaga) i kardio (kondicija), razine 1–10, usporedno s treningom tehnike. Snaga dodaje 3 % šanse po razini razlike u svakom napadu i obrani, a kondicija određuje koliko brzo se umaraš u borbi.
+  - Fizička priprema: teretana (snaga) i kardio (kondicija), razine 1–10, kao i trening tehnike zauzima te dok traje. Snaga dodaje 3 % šanse po razini razlike u svakom napadu i obrani, a kondicija određuje koliko brzo se umaraš u borbi.
   - Sparing: uvijek u tvojoj dvorani, s nasumičnim partnerom od bijelog do plavog pojasa i nasumičnim znanjem. Pobjeda donosi 10 €.
   - Natjecanje: kotizacija 20 €, četvrtfinale, polufinale i finale, protiv protivnika tvog pojasa s vještinom tipičnom za taj pojas (svaka runda malo jača). Zlato 100 €, srebro 40 €, bronca 15 €, uz 5 % šanse da pokupiš novi potez.
   - Promocija u viši pojas traži dovoljno naučenih poteza i pobjeda na natjecanjima (svaka pobijeđena borba na turniru, sparing se ne računa).

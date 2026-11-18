@@ -218,11 +218,9 @@ test('instant level up is not available outside test mode', () => {
 
 import { startWorkout, workoutTime, instantPhysicalUp } from '../src/engine/progression.js';
 
-test('strength and cardio start at 1 and are trained in their own slot, next to a technique', () => {
+test('strength and cardio start at 1 and level up with a workout', () => {
   const s = createState({ test: true, now: 0 });
   assert.deepEqual(s.physical, { strength: 1, cardio: 1 });
-  s.levels.shrimp = 1;
-  assert.equal(startTraining(s, 'shrimp').ok, true);
   assert.equal(startWorkout(s, 'strength').ok, true);
   assert.equal(startWorkout(s, 'cardio').ok, false); // one workout at a time
   assert.equal(workoutTime('strength', 2), 40);
@@ -238,4 +236,58 @@ test('an old save without strength and cardio loads with both at 1', () => {
   const back = deserialize(serialize(s), 0);
   assert.deepEqual(back.physical, { strength: 1, cardio: 1 });
   assert.equal(back.workout, null);
+});
+
+import { busyWith, finishActivityNow, slotProgress, slotRealLeft } from '../src/engine/progression.js';
+
+test('one thing at a time: technique, workout, seminar and open mat block each other', () => {
+  const s = createState({ test: true, now: 0 });
+  assert.equal(busyWith(s), null);
+  assert.equal(startTraining(s, 'shrimp').ok, true);
+  for (const r of [startWorkout(s, 'strength'), startActivity(s, 'openMat', fixed(0.5), 0), startActivity(s, 'seminar', fixed(0.5), 0), startTraining(s, 'upa')]) {
+    assert.equal(r.ok, false);
+    assert.match(r.reason, /Jedna stvar u isto vrijeme/);
+  }
+  advance(s, 10_000);
+  assert.equal(busyWith(s), null);
+  assert.equal(startWorkout(s, 'cardio').ok, true);
+  assert.equal(startTraining(s, 'upa').ok, false);
+  assert.equal(startActivity(s, 'seminar', fixed(0.5), 10_000).ok, false);
+  advance(s, 100_000);
+  assert.equal(startActivity(s, 'seminar', fixed(0.5), 100_000).ok, true);
+  assert.equal(startTraining(s, 'upa').ok, false);
+  assert.equal(startWorkout(s, 'strength').ok, false);
+  assert.match(busyWith(s).reason, /seminaru/);
+});
+
+test('the seminar lasts one real hour, whatever the speed-up', () => {
+  const s = createState({ test: true, now: 0 });
+  s.speed = 10;
+  assert.equal(startActivity(s, 'seminar', fixed(0.5), 0).ok, true);
+  assert.equal(s.activity.clock, 'real');
+  assert.equal(advance(s, 3_599_000, fixed(0.5)).some((e) => e.type === 'activityDone'), false);
+  assert.ok(Math.abs(slotProgress(s, s.activity, 1_800_000) - 0.5) < 1e-9);
+  assert.equal(slotRealLeft(s, s.activity, 3_599_000), 1);
+  assert.equal(advance(s, 3_600_000, fixed(0.5)).some((e) => e.type === 'activityDone'), true);
+  assert.equal(s.activity, null);
+});
+
+test('the seminar also ends while the game is closed (load after an hour)', () => {
+  const s = createState({ test: true, now: 0 });
+  startActivity(s, 'seminar', fixed(0.5), 0);
+  const back = deserialize(serialize(s), 1_000, fixed(0.5));
+  assert.equal(back.activity.clock, 'real');
+  const later = deserialize(serialize(s), 3_700_000, fixed(0.5));
+  assert.equal(later.activity, null);
+  assert.equal(Object.keys(later.levels).length, 1); // learned a move at roll 0.5
+});
+
+test('test panel can finish an activity right away; not in the real version', () => {
+  const s = createState({ test: true, now: 0 });
+  startActivity(s, 'seminar', fixed(0.5), 0);
+  assert.equal(finishActivityNow(s, 5_000).ok, true);
+  assert.ok(advance(s, 5_000, fixed(0.5)).some((e) => e.type === 'activityDone'));
+  const r = createState({ test: false, now: 0 });
+  startActivity(r, 'openMat', fixed(0.5), 0);
+  assert.equal(finishActivityNow(r, 5_000).ok, false);
 });
