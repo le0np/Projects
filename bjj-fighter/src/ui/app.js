@@ -4,7 +4,7 @@ import { POSITIONS, ACTION_BY_ID } from '../data/positions.js';
 import {
   createState, learnTime, effectiveLevel, canTrain, startTraining, startActivity, advance, setSpeed,
   rollCompetitionLearn, recordFight, instantLevelUp, promotionStatus, promote, serialize, deserialize, competitionReady, ACTIVITIES, MAX_LEVEL,
-  PHYSICAL, startWorkout, workoutTime, instantPhysicalUp,
+  PHYSICAL, startWorkout, workoutTime, instantPhysicalUp, busyWith, slotProgress, slotRealLeft, finishActivityNow,
 } from '../engine/progression.js';
 import { createFight, stepFight, chooseOption, formatLog, logLine, fighterErrorChance, pct, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
 import { makeSparPartner, makeCompetitor, fighterFromState } from '../engine/opponent.js';
@@ -55,7 +55,6 @@ function fmtTime(sec) {
   const d = Math.floor(h / 24), hh = h % 24;
   return hh ? `${d} d ${hh} h` : `${d} d`;
 }
-const realLeft = (endsAt) => (endsAt - state.gameTime) / state.speed;
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 function toast(text) {
@@ -75,22 +74,25 @@ function renderHeader() {
   $('record').textContent = `${state.wins}P / ${state.losses}I`;
 }
 
-function slotHtml(title, what, startedAt, endsAt, idle) {
-  if (!what) return `<div class="slot"><h3>${title}</h3><div class="idle">${idle}</div></div>`;
-  const pct = Math.min(100, ((state.gameTime - startedAt) / (endsAt - startedAt)) * 100);
+function slotHtml(title, what, slot) {
+  const now = Date.now();
+  const pct = slotProgress(state, slot, now) * 100;
+  const speedNote = slot.clock !== 'real' && state.speed > 1 ? ` (ubrzanje ${state.speed}x)` : '';
   return `<div class="slot"><h3>${title}</h3><div class="what">${what}</div>
     <div class="bar"><div style="width:${pct.toFixed(1)}%"></div></div>
-    <div class="eta">još ${fmtTime(realLeft(endsAt))}${state.speed > 1 ? ` (ubrzanje ${state.speed}x)` : ''}</div></div>`;
+    <div class="eta">još ${fmtTime(slotRealLeft(state, slot, now))}${speedNote}</div></div>`;
 }
 
+// One thing at a time, so there is one status card. Saves from before that rule may still show several.
 function renderStatus() {
   const t = state.training;
   const a = state.activity;
   const w = state.workout;
-  $('status').innerHTML =
-    slotHtml('Trening', t && `${esc(MOVE_BY_ID[t.moveId].name)} → razina ${t.toLevel}`, t?.startedAt, t?.endsAt, 'Nema treninga. Odaberi potez u klubu.')
-    + slotHtml('Fizička priprema', w && `${PHYSICAL[w.attr].place}: ${PHYSICAL[w.attr].name.toLowerCase()} → razina ${w.toLevel}`, w?.startedAt, w?.endsAt, 'Slobodno. Teretana ili kardio u klubu.')
-    + slotHtml('Aktivnost', a && `${ACTIVITIES[a.type].name} (šansa za novi potez ${Math.round(a.chance * 100)} %)`, a?.startedAt, a?.endsAt, 'Slobodan. Idi na seminar ili open mat.');
+  let html = '';
+  if (t) html += slotHtml('Trening', `${esc(MOVE_BY_ID[t.moveId].name)} → razina ${t.toLevel}`, t);
+  if (w) html += slotHtml('Fizička priprema', `${PHYSICAL[w.attr].place}: ${PHYSICAL[w.attr].name.toLowerCase()} → razina ${w.toLevel}`, w);
+  if (a) html += slotHtml('Aktivnost', `${ACTIVITIES[a.type].name} (šansa za novi potez ${Math.round(a.chance * 100)} %)`, a);
+  $('status').innerHTML = html || '<div class="slot"><h3>Slobodan si</h3><div class="idle">Odaberi jednu stvar: potez u klubu, teretanu, kardio, seminar ili open mat. Radiš jednu po jednu.</div></div>';
 }
 
 // ---------- tabs ----------
@@ -101,14 +103,15 @@ function pips(level) {
 }
 
 function renderPhysical() {
-  let html = '<h2>Fizička priprema</h2><p class="hint">Teretana i kardio idu uz trening tehnike. Snaga dodaje 3 % šanse po razini razlike u svakom napadu i obrani. Kondicija: sporije se umaraš i brže se oporaviš između rundi.</p><div class="physical">';
+  let html = '<h2>Fizička priprema</h2><p class="hint">Teretana i kardio zauzimaju te kao i trening tehnike: jedna stvar u isto vrijeme. Snaga dodaje 3 % šanse po razini razlike u svakom napadu i obrani. Kondicija: sporije se umaraš i brže se oporaviš između rundi.</p><div class="physical">';
+  const busyNow = busyWith(state);
   for (const [attr, def] of Object.entries(PHYSICAL)) {
     const lvl = state.physical[attr];
     const busy = state.workout?.attr === attr;
     const next = lvl < MAX_LEVEL ? workoutTime(attr, lvl + 1) / state.speed : null;
     html += `<div class="move${busy ? ' training' : ''}">
       <div><span class="name">${def.place} · ${def.name}</span>${pips(lvl)}</div>
-      <div class="move-btns">${state.test && lvl < MAX_LEVEL ? `<button class="instant" data-instant-phys="${attr}" title="Test: odmah +1 razina">⚡ +1</button>` : ''}<button data-workout="${attr}" ${state.workout || lvl >= MAX_LEVEL ? 'disabled' : ''}>Treniraj</button></div>
+      <div class="move-btns">${state.test && lvl < MAX_LEVEL ? `<button class="instant" data-instant-phys="${attr}" title="Test: odmah +1 razina">⚡ +1</button>` : ''}<button data-workout="${attr}" ${busyNow || lvl >= MAX_LEVEL ? 'disabled' : ''}${busyNow ? ` title="${esc(busyNow.reason)}"` : ''}>Treniraj</button></div>
       <div class="desc">${esc(def.desc)}</div>
       <div class="meta">${busy ? 'Trening u tijeku' : next === null ? 'Najviša razina' : `Razina ${lvl + 1}: ${fmtTime(next)}`}</div>
     </div>`;
@@ -117,7 +120,7 @@ function renderPhysical() {
 }
 
 function renderClub() {
-  let html = renderPhysical() + '<p class="hint">Svaka sljedeća razina poteza traje 2x duže. Viši pojas uči brže. Jedan trening istovremeno.</p>';
+  let html = renderPhysical() + '<p class="hint">Svaka sljedeća razina poteza traje 2x duže. Viši pojas uči brže. Jedna stvar u isto vrijeme: potez, teretana, kardio ili aktivnost.</p>';
   for (const [cat, title] of Object.entries(CATEGORIES)) {
     const moves = MOVES.filter((m) => m.category === cat);
     html += `<h2>${title}</h2><div class="moves">`;
@@ -126,7 +129,7 @@ function renderClub() {
       const check = canTrain(state, m.id);
       const training = state.training?.moveId === m.id;
       const next = lvl < MAX_LEVEL ? learnTime(m.id, lvl + 1, state.belt) / state.speed : null;
-      const locked = !check.ok && lvl === 0 && !state.training;
+      const locked = !check.ok && lvl === 0 && !busyWith(state);
       html += `<div class="move${training ? ' training' : ''}${locked ? ' locked' : ''}">
         <div><span class="beltdot" style="background:${BELT_COLORS[m.belt]}" title="${BELT_NAMES[m.belt]} pojas"></span><span class="name">${esc(m.name)}</span>${pips(lvl)}</div>
         <div class="move-btns">${state.test && lvl < MAX_LEVEL ? `<button class="instant" data-instant="${m.id}" title="Test: odmah +1 razina">⚡ +1</button>` : ''}<button data-train="${m.id}" ${check.ok ? '' : `disabled title="${esc(check.reason)}"`}>${lvl === 0 ? 'Nauči' : 'Treniraj'}</button></div>
@@ -140,21 +143,23 @@ function renderClub() {
 }
 
 function renderActivities() {
-  const busy = !!state.activity;
+  const busy = busyWith(state);
+  const busyAttr = busy ? ` title="${esc(busy.reason)}"` : '';
   const sem = ACTIVITIES.seminar, om = ACTIVITIES.openMat;
   $('tab-activities').innerHTML = `
-    <p class="hint">Na aktivnostima se može naučiti nasumičan novi potez, pa i onaj višeg pojasa. Jedna aktivnost istovremeno, uz trening.</p>
+    <p class="hint">Na aktivnostima se može naučiti nasumičan novi potez, pa i onaj višeg pojasa. Dok si na aktivnosti, ne treniraš u klubu, a dok treniraš, ne možeš na aktivnost.</p>
+    ${busy ? `<p class="hint"><b>${esc(busy.reason)}</b></p>` : ''}
     <div class="cards">
       <div class="card"><h3>Seminar</h3><p>Gostujući instruktor pokazuje tehnike.</p>
         <div class="row"><span>Cijena</span><b>${sem.cost} €</b></div>
-        <div class="row"><span>Trajanje</span><b>${fmtTime(sem.duration / state.speed)}</b></div>
+        <div class="row"><span>Trajanje</span><b>${fmtTime(sem.realDuration)} stvarnog vremena</b></div>
         <div class="row"><span>Šansa za novi potez</span><b>90 %</b></div>
-        <button data-activity="seminar" ${busy || state.money < sem.cost ? 'disabled' : ''}>Idi na seminar</button></div>
+        <button data-activity="seminar" ${busy || state.money < sem.cost ? 'disabled' : ''}${busyAttr}>Idi na seminar</button></div>
       <div class="card"><h3>Open mat</h3><p>Slobodni sparing s ljudima iz drugih klubova.</p>
         <div class="row"><span>Cijena</span><b>besplatno</b></div>
         <div class="row"><span>Trajanje</span><b>${fmtTime(om.duration / state.speed)}</b></div>
         <div class="row"><span>Šansa za novi potez</span><b>10–20 %</b></div>
-        <button data-activity="openMat" ${busy ? 'disabled' : ''}>Idi na open mat</button></div>
+        <button data-activity="openMat" ${busy ? 'disabled' : ''}${busyAttr}>Idi na open mat</button></div>
     </div>`;
 }
 
@@ -197,6 +202,8 @@ function renderTest() {
       <span class="hint" style="margin:0">Uključeno: svi potezi su barem na razini 1 i svi se mogu trenirati. Isključeno: prava pravila.</span></div>
     <div class="test-row"><label for="belt-select">Pojas</label>
       <select id="belt-select">${BELTS.map((b) => `<option value="${b}" ${b === state.belt ? 'selected' : ''}>${BELT_NAMES[b]}</option>`).join('')}</select></div>
+    <div class="test-row"><label>Aktivnost</label><button class="secondary" data-finish-activity ${state.activity ? '' : 'disabled'}>⚡ Završi odmah</button>
+      <span class="hint" style="margin:0">Seminar traje sat stvarnog vremena i ubrzanje ne djeluje na njega.</span></div>
     <div class="test-row"><label>Novac</label><button class="secondary" data-money>+500 €</button></div>
     <div class="test-row"><label>Nova igra</label><button class="ghost" data-reset>Obriši napredak</button></div>`;
 }
@@ -250,8 +257,12 @@ $('career').addEventListener('click', (ev) => {
     const r = startTraining(state, t.dataset.train);
     if (!r.ok) toast(r.reason);
   } else if (t.dataset.activity) {
-    const r = startActivity(state, t.dataset.activity, rng);
+    const r = startActivity(state, t.dataset.activity, rng, Date.now());
     if (!r.ok) toast(r.reason);
+  } else if ('finishActivity' in t.dataset) {
+    const r = finishActivityNow(state, Date.now());
+    if (!r.ok) toast(r.reason);
+    else handleEvents(advance(state, Date.now()));
   } else if (t.dataset.fight) {
     startFightFlow(t.dataset.fight);
     return;
@@ -551,7 +562,7 @@ function frame(now) {
     if (f.ended && !fightCtx.done) finishFight(f);
   }
 
-  if (!fightCtx) gymView.draw(gymScene(state), dtReal);
+  if (!fightCtx) gymView.draw(gymScene(state, Date.now()), dtReal);
 
   if (now - lastUi > 250) {
     lastUi = now;

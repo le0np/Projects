@@ -6,7 +6,8 @@ export const BELT_FACTOR = { white: 1, blue: 0.8, purple: 0.55, brown: 0.35, bla
 export const MAX_LEVEL = 10;
 export const SAVE_VERSION = 1;
 export const ACTIVITIES = {
-  seminar: { name: 'Seminar', cost: 50, duration: 120 },
+  // The seminar runs on the real clock: one real hour, whatever the test speed-up, even while the game is closed.
+  seminar: { name: 'Seminar', cost: 50, realDuration: 3600 },
   openMat: { name: 'Open mat', cost: 0, duration: 60 },
 };
 export const COMPETITION_LEARN_CHANCE = 0.05;
@@ -45,13 +46,36 @@ export function createState({ test = true, now = 0 } = {}) {
   };
 }
 
+// The player does one thing at a time: a technique, the gym, cardio, a seminar or an open mat.
+// Returns what is running (with a reason to show) or null when the player is free.
+export function busyWith(state) {
+  if (state.training) return { slot: 'training', reason: `Treniraš ${MOVE_BY_ID[state.training.moveId].name}. Jedna stvar u isto vrijeme.` };
+  if (state.workout) return { slot: 'workout', reason: `${PHYSICAL[state.workout.attr].place} je u tijeku. Jedna stvar u isto vrijeme.` };
+  if (state.activity) return { slot: 'activity', reason: `${state.activity.type === 'seminar' ? 'Na seminaru si' : 'Na open matu si'}. Jedna stvar u isto vrijeme.` };
+  return null;
+}
+
+// Timers: `clock: 'real'` means startedAt/endsAt are real milliseconds (Date.now), otherwise game seconds.
+export function slotProgress(state, slot, realNow) {
+  const at = slot.clock === 'real' ? realNow : state.gameTime;
+  return Math.max(0, Math.min(1, (at - slot.startedAt) / (slot.endsAt - slot.startedAt)));
+}
+
+// Real seconds left until a timer ends.
+export function slotRealLeft(state, slot, realNow) {
+  return slot.clock === 'real' ? (slot.endsAt - realNow) / 1000 : (slot.endsAt - state.gameTime) / state.speed;
+}
+
+const slotDone = (state, slot, realNow) => (slot.clock === 'real' ? realNow >= slot.endsAt : state.gameTime >= slot.endsAt);
+
 export function workoutTime(attr, level) {
   return PHYSICAL[attr].base * 2 ** (level - 1);
 }
 
 export function startWorkout(state, attr) {
   if (!PHYSICAL[attr]) return { ok: false, reason: 'Nepoznata vježba.' };
-  if (state.workout) return { ok: false, reason: 'Fizička priprema već traje.' };
+  const busy = busyWith(state);
+  if (busy) return { ok: false, reason: busy.reason };
   const toLevel = state.physical[attr] + 1;
   if (toLevel > MAX_LEVEL) return { ok: false, reason: 'Najviša razina.' };
   state.workout = { attr, toLevel, startedAt: state.gameTime, endsAt: state.gameTime + workoutTime(attr, toLevel) };
@@ -80,7 +104,8 @@ const beltIndex = (b) => BELTS.indexOf(b);
 
 export function canTrain(state, moveId) {
   if (!MOVE_BY_ID[moveId]) return { ok: false, reason: 'Nepoznat potez.' };
-  if (state.training) return { ok: false, reason: 'Trening već traje.' };
+  const busy = busyWith(state);
+  if (busy) return { ok: false, reason: busy.reason };
   const lvl = effectiveLevel(state, moveId);
   if (lvl >= MAX_LEVEL) return { ok: false, reason: 'Potez je na najvišoj razini.' };
   if (lvl === 0 && beltIndex(MOVE_BY_ID[moveId].belt) > beltIndex(state.belt)) {
@@ -108,14 +133,26 @@ export function instantLevelUp(state, moveId) {
   return { ok: true, level: lvl + 1 };
 }
 
-export function startActivity(state, type, rng) {
+export function startActivity(state, type, rng, realNow = state.lastReal) {
   const def = ACTIVITIES[type];
   if (!def) return { ok: false, reason: 'Nepoznata aktivnost.' };
-  if (state.activity) return { ok: false, reason: 'Već si na aktivnosti.' };
+  const busy = busyWith(state);
+  if (busy) return { ok: false, reason: busy.reason };
   if (state.money < def.cost) return { ok: false, reason: `Treba ti ${def.cost} €.` };
   state.money -= def.cost;
   const chance = type === 'seminar' ? 0.9 : 0.1 + 0.1 * rng();
-  state.activity = { type, chance, startedAt: state.gameTime, endsAt: state.gameTime + def.duration };
+  state.activity = def.realDuration
+    ? { type, chance, clock: 'real', startedAt: realNow, endsAt: realNow + def.realDuration * 1000 }
+    : { type, chance, startedAt: state.gameTime, endsAt: state.gameTime + def.duration };
+  return { ok: true };
+}
+
+// Test version only: end the running seminar or open mat right away (it still rolls for a new move).
+export function finishActivityNow(state, realNow) {
+  if (!state.test) return { ok: false, reason: 'Samo u testnoj verziji.' };
+  const a = state.activity;
+  if (!a) return { ok: false, reason: 'Nema aktivnosti.' };
+  a.endsAt = a.clock === 'real' ? realNow : state.gameTime;
   return { ok: true };
 }
 
@@ -145,7 +182,7 @@ export function advance(state, realNow, rng = Math.random) {
     state.workout = null;
     events.push({ type: 'workout', attr, level: toLevel });
   }
-  if (state.activity && state.gameTime >= state.activity.endsAt) {
+  if (state.activity && slotDone(state, state.activity, realNow)) {
     const { type, chance } = state.activity;
     state.activity = null;
     const learned = rng() < chance ? learnRandomMove(state, rng) : null;
@@ -255,7 +292,7 @@ function repair(raw, realNow) {
     training: timer(tr) && MOVE_BY_ID[tr.moveId] && Number.isInteger(tr.toLevel) && tr.toLevel >= 1 && tr.toLevel <= MAX_LEVEL
       ? { moveId: tr.moveId, toLevel: tr.toLevel, startedAt: tr.startedAt, endsAt: tr.endsAt } : null,
     activity: timer(ac) && ACTIVITIES[ac.type] && Number.isFinite(ac.chance)
-      ? { type: ac.type, chance: num(ac.chance, 0, 0, 1), startedAt: ac.startedAt, endsAt: ac.endsAt } : null,
+      ? { type: ac.type, chance: num(ac.chance, 0, 0, 1), ...(ac.clock === 'real' ? { clock: 'real' } : {}), startedAt: ac.startedAt, endsAt: ac.endsAt } : null,
   };
 }
 
