@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { createFighter3d } from './fighter3d.js';
 import { createMat } from './gym3d.js';
 import { POSES3D, blendPose, poseTravel } from './poses3d.js';
-import { settle, sampleSkin, overlap, contactPush } from './contact3d.js';
+import { settle, sampleSkin, overlap } from './contact3d.js';
 import { ACTION_BY_ID } from '../data/positions.js';
 import { MOVE_BY_ID } from '../data/moves.js';
 
@@ -22,6 +22,7 @@ const ease = (t) => t * t * t * (t * (t * 6 - 15) + 10);
 // Smooth wobble from layered sines (cheap stand-in for noise), roughly -1..1.
 const wobble = (t, seed) => (Math.sin(t * 0.9 + seed) * 0.5 + Math.sin(t * 1.7 + seed * 2.3) * 0.3 + Math.sin(t * 2.9 + seed * 4.1) * 0.2);
 const SMOOTH_JOINTS = ['Head', 'pelvis', 'hand_l', 'hand_r', 'foot_l', 'foot_r', 'calf_l', 'calf_r', 'lowerarm_l', 'lowerarm_r'];
+const TOP_ARC = 0.12; // metres the top fighter's hips rise in the middle of a transition
 const TRANSITION = 0.85; // default seconds for a change of position
 const PULSE = 0.95; // seconds for a technique movement
 const add = (a, b, k = 1) => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
@@ -200,20 +201,23 @@ export function createRenderer3d(canvas, overlay) {
     const p = clonePose(pose);
     const seed = who === 'p' ? 0 : 2.1;
     const t = state.time;
-    const standing = view.pos === 'standing';
+    // How much of the standing movement to use: blends in and out with a transition to or from standing.
+    const sw = state.standing ?? (view.pos === 'standing' ? 1 : 0);
     const breathe = Math.sin(t * 2.1 + seed) * 0.012;
     if (p.chestUp) p.chestUp = add(p.chestUp, [0, breathe * 4, 0]);
     if (p.headFwd) p.headFwd = add(p.headFwd, [0, 0, wobble(t * 0.7, seed + 5) * 0.25]); // looks around a little
-    if (standing) {
+    if (sw > 0) {
       // Moving feet and weight: the pair circles and pushes; feet follow the hips at a quarter of the distance.
       const sway = [wobble(t * 0.8, seed) * 0.08, -Math.abs(Math.sin(t * 2.2 + seed)) * 0.025, wobble(t * 0.6, seed + 1) * 0.06];
-      shift(p, ['pelvis', ...UPPER], sway);
-      shift(p, LOWER, sway, 0.25);
-      if (p.chestFwd) p.chestFwd = add(p.chestFwd, [0, 0, wobble(t * 0.9, seed + 3) * 0.3]); // shoulders turn with the grips
-    } else {
+      shift(p, ['pelvis', ...UPPER], sway, sw);
+      shift(p, LOWER, sway, 0.25 * sw);
+      if (p.chestFwd) p.chestFwd = add(p.chestFwd, [0, 0, wobble(t * 0.9, seed + 3) * 0.3 * sw]); // shoulders turn with the grips
+    }
+    if (sw < 1) {
       // On the ground: the top fighter shifts pressure, the bottom one keeps the hips and knees moving.
-      shift(p, ['pelvis'], [wobble(t * 0.6, seed) * 0.03, breathe + wobble(t * 0.5, seed + 2) * 0.01, wobble(t * 0.5, seed + 4) * 0.025]);
-      ['kneeL', 'kneeR'].forEach((k, i) => { if (p[k]) p[k] = add(p[k], [0, wobble(t * 0.9, seed + i * 3) * 0.04, wobble(t * 0.7, seed + i) * 0.04]); });
+      const g = 1 - sw;
+      shift(p, ['pelvis'], [wobble(t * 0.6, seed) * 0.03, breathe + wobble(t * 0.5, seed + 2) * 0.01, wobble(t * 0.5, seed + 4) * 0.025], g);
+      ['kneeL', 'kneeR'].forEach((k, i) => { if (p[k]) p[k] = add(p[k], [0, wobble(t * 0.9, seed + i * 3) * 0.04 * g, wobble(t * 0.7, seed + i) * 0.04 * g]); });
     }
     ['handL', 'handR'].forEach((h, i) => { // hand fighting: slow loops, not a buzz
       const ph = seed + i * 1.9;
@@ -234,25 +238,6 @@ export function createRenderer3d(canvas, overlay) {
       p.handR = add(p.handR, [0, Math.abs(Math.sin(state.tapT * 9)) * 0.1, 0]); // the tap
     }
     return p;
-  }
-
-  // Persistent target offsets from contacts: a needed push is added gradually and fades out when the
-  // contact is gone, so bodies slide apart instead of jumping.
-  function easePush(w, need) {
-    const off = (state.push ??= { p: {}, o: {} })[w];
-    for (const key of new Set([...Object.keys(off), ...Object.keys(need)])) {
-      const cur = off[key] ?? [0, 0, 0];
-      const n = need[key] ?? [0, 0, 0];
-      off[key] = cur.map((v, i) => v * 0.94 + n[i] * 0.55);
-      if (Math.hypot(...off[key]) < 1e-4) delete off[key];
-    }
-  }
-  function withPush(target, w) {
-    const off = state.push?.[w];
-    if (!off) return target;
-    const out = { ...target };
-    for (const [key, d] of Object.entries(off)) if (out[key]) out[key] = add(out[key], d);
-    return out;
   }
 
   // Pose both fighters. A change of position blends the pose targets (points in straight lines with a small
@@ -279,14 +264,20 @@ export function createRenderer3d(canvas, overlay) {
     state.t = Math.min(1, state.t + dt / (state.duration ?? TRANSITION));
     const k = ease(state.t);
     const moving = state.from && state.t < 1;
+    const nowStanding = view.pos === 'standing' ? 1 : 0;
+    if (key !== state.standKey) { state.standFrom = state.standing ?? nowStanding; state.standKey = key; }
+    state.standing = moving ? state.standFrom + (nowStanding - state.standFrom) * k : nowStanding;
     const shown = {};
+    // The top fighter comes up a little over the other one in a transition, so the bodies do not pass through.
+    const top = s.p === 'T' ? 'p' : 'o';
     for (const w of ['p', 'o']) {
       const other = w === 'p' ? 'o' : 'p';
       const base = moving ? blendPose(state.from[w], P[s[w]], k, 0.07) : P[s[w]];
       const otherBase = moving ? blendPose(state.from[other], P[s[other]], k) : P[s[other]];
       shown[w] = base;
       const f = state.fighters[w];
-      f.setPose(withPush(liven(base, w, otherBase, view), w), true);
+      const lifted = moving && w === top ? { ...base, pelvis: add(base.pelvis, [0, Math.sin(Math.PI * state.t) ** 2 * TOP_ARC, 0]) } : base;
+      f.setPose(liven(lifted, w, otherBase, view), true);
       // Ground check on a coarse skin sample: movements must not sink into the mat.
       const below = Math.max(0, -Math.min(...sampleSkin(f, 24).map((q) => q[1])));
       if (below > (state.maxBelow ?? 0)) {
@@ -298,13 +289,6 @@ export function createRenderer3d(canvas, overlay) {
       g[w] += (below - g[w]) * (below > g[w] ? 0.6 : 0.15); // rises quickly, settles back slowly
       f.object.position.y = state.tune?.ground === false ? 0 : g[w];
       f.object.updateMatrixWorld(true);
-    }
-    // Contact: measure how the posed bodies touch and ease the pose targets out of each other next frame.
-    const top = s.p === 'T' ? 'p' : 'o';
-    const push = contactPush(state.fighters[top], state.fighters[top === 'p' ? 'o' : 'p']);
-    if (state.tune?.push !== false) {
-      easePush(top, push.top);
-      easePush(top === 'p' ? 'o' : 'p', push.bottom);
     }
     // Overlap check (for the browser checks): how deep one fighter's skin goes into the other.
     if (state.measure) {
@@ -461,11 +445,11 @@ export function createRenderer3d(canvas, overlay) {
 
   // A fresh fight starts without the previous fight's camera, captions and animations.
   function reset() {
-    Object.assign(state, { lastJoints: null, maxStep: 0, maxBelow: 0, maxOverlap: 0, ground: null, shown: null, push: null, key: '', t: 1, from: null, pulses: [], lastSeq: -1, tapT: 0, labels: [], captions: [], logLen: 0, cam: null, frameMs: [] });
+    Object.assign(state, { standing: null, standKey: '', lastJoints: null, maxStep: 0, maxBelow: 0, maxOverlap: 0, ground: null, shown: null, key: '', t: 1, from: null, pulses: [], lastSeq: -1, tapT: 0, labels: [], captions: [], logLen: 0, cam: null, frameMs: [] });
   }
 
   resize();
-  return { peek: (j = 'Head') => ({ t: state.t, shown: state.shown, joint: state.fighters.o.joint(j), thigh: state.fighters.o.joint('thigh_r'), foot: state.fighters.o.joint('foot_r') }), measure: (on) => { state.measure = on; }, tune: (opts) => { state.tune = opts; }, fighters: () => state.fighters, draw, resize, reset, ready, isReady: () => state.ready, stats: () => ({ fps: state.fps, quality: state.quality, maxStep: state.maxStep ?? 0, maxStepWhen: state.maxStepWhen, maxBelow: state.maxBelow ?? 0, maxBelowWhen: state.maxBelowWhen, maxOverlap: state.maxOverlap ?? 0, maxOverlapWhen: state.maxOverlapWhen }) };
+  return { measure: (on) => { state.measure = on; }, tune: (opts) => { state.tune = opts; }, fighters: () => state.fighters, draw, resize, reset, ready, isReady: () => state.ready, stats: () => ({ fps: state.fps, quality: state.quality, maxStep: state.maxStep ?? 0, maxStepWhen: state.maxStepWhen, maxBelow: state.maxBelow ?? 0, maxBelowWhen: state.maxBelowWhen, maxOverlap: state.maxOverlap ?? 0, maxOverlapWhen: state.maxOverlapWhen }) };
 }
 
 export function webglAvailable() {

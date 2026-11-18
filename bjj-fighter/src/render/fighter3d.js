@@ -103,6 +103,7 @@ function aim(bone, child, target) {
 // `memory` (optional) keeps the bend direction between frames: when the pole comes close to the line of
 // the limb its direction becomes unreliable and would flip the elbow or knee to the other side in one
 // frame, so the previous bend direction takes over there.
+const MAX_BEND_TURN = 0.12; // radians per frame (about 7°)
 function twoBone(upper, lower, end, target, pole, memory) {
   const A = upper.getWorldPosition(new THREE.Vector3());
   const l1 = lower.position.length();
@@ -124,6 +125,19 @@ function twoBone(upper, lower, end, target, pole, memory) {
   }
   if (perp.lengthSq() < 1e-8) perp.set(0, 1, 0).addScaledVector(dir, -dir.y);
   perp.normalize();
+  if (memory?.perp) {
+    // The bend plane turns at most MAX_BEND_TURN per frame around the limb, so the joint glides.
+    const last = memory.perp.clone().addScaledVector(dir, -memory.perp.dot(dir));
+    if (last.lengthSq() > 1e-8) {
+      last.normalize();
+      const angle = Math.acos(Math.max(-1, Math.min(1, last.dot(perp))));
+      if (angle > MAX_BEND_TURN) {
+        const axis = new THREE.Vector3().crossVectors(last, perp);
+        if (axis.lengthSq() < 1e-8) axis.copy(dir);
+        perp.copy(last).applyAxisAngle(axis.normalize(), MAX_BEND_TURN);
+      }
+    }
+  }
   if (memory) memory.perp = perp.clone();
   const mid = A.clone().addScaledVector(dir, l1 * cosA).addScaledVector(perp, l1 * sinA);
   aim(upper, lower, mid);

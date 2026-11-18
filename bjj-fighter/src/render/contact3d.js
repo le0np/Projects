@@ -159,20 +159,3 @@ export function settle(top, bottom, T, B, { rounds = 16, step = 6, rate = 1.15 }
   return { T: t, B: b };
 }
 
-// Live version of settle() for animation: the target displacements that would take the top fighter
-// out of the bottom one (and both out of the mat) in the current frame, as { top: {key: [x,y,z]}, bottom: {...} }.
-// The renderer eases these in over a few frames instead of applying them at once.
-export function contactPush(top, bottom, step = 24) {
-  const collect = (fix) => {
-    const out = {};
-    for (const [region, v] of Object.entries(fix)) {
-      for (const [key, share] of MOVERS[region]) {
-        const m = out[key] ?? [0, 0, 0];
-        ['x', 'y', 'z'].forEach((ax, i) => { if (Math.abs(v[ax] * share) > Math.abs(m[i])) m[i] = v[ax] * share; });
-        out[key] = m;
-      }
-    }
-    return out;
-  };
-  return { top: collect(corrections(top, bottom, step)), bottom: collect(corrections(bottom, top, step, true)) };
-}

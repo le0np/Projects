@@ -230,17 +230,28 @@ Vlasnik je odobrio model i poze („kasnije ćemo modele možda malo modificirat
 - `app.js` i `index.html`: import mapa za `three`, 3D platno uz 2D platno, modul i model se učitavaju u pozadini kad se igra otvori. Borba je u 3D-u ako je model učitan i 3D uključen; inače 2D. Testni panel ima „3D fighters” (pamti se u `localStorage` pod `bjj-fighter-view`, jer je to postavka preglednika, a ne napredak). Bez WebGL-a panel piše da 3D nije dostupan.
 - Uklonjeni low-poly prototip (`tools/lowpoly.html`, `src/render/lowpoly.js`, `src/render/pose3d.js` i njegov test); tatami i dvorana premješteni su u `src/render/gym3d.js`.
 
-### Dorada 3D animacije (u tijeku)
+### Dorada 3D animacije
 Vlasnik: animacija nije fluidna („kao da se slike mijenjaju u starim crtićima”), pod na turniru treperi crno-bijelo, udovi propadaju kroz tatami i jedni u druge.
-- Treperenje poda u areni (z-fighting): plohe su razmaknute po visini. Napravljeno.
-- `src/render/contact3d.js`: mjerenje kože ispod tatamija i u drugom borcu na stvarnim verteksima; `settle()` pri učitavanju slegne svih 10 poza (prije do 18 cm ispod tatamija i 11 cm preklapanja, sada 0–1 cm ispod i najviše oko 5 cm preklapanja); tijekom igre provjera poda i lagano guranje iz kontakta.
-- Pokreti: stalni živi pokret (težina, stisak, kukovi, glava), tehnike sa zaletom i smirivanjem koje se ne prekidaju, smjer tehnike određen na početku pokreta, prijelazi miješaju ciljeve poze (ravno + korak, trup kao cjelina, prsa i glava u odnosu na kukove) umjesto rotacija kostiju, trajanje prijelaza prema putu (0,7–1,8 s), IK pamti smjer savijanja lakta i koljena, mirnija kamera, automatsko smanjenje kvalitete ispod ~40 fps i FPS u testnom panelu.
-- `tools/anim-check.html`: zadani niz pozicija kroz 3D renderer točno 60 sličica/s; `window.result` daje najveći pomak zgloba po sličici, dubinu ispod tatamija i preklapanje.
-- Stanje mjerenja (60 sličica/s): najveći pomak po sličici pao je s 38 cm na oko 27 cm (bez korektora) / 40 cm (s njima); ostaje skok koljena crvenog u prijelazu u side control na t=0,5 koji se ne vidi kad se taj prijelaz pusti sam (ovisi o prethodnoj pozi; vjerojatno pamćenje smjera savijanja ili guranje iz kontakta). Preklapanje u sredini prijelaza do ~10 cm, kratko propadanje do ~10–17 cm (s korektorom poda).
+- Treperenje poda u areni (z-fighting): tamni pod i slojevi tatamija razmaknuti su po visini.
+- `src/render/contact3d.js`: mjerenje kože ispod tatamija i u drugom borcu na stvarnim verteksima modela. `settle()` pri učitavanju slegne svih 10 poza (prije do 18 cm ispod tatamija i 11 cm preklapanja, sada 0–1 cm ispod i najviše oko 5 cm preklapanja). Tijekom igre ostaje samo provjera poda (borac se glatko podigne ako koža zađe u tatami). Guranje iz kontakta uživo je isprobano i uklonjeno jer je gurnulo udove u tatami.
+- Pokreti: stalni živi pokret (težina, stisak, kukovi, glava) koji se pretapa između stava i partera; tehnike sa zaletom i smirivanjem koje se međusobno ne prekidaju; smjer tehnike određen na početku pokreta.
+- Prijelazi miješaju ciljeve poze umjesto rotacija kostiju (`blendPose` u `poses3d.js`): šake, stopala i kukovi idu ravno uz mali luk koraka, kukovi se okreću kao cjelina (kvaternion), prsa i glava miješaju samo svoj otklon od kukova; gornji borac se u prijelazu malo podigne preko donjeg. Trajanje prema putu i okretu (0,7–1,8 s).
+- IK pamti ravninu savijanja lakta i koljena i okreće je najviše ~7° po sličici, pa zglobovi ne preskaču kad je cilj blizu linije uda.
+- Mirnija kamera (prati u stvarnom vremenu, i nagib se glatko mijenja), automatsko smanjenje kvalitete ako sličica traje dulje od 25 ms, FPS zadnje 3D borbe u testnom panelu.
+- `tools/anim-check.html`: zadani niz od 16 pozicija i tehnika kroz 3D renderer točno 60 sličica/s; `window.result` daje najveći pomak zgloba po sličici, dubinu ispod tatamija i preklapanje (s mjestom gdje su se dogodili).
+- Pri 60 sličica/s (isti niz): najveći pomak zgloba po sličici pao je s 38 cm na 6,8 cm (pri vrhu brzine prijelaza, bez skokova), najveća trenutna dubina ispod tatamija u prijelazu sa 60 cm na 7 cm.
 
 ## Zadnja automatizirana provjera
 
-Provedeno 18. studenog 2026. (3D borba):
+Provedeno 18. studenog 2026. (dorada 3D animacije):
+
+| Provjera | Rezultat |
+| --- | --- |
+| `npm test` | 118/118 prolazi |
+| `tools/anim-check.html` (60 sličica/s) | najveći pomak zgloba 6,8 cm po sličici, najdublje ispod tatamija 7 cm (trenutno, u prijelazu), najveće preklapanje 11 cm (trenutno, u prijelazu), 0 grešaka |
+| Playwright e2e | sparing i natjecanje do kraja u 3D-u, 0 grešaka u konzoli |
+
+Prethodna provjera (18. studenog 2026., 3D borba):
 
 | Provjera | Rezultat |
 | --- | --- |
@@ -309,7 +320,7 @@ Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 ## Poznata ograničenja
 
 - Postoji samo testna verzija (testni panel, ubrzanje, ⚡ +1).
-- 3D borba: svi protivnici imaju isti izgled (tamna koža, brada, crveni rashguard). Tijela se mjestimično malo preklapaju (npr. bedra u zatvorenom gardu i half guardu), u stavu se ruke križaju, a pokreti tehnika su pomaci ciljeva (nema posebne animacije za svaku tehniku). Brzina na pravom mobitelu nije izmjerena (provjereno u headless Chromiumu sa softverskim WebGL-om).
+- 3D borba: svi protivnici imaju isti izgled (tamna koža, brada, crveni rashguard). U mirnim pozama tijela se preklapaju najviše oko 5 cm, a usred prijelaza kratko do oko 11 cm; u stavu se ruke križaju, a pokreti tehnika su pomaci ciljeva (nema posebne animacije za svaku tehniku). Brzina na pravom mobitelu nije izmjerena (provjereno u headless Chromiumu sa softverskim WebGL-om).
 - Prva borba odmah nakon otvaranja igre može biti u 2D-u ako se model još nije učitao (oko 1,5 MB).
 - Rashguard je obojena koža (bez nabora i ruba tkanine), a model u besplatnoj verziji postoji samo u dvije boje kože.
 - Animacije su po vrsti tehnike (rušenje, sweep, prolaz, bijeg, submission), ne za svaku tehniku posebno. Poze su ključne poze po poziciji, 2D. U 2D načinu borci su i dalje stare 2D figure.

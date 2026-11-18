@@ -18,7 +18,7 @@
   await r.ready;
   r.measure(true);
   const q = new URLSearchParams(location.search);
-  r.tune({ push: !q.has('nopush'), ground: !q.has('noground') });
+  r.tune({ ground: !q.has('noground') });
   // [position, playerTop, action id that caused it, success]
   const STEPS = [
     ['standing', null, null], ['closedGuard', true, 'pull'], ['halfGuard', true, 'toreando'], ['sideControl', true, 'kneeSlice_b'],
