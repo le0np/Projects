@@ -13,7 +13,7 @@ Treba samo [Node.js](https://nodejs.org) 20 ili noviji, bez instalacije paketa.
 ```bash
 cd bjj-fighter
 npm start          # server na http://localhost:8080
-npm test           # testovi pravila igre i efekata (92 testa)
+npm test           # testovi pravila igre i efekata (97 testova)
 ```
 
 Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `index.html` ne radi jer preglednici ne učitavaju JavaScript module s `file://`. Radi i bilo koji statički server, npr. `python3 -m http.server 8080` u ovoj mapi.
@@ -22,6 +22,7 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
 
 ## Kako se igra
 
+- **Dvorana odozgo:** na vrhu ekrana je animirani pogled na klub iz ptičje perspektive. Usred tatamija ti (plava majica) drilaš potez koji treniraš s partnerom (rušenja stojeći, sve ostalo u parteru), uz naziv poteza, razinu i traku napretka. Fizička priprema je u teretani ili na traci za trčanje, a dok si na seminaru ili open matu stoji natpis kod izlaza. Bez treninga sjediš na klupi. Ostali članovi kluba sparaju, a trener šeta oko tatamija. Uz smanjeno kretanje u sustavu slika miruje.
 - **Klub:** popis poteza po skupinama (kretanje, rušenja, gardovi, sweepovi, prolazi, gornje pozicije, prijelazi, bijegovi, submissioni, obrane). Svaki potez ima razine 1–10. „Nauči” ili „Treniraj” pokreće trening. Istovremeno ide jedan trening, a traka gore pokazuje koliko je ostalo.
   - Razina n traje `osnovno vrijeme × 2^(n−1)`. Prvi potezi traju 5–60 s, napredni potezi viših pojaseva nekoliko minuta.
   - Viši pojas uči brže od bijelog: plavi 20 %, ljubičasti 45 %, smeđi 65 %, crni 85 %.
@@ -79,9 +80,10 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 │   ├── engine/fight.js       # borba: bodovanje, runde, kritični trenuci
 │   ├── engine/opponent.js    # AI protivnici i igrač kao borac
 │   ├── engine/rng.js         # seedable slučajnost
-│   ├── render/               # Canvas 2D prikaz (poze, renderer)
+│   ├── render/               # Canvas 2D prikaz (poze, renderer borbe, dvorana odozgo)
 │   ├── ui/app.js             # ekrani, petlja igre, localStorage
-│   └── ui/fightFx.js         # natpisi, značke s bodovima i energija za HUD (bez DOM-a)
+│   ├── ui/fightFx.js         # natpisi, značke s bodovima i energija za HUD (bez DOM-a)
+│   └── ui/gymScene.js        # gdje si u dvorani i što radiš, za pogled odozgo (bez DOM-a)
 ├── tests/                    # node --test
 ├── assets/fonts/             # Barlow Condensed (woff2) i licenca OFL
 ├── tools/poses.html          # pregled svih poza

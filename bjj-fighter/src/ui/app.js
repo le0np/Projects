@@ -9,6 +9,8 @@ import {
 import { createFight, stepFight, chooseOption, formatLog, logLine, fighterErrorChance, pct, ROUND_SECONDS, ROUNDS, CLOCK_SPEED } from '../engine/fight.js';
 import { makeSparPartner, makeCompetitor, fighterFromState } from '../engine/opponent.js';
 import { createRenderer } from '../render/renderer2d.js';
+import { createGymView } from '../render/gymTopDown.js';
+import { gymScene } from './gymScene.js';
 import { tickCriticalTimer } from './criticalTimer.js';
 import { energySegments, createFxMemo, nextFxEvents } from './fightFx.js';
 
@@ -28,6 +30,7 @@ let state = load();
 let activeTab = 'club';
 let fightCtx = null; // { fight, mode: 'spar'|'comp', stage, timer, feedbackUntil }
 let renderer = null;
+const gymView = createGymView($('gym-canvas'));
 
 function load() {
   try {
@@ -323,6 +326,7 @@ function closeFight() {
   fightCtx = null;
   $('fight').hidden = true;
   $('career').hidden = false;
+  gymView.resize();
   renderAll();
 }
 
@@ -547,6 +551,8 @@ function frame(now) {
     if (f.ended && !fightCtx.done) finishFight(f);
   }
 
+  if (!fightCtx) gymView.draw(gymScene(state), dtReal);
+
   if (now - lastUi > 250) {
     lastUi = now;
     renderStatus();
@@ -557,8 +563,9 @@ function frame(now) {
 
 document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
 window.addEventListener('pagehide', save);
-window.addEventListener('resize', () => renderer?.resize());
+window.addEventListener('resize', () => { renderer?.resize(); gymView.resize(); });
 
 $('boot-hint').remove(); // the game loaded, so the 'how to start' hint is not needed
+gymView.resize();
 renderAll();
 requestAnimationFrame(frame);
