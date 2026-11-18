@@ -5,7 +5,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 ## Trenutno stanje
 
 Testna verzija je igriva u pregledniku, na računalu i mobitelu:
-- treninzi poteza na timer
+- treninzi poteza na timer, s animiranim pogledom na dvoranu iz ptičje perspektive
 - seminar i open mat
 - sparing i natjecanje protiv AI-a s kritičnim trenucima i pravim BJJ bodovanjem
 - promocija u pojas
@@ -165,9 +165,29 @@ Vlasnik: dok traje testiranje, raditi na grafici. Stil treba biti blizak MMA Man
 - Font Barlow Condensed (SIL OFL) spremljen u `assets/fonts/`, bez vanjskog učitavanja. `server.js` poslužuje `.woff2` i `.txt`.
 - Engine i 2D renderer nisu mijenjani.
 
+## Napravljeno 18. studenog 2026.
+
+### Pogled na dvoranu iz ptičje perspektive
+Vlasnik: „Bilo bi dobro gledati iz ptičje perspektive dvoranu kada se trenira da se ne gleda samo kontrolna tabla.” Odabrao je položaj na vrhu, iznad slotova treninga, vidljiv u svim karticama.
+- Canvas 800 × 280 iznad statusa: drveni pod, tatami „BJJ KLUB”, teretana (stalak, klupa, bučice) lijevo, kardio (dvije trake) desno, klupa i stalak s pojasevima dolje lijevo, izlaz dolje desno.
+- Ti (plava majica, pojas u boji tvog pojasa) i partner (crvena) usred tatamija sa zlatnim prstenom. Rušenja se driluju stojeći (ulaz pa povratak), sve ostale kategorije u parteru. Iznad je oznaka „Potez → razina” s trakom napretka.
+- Samo fizička priprema: ti na klupi s utegom ili na traci. Samo aktivnost: oznaka „Seminar/Open mat (izvan kluba)” kod izlaza. Ništa: sjediš na klupi s oznakom „Odmor”. Kad trening i fizička priprema idu zajedno, ti si na tatamiju, a teretana/kardio dobiva svoju oznaku s napretkom.
+- Četiri para članova kluba izmjenjuju stojeći dio i parter, svaki svojim tempom, a trener (crni pojas) obilazi tatami.
+- Uz `prefers-reduced-motion` slika miruje. Crta se samo dok je otvoren ekran karijere.
+- Odluka: ravni 2D crtež u Canvasu, isti pristup kao trenutni renderer borbe, jer je jeftin i ne čeka 3D. Kad stigne „korak 3: klub kao izometrijska dvorana”, ovaj prikaz se može zamijeniti, a `src/ui/gymScene.js` (tko je gdje, čista funkcija, 5 testova) ostaje.
+- Kod: `src/render/gymTopDown.js`, `src/ui/gymScene.js`, `tests/gym-scene.test.js`.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 14. studenog 2026. (nakon HUD-a i efekata):
+Provedeno 18. studenog 2026. (nakon pogleda na dvoranu):
+
+| Provjera | Rezultat |
+| --- | --- |
+| `npm test` | 97/97 prolazi |
+| Playwright (1100 px) | dvorana se crta u mirovanju, s treningom u parteru (Shrimp), s rušenjem (Double leg) uz kardio i open mat, i samo s teretanom; nakon sparinga i povratka u klub crta se dalje; 0 grešaka u konzoli |
+| Playwright mobitel (iPhone 13) | nema horizontalnog scrolla |
+
+Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 
 | Provjera | Rezultat |
 | --- | --- |
@@ -191,6 +211,7 @@ Provedeno 14. studenog 2026. (nakon HUD-a i efekata):
 
 ## Sljedeći koraci
 
+1. Pogled na dvoranu: vlasnik isproba i javi treba li veći, manji ili drukčiji (npr. više članova kluba, zvukovi).
 1. Grafika, korak 2: 3D borba (Three.js, besplatan CC0 humanoidni model, poze iz igre na kosturu, prijelazi, kamera), prvo kratki dizajn s vlasnikom. Zatim korak 3: klub kao izometrijska dvorana.
 1. Korak 2 drugog kruga: granice razina po pojasu, novi seminari (instruktori 1–5 ★, 40–90 %, trening pauziran). Korak 3: stil borbe, energija, ozljede.
 2. Vlasnik isproba testnu verziju i javi što treba podesiti (učestalost kritičnih trenutaka, težina, trajanja).

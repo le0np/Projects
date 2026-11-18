@@ -38,6 +38,8 @@ button.secondary { background: var(--card2); }
 .record { color: var(--muted); }
 
 main { max-width: 980px; margin: 0 auto; padding: 16px; }
+.gym-view { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); margin-bottom: 10px; background: #2a2119; }
+#gym-canvas { width: 100%; display: block; aspect-ratio: 800 / 280; }
 .status { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .slot { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
 .slot h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); }
