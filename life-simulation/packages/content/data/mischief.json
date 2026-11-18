@@ -1,0 +1,50 @@
+{
+  "mischief": [
+    {
+      "id": "rumour",
+      "label": "Start a rumour",
+      "description": "Whisper something juicy about them at the café. True or not, it will travel.",
+      "event": "mischief_rumour",
+      "delaySeconds": [
+        8,
+        20
+      ]
+    },
+    {
+      "id": "complaint",
+      "label": "Anonymous complaint",
+      "description": "Send their boss an anonymous complaint. Spelling mistakes optional.",
+      "event": "mischief_complaint",
+      "delaySeconds": [
+        10,
+        25
+      ],
+      "targetCondition": {
+        "fact": "employed"
+      }
+    },
+    {
+      "id": "flat_tyres",
+      "label": "Let their tyres down",
+      "description": "A classic. Petty, quiet, deeply satisfying.",
+      "event": "mischief_flat_tyres",
+      "delaySeconds": [
+        6,
+        15
+      ]
+    },
+    {
+      "id": "stolen_credit",
+      "label": "Steal their idea",
+      "description": "Present their brilliant idea as your own before they do.",
+      "event": "mischief_stolen_credit",
+      "delaySeconds": [
+        10,
+        25
+      ],
+      "targetCondition": {
+        "fact": "employed"
+      }
+    }
+  ]
+}

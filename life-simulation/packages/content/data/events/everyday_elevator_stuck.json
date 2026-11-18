@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "id": "everyday_elevator_stuck",
+  "version": 1,
+  "title": "Stuck in the Lift",
+  "category": "everyday",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "tags": [
+    "technical"
+  ],
+  "location": {
+    "at": [
+      "office"
+    ]
+  },
+  "roles": {
+    "trapped": {
+      "count": [
+        2,
+        3
+      ]
+    }
+  },
+  "text": {
+    "public": "The lift jolts and stops between floors with {trapped} inside.",
+    "private": {
+      "trapped": "The emergency light flickers. It is getting warm."
+    }
+  },
+  "choices": {
+    "trapped": [
+      {
+        "id": "alarm",
+        "label": "Press the alarm and wait",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "mental": -1
+        }
+      },
+      {
+        "id": "force",
+        "label": "Try to force the doors open",
+        "tags": [
+          "risk"
+        ],
+        "perceived": {
+          "risk": 1,
+          "benefit": 1
+        }
+      },
+      {
+        "id": "calm",
+        "label": "Keep everyone calm and talking",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "mental": 1
+        },
+        "effects": [
+          {
+            "type": "relation",
+            "from": "role:trapped",
+            "to": "self",
+            "affinity": 10,
+            "trust": 5
+          }
+        ]
+      },
+      {
+        "id": "reset",
+        "label": "Open the control panel and reset the controller",
+        "tags": [
+          "help",
+          "risk"
+        ],
+        "careers": [
+          "engineer"
+        ],
+        "perceived": {
+          "reputation": 1
+        },
+        "insight": {
+          "careers": [
+            "engineer"
+          ],
+          "perceived": {
+            "risk": 0,
+            "reputation": 1
+          },
+          "note": "A standard controller fault. Safe if you cut the power first."
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "reputation": 5
+            }
+          },
+          {
+            "type": "relation",
+            "from": "role:trapped",
+            "to": "self",
+            "affinity": 15,
+            "trust": 10
+          }
+        ]
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "engineer_rescue",
+      "when": {
+        "chose": "reset",
+        "role": "trapped"
+      },
+      "revealChoices": true,
+      "text": {
+        "trapped": "The lift hums back to life. Someone knew exactly what to do."
+      }
+    },
+    {
+      "id": "drop",
+      "when": {
+        "chose": "force",
+        "role": "trapped"
+      },
+      "chance": 0.35,
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:trapped",
+          "delta": {
+            "health": -8,
+            "mental": -6
+          }
+        }
+      ],
+      "text": {
+        "trapped": "The doors slip, the cabin drops half a metre. Bruises all round."
+      }
+    },
+    {
+      "id": "forced_open",
+      "when": {
+        "chose": "force",
+        "role": "trapped"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:trapped",
+          "delta": {
+            "mental": 2
+          }
+        }
+      ],
+      "text": {
+        "trapped": "The doors give way and you climb out onto the landing."
+      }
+    },
+    {
+      "id": "calm_wait",
+      "when": {
+        "chose": "calm",
+        "role": "trapped"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:trapped",
+          "delta": {
+            "mental": -1
+          }
+        }
+      ],
+      "text": {
+        "trapped": "Forty minutes, but someone kept spirits up. Technicians get you out."
+      }
+    },
+    {
+      "id": "long_wait",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:trapped",
+          "delta": {
+            "mental": -6
+          }
+        }
+      ],
+      "text": {
+        "trapped": "An hour in a hot box with strangers. Technicians finally open the doors."
+      }
+    }
+  ]
+}

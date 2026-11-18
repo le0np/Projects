@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "id": "mischief_rumour",
+  "title": "Whispers",
+  "category": "social",
+  "trigger": "followup_only",
+  "hidden": true,
+  "importance": "multi",
+  "cooldown": {
+    "maxPerSession": 4
+  },
+  "location": {
+    "at": [
+      "here"
+    ],
+    "of": "role:victim"
+  },
+  "roles": {
+    "victim": {
+      "count": 1
+    },
+    "culprit": {
+      "count": 1,
+      "aware": false,
+      "description": "Played the prank; not told"
+    }
+  },
+  "text": {
+    "public": "People in town are giving {victim} funny looks.",
+    "private": {
+      "victim": "Someone has been telling everyone you once got stuck in a revolving door for an hour."
+    }
+  },
+  "choices": {
+    "victim": [
+      {
+        "id": "investigate",
+        "label": "Find out who started it",
+        "tags": [
+          "truth",
+          "risk"
+        ],
+        "perceived": {
+          "risk": 1
+        }
+      },
+      {
+        "id": "own_it",
+        "label": "Lean in: tell the story yourself, funnier",
+        "tags": [
+          "truth"
+        ],
+        "perceived": {
+          "reputation": 1
+        }
+      },
+      {
+        "id": "ignore",
+        "label": "Ignore it",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "reputation": -1
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "found_out",
+      "when": {
+        "chose": "investigate",
+        "role": "victim"
+      },
+      "chance": 0.45,
+      "important": true,
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:victim",
+          "key": "knows_secret",
+          "about": "role:culprit"
+        },
+        {
+          "type": "relation",
+          "from": "role:victim",
+          "to": "role:culprit",
+          "setType": "enemy",
+          "affinity": -35,
+          "trust": -30
+        }
+      ],
+      "text": {
+        "victim": "You follow the trail. It was {culprit}! You will remember this.",
+        "culprit": "You have a strange feeling that {victim} knows."
+      }
+    },
+    {
+      "id": "comedy",
+      "when": {
+        "chose": "own_it",
+        "role": "victim"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "reputation": 4,
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "victim": "Your version has sound effects. You are a local legend now.",
+        "culprit": "Somehow {victim} turned your rumour into a comedy act."
+      }
+    },
+    {
+      "id": "stuck",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "reputation": -6,
+            "mental": -4
+          }
+        }
+      ],
+      "text": {
+        "victim": "Children point at you near revolving doors.",
+        "culprit": "The rumour about {victim} spreads nicely."
+      }
+    }
+  ]
+}

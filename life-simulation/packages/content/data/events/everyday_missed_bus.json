@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "id": "everyday_missed_bus",
+  "version": 1,
+  "title": "Missed Bus",
+  "category": "everyday",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 10,
+  "cooldown": {
+    "maxPerCharacter": 1
+  },
+  "location": {
+    "at": [
+      "street"
+    ]
+  },
+  "roles": {
+    "commuter": {
+      "count": 1,
+      "conditions": {
+        "fact": "employed"
+      }
+    }
+  },
+  "text": {
+    "public": "{commuter} watches the bus pull away. Work starts in twenty minutes.",
+    "private": {
+      "commuter": "Your manager already warned you about being late."
+    }
+  },
+  "choices": {
+    "commuter": [
+      {
+        "id": "taxi",
+        "label": "Take a taxi",
+        "tags": [
+          "sacrifice"
+        ],
+        "perceived": {
+          "money": -1,
+          "career": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -5
+            }
+          }
+        ]
+      },
+      {
+        "id": "run",
+        "label": "Run to work",
+        "tags": [
+          "risk"
+        ],
+        "perceived": {
+          "risk": 1,
+          "career": 1
+        }
+      },
+      {
+        "id": "call_in",
+        "label": "Call in and say you are sick",
+        "tags": [
+          "lie",
+          "avoid_responsibility"
+        ],
+        "perceived": {
+          "career": -1,
+          "mental": 1,
+          "risk": 1
+        }
+      },
+      {
+        "id": "wait",
+        "label": "Wait for the next bus",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "career": -1
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "slipped",
+      "when": {
+        "chose": "run",
+        "role": "commuter"
+      },
+      "chance": 0.2,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:commuter",
+          "delta": {
+            "health": -10,
+            "career": -3
+          }
+        }
+      ],
+      "text": {
+        "commuter": "You slip on the wet pavement and arrive late, limping."
+      }
+    },
+    {
+      "id": "made_it_running",
+      "when": {
+        "chose": "run",
+        "role": "commuter"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:commuter",
+          "delta": {
+            "health": 2
+          }
+        }
+      ],
+      "text": {
+        "commuter": "Out of breath, but just in time."
+      }
+    },
+    {
+      "id": "called_in",
+      "when": {
+        "chose": "call_in",
+        "role": "commuter"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:commuter",
+          "delta": {
+            "career": -5,
+            "mental": 4
+          }
+        }
+      ],
+      "text": {
+        "commuter": "A quiet day at home. Your manager did not sound convinced."
+      }
+    },
+    {
+      "id": "late",
+      "when": {
+        "chose": "wait",
+        "role": "commuter"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:commuter",
+          "delta": {
+            "career": -4,
+            "mental": -2
+          }
+        }
+      ],
+      "text": {
+        "commuter": "You arrive half an hour late. Nobody says anything, which is worse."
+      }
+    },
+    {
+      "id": "taxi",
+      "text": {
+        "commuter": "Expensive, but you make it on time."
+      }
+    }
+  ]
+}

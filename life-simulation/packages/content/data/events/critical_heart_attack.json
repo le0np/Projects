@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "id": "critical_heart_attack",
+  "version": 3,
+  "title": "Heart Attack",
+  "category": "critical",
+  "trigger": "followup_only",
+  "importance": "important",
+  "cooldown": {
+    "maxPerSession": 2
+  },
+  "location": {
+    "at": [
+      "shop",
+      "street"
+    ]
+  },
+  "roles": {
+    "patient": {
+      "count": 1,
+      "description": "Collapses; does not decide"
+    },
+    "bystander": {
+      "count": [
+        1,
+        2
+      ],
+      "description": "New participant drawn in by the emergency"
+    }
+  },
+  "conditions": {
+    "fact": "ignored_symptoms",
+    "of": "role:patient"
+  },
+  "text": {
+    "public": "{patient} collapses in the supermarket, clutching their chest. {bystander} is in the same aisle.",
+    "private": {
+      "patient": "The pain from last week is back — ten times worse.",
+      "bystander": "{patient} is grey and sweating, struggling to breathe."
+    }
+  },
+  "choices": {
+    "bystander": [
+      {
+        "id": "cpr",
+        "label": "Start CPR when they stop breathing",
+        "tags": [
+          "help",
+          "risk"
+        ],
+        "perceived": {
+          "relation": {
+            "patient": 2
+          },
+          "risk": 1
+        }
+      },
+      {
+        "id": "call",
+        "label": "Call an ambulance and shout for a defibrillator",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "patient": 1
+          }
+        }
+      },
+      {
+        "id": "treat",
+        "label": "Give aspirin, position them, prepare the defibrillator",
+        "tags": [
+          "help"
+        ],
+        "careers": [
+          "doctor"
+        ],
+        "perceived": {
+          "relation": {
+            "patient": 2
+          },
+          "reputation": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "reputation": 8
+            }
+          }
+        ]
+      },
+      {
+        "id": "freeze",
+        "label": "Freeze",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "saved_by_doctor",
+      "when": {
+        "chose": "treat",
+        "role": "bystander"
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:patient",
+          "delta": {
+            "health": -10
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:patient",
+          "key": "saved_by",
+          "about": "role:bystander"
+        },
+        {
+          "type": "fact",
+          "target": "role:patient",
+          "key": "ignored_symptoms",
+          "remove": true
+        },
+        {
+          "type": "relation",
+          "from": "role:patient",
+          "to": "role:bystander",
+          "affinity": 45,
+          "trust": 35
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 10
+        }
+      ],
+      "text": {
+        "patient": "You wake up in cardiology. A stranger with medical training kept you alive: {bystander}.",
+        "bystander": "You keep {patient} alive until the paramedics arrive."
+      }
+    },
+    {
+      "id": "saved",
+      "when": {
+        "any": [
+          {
+            "chose": "cpr",
+            "role": "bystander"
+          },
+          {
+            "chose": "call",
+            "role": "bystander"
+          }
+        ]
+      },
+      "chance": 0.85,
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:patient",
+          "delta": {
+            "health": -25
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:patient",
+          "key": "saved_by",
+          "about": "role:bystander"
+        },
+        {
+          "type": "fact",
+          "target": "role:patient",
+          "key": "ignored_symptoms",
+          "remove": true
+        },
+        {
+          "type": "relation",
+          "from": "role:patient",
+          "to": "role:bystander",
+          "affinity": 35,
+          "trust": 25
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 15
+        }
+      ],
+      "text": {
+        "patient": "You survive. Barely. {bystander} did not walk away.",
+        "bystander": "The paramedics take over. {patient} has a pulse."
+      }
+    },
+    {
+      "id": "died",
+      "important": true,
+      "effects": [
+        {
+          "type": "status",
+          "target": "role:patient",
+          "status": "dead",
+          "cause": "Heart attack after ignoring the warning signs"
+        },
+        {
+          "type": "attr",
+          "target": "role:bystander",
+          "delta": {
+            "mental": -8
+          }
+        }
+      ],
+      "text": {
+        "patient": "The lights go out.",
+        "bystander": "The paramedics arrive too late for {patient}."
+      },
+      "when": {
+        "chose": "freeze",
+        "role": "bystander",
+        "count": "all"
+      },
+      "chance": 0.6
+    },
+    {
+      "id": "survived_barely",
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:patient",
+          "delta": {
+            "health": -35,
+            "mental": -10
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:patient",
+          "key": "ignored_symptoms",
+          "remove": true
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 20
+        }
+      ],
+      "text": {
+        "patient": "You survive, but your heart will never be the same.",
+        "bystander": "{patient} is rushed to hospital. They pull through, just."
+      }
+    }
+  ]
+}

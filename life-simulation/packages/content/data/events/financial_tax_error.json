@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "id": "financial_tax_error",
+  "version": 1,
+  "title": "The Tax Refund",
+  "category": "financial",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 6,
+  "cooldown": {
+    "maxPerCharacter": 1
+  },
+  "location": {
+    "at": [
+      "home"
+    ]
+  },
+  "roles": {
+    "taxpayer": {
+      "count": 1
+    }
+  },
+  "text": {
+    "public": "{taxpayer} receives a tax refund.",
+    "private": {
+      "taxpayer": "It is twice what it should be. The tax office made a mistake in your favour."
+    }
+  },
+  "choices": {
+    "taxpayer": [
+      {
+        "id": "report",
+        "label": "Report the error",
+        "tags": [
+          "truth"
+        ],
+        "perceived": {
+          "money": 0
+        }
+      },
+      {
+        "id": "spend",
+        "label": "Spend it — their mistake, not yours",
+        "tags": [
+          "lie",
+          "risk"
+        ],
+        "perceived": {
+          "money": 2,
+          "risk": 1
+        }
+      },
+      {
+        "id": "set_aside",
+        "label": "Put the extra aside in case they ask",
+        "tags": [
+          "negotiate"
+        ],
+        "default": true,
+        "perceived": {
+          "money": 0
+        }
+      },
+      {
+        "id": "legal_check",
+        "label": "Check the law: how long can they claim it back?",
+        "tags": [
+          "negotiate"
+        ],
+        "careers": [
+          "lawyer"
+        ],
+        "perceived": {
+          "money": 1
+        },
+        "insight": {
+          "careers": [
+            "lawyer"
+          ],
+          "perceived": {
+            "money": 1,
+            "risk": 0
+          },
+          "note": "After 12 months they cannot reclaim it — if you never touched it."
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "lawyered",
+      "when": {
+        "chose": "legal_check",
+        "role": "taxpayer"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:taxpayer",
+          "delta": {
+            "money": 8
+          }
+        }
+      ],
+      "text": {
+        "taxpayer": "You park the money and wait out the deadline. Perfectly legal."
+      }
+    },
+    {
+      "id": "audited",
+      "when": {
+        "chose": "spend",
+        "role": "taxpayer"
+      },
+      "chance": 0.4,
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:taxpayer",
+          "delta": {
+            "money": -18,
+            "mental": -8,
+            "reputation": -4
+          }
+        }
+      ],
+      "text": {
+        "taxpayer": "The tax office wants it back — with a penalty. The money is long gone."
+      }
+    },
+    {
+      "id": "spent",
+      "when": {
+        "chose": "spend",
+        "role": "taxpayer"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:taxpayer",
+          "delta": {
+            "money": 12,
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "taxpayer": "Nobody ever asks."
+      }
+    },
+    {
+      "id": "reported",
+      "when": {
+        "chose": "report",
+        "role": "taxpayer"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:taxpayer",
+          "delta": {
+            "mental": 2
+          }
+        }
+      ],
+      "text": {
+        "taxpayer": "The clerk is surprised anyone calls about this. Clean conscience."
+      }
+    },
+    {
+      "id": "reclaimed",
+      "text": {
+        "taxpayer": "Two months later they ask for it back. Good thing you kept it."
+      }
+    }
+  ]
+}

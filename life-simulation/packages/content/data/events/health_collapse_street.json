@@ -1,0 +1,336 @@
+{
+  "schemaVersion": 1,
+  "id": "health_collapse_street",
+  "version": 3,
+  "title": "Collapse on the Street",
+  "category": "critical",
+  "trigger": "director",
+  "importance": "important",
+  "weight": 5,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "street"
+    ]
+  },
+  "roles": {
+    "patient": {
+      "count": 1,
+      "description": "Collapses; does not decide",
+      "conditions": {
+        "attr": "health",
+        "lte": 55
+      }
+    },
+    "bystander": {
+      "count": [
+        1,
+        2
+      ],
+      "description": "Happens to be nearby"
+    }
+  },
+  "conditions": {
+    "progress": {
+      "gte": 0.2
+    }
+  },
+  "text": {
+    "public": "{patient} suddenly collapses on a busy pavement. {bystander} is a few steps away.",
+    "private": {
+      "patient": "Your chest tightens and the world goes grey.",
+      "bystander": "{patient} is pale and barely responding. Nobody else seems to be stopping."
+    }
+  },
+  "choices": {
+    "bystander": [
+      {
+        "id": "cpr",
+        "label": "Start CPR",
+        "tags": [
+          "help",
+          "risk"
+        ],
+        "perceived": {
+          "risk": 1,
+          "relation": {
+            "patient": 2
+          }
+        },
+        "insight": {
+          "careers": [
+            "doctor"
+          ],
+          "perceived": {
+            "risk": 2,
+            "relation": {
+              "patient": 0
+            }
+          },
+          "note": "There is a pulse. CPR on someone with a pulse can do real harm."
+        }
+      },
+      {
+        "id": "call_ambulance",
+        "label": "Call an ambulance",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "patient": 1
+          }
+        }
+      },
+      {
+        "id": "walk_away",
+        "label": "Walk away — someone else will help",
+        "tags": [
+          "ignore",
+          "avoid_responsibility"
+        ],
+        "perceived": {
+          "risk": 0
+        }
+      },
+      {
+        "id": "freeze",
+        "label": "Stand there, unsure what to do",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      },
+      {
+        "id": "diagnose",
+        "label": "Check airway and pulse, then treat properly",
+        "tags": [
+          "help"
+        ],
+        "careers": [
+          "doctor"
+        ],
+        "perceived": {
+          "reputation": 1,
+          "relation": {
+            "patient": 2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "reputation": 8
+            }
+          }
+        ]
+      },
+      {
+        "id": "secure_scene",
+        "label": "Clear the crowd and radio for paramedics",
+        "tags": [
+          "help"
+        ],
+        "careers": [
+          "police_officer"
+        ],
+        "perceived": {
+          "reputation": 1,
+          "relation": {
+            "patient": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "reputation": 4
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "treated",
+      "when": {
+        "chose": "diagnose",
+        "role": "bystander"
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:patient",
+          "delta": {
+            "health": 10
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:patient",
+          "key": "saved_by",
+          "about": "role:bystander"
+        },
+        {
+          "type": "relation",
+          "from": "role:patient",
+          "to": "role:bystander",
+          "affinity": 40,
+          "trust": 30
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 8
+        }
+      ],
+      "text": {
+        "patient": "You wake up to {bystander} kneeling beside you. They knew exactly what to do.",
+        "bystander": "Your training kicks in. {patient} is stable before the ambulance arrives."
+      }
+    },
+    {
+      "id": "cpr_injury",
+      "when": {
+        "chose": "cpr",
+        "role": "bystander"
+      },
+      "chance": 0.3,
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:patient",
+          "delta": {
+            "health": -10
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:patient",
+          "key": "saved_by",
+          "about": "role:bystander"
+        },
+        {
+          "type": "relation",
+          "from": "role:patient",
+          "to": "role:bystander",
+          "affinity": 20,
+          "trust": 10
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 12
+        }
+      ],
+      "text": {
+        "patient": "You survive with two cracked ribs. The doctors say the CPR was not needed — but {bystander} tried.",
+        "bystander": "You did what you could. Later you hear the CPR may have done more harm than good."
+      }
+    },
+    {
+      "id": "helped",
+      "when": {
+        "any": [
+          {
+            "chose": "cpr",
+            "role": "bystander"
+          },
+          {
+            "chose": "call_ambulance",
+            "role": "bystander"
+          },
+          {
+            "chose": "secure_scene",
+            "role": "bystander"
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:patient",
+          "delta": {
+            "health": -5
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:patient",
+          "key": "saved_by",
+          "about": "role:bystander"
+        },
+        {
+          "type": "relation",
+          "from": "role:patient",
+          "to": "role:bystander",
+          "affinity": 30,
+          "trust": 20
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 10
+        }
+      ],
+      "text": {
+        "patient": "Paramedics arrive in time. You learn it was {bystander} who helped.",
+        "bystander": "The paramedics take over. {patient} will make it."
+      }
+    },
+    {
+      "id": "died_alone",
+      "chance": 0.3,
+      "important": true,
+      "effects": [
+        {
+          "type": "status",
+          "target": "role:patient",
+          "status": "dead",
+          "cause": "Collapsed on the street while nobody helped"
+        }
+      ],
+      "text": {
+        "patient": "Nobody stops. The world goes quiet.",
+        "bystander": "Later that day you read that {patient} did not survive."
+      }
+    },
+    {
+      "id": "late_rescue",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:patient",
+          "delta": {
+            "health": -25,
+            "mental": -10
+          }
+        },
+        {
+          "type": "move",
+          "target": "role:patient",
+          "to": "hospital",
+          "staySeconds": 15
+        }
+      ],
+      "text": {
+        "patient": "A stranger eventually calls an ambulance. You survive, barely.",
+        "bystander": "You walked on. You never find out what happened to {patient}."
+      }
+    }
+  ]
+}

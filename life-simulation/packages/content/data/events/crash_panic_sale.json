@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "id": "crash_panic_sale",
+  "title": "Everything Must Go",
+  "category": "financial",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 14,
+  "cooldown": {
+    "maxPerSession": 2,
+    "maxPerCharacter": 1
+  },
+  "location": {
+    "at": [
+      "cafe",
+      "street"
+    ]
+  },
+  "conditions": {
+    "sessionFact": "market_crash"
+  },
+  "roles": {
+    "seller": {
+      "count": 1
+    },
+    "buyer": {
+      "count": 1,
+      "conditions": {
+        "attr": "money",
+        "gte": 30
+      }
+    }
+  },
+  "text": {
+    "public": "Panicking about the crash, {seller} tries to sell their car to {buyer} for almost nothing.",
+    "private": {
+      "seller": "You are sure the world is ending.",
+      "buyer": "The car is worth four times what they are asking."
+    }
+  },
+  "choices": {
+    "buyer": [
+      {
+        "id": "grab",
+        "label": "Buy it at their panic price",
+        "tags": [
+          "lie",
+          "risk"
+        ],
+        "perceived": {
+          "money": 2,
+          "relation": {
+            "seller": -1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": 12
+            }
+          }
+        ]
+      },
+      {
+        "id": "fair",
+        "label": "Pay a fair price",
+        "tags": [
+          "truth",
+          "help"
+        ],
+        "perceived": {
+          "money": 1,
+          "relation": {
+            "seller": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": 2
+            }
+          }
+        ]
+      },
+      {
+        "id": "calm",
+        "label": "Talk them out of selling",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "seller": 2
+          }
+        }
+      },
+      {
+        "id": "advise",
+        "label": "Explain why panic-selling at the bottom is the worst idea",
+        "tags": [
+          "help",
+          "truth"
+        ],
+        "careers": [
+          "entrepreneur",
+          "lawyer"
+        ],
+        "perceived": {
+          "relation": {
+            "seller": 2
+          },
+          "reputation": 1
+        }
+      },
+      {
+        "id": "pass",
+        "label": "Walk away",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "fleeced",
+      "when": {
+        "chose": "grab",
+        "role": "buyer"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:seller",
+          "delta": {
+            "money": -10,
+            "mental": -5
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:buyer",
+          "key": "knows_secret",
+          "about": "role:seller"
+        }
+      ],
+      "followUps": [
+        {
+          "event": "crash_regret",
+          "delaySeconds": [
+            40,
+            90
+          ],
+          "chance": 0.7,
+          "roles": {
+            "victim": "role:seller",
+            "winner": "role:buyer"
+          }
+        }
+      ],
+      "text": {
+        "seller": "Sold! You feel clever for about a week.",
+        "buyer": "You drive home in a bargain. Do not look at the price guide."
+      }
+    },
+    {
+      "id": "saved",
+      "when": {
+        "any": [
+          {
+            "chose": "calm",
+            "role": "buyer"
+          },
+          {
+            "chose": "advise",
+            "role": "buyer"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:seller",
+          "to": "role:buyer",
+          "affinity": 20,
+          "trust": 20
+        }
+      ],
+      "text": {
+        "seller": "{buyer} talks you down. A month later prices recover. You owe them a pint.",
+        "buyer": "You stop them. Good deed done."
+      }
+    },
+    {
+      "id": "fair_deal",
+      "when": {
+        "chose": "fair",
+        "role": "buyer"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:seller",
+          "delta": {
+            "money": 4
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:seller",
+          "to": "role:buyer",
+          "trust": 10
+        }
+      ],
+      "text": {
+        "seller": "An honest buyer, in this economy?",
+        "buyer": "A fair deal. You sleep fine."
+      }
+    },
+    {
+      "id": "no_deal",
+      "text": {
+        "seller": "Nobody bites. You keep the car and the panic.",
+        "buyer": "You walk on."
+      }
+    }
+  ]
+}

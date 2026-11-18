@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "id": "financial_business_partnership",
+  "version": 1,
+  "title": "Let's Open a Café",
+  "category": "financial",
+  "trigger": "director",
+  "importance": "important",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "cafe"
+    ]
+  },
+  "roles": {
+    "founder": {
+      "count": 1,
+      "conditions": {
+        "attr": "money",
+        "gte": 35
+      }
+    },
+    "partner": {
+      "count": 1,
+      "conditions": {
+        "all": [
+          {
+            "attr": "money",
+            "gte": 30
+          },
+          {
+            "relation": {
+              "to": "role:founder",
+              "typeIn": [
+                "friend",
+                "family",
+                "partner",
+                "acquaintance",
+                "colleague"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "text": {
+    "public": "{founder} proposes opening a café together with {partner}.",
+    "private": {
+      "founder": "You have run the numbers. It could work — if both of you put in real money.",
+      "partner": "You have savings, and you are bored of your job."
+    }
+  },
+  "choices": {
+    "founder": [
+      {
+        "id": "equal",
+        "label": "Propose an equal partnership",
+        "tags": [
+          "negotiate",
+          "truth"
+        ],
+        "perceived": {
+          "money": 1,
+          "relation": {
+            "partner": 1
+          }
+        }
+      },
+      {
+        "id": "majority",
+        "label": "Insist on a majority share",
+        "tags": [
+          "negotiate"
+        ],
+        "default": true,
+        "perceived": {
+          "money": 2,
+          "relation": {
+            "partner": -1
+          }
+        }
+      }
+    ],
+    "partner": [
+      {
+        "id": "join",
+        "label": "Join and invest",
+        "tags": [
+          "risk",
+          "help"
+        ],
+        "perceived": {
+          "money": 1,
+          "risk": 2,
+          "relation": {
+            "founder": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -15
+            }
+          }
+        ]
+      },
+      {
+        "id": "contract",
+        "label": "Join, but only with a proper contract",
+        "tags": [
+          "negotiate"
+        ],
+        "careers": [
+          "lawyer",
+          "entrepreneur"
+        ],
+        "perceived": {
+          "money": 1,
+          "risk": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -15
+            }
+          }
+        ]
+      },
+      {
+        "id": "decline",
+        "label": "Decline",
+        "tags": [
+          "refuse"
+        ],
+        "default": true
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "opened",
+      "when": {
+        "any": [
+          {
+            "chose": "join",
+            "role": "partner"
+          },
+          {
+            "chose": "contract",
+            "role": "partner"
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:founder",
+          "delta": {
+            "money": -15,
+            "career": 6
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:partner",
+          "delta": {
+            "career": 6
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:founder",
+          "key": "business_partner",
+          "about": "role:partner"
+        },
+        {
+          "type": "fact",
+          "target": "role:partner",
+          "key": "business_partner",
+          "about": "role:founder"
+        },
+        {
+          "type": "relation",
+          "from": "role:founder",
+          "to": "role:partner",
+          "trust": 15,
+          "affinity": 10,
+          "mutual": true
+        }
+      ],
+      "followUps": [
+        {
+          "event": "financial_missing_money",
+          "delaySeconds": [
+            70,
+            140
+          ],
+          "chance": 0.7,
+          "roles": {
+            "treasurer": "role:founder",
+            "co_owner": "role:partner"
+          }
+        }
+      ],
+      "text": {
+        "founder": "The café opens. Long hours, but it is yours.",
+        "partner": "The café opens. Long hours, but it is yours."
+      }
+    },
+    {
+      "id": "declined",
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:founder",
+          "to": "role:partner",
+          "affinity": -5
+        }
+      ],
+      "text": {
+        "founder": "{partner} says no. The plan goes back in the drawer.",
+        "partner": "You keep your savings and your boring job."
+      }
+    }
+  ]
+}

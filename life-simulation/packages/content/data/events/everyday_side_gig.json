@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "id": "everyday_side_gig",
+  "version": 1,
+  "title": "Weekend Work",
+  "category": "everyday",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 7,
+  "cooldown": {
+    "maxPerCharacter": 2,
+    "minGapSeconds": 40
+  },
+  "location": {
+    "at": [
+      "here"
+    ]
+  },
+  "roles": {
+    "worker": {
+      "count": 1
+    }
+  },
+  "text": {
+    "public": "{worker} is offered some well-paid work over the weekend.",
+    "private": {
+      "worker": "You had promised yourself a weekend of rest."
+    }
+  },
+  "choices": {
+    "worker": [
+      {
+        "id": "take_it",
+        "label": "Take the job",
+        "tags": [
+          "sacrifice"
+        ],
+        "perceived": {
+          "money": 2,
+          "mental": -1
+        }
+      },
+      {
+        "id": "cash_in_hand",
+        "label": "Take it, cash in hand, no receipts",
+        "tags": [
+          "lie",
+          "risk"
+        ],
+        "perceived": {
+          "money": 2,
+          "risk": 1
+        }
+      },
+      {
+        "id": "rest",
+        "label": "Turn it down and rest",
+        "tags": [
+          "refuse"
+        ],
+        "default": true,
+        "perceived": {
+          "mental": 1
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "reported",
+      "when": {
+        "chose": "cash_in_hand",
+        "role": "worker"
+      },
+      "chance": 0.15,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:worker",
+          "delta": {
+            "money": 4,
+            "reputation": -6
+          }
+        }
+      ],
+      "text": {
+        "worker": "The client asks for an invoice for their taxes. Awkward conversation, smaller payment."
+      }
+    },
+    {
+      "id": "cash",
+      "when": {
+        "chose": "cash_in_hand",
+        "role": "worker"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:worker",
+          "delta": {
+            "money": 14,
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "worker": "A thick envelope and a sore back."
+      }
+    },
+    {
+      "id": "paid",
+      "when": {
+        "chose": "take_it",
+        "role": "worker"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:worker",
+          "delta": {
+            "money": 10,
+            "mental": -4,
+            "career": 1
+          }
+        }
+      ],
+      "text": {
+        "worker": "Tired, but the bank balance looks a lot better."
+      }
+    },
+    {
+      "id": "rested",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:worker",
+          "delta": {
+            "mental": 5,
+            "health": 2
+          }
+        }
+      ],
+      "text": {
+        "worker": "A slow weekend. You needed it."
+      }
+    }
+  ]
+}

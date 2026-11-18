@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "id": "mischief_flat_tyres",
+  "title": "Flat Tyres",
+  "category": "everyday",
+  "trigger": "followup_only",
+  "hidden": true,
+  "importance": "simple",
+  "cooldown": {
+    "maxPerSession": 4
+  },
+  "location": {
+    "at": [
+      "home"
+    ],
+    "of": "role:victim"
+  },
+  "tags": [
+    "vehicle"
+  ],
+  "roles": {
+    "victim": {
+      "count": 1
+    },
+    "culprit": {
+      "count": 1,
+      "aware": false
+    }
+  },
+  "text": {
+    "public": "{victim} finds all four tyres flat.",
+    "private": {
+      "victim": "Four flat tyres is not bad luck. That is a message."
+    }
+  },
+  "choices": {
+    "victim": [
+      {
+        "id": "investigate",
+        "label": "Check the neighbour's doorbell camera",
+        "tags": [
+          "truth",
+          "risk"
+        ],
+        "perceived": {
+          "risk": 1
+        }
+      },
+      {
+        "id": "walk",
+        "label": "Walk to work",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "career": -1,
+          "health": 1
+        }
+      },
+      {
+        "id": "pump",
+        "label": "Pump them up yourself in five minutes",
+        "tags": [
+          "take_responsibility"
+        ],
+        "careers": [
+          "mechanic"
+        ],
+        "perceived": {
+          "career": 1
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "found_out",
+      "when": {
+        "chose": "investigate",
+        "role": "victim"
+      },
+      "chance": 0.45,
+      "important": true,
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:victim",
+          "key": "knows_secret",
+          "about": "role:culprit"
+        },
+        {
+          "type": "relation",
+          "from": "role:victim",
+          "to": "role:culprit",
+          "setType": "enemy",
+          "affinity": -35,
+          "trust": -30
+        }
+      ],
+      "text": {
+        "victim": "You follow the trail. It was {culprit}! You will remember this.",
+        "culprit": "You have a strange feeling that {victim} knows."
+      }
+    },
+    {
+      "id": "pumped",
+      "when": {
+        "chose": "pump",
+        "role": "victim"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "victim": "Five minutes and a foot pump. Amateurs.",
+        "culprit": "{victim} fixed the tyres before breakfast. Annoying."
+      }
+    },
+    {
+      "id": "late",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "career": -3,
+            "health": 2,
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "victim": "You walk to work in the rain. Your step count is excellent.",
+        "culprit": "{victim} arrived at work soaked."
+      }
+    }
+  ]
+}

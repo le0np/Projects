@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Low-poly prototype</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #12151d; color: #e9ecf3; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .ui { position: fixed; left: 12px; top: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; pointer-events: none; }
+  .ui > * { pointer-events: auto; }
+  .ui h1 { margin: 0 8px 0 0; font-size: 16px; background: rgba(8,10,16,0.75); padding: 6px 10px; border-radius: 8px; }
+  select, button, label { font: inherit; color: inherit; background: rgba(27,32,48,0.92); border: 1px solid #2e3650; border-radius: 8px; padding: 6px 10px; }
+  button { cursor: pointer; }
+  .note { position: fixed; left: 12px; bottom: 12px; right: 12px; color: #98a1b8; font-size: 13px; background: rgba(8,10,16,0.7); padding: 6px 10px; border-radius: 8px; max-width: 640px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="ui">
+  <h1>Low-poly prototype</h1>
+  <select id="pos" aria-label="Position"></select>
+  <button id="swap">Blue on top / bottom</button>
+  <label><input type="checkbox" id="auto" checked> All positions in turn</label>
+</div>
+<div class="note">Style prototype: the fighters are built in code from simple shapes (no model), and the poses are the same key poses as in the 2D fight, with added depth. Drag to turn the camera, wheel or two fingers to zoom.</div>
+<script type="module">
+  import { THREE, createFighter, createMat } from '../src/render/lowpoly.js';
+  import { POSES } from '../src/render/poses.js';
+  import { pose3d, lerpPose } from '../src/render/pose3d.js';
+
+  const NAMES = { standing: 'Standing', closedGuard: 'Closed guard', halfGuard: 'Half guard', butterfly: 'Butterfly guard', sideControl: 'Side control', kneeOnBelly: 'Knee on belly', mount: 'Mount', back: 'Back', northSouth: 'North-south', turtle: 'Turtle' };
+  const canvas = document.getElementById('c');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color('#1b2030');
+  scene.fog = new THREE.Fog('#1b2030', 9, 18);
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 50);
+
+  scene.add(new THREE.HemisphereLight('#dfe8ff', '#4a3a2a', 1.1));
+  const sun = new THREE.DirectionalLight('#fff4e0', 2.2);
+  sun.position.set(3, 6, 4);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -4, right: 4, top: 4, bottom: -4 });
+  scene.add(sun);
+  scene.add(createMat());
+
+  const blue = createFighter({ shirt: '#2f6fe0', shorts: '#1a1d26', skin: '#e9b68f', hair: '#3a2a1e', rank: '#f2f2f2' });
+  const red = createFighter({ shirt: '#d64545', shorts: '#2a2a2a', skin: '#c98d62', hair: '#161210', rank: '#2457c5' });
+  scene.add(blue.group, red.group);
+
+  const sel = document.getElementById('pos');
+  sel.innerHTML = Object.keys(POSES).map((k) => `<option value="${k}">${NAMES[k] ?? k}</option>`).join('');
+  let playerTop = true;
+  const target = () => {
+    const P = POSES[sel.value];
+    const [mine, theirs] = playerTop ? [P.T, P.B] : [P.B, P.T];
+    return { blue: pose3d(mine), red: pose3d(theirs) };
+  };
+  let from = target(), to = from, blend = 1;
+  function go() { from = current(); to = target(); blend = 0; }
+  sel.onchange = () => { auto.checked = false; go(); };
+  document.getElementById('swap').onclick = () => { playerTop = !playerTop; go(); };
+  const auto = document.getElementById('auto');
+  let autoT = 0;
+
+  const ease = (t) => t * t * (3 - 2 * t);
+  const current = () => ({ blue: lerpPose(from.blue, to.blue, ease(blend)), red: lerpPose(from.red, to.red, ease(blend)) });
+
+  // Simple orbit camera: drag to turn, wheel or pinch to zoom.
+  let yaw = 0.5, pitch = 0.42, dist = 4.2;
+  const look = new THREE.Vector3(0, 0.4, 0);
+  const pointers = new Map();
+  let pinch = 0;
+  canvas.addEventListener('pointerdown', (e) => { canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); });
+  canvas.addEventListener('pointerup', (e) => { pointers.delete(e.pointerId); pinch = 0; });
+  canvas.addEventListener('pointercancel', (e) => { pointers.delete(e.pointerId); pinch = 0; });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!pointers.has(e.pointerId)) return;
+    const [px, py] = pointers.get(e.pointerId);
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (pinch) dist = Math.min(9, Math.max(1.8, dist * pinch / d));
+      pinch = d;
+      return;
+    }
+    yaw -= (e.clientX - px) * 0.008;
+    pitch = Math.min(1.35, Math.max(0.08, pitch + (e.clientY - py) * 0.006));
+  });
+  canvas.addEventListener('wheel', (e) => { e.preventDefault(); dist = Math.min(9, Math.max(1.8, dist * (1 + e.deltaY * 0.001))); }, { passive: false });
+
+  function resize() {
+    const w = innerWidth, h = innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.fov = w < h ? 58 : 40;
+    camera.updateProjectionMatrix();
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  const still = matchMedia('(prefers-reduced-motion: reduce)');
+  let last = performance.now(), time = 0;
+  function frame(now) {
+    const dt = Math.min(0.1, (now - last) / 1000);
+    last = now;
+    if (!still.matches) time += dt;
+    blend = Math.min(1, blend + dt / 0.7);
+    if (auto.checked) {
+      autoT += dt;
+      if (autoT > 2.6) {
+        autoT = 0;
+        const keys = Object.keys(POSES);
+        const i = keys.indexOf(sel.value);
+        if (i === keys.length - 1) playerTop = !playerTop;
+        sel.value = keys[(i + 1) % keys.length];
+        go();
+      }
+    }
+    const c = current();
+    const breath = (Math.sin(time * 2.4) + 1) / 2;
+    blue.setPose(c.blue, breath);
+    red.setPose(c.red, 1 - breath);
+    camera.position.set(look.x + dist * Math.cos(pitch) * Math.sin(yaw), look.y + dist * Math.sin(pitch), look.z + dist * Math.cos(pitch) * Math.cos(yaw));
+    camera.lookAt(look);
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  window.__ready = true;
+</script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 1,
+  "id": "health_burnout",
+  "version": 1,
+  "title": "Running on Empty",
+  "category": "health",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 9,
+  "cooldown": {
+    "maxPerCharacter": 1
+  },
+  "location": {
+    "at": [
+      "work"
+    ]
+  },
+  "roles": {
+    "worker": {
+      "count": 1,
+      "conditions": {
+        "any": [
+          {
+            "fact": "burned_out"
+          },
+          {
+            "attr": "mental",
+            "lte": 40
+          }
+        ]
+      }
+    }
+  },
+  "text": {
+    "public": "{worker} sits in the car outside work and cannot make themselves go in.",
+    "private": {
+      "worker": "You have not slept properly in weeks. Everything feels heavy."
+    }
+  },
+  "choices": {
+    "worker": [
+      {
+        "id": "sick_leave",
+        "label": "Call in and take a week of sick leave",
+        "tags": [
+          "take_responsibility"
+        ],
+        "perceived": {
+          "mental": 2,
+          "career": -1
+        }
+      },
+      {
+        "id": "push",
+        "label": "Push through — others are counting on you",
+        "tags": [
+          "sacrifice",
+          "risk"
+        ],
+        "default": true,
+        "perceived": {
+          "career": 1,
+          "mental": -2
+        }
+      },
+      {
+        "id": "therapy",
+        "label": "Book a therapist",
+        "tags": [
+          "take_responsibility"
+        ],
+        "perceived": {
+          "mental": 1,
+          "money": -1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -5
+            }
+          }
+        ]
+      },
+      {
+        "id": "self_care_plan",
+        "label": "Recognise the pattern and set hard boundaries",
+        "tags": [
+          "take_responsibility"
+        ],
+        "careers": [
+          "psychologist"
+        ],
+        "perceived": {
+          "mental": 2
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "recovered",
+      "when": {
+        "any": [
+          {
+            "chose": "self_care_plan",
+            "role": "worker"
+          },
+          {
+            "chose": "therapy",
+            "role": "worker"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:worker",
+          "delta": {
+            "mental": 18
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:worker",
+          "key": "burned_out",
+          "remove": true
+        }
+      ],
+      "text": {
+        "worker": "It takes work, but slowly the fog lifts."
+      }
+    },
+    {
+      "id": "rested",
+      "when": {
+        "chose": "sick_leave",
+        "role": "worker"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:worker",
+          "delta": {
+            "mental": 12,
+            "career": -4
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:worker",
+          "key": "burned_out",
+          "remove": true
+        }
+      ],
+      "text": {
+        "worker": "A week of sleep. You feel human again. Your manager is less pleased."
+      }
+    },
+    {
+      "id": "breakdown",
+      "when": {
+        "attr": "mental",
+        "of": "role:worker",
+        "lte": 30
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:worker",
+          "delta": {
+            "mental": -25,
+            "health": -10
+          }
+        }
+      ],
+      "text": {
+        "worker": "In the middle of a meeting, everything goes white. You wake up in a hospital bed."
+      }
+    },
+    {
+      "id": "pushed",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:worker",
+          "delta": {
+            "career": 3,
+            "mental": -8
+          }
+        }
+      ],
+      "text": {
+        "worker": "You go in. Nobody notices anything is wrong."
+      }
+    }
+  ]
+}

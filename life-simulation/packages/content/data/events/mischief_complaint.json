@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "id": "mischief_complaint",
+  "title": "A Letter to the Boss",
+  "category": "career",
+  "trigger": "followup_only",
+  "hidden": true,
+  "importance": "multi",
+  "cooldown": {
+    "maxPerSession": 4
+  },
+  "location": {
+    "at": [
+      "work"
+    ],
+    "of": "role:victim"
+  },
+  "roles": {
+    "victim": {
+      "count": 1
+    },
+    "culprit": {
+      "count": 1,
+      "aware": false
+    }
+  },
+  "text": {
+    "public": "{victim}'s boss waves an anonymous letter around the office.",
+    "private": {
+      "victim": "The letter claims you microwave fish every day. You microwaved fish once."
+    }
+  },
+  "choices": {
+    "victim": [
+      {
+        "id": "investigate",
+        "label": "Compare the handwriting with everyone's",
+        "tags": [
+          "truth",
+          "risk"
+        ],
+        "perceived": {
+          "risk": 1
+        }
+      },
+      {
+        "id": "apologise",
+        "label": "Apologise for the fish",
+        "tags": [
+          "apologize"
+        ],
+        "default": true,
+        "perceived": {
+          "career": -1
+        }
+      },
+      {
+        "id": "rights",
+        "label": "Demand the letter and cite workplace harassment policy",
+        "tags": [
+          "negotiate",
+          "truth"
+        ],
+        "careers": [
+          "lawyer"
+        ],
+        "perceived": {
+          "career": 1
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "found_out",
+      "when": {
+        "chose": "investigate",
+        "role": "victim"
+      },
+      "chance": 0.45,
+      "important": true,
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:victim",
+          "key": "knows_secret",
+          "about": "role:culprit"
+        },
+        {
+          "type": "relation",
+          "from": "role:victim",
+          "to": "role:culprit",
+          "setType": "enemy",
+          "affinity": -35,
+          "trust": -30
+        }
+      ],
+      "text": {
+        "victim": "You follow the trail. It was {culprit}! You will remember this.",
+        "culprit": "You have a strange feeling that {victim} knows."
+      }
+    },
+    {
+      "id": "policy",
+      "when": {
+        "chose": "rights",
+        "role": "victim"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "career": 3,
+            "reputation": 2
+          }
+        }
+      ],
+      "text": {
+        "victim": "HR shreds the letter and sends everyone a memo about kindness.",
+        "culprit": "Your letter to {victim}'s boss backfired into a kindness memo."
+      }
+    },
+    {
+      "id": "fish_shame",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "career": -5,
+            "mental": -4
+          }
+        }
+      ],
+      "text": {
+        "victim": "Your boss now sniffs the air whenever you walk past.",
+        "culprit": "{victim} got told off. Mission accomplished."
+      }
+    }
+  ]
+}

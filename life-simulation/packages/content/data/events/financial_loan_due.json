@@ -1,0 +1,380 @@
+{
+  "schemaVersion": 1,
+  "id": "financial_loan_due",
+  "version": 1,
+  "title": "The Loan Is Due",
+  "category": "financial",
+  "trigger": "followup_only",
+  "importance": "multi",
+  "cooldown": {
+    "maxPerSession": 3
+  },
+  "location": {
+    "at": [
+      "cafe",
+      "street"
+    ]
+  },
+  "roles": {
+    "debtor": {
+      "count": 1
+    },
+    "creditor": {
+      "count": 1
+    }
+  },
+  "conditions": {
+    "fact": "owes_money",
+    "of": "role:debtor",
+    "about": "role:creditor"
+  },
+  "text": {
+    "public": "{creditor} reminds {debtor} that the loan is due.",
+    "private": {
+      "debtor": "You do not have the full amount right now."
+    }
+  },
+  "choices": {
+    "debtor": [
+      {
+        "id": "repay",
+        "label": "Pay it back in full",
+        "tags": [
+          "take_responsibility"
+        ],
+        "perceived": {
+          "money": -2,
+          "relation": {
+            "creditor": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -15
+            }
+          }
+        ]
+      },
+      {
+        "id": "ask_time",
+        "label": "Ask for more time",
+        "tags": [
+          "negotiate"
+        ],
+        "perceived": {
+          "relation": {
+            "creditor": -1
+          }
+        }
+      },
+      {
+        "id": "deny",
+        "label": "Claim you already paid it back",
+        "tags": [
+          "lie",
+          "avoid_responsibility"
+        ],
+        "perceived": {
+          "money": 1,
+          "risk": 2,
+          "relation": {
+            "creditor": -2
+          }
+        }
+      },
+      {
+        "id": "avoid",
+        "label": "Avoid them",
+        "tags": [
+          "ignore",
+          "avoid_responsibility"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "creditor": -1
+          }
+        }
+      }
+    ],
+    "creditor": [
+      {
+        "id": "remind",
+        "label": "Remind them gently",
+        "tags": [
+          "negotiate"
+        ],
+        "default": true
+      },
+      {
+        "id": "threaten",
+        "label": "Threaten to tell everyone",
+        "tags": [
+          "threaten"
+        ],
+        "perceived": {
+          "relation": {
+            "debtor": -2
+          }
+        }
+      },
+      {
+        "id": "forgive",
+        "label": "Forgive the debt",
+        "tags": [
+          "sacrifice",
+          "help"
+        ],
+        "perceived": {
+          "money": -1,
+          "relation": {
+            "debtor": 2
+          }
+        }
+      },
+      {
+        "id": "formal_demand",
+        "label": "Send a formal demand",
+        "tags": [
+          "threaten",
+          "negotiate"
+        ],
+        "careers": [
+          "lawyer",
+          "police_officer"
+        ],
+        "perceived": {
+          "money": 1,
+          "relation": {
+            "debtor": -2
+          }
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "repaid",
+      "when": {
+        "chose": "repay",
+        "role": "debtor"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:creditor",
+          "delta": {
+            "money": 15
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:debtor",
+          "key": "owes_money",
+          "about": "role:creditor",
+          "remove": true
+        },
+        {
+          "type": "relation",
+          "from": "role:debtor",
+          "to": "role:creditor",
+          "trust": 10,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "debtor": "You pay {creditor} back. It stings, but you are free of it.",
+        "creditor": "{debtor} pays you back in full."
+      }
+    },
+    {
+      "id": "forgiven",
+      "when": {
+        "chose": "forgive",
+        "role": "creditor"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:debtor",
+          "key": "owes_money",
+          "about": "role:creditor",
+          "remove": true
+        },
+        {
+          "type": "relation",
+          "from": "role:debtor",
+          "to": "role:creditor",
+          "affinity": 25
+        },
+        {
+          "type": "attr",
+          "target": "role:creditor",
+          "delta": {
+            "reputation": 5
+          }
+        }
+      ],
+      "text": {
+        "debtor": "{creditor} tells you to forget about it.",
+        "creditor": "You let it go. {debtor} looks relieved."
+      }
+    },
+    {
+      "id": "formally_collected",
+      "when": {
+        "all": [
+          {
+            "chose": "formal_demand",
+            "role": "creditor"
+          },
+          {
+            "any": [
+              {
+                "chose": "deny",
+                "role": "debtor"
+              },
+              {
+                "chose": "avoid",
+                "role": "debtor"
+              }
+            ]
+          }
+        ]
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:debtor",
+          "delta": {
+            "money": -20,
+            "reputation": -15
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:creditor",
+          "delta": {
+            "money": 15
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:debtor",
+          "key": "owes_money",
+          "about": "role:creditor",
+          "remove": true
+        },
+        {
+          "type": "relation",
+          "from": "role:debtor",
+          "to": "role:creditor",
+          "setType": "enemy",
+          "affinity": -30
+        }
+      ],
+      "text": {
+        "debtor": "A formal demand arrives. You have to pay — with costs.",
+        "creditor": "The formal demand works. You get your money back."
+      }
+    },
+    {
+      "id": "public_shame",
+      "when": {
+        "all": [
+          {
+            "chose": "threaten",
+            "role": "creditor"
+          },
+          {
+            "chose": "deny",
+            "role": "debtor"
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:debtor",
+          "delta": {
+            "reputation": -15
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:debtor",
+          "to": "role:creditor",
+          "setType": "enemy",
+          "affinity": -30,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "debtor": "{creditor} tells everyone you are a liar and a cheat.",
+        "creditor": "{debtor} lied to your face, so you told everyone."
+      }
+    },
+    {
+      "id": "extension",
+      "when": {
+        "chose": "ask_time",
+        "role": "debtor"
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:creditor",
+          "to": "role:debtor",
+          "trust": -5
+        }
+      ],
+      "followUps": [
+        {
+          "event": "financial_loan_due",
+          "delaySeconds": [
+            90,
+            150
+          ],
+          "roles": {
+            "debtor": "role:debtor",
+            "creditor": "role:creditor"
+          }
+        }
+      ],
+      "text": {
+        "debtor": "{creditor} gives you a little more time.",
+        "creditor": "You agree to wait. Again."
+      }
+    },
+    {
+      "id": "strained",
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:creditor",
+          "to": "role:debtor",
+          "trust": -15,
+          "affinity": -10
+        },
+        {
+          "type": "attr",
+          "target": "role:debtor",
+          "delta": {
+            "mental": -5
+          }
+        }
+      ],
+      "text": {
+        "debtor": "The debt hangs between you.",
+        "creditor": "You still have not been paid."
+      }
+    }
+  ]
+}

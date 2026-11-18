@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "id": "blackout_candles",
+  "title": "Candles on the Stairs",
+  "category": "social",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 14,
+  "cooldown": {
+    "maxPerSession": 1
+  },
+  "location": {
+    "at": [
+      "home"
+    ]
+  },
+  "conditions": {
+    "sessionFact": "blackout"
+  },
+  "roles": {
+    "neighbours": {
+      "count": [
+        2,
+        3
+      ]
+    }
+  },
+  "text": {
+    "public": "The blackout traps {neighbours} on a dark staircase with one candle between them.",
+    "private": {
+      "neighbours": "You have a whole box of candles at home. Nobody knows."
+    }
+  },
+  "choices": {
+    "neighbours": [
+      {
+        "id": "share",
+        "label": "Fetch your candles and share them",
+        "tags": [
+          "help",
+          "sacrifice"
+        ],
+        "perceived": {
+          "reputation": 1
+        },
+        "effects": [
+          {
+            "type": "relation",
+            "from": "role:neighbours",
+            "to": "self",
+            "affinity": 15
+          }
+        ]
+      },
+      {
+        "id": "ghost",
+        "label": "Tell a ghost story",
+        "tags": [
+          "risk"
+        ],
+        "perceived": {
+          "mental": 1
+        }
+      },
+      {
+        "id": "hoard",
+        "label": "Keep your candles a secret",
+        "tags": [
+          "lie"
+        ],
+        "default": true
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "party",
+      "when": {
+        "chose": "share",
+        "role": "neighbours"
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:neighbours",
+          "delta": {
+            "mental": 5
+          }
+        }
+      ],
+      "text": {
+        "neighbours": "Candles, crisps and gossip on the stairs. Best power cut ever."
+      }
+    },
+    {
+      "id": "scream",
+      "when": {
+        "chose": "ghost",
+        "role": "neighbours"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:neighbours",
+          "delta": {
+            "mental": -2
+          }
+        }
+      ],
+      "text": {
+        "neighbours": "The ghost story ends when a cat jumps out. Three grown adults scream."
+      }
+    },
+    {
+      "id": "dark",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:neighbours",
+          "delta": {
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "neighbours": "You sit in the dark, listening to each other breathe. Romantic, in a horror-film way."
+      }
+    }
+  ]
+}

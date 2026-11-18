@@ -1,0 +1,314 @@
+{
+  "schemaVersion": 1,
+  "id": "relationships_crisis_talk",
+  "version": 2,
+  "title": "We Need to Talk",
+  "category": "relationships",
+  "trigger": "director",
+  "importance": "important",
+  "weight": 6,
+  "cooldown": {
+    "maxPerSession": 2,
+    "minGapSeconds": 60
+  },
+  "location": {
+    "at": [
+      "home"
+    ]
+  },
+  "roles": {
+    "a": {
+      "count": 1
+    },
+    "b": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:a",
+          "typeIn": [
+            "partner"
+          ]
+        }
+      }
+    }
+  },
+  "conditions": {
+    "any": [
+      {
+        "fact": "suspects_partner",
+        "of": "role:a",
+        "about": "role:b"
+      },
+      {
+        "relation": {
+          "from": "role:a",
+          "to": "role:b",
+          "affinityLte": 15
+        }
+      },
+      {
+        "relation": {
+          "from": "role:a",
+          "to": "role:b",
+          "trustLte": 30
+        }
+      }
+    ]
+  },
+  "text": {
+    "public": "{a} sits {b} down: \"We need to talk.\"",
+    "private": {
+      "a": "Something has been wrong between you for a while.",
+      "b": "You can feel this conversation has been coming."
+    }
+  },
+  "choices": {
+    "a": [
+      {
+        "id": "work_on_it",
+        "label": "Say you want to make it work",
+        "tags": [
+          "help",
+          "truth"
+        ],
+        "perceived": {
+          "relation": {
+            "b": 1
+          }
+        }
+      },
+      {
+        "id": "break_up",
+        "label": "End it",
+        "tags": [
+          "refuse"
+        ],
+        "perceived": {
+          "mental": -1,
+          "relation": {
+            "b": -2
+          }
+        }
+      },
+      {
+        "id": "therapy",
+        "label": "Suggest couples counselling",
+        "tags": [
+          "negotiate",
+          "help"
+        ],
+        "perceived": {
+          "money": -1,
+          "relation": {
+            "b": 1
+          }
+        }
+      },
+      {
+        "id": "avoid",
+        "label": "Lose your nerve and talk about dinner",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ],
+    "b": [
+      {
+        "id": "open_up",
+        "label": "Be completely honest about how you feel",
+        "tags": [
+          "truth"
+        ],
+        "perceived": {
+          "relation": {
+            "a": 1
+          }
+        }
+      },
+      {
+        "id": "defensive",
+        "label": "Get defensive",
+        "tags": [
+          "threaten"
+        ],
+        "perceived": {
+          "relation": {
+            "a": -1
+          }
+        }
+      },
+      {
+        "id": "agree",
+        "label": "Agree with whatever {a} says",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "break_up",
+      "when": {
+        "chose": "break_up",
+        "role": "a"
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:a",
+          "to": "role:b",
+          "setType": "acquaintance",
+          "affinity": -25,
+          "trust": -10,
+          "mutual": true
+        },
+        {
+          "type": "fact",
+          "target": "role:a",
+          "key": "suspects_partner",
+          "about": "role:b",
+          "remove": true
+        },
+        {
+          "type": "attr",
+          "target": "role:a",
+          "delta": {
+            "mental": -8
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:b",
+          "delta": {
+            "mental": -12
+          }
+        },
+        {
+          "type": "move",
+          "target": "role:a",
+          "to": "bar",
+          "staySeconds": 8
+        }
+      ],
+      "text": {
+        "a": "It is over. It hurts, but it also feels like air.",
+        "b": "{a} ends it. You did not think it would really happen."
+      }
+    },
+    {
+      "id": "recommitted",
+      "when": {
+        "all": [
+          {
+            "any": [
+              {
+                "chose": "work_on_it",
+                "role": "a"
+              },
+              {
+                "chose": "therapy",
+                "role": "a"
+              }
+            ]
+          },
+          {
+            "chose": "open_up",
+            "role": "b"
+          }
+        ]
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:a",
+          "to": "role:b",
+          "affinity": 25,
+          "trust": 25,
+          "mutual": true
+        },
+        {
+          "type": "fact",
+          "target": "role:a",
+          "key": "suspects_partner",
+          "about": "role:b",
+          "remove": true
+        },
+        {
+          "type": "attr",
+          "target": "role:a",
+          "delta": {
+            "mental": 6
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:b",
+          "delta": {
+            "mental": 6
+          }
+        }
+      ],
+      "text": {
+        "a": "A long, honest night. You feel closer than you have in months.",
+        "b": "A long, honest night. You feel closer than you have in months."
+      }
+    },
+    {
+      "id": "fight",
+      "when": {
+        "chose": "defensive",
+        "role": "b"
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:a",
+          "to": "role:b",
+          "affinity": -15,
+          "trust": -10,
+          "mutual": true
+        },
+        {
+          "type": "attr",
+          "target": "role:a",
+          "delta": {
+            "mental": -6
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:b",
+          "delta": {
+            "mental": -6
+          }
+        }
+      ],
+      "text": {
+        "a": "It turns into a fight. Doors are slammed.",
+        "b": "It turns into a fight. Doors are slammed."
+      }
+    },
+    {
+      "id": "unresolved",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:a",
+          "delta": {
+            "mental": -4
+          }
+        }
+      ],
+      "text": {
+        "a": "Nothing really gets said.",
+        "b": "The talk fizzles out. The tension does not."
+      }
+    }
+  ]
+}

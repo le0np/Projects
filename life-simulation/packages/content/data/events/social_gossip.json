@@ -1,0 +1,326 @@
+{
+  "schemaVersion": 1,
+  "id": "social_gossip",
+  "version": 1,
+  "title": "Have You Heard?",
+  "category": "social",
+  "trigger": "director",
+  "hidden": true,
+  "importance": "multi",
+  "weight": 7,
+  "cooldown": {
+    "maxPerSession": 2
+  },
+  "tags": [
+    "secret"
+  ],
+  "location": {
+    "at": [
+      "cafe",
+      "bar"
+    ],
+    "of": "role:gossiper"
+  },
+  "roles": {
+    "target": {
+      "count": 1,
+      "aware": false,
+      "description": "Talked about; not present"
+    },
+    "gossiper": {
+      "count": 1,
+      "conditions": {
+        "any": [
+          {
+            "fact": "knows_secret",
+            "about": "role:target"
+          },
+          {
+            "relation": {
+              "to": "role:target",
+              "typeIn": [
+                "rival",
+                "enemy"
+              ]
+            }
+          },
+          {
+            "relation": {
+              "to": "role:target",
+              "affinityLte": -15
+            }
+          }
+        ]
+      }
+    },
+    "listener": {
+      "count": 1,
+      "conditions": {
+        "relation": {
+          "to": "role:gossiper",
+          "typeIn": [
+            "acquaintance",
+            "friend",
+            "colleague",
+            "family",
+            "partner"
+          ]
+        }
+      }
+    }
+  },
+  "text": {
+    "public": "Over coffee, {gossiper} leans towards {listener}: \"Have you heard about {target}?\"",
+    "private": {
+      "gossiper": "You know something about {target} that would hurt them if it got around.",
+      "listener": "You like {target} well enough — or do you?"
+    }
+  },
+  "choices": {
+    "gossiper": [
+      {
+        "id": "tell",
+        "label": "Tell {listener} what you know",
+        "tags": [
+          "truth",
+          "threaten"
+        ],
+        "perceived": {
+          "relation": {
+            "target": -2,
+            "listener": 1
+          }
+        }
+      },
+      {
+        "id": "embellish",
+        "label": "Tell it — and make it juicier",
+        "tags": [
+          "lie",
+          "threaten"
+        ],
+        "perceived": {
+          "risk": 1,
+          "relation": {
+            "target": -2,
+            "listener": 1
+          }
+        }
+      },
+      {
+        "id": "hold_back",
+        "label": "Change your mind and talk about the weather",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ],
+    "listener": [
+      {
+        "id": "defend",
+        "label": "Defend {target}",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "target": 1,
+            "gossiper": -1
+          }
+        }
+      },
+      {
+        "id": "warn",
+        "label": "Listen, then warn {target} later",
+        "tags": [
+          "help",
+          "truth"
+        ],
+        "perceived": {
+          "relation": {
+            "target": 1,
+            "gossiper": -1
+          },
+          "risk": 1
+        }
+      },
+      {
+        "id": "story",
+        "label": "Take notes — this might be a story",
+        "tags": [
+          "risk"
+        ],
+        "careers": [
+          "journalist"
+        ],
+        "perceived": {
+          "career": 1,
+          "relation": {
+            "target": -1
+          }
+        }
+      },
+      {
+        "id": "listen",
+        "label": "Listen with interest",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "shut_down",
+      "when": {
+        "all": [
+          {
+            "chose": "defend",
+            "role": "listener"
+          },
+          {
+            "chose": "hold_back",
+            "role": "gossiper",
+            "count": "none"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:gossiper",
+          "to": "role:listener",
+          "affinity": -10
+        },
+        {
+          "type": "attr",
+          "target": "role:listener",
+          "delta": {
+            "reputation": 2
+          }
+        }
+      ],
+      "text": {
+        "gossiper": "{listener} cuts you off and defends {target}. Awkward.",
+        "listener": "You refuse to listen to gossip about {target}.",
+        "target": "Someone stood up for you today, though you do not know it."
+      }
+    },
+    {
+      "id": "published",
+      "when": {
+        "all": [
+          {
+            "chose": "story",
+            "role": "listener"
+          },
+          {
+            "chose": "hold_back",
+            "role": "gossiper",
+            "count": "none"
+          }
+        ]
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:target",
+          "delta": {
+            "reputation": -15,
+            "mental": -8
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:listener",
+          "delta": {
+            "career": 6
+          }
+        },
+        {
+          "type": "fact",
+          "target": "role:target",
+          "key": "public_scandal"
+        }
+      ],
+      "followUps": [
+        {
+          "event": "social_rumor_confrontation",
+          "delaySeconds": [
+            30,
+            90
+          ],
+          "roles": {
+            "victim": "role:target",
+            "source": "role:gossiper"
+          }
+        }
+      ],
+      "text": {
+        "gossiper": "Your story about {target} ends up in the local paper.",
+        "listener": "The piece about {target} gets a lot of readers.",
+        "target": "You read about yourself in the local paper. Who talked?"
+      }
+    },
+    {
+      "id": "spread",
+      "when": {
+        "any": [
+          {
+            "chose": "tell",
+            "role": "gossiper"
+          },
+          {
+            "chose": "embellish",
+            "role": "gossiper"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:target",
+          "delta": {
+            "reputation": -8
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:listener",
+          "to": "role:target",
+          "trust": -10
+        }
+      ],
+      "followUps": [
+        {
+          "event": "social_rumor_confrontation",
+          "delaySeconds": [
+            30,
+            90
+          ],
+          "chance": 0.7,
+          "roles": {
+            "victim": "role:target",
+            "source": "role:gossiper"
+          }
+        }
+      ],
+      "text": {
+        "gossiper": "The story is out. It will travel.",
+        "listener": "You will look at {target} differently now.",
+        "target": "People have started looking at you strangely."
+      }
+    },
+    {
+      "id": "small_talk",
+      "text": {
+        "gossiper": "You keep it to yourself.",
+        "listener": "Just small talk.",
+        "target": "An ordinary day."
+      }
+    }
+  ]
+}

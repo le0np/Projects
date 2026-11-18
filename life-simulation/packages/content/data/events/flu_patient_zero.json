@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 1,
+  "version": 1,
+  "id": "flu_patient_zero",
+  "title": "Patient Zero",
+  "category": "health",
+  "trigger": "director",
+  "importance": "multi",
+  "weight": 14,
+  "cooldown": {
+    "maxPerSession": 2
+  },
+  "location": {
+    "at": [
+      "work"
+    ],
+    "of": "role:sick"
+  },
+  "conditions": {
+    "sessionFact": "flu"
+  },
+  "roles": {
+    "sick": {
+      "count": 1,
+      "conditions": {
+        "fact": "employed"
+      }
+    },
+    "coworker": {
+      "count": [
+        1,
+        2
+      ]
+    }
+  },
+  "text": {
+    "public": "{sick} comes to work sneezing like a leaf blower. {coworker} sits right next to them.",
+    "private": {
+      "sick": "You feel awful, but there is a deadline.",
+      "coworker": "Every sneeze lands somewhere near your sandwich."
+    }
+  },
+  "choices": {
+    "sick": [
+      {
+        "id": "go_home",
+        "label": "Go home and rest",
+        "tags": [
+          "take_responsibility"
+        ],
+        "perceived": {
+          "career": -1,
+          "health": 1
+        }
+      },
+      {
+        "id": "stay",
+        "label": "Power through it",
+        "tags": [
+          "risk"
+        ],
+        "default": true,
+        "perceived": {
+          "career": 1,
+          "relation": {
+            "coworker": -1
+          }
+        }
+      }
+    ],
+    "coworker": [
+      {
+        "id": "send_home",
+        "label": "Tell them to go home",
+        "tags": [
+          "truth",
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "sick": 0
+          }
+        }
+      },
+      {
+        "id": "soup",
+        "label": "Bring them soup and keep your distance",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "sick": 1
+          }
+        }
+      },
+      {
+        "id": "doctor_note",
+        "label": "Write them a sick note on the spot",
+        "tags": [
+          "help"
+        ],
+        "careers": [
+          "doctor"
+        ],
+        "perceived": {
+          "relation": {
+            "sick": 2
+          }
+        }
+      },
+      {
+        "id": "endure",
+        "label": "Say nothing and hold your breath",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "sent_home",
+      "when": {
+        "any": [
+          {
+            "chose": "go_home",
+            "role": "sick"
+          },
+          {
+            "chose": "doctor_note",
+            "role": "coworker"
+          }
+        ]
+      },
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "move",
+          "target": "role:sick",
+          "to": "home",
+          "staySeconds": 10
+        },
+        {
+          "type": "attr",
+          "target": "role:sick",
+          "delta": {
+            "health": 4,
+            "career": -2
+          }
+        }
+      ],
+      "text": {
+        "sick": "You go home to sweat it out under three duvets.",
+        "coworker": "{sick} goes home. The office breathes again."
+      }
+    },
+    {
+      "id": "outbreak",
+      "when": {
+        "chose": "stay",
+        "role": "sick"
+      },
+      "chance": 0.6,
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:coworker",
+          "delta": {
+            "health": -8,
+            "mental": -3
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:coworker",
+          "to": "role:sick",
+          "affinity": -15
+        }
+      ],
+      "text": {
+        "sick": "You meet the deadline. So does the virus.",
+        "coworker": "Two days later you are sneezing too. Thanks, {sick}."
+      }
+    },
+    {
+      "id": "lucky",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:sick",
+          "delta": {
+            "health": -4,
+            "career": 2
+          }
+        }
+      ],
+      "text": {
+        "sick": "You survive the day on cough drops and spite.",
+        "coworker": "Somehow, you do not catch it."
+      }
+    }
+  ]
+}
