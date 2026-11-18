@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="hr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,17 +19,17 @@
 
 <main id="career">
   <div class="boot-hint" id="boot-hint">
-    <b>Igra se nije učitala.</b>
-    Vjerojatno je <code>index.html</code> otvoren dvoklikom (adresa počinje s <code>file://</code>), a preglednici tada ne učitavaju JavaScript module.
-    U mapi <code>bjj-fighter</code> pokreni <code>npm start</code> i otvori <a href="http://localhost:8080">http://localhost:8080</a>.
+    <b>The game did not load.</b>
+    Most likely <code>index.html</code> was opened by double-clicking it (the address starts with <code>file://</code>), and browsers do not load JavaScript modules that way.
+    In the <code>bjj-fighter</code> folder run <code>npm start</code> and open <a href="http://localhost:8080">http://localhost:8080</a>.
   </div>
-  <div class="gym-view"><canvas id="gym-canvas" aria-label="Dvorana iz ptičje perspektive"></canvas></div>
+  <div class="gym-view"><canvas id="gym-canvas" aria-label="Gym seen from above"></canvas></div>
   <section class="coach" id="coach" hidden></section>
   <section class="status" id="status"></section>
   <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="club" class="active">Klub</button>
-    <button role="tab" data-tab="activities">Aktivnosti</button>
-    <button role="tab" data-tab="fights">Borbe</button>
+    <button role="tab" data-tab="club" class="active">Club</button>
+    <button role="tab" data-tab="activities">Activities</button>
+    <button role="tab" data-tab="fights">Fights</button>
     <button role="tab" data-tab="test">Test</button>
   </nav>
   <section class="panel" id="tab-club"></section>
@@ -48,7 +48,7 @@
         <div class="info">
           <div class="name" id="sb-p-name"></div>
           <div class="stats" id="sb-p-stats"></div>
-          <div class="energy" title="Energija"><div id="sb-p-en"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="energy" title="Energy"><div id="sb-p-en"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
         </div>
         <div class="pts" id="sb-p"></div>
       </div>
@@ -58,7 +58,7 @@
         <div class="info">
           <div class="name" id="sb-o-name"></div>
           <div class="stats" id="sb-o-stats"></div>
-          <div class="energy" title="Energija"><div id="sb-o-en"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="energy" title="Energy"><div id="sb-o-en"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
         </div>
         <div class="pts" id="sb-o"></div>
       </div>
@@ -67,7 +67,7 @@
     <div class="critical" id="critical" hidden>
       <div class="critical-text" id="critical-text"></div>
       <div class="timer"><div id="critical-timer"></div></div>
-      <div class="legend"><span><i style="background:#e0524f"></i>napad</span><span><i style="background:#4b8df0"></i>obrana</span><span><i style="background:#3fb27f"></i>sweep</span></div>
+      <div class="legend"><span><i style="background:#e0524f"></i>attack</span><span><i style="background:#4b8df0"></i>defense</span><span><i style="background:#3fb27f"></i>sweep</span></div>
       <div class="options" id="critical-options"></div>
     </div>
     <div class="result" id="result" hidden></div>
@@ -75,8 +75,8 @@
   <div class="fight-bottom">
     <ol class="log" id="log"></ol>
     <div class="fight-actions">
-      <button class="secondary" id="copy-log">Kopiraj log</button>
-      <button class="ghost" id="give-up">Odustani</button>
+      <button class="secondary" id="copy-log">Copy log</button>
+      <button class="ghost" id="give-up">Give up</button>
     </div>
   </div>
 </section>
@@ -86,7 +86,7 @@
     <div class="story-step" id="story-step"></div>
     <h2 id="story-title"></h2>
     <p id="story-text"></p>
-    <div class="story-btns"><button class="ghost" id="story-skip">Preskoči uvod</button><button id="story-next">Dalje</button></div>
+    <div class="story-btns"><button class="ghost" id="story-skip">Skip intro</button><button id="story-next">Next</button></div>
   </div>
 </div>
 

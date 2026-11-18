@@ -44,7 +44,7 @@ test('the coach walks you through basics, first spar, an activity, a competition
   recordFight(s, 'comp', false);
   step = storyStep(s);
   assert.equal(step.id, 'belt');
-  assert.match(step.line, /20 poteza i 5 pobjeda/);
+  assert.match(step.line, /20 moves and 5 competition wins/);
   s.belt = 'blue';
   assert.equal(storyStep(s), null);
 });
@@ -100,7 +100,7 @@ test('gym view shows the coach line only after the intro and while the story run
   const s = createState({ test: true, now: 0 });
   assert.equal(gymScene(s).coach, null);
   finishIntro(s);
-  assert.match(gymScene(s).coach, /Nauči: Shrimp/);
+  assert.match(gymScene(s).coach, /Learn: Shrimp/);
   skipStory(s);
   assert.equal(gymScene(s).coach, null);
 });

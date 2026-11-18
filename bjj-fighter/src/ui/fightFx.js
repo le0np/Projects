@@ -6,8 +6,8 @@ export function energySegments(energy) {
   return { on: Math.ceil(e / 10), level: e < 20 ? 'spent' : e < 50 ? 'tired' : 'ok' };
 }
 
-const BY_KIND = { takedown: ['TAKEDOWN!', true], sweep: ['SWEEP!', true], pass: ['PROLAZ!', false] };
-const BY_TARGET = { mount: 'MOUNT!', back: 'LEĐA!' };
+const BY_KIND = { takedown: ['TAKEDOWN!', true], sweep: ['SWEEP!', true], pass: ['PASS!', false] };
+const BY_TARGET = { mount: 'MOUNT!', back: 'BACK!' };
 
 // Banner for a technique that worked. Submissions get theirs (TAP!) from the end of the fight.
 export function bannerFor(action, success) {
@@ -39,7 +39,7 @@ export function nextFxEvents(memo, fight, actionById) {
     if (gain > 0) events.push({ type: 'badge', who, pts: gain });
   }
   const end = fight.ended;
-  if (end && !memo.ended && end.method === 'sub' && end.detail !== 'predaja') {
+  if (end && !memo.ended && end.method === 'sub' && end.detail !== 'gave up') {
     events.push({ type: 'banner', who: end.winner, text: 'TAP!', shake: false });
   }
   return { memo: createFxMemo(fight), events };

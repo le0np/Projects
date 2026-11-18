@@ -203,9 +203,26 @@ Vlasnik: mogu li animacije biti u Three.js, low-poly stilu. Dogovoreno: likovi s
 - 2D borba i dvorana odozgo nisu mijenjani.
 - Poznato u prototipu: tijela se mjestimično preklapaju (npr. noge donjeg u zatvorenom gardu prolaze kroz gornjeg) jer su poze 2D s dodanom dubinom; za pravu 3D borbu poze treba doraditi po poziciji.
 
+### Sav tekst u igri na engleskom
+Vlasnik: sav tekst u igri je na engleskom. Prijevod je započet lokalno prije gornjih promjena od 18. 11., pa je nakon `git pull` spojen s njima i one su također prevedene.
+- Prevedeno: sučelje (`index.html`, `app.js`), potezi i pozicije, log borbe, natpisi efekata (`PASS!`, `BACK!`), razlozi u `progression.js` („One thing at a time.”), pogled na dvoranu („BJJ CLUB”, „GYM”, „CARDIO”, „BENCH”, „EXIT”, „Resting”, „(away from the club)”), alat `tools/poses.html` i poruka servera.
+- Prevedena je i priča s trenerom: uvod („First day at the club”, „The plan”), „Coach Mirko”, zadaci i savjeti u `story.js`, panel trenera („Skip the guide”), poruke („🥋 Coach shouts from the edge: …”, „💭 Your gut says: …”) i alat `tools/lowpoly.html`.
+- Klase boja kartica su sada `attack` / `defense` / `sweep` (CSS `cls-defense`), a nedostajući potezi za natjecanje `attack` / `defense` / `control`. Ishod borbe na predaju ima `detail: 'gave up'`, a na bodove `points`.
+- Testovi prate engleske tekstove. Testni borci zovu se `You` i `Rival`.
+- Imena i prezimena protivnika (Marko Horvat i sl.) namjerno ostaju hrvatska.
+- Odjeljci iznad ovoga spominju stare hrvatske natpise („BJJ KLUB”, „Odmor”, „Na seminaru si…”, „Trener Mirko”, „Trener viče s ruba”); oni su sada engleski kako je ovdje navedeno.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 18. studenog 2026. (low-poly prototip):
+Provedeno 18. studenog 2026. (sav tekst na engleskom):
+
+| Provjera | Rezultat |
+| --- | --- |
+| `npm test` | 111/111 prolazi |
+| Playwright (1100 px) | tri kartice uvoda („Next”, „On the mat”), panel trenera „First week: the basics (0/6)” s „Train Shrimp”, sparing zaključan bez osnova; uz „Unlock everything” sparing kreće i semafor pokazuje „ROUND 1/3”; jedini znakovi č/ć/š/ž/đ na ekranu su u prezimenu protivnika; 0 grešaka u konzoli |
+| Rječnik | sve riječi iz stringova u `src/`, `index.html` i `tools/` su engleske, BJJ termini, imena ili kodne oznake |
+
+Prethodna provjera (18. studenog 2026., low-poly prototip):
 
 | Provjera | Rezultat |
 | --- | --- |
@@ -273,6 +290,7 @@ Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 
 1. Kod je u `bjj-fighter/` na grani `dev`. Prvo pročitaj `README.md`, `docs/KONCEPT.md` i ovaj dokument.
 2. Pokretanje: `npm start` (http://localhost:8080). Testovi: `npm test`. Poze: `tools/poses.html`.
+   - Sav tekst u igri je na engleskom (imena protivnika ostaju hrvatska). Dokumentacija ostaje na hrvatskom.
    - Smjer grafike: krajnji proizvod je 3D, blizak stilu MMA Managera, s atletskim (ne zdepastim) proporcijama. HUD i efekti su HTML preko canvasa (`src/ui/fightFx.js` + `style.css`) i ne ovise o rendereru.
 3. Granice arhitekture:
    - `src/engine` i `src/data` ne smiju dirati DOM.

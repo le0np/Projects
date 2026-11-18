@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="hr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Low-poly prototip</title>
+<title>Low-poly prototype</title>
 <style>
   html, body { margin: 0; height: 100%; background: #12151d; color: #e9ecf3; font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
   canvas { display: block; width: 100%; height: 100%; touch-action: none; }
@@ -18,18 +18,18 @@
 <body>
 <canvas id="c"></canvas>
 <div class="ui">
-  <h1>Low-poly prototip</h1>
-  <select id="pos" aria-label="Pozicija"></select>
-  <button id="swap">Plavi gore / dolje</button>
-  <label><input type="checkbox" id="auto" checked> Sve pozicije redom</label>
+  <h1>Low-poly prototype</h1>
+  <select id="pos" aria-label="Position"></select>
+  <button id="swap">Blue on top / bottom</button>
+  <label><input type="checkbox" id="auto" checked> All positions in turn</label>
 </div>
-<div class="note">Prototip stila: likovi su složeni u kodu od jednostavnih oblika (bez modela), a poze su iste ključne poze kao u 2D borbi, s dodanom dubinom. Povuci za okretanje kamere, kotačić ili dva prsta za zum.</div>
+<div class="note">Style prototype: the fighters are built in code from simple shapes (no model), and the poses are the same key poses as in the 2D fight, with added depth. Drag to turn the camera, wheel or two fingers to zoom.</div>
 <script type="module">
   import { THREE, createFighter, createMat } from '../src/render/lowpoly.js';
   import { POSES } from '../src/render/poses.js';
   import { pose3d, lerpPose } from '../src/render/pose3d.js';
 
-  const NAMES = { standing: 'Stav', closedGuard: 'Zatvoreni gard', halfGuard: 'Polugard', butterfly: 'Butterfly gard', sideControl: 'Side control', kneeOnBelly: 'Knee on belly', mount: 'Mount', back: 'Leđa', northSouth: 'North-south', turtle: 'Kornjača' };
+  const NAMES = { standing: 'Standing', closedGuard: 'Closed guard', halfGuard: 'Half guard', butterfly: 'Butterfly guard', sideControl: 'Side control', kneeOnBelly: 'Knee on belly', mount: 'Mount', back: 'Back', northSouth: 'North-south', turtle: 'Turtle' };
   const canvas = document.getElementById('c');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(2, devicePixelRatio));

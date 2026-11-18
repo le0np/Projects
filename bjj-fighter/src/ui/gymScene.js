@@ -21,7 +21,7 @@ export function gymScene(state, realNow = state.lastReal) {
   } else if (a) {
     you = { spot: 'away', label: ACTIVITIES[a.type].name, progress: progress(a) };
   } else {
-    you = { spot: 'bench', label: 'Odmor', progress: null };
+    you = { spot: 'bench', label: 'Resting', progress: null };
   }
   if (w && you.spot === 'mat') side.push({ spot: w.attr === 'strength' ? 'weights' : 'cardio', label: `${PHYSICAL[w.attr].name} → ${w.toLevel}`, progress: progress(w) });
   if (a && you.spot !== 'away') side.push({ spot: 'away', label: ACTIVITIES[a.type].name, progress: progress(a) });

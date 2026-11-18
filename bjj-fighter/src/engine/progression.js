@@ -14,8 +14,8 @@ export const COMPETITION_LEARN_CHANCE = 0.05;
 // Physical preparation, trained in the club next to the techniques (its own slot, so it runs in parallel).
 // Strength changes the chance of every attack and defense; cardio is how slowly you tire in a fight.
 export const PHYSICAL = {
-  strength: { name: 'Snaga', place: 'Teretana', base: 20, desc: 'Utezi i vježbe s vlastitom težinom. Snaga dodaje šansu svakom napadu i obrani.' },
-  cardio: { name: 'Kondicija', place: 'Kardio', base: 20, desc: 'Trčanje, intervali i drilovi. Bolja kondicija: sporije se umaraš u borbi i brže oporaviš između rundi.' },
+  strength: { name: 'Strength', place: 'Gym', base: 20, desc: 'Weights and bodyweight exercises. Strength adds chance to every attack and defense.' },
+  cardio: { name: 'Cardio', place: 'Cardio', base: 20, desc: 'Running, intervals and drills. Better cardio: you tire more slowly in a fight and recover faster between rounds.' },
 };
 export const PROMOTION = {
   blue: { moves: 20, wins: 5 },
@@ -71,9 +71,9 @@ export function createState({ test = true, now = 0 } = {}) {
 // The player does one thing at a time: a technique, the gym, cardio, a seminar or an open mat.
 // Returns what is running (with a reason to show) or null when the player is free.
 export function busyWith(state) {
-  if (state.training) return { slot: 'training', reason: `Treniraš ${MOVE_BY_ID[state.training.moveId].name}. Jedna stvar u isto vrijeme.` };
-  if (state.workout) return { slot: 'workout', reason: `${PHYSICAL[state.workout.attr].place} je u tijeku. Jedna stvar u isto vrijeme.` };
-  if (state.activity) return { slot: 'activity', reason: `${state.activity.type === 'seminar' ? 'Na seminaru si' : 'Na open matu si'}. Jedna stvar u isto vrijeme.` };
+  if (state.training) return { slot: 'training', reason: `You are training ${MOVE_BY_ID[state.training.moveId].name}. One thing at a time.` };
+  if (state.workout) return { slot: 'workout', reason: `${PHYSICAL[state.workout.attr].place} is running. One thing at a time.` };
+  if (state.activity) return { slot: 'activity', reason: `${state.activity.type === 'seminar' ? 'You are at a seminar' : 'You are at an open mat'}. One thing at a time.` };
   return null;
 }
 
@@ -95,19 +95,19 @@ export function workoutTime(attr, level) {
 }
 
 export function startWorkout(state, attr) {
-  if (!PHYSICAL[attr]) return { ok: false, reason: 'Nepoznata vježba.' };
+  if (!PHYSICAL[attr]) return { ok: false, reason: 'Unknown workout.' };
   const busy = busyWith(state);
   if (busy) return { ok: false, reason: busy.reason };
   const toLevel = state.physical[attr] + 1;
-  if (toLevel > MAX_LEVEL) return { ok: false, reason: 'Najviša razina.' };
+  if (toLevel > MAX_LEVEL) return { ok: false, reason: 'Highest level.' };
   state.workout = { attr, toLevel, startedAt: state.gameTime, endsAt: state.gameTime + workoutTime(attr, toLevel) };
   return { ok: true };
 }
 
 // Test version only: raise strength or cardio by one level right away.
 export function instantPhysicalUp(state, attr) {
-  if (!state.test) return { ok: false, reason: 'Samo u testnoj verziji.' };
-  if (!PHYSICAL[attr] || state.physical[attr] >= MAX_LEVEL) return { ok: false, reason: 'Najviša razina.' };
+  if (!state.test) return { ok: false, reason: 'Test version only.' };
+  if (!PHYSICAL[attr] || state.physical[attr] >= MAX_LEVEL) return { ok: false, reason: 'Highest level.' };
   state.physical[attr] += 1;
   if (state.workout?.attr === attr) state.workout = null;
   return { ok: true, level: state.physical[attr] };
@@ -125,13 +125,13 @@ export function effectiveLevel(state, moveId) {
 const beltIndex = (b) => BELTS.indexOf(b);
 
 export function canTrain(state, moveId) {
-  if (!MOVE_BY_ID[moveId]) return { ok: false, reason: 'Nepoznat potez.' };
+  if (!MOVE_BY_ID[moveId]) return { ok: false, reason: 'Unknown move.' };
   const busy = busyWith(state);
   if (busy) return { ok: false, reason: busy.reason };
   const lvl = effectiveLevel(state, moveId);
-  if (lvl >= MAX_LEVEL) return { ok: false, reason: 'Potez je na najvišoj razini.' };
+  if (lvl >= MAX_LEVEL) return { ok: false, reason: 'The move is at the highest level.' };
   if (lvl === 0 && beltIndex(MOVE_BY_ID[moveId].belt) > beltIndex(state.belt)) {
-    return { ok: false, reason: 'Potez višeg pojasa: nauči ga na seminaru, open matu ili natjecanju.' };
+    return { ok: false, reason: 'Higher belt move: learn it at a seminar, an open mat or a competition.' };
   }
   return { ok: true };
 }
@@ -146,10 +146,10 @@ export function startTraining(state, moveId) {
 
 // Test version only: skip the countdown and raise a move by one level right away.
 export function instantLevelUp(state, moveId) {
-  if (!state.test) return { ok: false, reason: 'Samo u testnoj verziji.' };
-  if (!MOVE_BY_ID[moveId]) return { ok: false, reason: 'Nepoznat potez.' };
+  if (!state.test) return { ok: false, reason: 'Test version only.' };
+  if (!MOVE_BY_ID[moveId]) return { ok: false, reason: 'Unknown move.' };
   const lvl = effectiveLevel(state, moveId);
-  if (lvl >= MAX_LEVEL) return { ok: false, reason: 'Potez je na najvišoj razini.' };
+  if (lvl >= MAX_LEVEL) return { ok: false, reason: 'The move is at the highest level.' };
   state.levels[moveId] = lvl + 1;
   if (state.training?.moveId === moveId) state.training = null;
   return { ok: true, level: lvl + 1 };
@@ -157,10 +157,10 @@ export function instantLevelUp(state, moveId) {
 
 export function startActivity(state, type, rng, realNow = state.lastReal) {
   const def = ACTIVITIES[type];
-  if (!def) return { ok: false, reason: 'Nepoznata aktivnost.' };
+  if (!def) return { ok: false, reason: 'Unknown activity.' };
   const busy = busyWith(state);
   if (busy) return { ok: false, reason: busy.reason };
-  if (state.money < def.cost) return { ok: false, reason: `Treba ti ${def.cost} €.` };
+  if (state.money < def.cost) return { ok: false, reason: `You need ${def.cost} €.` };
   state.money -= def.cost;
   const chance = type === 'seminar' ? 0.9 : 0.1 + 0.1 * rng();
   state.activity = def.realDuration
@@ -171,9 +171,9 @@ export function startActivity(state, type, rng, realNow = state.lastReal) {
 
 // Test version only: end the running seminar or open mat right away (it still rolls for a new move).
 export function finishActivityNow(state, realNow) {
-  if (!state.test) return { ok: false, reason: 'Samo u testnoj verziji.' };
+  if (!state.test) return { ok: false, reason: 'Test version only.' };
   const a = state.activity;
-  if (!a) return { ok: false, reason: 'Nema aktivnosti.' };
+  if (!a) return { ok: false, reason: 'No activity is running.' };
   a.endsAt = a.clock === 'real' ? realNow : state.gameTime;
   return { ok: true };
 }
@@ -226,9 +226,9 @@ export function rollCompetitionLearn(state, rng) {
 
 // Before a competition the fighter must know at least one move from each group.
 export const COMPETITION_GROUPS = {
-  napad: ['sub', 'sweep', 'pass', 'takedown'],
-  obrana: ['defense', 'escape'],
-  kontrola: ['top', 'guard', 'transition'],
+  attack: ['sub', 'sweep', 'pass', 'takedown'],
+  defense: ['defense', 'escape'],
+  control: ['top', 'guard', 'transition'],
 };
 
 export function competitionReady(state) {

@@ -58,7 +58,7 @@ export function createGymView(canvas) {
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.font = 'italic 800 34px "Barlow Condensed", system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('BJJ KLUB', MAT.x + MAT.w / 2, MAT.y + MAT.h / 2 + 12);
+    ctx.fillText('BJJ CLUB', MAT.x + MAT.w / 2, MAT.y + MAT.h / 2 + 12);
 
     // weights corner (left)
     ctx.fillStyle = '#2b2b30';
@@ -77,7 +77,7 @@ export function createGymView(canvas) {
       ctx.fillStyle = '#9aa0ab';
       ctx.fillRect(34 + i * 22, 120, 6, 2);
     }
-    label('TERETANA', 85, 18);
+    label('GYM', 85, 18);
 
     // cardio corner (right)
     ctx.fillStyle = '#2b2b30';
@@ -87,14 +87,14 @@ export function createGymView(canvas) {
       ctx.fillStyle = '#3a3a42'; ctx.fillRect(x + 6, 52, 28, 66);
       ctx.fillStyle = '#4b8df0'; ctx.fillRect(x + 10, 38, 20, 8);
     }
-    label('KARDIO', 715, 18);
+    label('CARDIO', 715, 18);
 
     // bench and belt rack by the door
     ctx.fillStyle = '#5a3d2a';
     rr(30, H - 46, 120, 20, 5); ctx.fill();
     Object.values(BELT).forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(30 + i * 24, H - 18, 18, 4); });
-    label('KLUPA', 90, H - 32);
-    label('IZLAZ', 732, H - 20);
+    label('BENCH', 90, H - 32);
+    label('EXIT', 732, H - 20);
   }
 
   function label(text, x, y, color = 'rgba(255,255,255,0.55)') {
@@ -198,13 +198,13 @@ export function createGymView(canvas) {
       tag(715, 150, text, progress);
     } else if (spot === 'bench') {
       person(90, H - 36, Math.PI, look, { reach: 0.1, belt: scene.belt });
-      tag(90, H - 62, 'Odmor', null);
+      tag(90, H - 62, 'Resting', null);
     }
-    if (spot === 'away') tag(732, H - 30, `${text} (izvan kluba)`, progress, '#3fb27f');
+    if (spot === 'away') tag(732, H - 30, `${text} (away from the club)`, progress, '#3fb27f');
     for (const s of scene.side) { // other running timers as signs where they happen
       if (s.spot === 'weights') tag(85, 150, s.label, s.progress, '#4b8df0');
       if (s.spot === 'cardio') tag(715, 150, s.label, s.progress, '#4b8df0');
-      if (s.spot === 'away') tag(732, H - 30, `${s.label} (izvan kluba)`, s.progress, '#3fb27f');
+      if (s.spot === 'away') tag(732, H - 30, `${s.label} (away from the club)`, s.progress, '#3fb27f');
     }
   }
 

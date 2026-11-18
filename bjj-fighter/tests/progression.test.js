@@ -187,11 +187,11 @@ import { competitionReady } from '../src/engine/progression.js';
 
 test('competition needs at least one attack, one defense and one control move', () => {
   const s = createState({ test: false, now: 0 });
-  assert.deepEqual(competitionReady(s), { ok: false, missing: ['napad', 'obrana', 'kontrola'] });
+  assert.deepEqual(competitionReady(s), { ok: false, missing: ['attack', 'defense', 'control'] });
   s.levels.armbar = 1;
-  assert.deepEqual(competitionReady(s).missing, ['obrana', 'kontrola']);
+  assert.deepEqual(competitionReady(s).missing, ['defense', 'control']);
   s.levels.armbarDefense = 1;
-  assert.deepEqual(competitionReady(s).missing, ['kontrola']);
+  assert.deepEqual(competitionReady(s).missing, ['control']);
   s.levels.mount = 1;
   assert.deepEqual(competitionReady(s), { ok: true, missing: [] });
 });
@@ -246,7 +246,7 @@ test('one thing at a time: technique, workout, seminar and open mat block each o
   assert.equal(startTraining(s, 'shrimp').ok, true);
   for (const r of [startWorkout(s, 'strength'), startActivity(s, 'openMat', fixed(0.5), 0), startActivity(s, 'seminar', fixed(0.5), 0), startTraining(s, 'upa')]) {
     assert.equal(r.ok, false);
-    assert.match(r.reason, /Jedna stvar u isto vrijeme/);
+    assert.match(r.reason, /One thing at a time/);
   }
   advance(s, 10_000);
   assert.equal(busyWith(s), null);
@@ -257,7 +257,7 @@ test('one thing at a time: technique, workout, seminar and open mat block each o
   assert.equal(startActivity(s, 'seminar', fixed(0.5), 100_000).ok, true);
   assert.equal(startTraining(s, 'upa').ok, false);
   assert.equal(startWorkout(s, 'strength').ok, false);
-  assert.match(busyWith(s).reason, /seminaru/);
+  assert.match(busyWith(s).reason, /seminar/);
 });
 
 test('the seminar lasts one real hour, whatever the speed-up', () => {

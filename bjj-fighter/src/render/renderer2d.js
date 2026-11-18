@@ -68,7 +68,7 @@ export function createRenderer(canvas) {
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
       ctx.font = 'bold 16px system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('BJJ KLUB', x + 220, 69);
+      ctx.fillText('BJJ CLUB', x + 220, 69);
       ctx.textAlign = 'start';
     }
     ctx.fillStyle = '#6b5233'; // wooden wall panel
@@ -111,7 +111,7 @@ export function createRenderer(canvas) {
     ctx.fillRect(0, 248, W, 26);
     ctx.fillStyle = '#e8c547';
     ctx.font = 'bold 15px system-ui, sans-serif';
-    for (let x = -(state.camX * 0.4) % 260 - 260; x < W; x += 260) ctx.fillText('TURNIR · NO-GI GRAPPLING', x, 266);
+    for (let x = -(state.camX * 0.4) % 260 - 260; x < W; x += 260) ctx.fillText('TOURNAMENT · NO-GI GRAPPLING', x, 266);
     for (const lx of [W * 0.25, W * 0.75]) {
       const g = ctx.createLinearGradient(lx, 0, lx, H);
       g.addColorStop(0, 'rgba(255,240,200,0.20)');
@@ -296,7 +296,7 @@ export function createRenderer(canvas) {
     const log = view.log ?? [];
     if (log.length < state.logLen) state.logLen = 0;
     for (const line of log.slice(state.logLen)) {
-      if (line.text.startsWith('⚡') || line.text.startsWith('Šansa greške')) continue;
+      if (line.text.startsWith('⚡') || line.text.startsWith('Mistake chance')) continue;
       state.captions.push({ text: line.text.replace(/ \(.*\)/, ''), who: line.who, t: 0 });
     }
     state.logLen = log.length;

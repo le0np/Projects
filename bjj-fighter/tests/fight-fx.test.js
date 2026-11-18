@@ -31,8 +31,8 @@ test('energy segments: one per 10 energy, rounded up, clamped to 0..10', () => {
 test('banner: technique kind wins, then target position, otherwise nothing', () => {
   assert.deepEqual(bannerFor(ACTIONS.td, true), { text: 'TAKEDOWN!', shake: true });
   assert.deepEqual(bannerFor(ACTIONS.sw, true), { text: 'SWEEP!', shake: true });
-  assert.deepEqual(bannerFor(ACTIONS.ps, true), { text: 'PROLAZ!', shake: false });
-  assert.deepEqual(bannerFor(ACTIONS.toBack, true), { text: 'LEĐA!', shake: false });
+  assert.deepEqual(bannerFor(ACTIONS.ps, true), { text: 'PASS!', shake: false });
+  assert.deepEqual(bannerFor(ACTIONS.toBack, true), { text: 'BACK!', shake: false });
   assert.deepEqual(bannerFor(ACTIONS.toMount, true), { text: 'MOUNT!', shake: false });
   assert.equal(bannerFor(ACTIONS.esc, true), null);
   assert.equal(bannerFor(ACTIONS.arm, true), null);
@@ -78,9 +78,9 @@ test('events: a submission win gives TAP! once, a give-up does not', () => {
   const r = nextFxEvents(memo, sub, ACTIONS);
   assert.deepEqual(r.events, [{ type: 'banner', who: 'o', text: 'TAP!', shake: false }]);
   assert.deepEqual(nextFxEvents(r.memo, sub, ACTIONS).events, []);
-  const quit = fight({ seq: 4, ended: { winner: 'o', method: 'sub', detail: 'predaja' } });
+  const quit = fight({ seq: 4, ended: { winner: 'o', method: 'sub', detail: 'gave up' } });
   assert.deepEqual(nextFxEvents(memo, quit, ACTIONS).events, []);
-  const points = fight({ seq: 4, ended: { winner: 'p', method: 'points', detail: 'bodovi' } });
+  const points = fight({ seq: 4, ended: { winner: 'p', method: 'points', detail: 'points' } });
   assert.deepEqual(nextFxEvents(memo, points, ACTIONS).events, []);
 });
 

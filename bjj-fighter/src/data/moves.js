@@ -1,90 +1,90 @@
 // Moves (techniques) and belts. `base` = seconds to learn level 1 as a white belt.
 
 export const BELTS = ['white', 'blue', 'purple', 'brown', 'black'];
-export const BELT_NAMES = { white: 'Bijeli', blue: 'Plavi', purple: 'Ljubičasti', brown: 'Smeđi', black: 'Crni' };
+export const BELT_NAMES = { white: 'White', blue: 'Blue', purple: 'Purple', brown: 'Brown', black: 'Black' };
 
 export const CATEGORIES = {
-  movement: 'Kretanje i osnove',
-  takedown: 'Rušenja',
-  guard: 'Gardovi',
-  sweep: 'Sweepovi',
-  pass: 'Prolazi garda',
-  top: 'Gornje pozicije',
-  transition: 'Prijelazi',
-  escape: 'Bijegovi',
-  sub: 'Submissioni',
-  defense: 'Obrane',
+  movement: 'Movement and basics',
+  takedown: 'Takedowns',
+  guard: 'Guards',
+  sweep: 'Sweeps',
+  pass: 'Guard passes',
+  top: 'Top positions',
+  transition: 'Transitions',
+  escape: 'Escapes',
+  sub: 'Submissions',
+  defense: 'Defenses',
 };
 
 const m = (id, name, category, belt, base, desc) => ({ id, name, category, belt, base, desc });
 
 export const MOVES = [
-  // Kretanje i osnove
-  m('shrimp', 'Shrimp', 'movement', 'white', 5, 'Bijeg kukovima, temelj svih bijegova.'),
-  m('upa', 'Bridge (upa)', 'movement', 'white', 5, 'Most kukovima za izbacivanje protivnika.'),
-  m('technicalStandUp', 'Technical stand-up', 'movement', 'white', 10, 'Sigurno ustajanje s poda.'),
-  m('sprawl', 'Sprawl', 'movement', 'white', 10, 'Obrana od rušenja: noge nazad, kukovi dolje.'),
-  m('guardPosture', 'Postura u gardu', 'movement', 'white', 10, 'Uspravna leđa i ruke na kukovima protivnika.'),
-  // Rušenja
-  m('doubleLeg', 'Double leg', 'takedown', 'white', 20, 'Ulaz na obje noge i rušenje.'),
-  m('singleLeg', 'Single leg', 'takedown', 'white', 20, 'Hvat jedne noge i rušenje.'),
-  m('snapDown', 'Snap down', 'takedown', 'white', 25, 'Povlačenje glave dolje u prednju kontrolu.'),
-  m('guardPull', 'Guard pull', 'takedown', 'white', 10, 'Povlačenje u gard (bez bodova).'),
-  // Gardovi
-  m('closedGuard', 'Zatvoreni gard', 'guard', 'white', 10, 'Noge zaključane oko protivnika.'),
-  m('halfGuard', 'Polugard', 'guard', 'white', 15, 'Jedna noga protivnika zarobljena.'),
-  m('butterflyGuard', 'Butterfly gard', 'guard', 'white', 20, 'Stopala kao kuke ispod bedara protivnika.'),
-  // Sweepovi
-  m('hipBump', 'Hip bump sweep', 'sweep', 'white', 20, 'Sjedneš, podigneš kuk i prevrneš protivnika.'),
-  m('scissor', 'Scissor sweep', 'sweep', 'white', 25, 'Noge kao škare ruše protivnika.'),
-  m('flower', 'Flower sweep', 'sweep', 'white', 30, 'Njihalo nogom iz zatvorenog garda.'),
-  m('butterflySweep', 'Butterfly sweep', 'sweep', 'white', 30, 'Kukom podigneš protivnika i prebaciš ga.'),
-  m('underhookSweep', 'Underhook sweep', 'sweep', 'white', 35, 'Iz polugarda underhook i izlaz na vrh.'),
-  // Prolazi
-  m('openClosedGuard', 'Otvaranje garda', 'pass', 'white', 15, 'Otvoriš zaključane noge protivnika.'),
-  m('kneeSlice', 'Knee slice', 'pass', 'white', 30, 'Koljeno klizi preko bedra protivnika.'),
-  m('toreando', 'Toreando', 'pass', 'white', 35, 'Odgurneš noge u stranu i obiđeš ih.'),
-  m('overUnder', 'Over-under', 'pass', 'white', 40, 'Jedna ruka preko, druga ispod nogu, pritisak.'),
-  // Gornje pozicije
-  m('sideControl', 'Side control', 'top', 'white', 15, 'Bočna kontrola prsa na prsa.'),
-  m('kneeOnBelly', 'Knee on belly', 'top', 'white', 20, 'Koljeno na trbuhu protivnika.'),
-  m('mount', 'Mount', 'top', 'white', 20, 'Sjediš na protivniku.'),
-  m('backControl', 'Back control', 'top', 'white', 30, 'Seatbelt hvat i dvije kuke.'),
-  m('northSouth', 'North-south', 'top', 'white', 25, 'Kontrola glava na trbuh.'),
-  // Prijelazi
-  m('sideToMount', 'Side control → mount', 'transition', 'white', 25, 'Koljeno preko trbuha u mount.'),
-  m('sideToKob', 'Side control → knee on belly', 'transition', 'white', 20, 'Podigneš se na koljeno.'),
-  m('mountToBack', 'Mount → leđa', 'transition', 'white', 35, 'Kad se protivnik okrene, uzmeš leđa.'),
-  // Bijegovi
-  m('mountUpa', 'Upa iz mounta', 'escape', 'white', 15, 'Zarobiš ruku i nogu, most i prevrtanje.'),
-  m('elbowKnee', 'Elbow-knee bijeg', 'escape', 'white', 25, 'Shrimp nazad u gard.'),
-  m('sideShrimp', 'Shrimp iz side controla', 'escape', 'white', 20, 'Okviri rukama i shrimp u gard.'),
-  m('sideUnderhook', 'Underhook na koljena', 'escape', 'white', 30, 'Underhook i izlazak na koljena.'),
-  m('backEscape', 'Bijeg s leđa', 'escape', 'white', 35, 'Rame na pod i okretanje u gard.'),
-  m('kobEscape', 'Bijeg iz knee on bellyja', 'escape', 'white', 20, 'Guraš koljeno i shrimp.'),
-  // Submissioni
-  m('rnc', 'Rear naked choke', 'sub', 'white', 30, 'Gušenje s leđa.'),
-  m('guillotine', 'Guillotine', 'sub', 'white', 30, 'Gušenje glave pod pazuhom.'),
-  m('triangle', 'Triangle', 'sub', 'white', 45, 'Gušenje nogama iz garda.'),
-  m('armbar', 'Armbar', 'sub', 'white', 40, 'Poluga na lakat.'),
-  m('kimura', 'Kimura', 'sub', 'white', 35, 'Poluga na rame, ruka iza leđa.'),
-  m('americana', 'Americana', 'sub', 'white', 30, 'Poluga na rame, ruka prema glavi.'),
-  m('straightAnkle', 'Straight ankle lock', 'sub', 'white', 40, 'Ravna poluga na stopalo.'),
-  // Obrane
-  m('guillotineDefense', 'Obrana od guillotine', 'defense', 'white', 25, 'Ruka preko ramena, okret prema slobodnoj strani.'),
-  m('triangleDefense', 'Obrana od triangla', 'defense', 'white', 30, 'Postura i izvlačenje ruke.'),
-  m('armbarDefense', 'Obrana od armbara', 'defense', 'white', 30, 'Spojene ruke, hitchhiker bijeg.'),
-  m('rncDefense', 'Obrana od RNC-a', 'defense', 'white', 25, 'Borba za ruke, brada dolje.'),
-  m('shoulderLockDefense', 'Obrana od kimure/americane', 'defense', 'white', 25, 'Ruka uz tijelo, hvataš vlastiti šorc.'),
-  m('legLockDefense', 'Obrana od leg locka', 'defense', 'white', 35, 'Okreneš se s polugom i izvučeš petu.'),
-  // Viši pojasevi
-  m('darce', "D'arce choke", 'sub', 'blue', 120, 'Gušenje ispod pazuha iz front headlocka.'),
-  m('armTriangle', 'Arm triangle', 'sub', 'blue', 120, 'Gušenje glavom i rukom protivnika.'),
-  m('legDrag', 'Leg drag', 'pass', 'blue', 150, 'Povučeš noge preko sebe i prođeš.'),
-  m('kneebar', 'Kneebar', 'sub', 'purple', 240, 'Poluga na koljeno.'),
-  m('toeHold', 'Toe hold', 'sub', 'purple', 240, 'Poluga na stopalo uvijanjem.'),
-  m('heelHook', 'Heel hook', 'sub', 'brown', 420, 'Uvijanje pete, opasna poluga na koljeno.'),
-  m('insideHeelHook', 'Inside heel hook', 'sub', 'black', 600, 'Unutarnji heel hook iz saddlea.'),
+  // Movement and basics
+  m('shrimp', 'Shrimp', 'movement', 'white', 5, 'Hip escape, the base of every escape.'),
+  m('upa', 'Bridge (upa)', 'movement', 'white', 5, 'Bridge with the hips to throw the opponent off.'),
+  m('technicalStandUp', 'Technical stand-up', 'movement', 'white', 10, 'Getting up from the mat safely.'),
+  m('sprawl', 'Sprawl', 'movement', 'white', 10, 'Takedown defense: legs back, hips down.'),
+  m('guardPosture', 'Guard posture', 'movement', 'white', 10, 'Straight back, hands on the opponent’s hips.'),
+  // Takedowns
+  m('doubleLeg', 'Double leg', 'takedown', 'white', 20, 'Shoot in on both legs and take them down.'),
+  m('singleLeg', 'Single leg', 'takedown', 'white', 20, 'Grab one leg and take them down.'),
+  m('snapDown', 'Snap down', 'takedown', 'white', 25, 'Pull the head down into front control.'),
+  m('guardPull', 'Guard pull', 'takedown', 'white', 10, 'Pull into guard (no points).'),
+  // Guards
+  m('closedGuard', 'Closed guard', 'guard', 'white', 10, 'Legs locked around the opponent.'),
+  m('halfGuard', 'Half guard', 'guard', 'white', 15, 'One of the opponent’s legs trapped.'),
+  m('butterflyGuard', 'Butterfly guard', 'guard', 'white', 20, 'Feet hooked under the opponent’s thighs.'),
+  // Sweeps
+  m('hipBump', 'Hip bump sweep', 'sweep', 'white', 20, 'Sit up, raise the hip and roll the opponent over.'),
+  m('scissor', 'Scissor sweep', 'sweep', 'white', 25, 'Legs scissor the opponent down.'),
+  m('flower', 'Flower sweep', 'sweep', 'white', 30, 'Leg pendulum from closed guard.'),
+  m('butterflySweep', 'Butterfly sweep', 'sweep', 'white', 30, 'Lift the opponent with a hook and throw them over.'),
+  m('underhookSweep', 'Underhook sweep', 'sweep', 'white', 35, 'Underhook from half guard and come up on top.'),
+  // Passes
+  m('openClosedGuard', 'Guard opening', 'pass', 'white', 15, 'Break open the opponent’s locked legs.'),
+  m('kneeSlice', 'Knee slice', 'pass', 'white', 30, 'Slide the knee across the opponent’s thigh.'),
+  m('toreando', 'Toreando', 'pass', 'white', 35, 'Push the legs aside and run around them.'),
+  m('overUnder', 'Over-under', 'pass', 'white', 40, 'One arm over, one under the legs, heavy pressure.'),
+  // Top positions
+  m('sideControl', 'Side control', 'top', 'white', 15, 'Chest-to-chest control from the side.'),
+  m('kneeOnBelly', 'Knee on belly', 'top', 'white', 20, 'Knee on the opponent’s belly.'),
+  m('mount', 'Mount', 'top', 'white', 20, 'Sitting on top of the opponent.'),
+  m('backControl', 'Back control', 'top', 'white', 30, 'Seatbelt grip and both hooks in.'),
+  m('northSouth', 'North-south', 'top', 'white', 25, 'Head-to-belly control.'),
+  // Transitions
+  m('sideToMount', 'Side control → mount', 'transition', 'white', 25, 'Knee across the belly into mount.'),
+  m('sideToKob', 'Side control → knee on belly', 'transition', 'white', 20, 'Rise up onto the knee.'),
+  m('mountToBack', 'Mount → back', 'transition', 'white', 35, 'When the opponent turns, take the back.'),
+  // Escapes
+  m('mountUpa', 'Upa from mount', 'escape', 'white', 15, 'Trap an arm and a leg, bridge and roll.'),
+  m('elbowKnee', 'Elbow-knee escape', 'escape', 'white', 25, 'Shrimp back into guard.'),
+  m('sideShrimp', 'Shrimp from side control', 'escape', 'white', 20, 'Frame with the arms and shrimp into guard.'),
+  m('sideUnderhook', 'Underhook to knees', 'escape', 'white', 30, 'Get the underhook and come up to the knees.'),
+  m('backEscape', 'Back escape', 'escape', 'white', 35, 'Shoulder to the mat and turn into guard.'),
+  m('kobEscape', 'Knee on belly escape', 'escape', 'white', 20, 'Push the knee away and shrimp.'),
+  // Submissions
+  m('rnc', 'Rear naked choke', 'sub', 'white', 30, 'Choke from the back.'),
+  m('guillotine', 'Guillotine', 'sub', 'white', 30, 'Choke with the head under the armpit.'),
+  m('triangle', 'Triangle', 'sub', 'white', 45, 'Leg choke from guard.'),
+  m('armbar', 'Armbar', 'sub', 'white', 40, 'Elbow lock.'),
+  m('kimura', 'Kimura', 'sub', 'white', 35, 'Shoulder lock, arm behind the back.'),
+  m('americana', 'Americana', 'sub', 'white', 30, 'Shoulder lock, arm toward the head.'),
+  m('straightAnkle', 'Straight ankle lock', 'sub', 'white', 40, 'Straight foot lock.'),
+  // Defenses
+  m('guillotineDefense', 'Guillotine defense', 'defense', 'white', 25, 'Arm over the shoulder, turn toward the open side.'),
+  m('triangleDefense', 'Triangle defense', 'defense', 'white', 30, 'Posture up and pull the arm out.'),
+  m('armbarDefense', 'Armbar defense', 'defense', 'white', 30, 'Clasp the hands, hitchhiker escape.'),
+  m('rncDefense', 'RNC defense', 'defense', 'white', 25, 'Hand fight, chin down.'),
+  m('shoulderLockDefense', 'Kimura/Americana defense', 'defense', 'white', 25, 'Arm tight to the body, grab your own shorts.'),
+  m('legLockDefense', 'Leg lock defense', 'defense', 'white', 35, 'Roll with the lock and pull the heel out.'),
+  // Higher belts
+  m('darce', "D'arce choke", 'sub', 'blue', 120, 'Choke under the armpit from a front headlock.'),
+  m('armTriangle', 'Arm triangle', 'sub', 'blue', 120, 'Choke with your head and the opponent’s arm.'),
+  m('legDrag', 'Leg drag', 'pass', 'blue', 150, 'Drag the legs across your body and pass.'),
+  m('kneebar', 'Kneebar', 'sub', 'purple', 240, 'Knee lock.'),
+  m('toeHold', 'Toe hold', 'sub', 'purple', 240, 'Twisting foot lock.'),
+  m('heelHook', 'Heel hook', 'sub', 'brown', 420, 'Heel twist, a dangerous knee lock.'),
+  m('insideHeelHook', 'Inside heel hook', 'sub', 'black', 600, 'Inside heel hook from the saddle.'),
 ];
 
 export const MOVE_BY_ID = Object.fromEntries(MOVES.map((mv) => [mv.id, mv]));
@@ -93,8 +93,8 @@ export const MOVE_BY_ID = Object.fromEntries(MOVES.map((mv) => [mv.id, mv]));
 // Three colours on the cards: attack (submissions, passes, takedowns, moving to a better spot on top),
 // sweep, and defense (defenses, escapes, guards, basic movement).
 export const CATEGORY_CLASS = {
-  sub: 'napad', pass: 'napad', takedown: 'napad', top: 'napad', transition: 'napad',
+  sub: 'attack', pass: 'attack', takedown: 'attack', top: 'attack', transition: 'attack',
   sweep: 'sweep',
-  defense: 'obrana', escape: 'obrana', guard: 'obrana', movement: 'obrana',
+  defense: 'defense', escape: 'defense', guard: 'defense', movement: 'defense',
 };
 export const MOVE_CLASS = Object.fromEntries(MOVES.map((mv) => [mv.id, CATEGORY_CLASS[mv.category]]));

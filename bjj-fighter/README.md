@@ -25,8 +25,8 @@ Prototip low-poly 3D stila (Three.js): `http://localhost:8080/tools/lowpoly.html
 ## Kako se igra
 
 - **Dvorana odozgo:** na vrhu ekrana je animirani pogled na klub iz ptičje perspektive. Usred tatamija ti (plava majica) drilaš potez koji treniraš s partnerom (rušenja stojeći, sve ostalo u parteru), uz naziv poteza, razinu i traku napretka. Fizička priprema je u teretani ili na traci za trčanje, a dok si na seminaru ili open matu stoji natpis kod izlaza. Bez treninga sjediš na klupi. Ostali članovi kluba sparaju, a trener šeta oko tatamija. Uz smanjeno kretanje u sustavu slika miruje.
-- **Početak priče:** nova igra počinje uvodom u tri kartice („Prvi dan u klubu”), a zatim te Trener Mirko vodi kroz zadatke: šest osnova (Shrimp, Bridge, Zatvoreni gard, Postura u gardu, Elbow-knee bijeg, Hip bump sweep), prvi sparing, seminar ili open mat, prvo natjecanje i plavi pojas. Panel trenera stoji iznad stanja, a u dvorani odozgo trener ima oblačić. Vodič se može preskočiti.
-- **Klub:** popis poteza po skupinama (kretanje, rušenja, gardovi, sweepovi, prolazi, gornje pozicije, prijelazi, bijegovi, submissioni, obrane). Svaki potez ima razine 1–10. „Nauči” ili „Treniraj” pokreće trening. Igrač radi jednu stvar u isto vrijeme (potez, teretana, kardio, seminar ili open mat), a traka gore pokazuje koliko je ostalo.
+- **Početak priče:** nova igra počinje uvodom u tri kartice („First day at the club”), a zatim te trener (Coach Mirko) vodi kroz zadatke: šest osnova (Shrimp, Bridge (upa), Closed guard, Guard posture, Elbow-knee escape, Hip bump sweep), prvi sparing, seminar ili open mat, prvo natjecanje i plavi pojas. Panel trenera stoji iznad stanja, a u dvorani odozgo trener ima oblačić. Vodič se može preskočiti.
+- **Klub:** popis poteza po skupinama (kretanje, rušenja, gardovi, sweepovi, prolazi, gornje pozicije, prijelazi, bijegovi, submissioni, obrane). Svaki potez ima razine 1–10. „Learn” ili „Train” pokreće trening. Igrač radi jednu stvar u isto vrijeme (potez, teretana, kardio, seminar ili open mat), a traka gore pokazuje koliko je ostalo.
   - Razina n traje `osnovno vrijeme × 2^(n−1)`. Prvi potezi traju 5–60 s, napredni potezi viših pojaseva nekoliko minuta.
   - Viši pojas uči brže od bijelog: plavi 20 %, ljubičasti 45 %, smeđi 65 %, crni 85 %.
   - Potez višeg pojasa koji još ne znaš ne može se trenirati u klubu.
@@ -49,12 +49,12 @@ Prototip low-poly 3D stila (Three.js): `http://localhost:8080/tools/lowpoly.html
   - Vrijeme se uspori i biraš jednu od 5 opcija klikom ili tipkama 1–5. Imaš 20 sekundi.
   - Ako ne odabereš ništa, to se računa kao pasivnost.
   - Kriva opcija može odmah otvoriti novu opasnost, npr. ruka unutra u gardu otvara triangle.
-- **Tijek borbe:** borci igraju potez za potez. Oba borca ponekad pogriješe, rjeđe što je pojas i razina poteza viša, a protivnikova greška tebi daje priliku. Šansa greške oba borca (u postocima) piše uz ime na semaforu i na početku loga, a log za svaki potez navodi razine, šansu i točne bodove (npr. „Scissor sweep +2, mount +4 = +6”). Tempo je natjecateljski (ADCC, CJI, UFC BJJ): razmjene idu svakih 4–7 s i većina se odigra sama prema razinama, a odluka se traži u oko 10 % razmjena (5–7 po borbi, najviše jedna u 20 s). Brz odgovor (u prvoj trećini roka) daje +10 % šanse. Kartice su obojene u tri boje: napad, sweep i obrana. Kod prilike se nude samo tehnike koje znaš za svoju poziciju i ulogu, svaka s tvojom razinom. Od plavog pojasa kartica nudi i „osjećaj” (savjet koju karticu odabrati), koji je pouzdaniji što je pojas viši i razina tehnika veća.
-- **Semafor i efekti:** semafor je TV traka preko slike borbe: portret u okviru boje pojasa, ime, bodovi, A/K, energija u 10 segmenata i sat na jantarnoj pločici. Uspješna tehnika dobiva natpis preko slike (TAKEDOWN!, SWEEP!, PROLAZ!, MOUNT!, LEĐA!, a submission TAP!), upisani bodovi značku „+2” uz semafor, a rušenje i sweep kratko protresu sliku. Uz smanjeno kretanje u sustavu efekti se samo pojave i nestanu.
-- **Log borbe:** cijeli log je ispod borbe. „Kopiraj log” kopira ga s rezultatom, pa ga možeš zalijepiti u chat.
+- **Tijek borbe:** borci igraju potez za potez. Oba borca ponekad pogriješe, rjeđe što je pojas i razina poteza viša, a protivnikova greška tebi daje priliku. Šansa greške oba borca (u postocima) piše uz ime na semaforu i na početku loga, a log za svaki potez navodi razine, šansu i točne bodove (npr. „Scissor sweep +2, mount +4 = +6”). Tempo je natjecateljski (ADCC, CJI, UFC BJJ): razmjene idu svakih 4–7 s i većina se odigra sama prema razinama, a odluka se traži u oko 10 % razmjena (5–7 po borbi, najviše jedna u 20 s). Brz odgovor (u prvoj trećini roka) daje +10 % šanse. Kartice su obojene u tri boje: napad, sweep i obrana. Kod prilike se nude samo tehnike koje znaš za svoju poziciju i ulogu, svaka s tvojom razinom. Od plavog pojasa kartica nudi i „osjećaj” („Your gut says”, savjet koju karticu odabrati), koji je pouzdaniji što je pojas viši i razina tehnika veća.
+- **Semafor i efekti:** semafor je TV traka preko slike borbe: portret u okviru boje pojasa, ime, bodovi, A/K, energija u 10 segmenata i sat na jantarnoj pločici. Uspješna tehnika dobiva natpis preko slike (TAKEDOWN!, SWEEP!, PASS!, MOUNT!, BACK!, a submission TAP!), upisani bodovi značku „+2” uz semafor, a rušenje i sweep kratko protresu sliku. Uz smanjeno kretanje u sustavu efekti se samo pojave i nestanu.
+- **Log borbe:** cijeli log je ispod borbe. „Copy log” kopira ga s rezultatom, pa ga možeš zalijepiti u chat.
 - **Test:**
   - ubrzanje vremena 1–10x (vrijedi za treninge, aktivnosti i sat borbe)
-  - „Sve otključano”: svi potezi su barem na razini 1 i svi se mogu trenirati
+  - „Unlock everything”: svi potezi su barem na razini 1 i svi se mogu trenirati
   - izbor pojasa, +500 € i brisanje napretka
   - u klubu tipka „⚡ +1” uz svaki potez: odmah jedna razina više, bez odbrojavanja
 
@@ -62,6 +62,7 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 
 ## Kako je napravljeno
 
+- **Sav tekst u igri je na engleskom**, prema odluci vlasnika. Imena protivnika su hrvatska, a dokumentacija ostaje na hrvatskom.
 - **Čisti JavaScript moduli i Canvas 2D, bez paketa i build koraka**, kao dev-farm. Pokretanje je jednostavno, a testovi rade izravno u Nodeu. Phaser ili React bi donijeli ovisnosti i build, a borci su ionako proceduralno crtani.
 - **Logika je potpuno odvojena od prikaza.** `src/engine` ne zna za DOM ni Canvas, a renderer samo čita stanje borbe (pozicija, tko je gore, kritični trenutak). Zato se 2D prikaz kasnije može zamijeniti 3D-om bez diranja pravila.
 - **Pozicije su graf.** Svaka akcija (`src/data/positions.js`) ima potez, poziciju, ulogu (gore, dolje ili stojeći), ciljnu poziciju, obrane i tipične greške. Kritični trenutak slaže do 5 opcija samo od poteza koje igrač zna: točnih obrana ili napada i drugih poteza iz iste pozicije (ili susjedne), nikad stojećih tehnika na podu. Ako igrač ne zna obranu, odluke nema i napad se riješi po razinama.

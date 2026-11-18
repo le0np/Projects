@@ -6,7 +6,7 @@ import { pick } from './rng.js';
 const NAMES = ['Marko', 'Ivan', 'Luka', 'Petar', 'Ante', 'Josip', 'Matej', 'Filip', 'Dino', 'Tomislav', 'Karlo', 'Bruno', 'Nikola', 'Leon', 'Mario', 'Toni'];
 const SURNAMES = ['Horvat', 'Kovač', 'Babić', 'Marić', 'Jurić', 'Novak', 'Knežević', 'Vuković', 'Perić', 'Pavlović', 'Božić', 'Grgić'];
 
-export function fighterFromState(state, name = 'Ti') {
+export function fighterFromState(state, name = 'You') {
   const levels = {};
   for (const m of MOVES) {
     const lvl = effectiveLevel(state, m.id);

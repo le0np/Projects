@@ -34,5 +34,5 @@ createServer(async (req, res) => {
     res.writeHead(404).end('Not found');
   }
 }).listen(port, '127.0.0.1', () => {
-  console.log(`bjj-fighter radi na http://localhost:${port}  (Ctrl+C za kraj)`);
+  console.log(`bjj-fighter running at http://localhost:${port}  (Ctrl+C to stop)`);
 });

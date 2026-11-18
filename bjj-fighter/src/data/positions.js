@@ -3,14 +3,14 @@
 // `to.actorTop`: the fighter who did the action ends on top (true) or bottom (false).
 
 export const POSITIONS = {
-  standing: { name: 'Stojeći' },
-  closedGuard: { name: 'Zatvoreni gard' },
-  halfGuard: { name: 'Polugard' },
-  butterfly: { name: 'Butterfly gard' },
+  standing: { name: 'Standing' },
+  closedGuard: { name: 'Closed guard' },
+  halfGuard: { name: 'Half guard' },
+  butterfly: { name: 'Butterfly guard' },
   sideControl: { name: 'Side control' },
   kneeOnBelly: { name: 'Knee on belly', scoring: 'kneeOnBelly' },
   mount: { name: 'Mount', scoring: 'mount' },
-  back: { name: 'Leđa', scoring: 'back' },
+  back: { name: 'Back', scoring: 'back' },
   northSouth: { name: 'North-south' },
   turtle: { name: 'Turtle (front headlock)' },
 };
@@ -25,13 +25,13 @@ const a = (id, move, from, role, kind, to, defenses, mistakes) => ({ id, move, f
 const T = (pos, actorTop) => ({ pos, actorTop });
 
 export const ACTIONS = [
-  // Stojeći
+  // Standing
   a('td_double', 'doubleLeg', 'standing', 'neutral', 'takedown', T('halfGuard', true), ['sprawl'], DEF_TAKEDOWN),
   a('td_single', 'singleLeg', 'standing', 'neutral', 'takedown', T('closedGuard', true), ['sprawl'], DEF_TAKEDOWN),
   a('snap', 'snapDown', 'standing', 'neutral', 'transition', T('turtle', true), ['technicalStandUp'], ['td_standTall', 'td_turnAway']),
   a('pull', 'guardPull', 'standing', 'neutral', 'pull', T('closedGuard', false), [], []),
   a('guill_st', 'guillotine', 'standing', 'neutral', 'sub', undefined, ['guillotineDefense'], ['gu_pullBack', 'gu_wrongSide']),
-  // Zatvoreni gard
+  // Closed guard
   a('hipBump', 'hipBump', 'closedGuard', 'bottom', 'sweep', T('mount', true), ['guardPosture'], DEF_SWEEP),
   a('scissor', 'scissor', 'closedGuard', 'bottom', 'sweep', T('mount', true), ['guardPosture'], DEF_SWEEP),
   a('flower', 'flower', 'closedGuard', 'bottom', 'sweep', T('mount', true), ['guardPosture'], DEF_SWEEP),
@@ -40,7 +40,7 @@ export const ACTIONS = [
   a('kimura_cg', 'kimura', 'closedGuard', 'bottom', 'sub', undefined, ['shoulderLockDefense'], ['sh_straighten', 'sh_rollWrong']),
   a('guill_cg', 'guillotine', 'closedGuard', 'bottom', 'sub', undefined, ['guillotineDefense'], ['gu_pullBack', 'gu_wrongSide']),
   a('openGuard', 'openClosedGuard', 'closedGuard', 'top', 'transition', T('butterfly', true), ['closedGuard'], ['es_highHips', 'es_relax']),
-  // Butterfly (otvoreni gard)
+  // Butterfly (open guard)
   a('bSweep', 'butterflySweep', 'butterfly', 'bottom', 'sweep', T('halfGuard', true), ['guardPosture'], DEF_SWEEP),
   a('recoverClosed', 'closedGuard', 'butterfly', 'bottom', 'transition', T('closedGuard', false), [], []),
   a('ankle_b', 'straightAnkle', 'butterfly', 'bottom', 'sub', undefined, ['legLockDefense'], ['ll_spinWrong', 'll_pullKnee']),
@@ -54,7 +54,7 @@ export const ACTIONS = [
   a('ankle_bt', 'straightAnkle', 'butterfly', 'top', 'sub', undefined, ['legLockDefense'], ['ll_spinWrong', 'll_pullKnee']),
   a('kneebar_bt', 'kneebar', 'butterfly', 'top', 'sub', undefined, ['legLockDefense'], ['ll_spinWrong', 'll_pullKnee']),
   a('toeHold_bt', 'toeHold', 'butterfly', 'top', 'sub', undefined, ['legLockDefense'], ['ll_spinWrong', 'll_wait']),
-  // Polugard
+  // Half guard
   a('uhSweep', 'underhookSweep', 'halfGuard', 'bottom', 'sweep', T('halfGuard', true), ['halfGuard'], DEF_SWEEP),
   a('recoverHalf', 'shrimp', 'halfGuard', 'bottom', 'transition', T('closedGuard', false), [], []),
   a('kimura_hg', 'kimura', 'halfGuard', 'bottom', 'sub', undefined, ['shoulderLockDefense'], ['sh_straighten', 'sh_rollWrong']),
@@ -80,7 +80,7 @@ export const ACTIONS = [
   a('mountToBack', 'mountToBack', 'mount', 'top', 'transition', T('back', true), ['elbowKnee'], ['bk_handsForward', 'mt_turnBelly']),
   a('mountUpa_e', 'mountUpa', 'mount', 'bottom', 'escape', T('closedGuard', true), ['mount'], DEF_ESCAPE),
   a('elbowKnee_e', 'elbowKnee', 'mount', 'bottom', 'escape', T('closedGuard', false), ['mount'], DEF_ESCAPE),
-  // Leđa
+  // Back
   a('rnc_b', 'rnc', 'back', 'top', 'sub', undefined, ['rncDefense'], ['rnc_pushElbow', 'rnc_wait']),
   a('backEscape_e', 'backEscape', 'back', 'bottom', 'escape', T('closedGuard', true), ['backControl'], DEF_ESCAPE),
   // North-south
@@ -109,79 +109,79 @@ const pos = (text, p, selfTop, kind) => ({ text, effect: 'pos', to: { pos: p, se
 const penalty = (text) => ({ text, effect: 'penalty' });
 
 export const MISTAKES = {
-  // obrana od rušenja
-  td_standTall: threat('Stojiš uspravno i čekaš da te uhvati.'),
-  td_turnAway: pos('Okreneš mu leđa i pokušaš pobjeći.', 'back', false, 'transition'),
-  td_reachDown: counter('Spustiš glavu i hvataš mu nogu.', 'guill_st'),
-  // obrana od sweepa (ti si gore u gardu)
-  sw_handsOnMat: threat('Spustiš ruke na strunjaču daleko od tijela.'),
-  sw_armInside: counter('Gurneš jednu ruku između njegovih nogu.', 'triangle_cg'),
-  sw_leanForward: threat('Nagneš se naprijed bez baze.'),
-  // obrana od prolaza (ti si dolje)
-  ps_flat: threat('Ostaneš ravno na leđima.'),
-  ps_turnAway: pos('Okreneš se od njega.', 'back', false, 'transition'),
-  ps_pushStraight: threat('Guraš ga ispruženim rukama.'),
-  // obrana od napredovanja (mount, knee on belly, leđa)
-  mt_pushStraight: threat('Guraš ga ispruženim rukama u prsa.'),
-  mt_turnBelly: pos('Okreneš se na trbuh.', 'back', false, 'transition'),
-  bk_handsForward: threat('Ostaviš ruke ispred sebe i pustiš ga iza.'),
-  // ti si gore, on bježi
-  es_highHips: threat('Digneš kukove previsoko.'),
-  es_relax: threat('Opustiš pritisak da se odmoriš.'),
-  es_overreach: threat('Posegneš preduboko za submissionom.'),
-  // submissioni
-  gu_pullBack: threat('Povlačiš glavu ravno unatrag.'),
-  gu_wrongSide: threat('Okreneš se na stranu njegove ruke koja guši.'),
-  tr_headDown: threat('Spustiš glavu i guraš naprijed.'),
-  tr_armInside: threat('Ostaviš ruku unutra i čekaš.'),
-  ab_pullStraight: threat('Izvlačiš ispruženu ruku ravno prema sebi.'),
-  ab_bridgeWrong: threat('Mostiš prema njegovim nogama.'),
-  sh_straighten: threat('Ispružiš ruku da se oslobodiš.'),
-  sh_rollWrong: threat('Okreneš se od poluge.'),
-  at_armAcross: threat('Ostaviš ruku preko svog lica.'),
-  at_flat: threat('Ostaneš ravno i guraš mu glavu.'),
-  ll_spinWrong: threat('Vrtiš se u suprotnu stranu od poluge.'),
-  ll_pullKnee: threat('Povlačiš koljeno dok mu je peta zarobljena.'),
-  ll_wait: threat('Čekaš da popusti.'),
-  rnc_pushElbow: threat('Guraš mu lakat od sebe.'),
-  rnc_wait: threat('Čekaš da mu nestane snage.'),
-  // opće greške
-  g_freeze: threat('Ukočiš se i čekaš.'),
-  g_explode: threat('Eksplodiraš bez plana i potrošiš snagu.'),
-  g_grabShorts: penalty('Uhvatiš ga za šorc (zabranjeno).'),
-  stall: penalty('Samo ga držiš i ne radiš ništa (stalling).'),
-  // tvoje prilike: krivi potezi
-  op_st_reachLow: counter('Zaletiš se s glavom ispred nogu.', 'guill_st'),
-  op_st_cross: pos('Prekrižiš noge dok se krećeš.', 'halfGuard', false, 'takedown'),
-  op_cg_open: pos('Otvoriš noge bez plana.', 'butterfly', false, 'transition'),
-  op_cgt_armIn: counter('Jedna ruka unutra, jedna vani.', 'triangle_cg'),
-  op_cgt_lean: counter('Spustiš se naprijed i opustiš posturu.', 'guill_cg'),
-  op_bb_flat: pos('Legneš ravno na leđa.', 'sideControl', false, 'pass'),
-  op_bt_kneel: counter('Klekneš između njegovih nogu.', 'bSweep'),
-  op_bt_legIn: counter('Ostaviš nogu duboko između njegovih.', 'heel_b'),
-  op_hb_flat: counter('Ostaneš ravno, bez underhooka.', 'kneeSlice_h'),
-  op_ht_handMat: counter('Ostaviš ruku na strunjači pored njega.', 'kimura_hg'),
-  op_ht_highHips: counter('Digneš kukove bez pritiska.', 'uhSweep'),
-  op_sc_highHips: counter('Digneš kukove i opustiš pritisak.', 'sideShrimp_e'),
-  op_sc_reachFar: counter('Posegneš preko glave za ruku.', 'sideUnderhook_e'),
-  op_sb_push: counter('Guraš ga ispruženim rukama.', 'americana_s'),
-  op_sb_turnAway: pos('Okreneš mu leđa.', 'back', false, 'transition'),
-  op_kt_overcommit: counter('Prebaciš svu težinu naprijed.', 'kobEscape_e'),
-  op_kb_pushStraight: counter('Guraš mu koljeno ispruženim rukama.', 'armbar_k'),
-  op_kb_turn: pos('Okreneš se na trbuh.', 'back', false, 'transition'),
-  op_mt_handsMat: counter('Spustiš ruke na strunjaču pored glave.', 'mountUpa_e'),
-  op_mt_lowKnees: counter('Raširiš koljena i spustiš se nisko.', 'elbowKnee_e'),
-  op_mb_push: counter('Guraš ga ispruženim rukama.', 'armbar_m'),
-  op_mb_turn: pos('Okreneš se na trbuh.', 'back', false, 'transition'),
-  op_bkt_cross: counter('Prekrižiš stopala ispred njega.', 'backEscape_e'),
-  op_bkt_noHooks: counter('Pustiš kuke i držiš samo rukama.', 'backEscape_e'),
-  op_bkb_handsDown: counter('Spustiš ruke i guraš njegove noge.', 'rnc_b'),
-  op_bkb_stand: counter('Pokušaš ustati s njim na leđima.', 'rnc_b'),
-  op_nt_high: counter('Digneš se previsoko.', 'nsEscape'),
-  op_nb_push: counter('Guraš mu glavu ispruženim rukama.', 'kimura_ns'),
-  op_tt_overcommit: counter('Prebaciš se preko njega bez kontrole.', 'standUp_t'),
-  op_tb_headUp: counter('Digneš glavu ravno gore.', 'guill_t'),
-  op_tb_extend: counter('Ispružiš ruke ispred sebe.', 'turtleBack'),
+  // takedown defense
+  td_standTall: threat('You stand tall and wait for him to grab you.'),
+  td_turnAway: pos('You turn your back and try to run.', 'back', false, 'transition'),
+  td_reachDown: counter('You drop your head and reach for his leg.', 'guill_st'),
+  // sweep defense (you are on top in the guard)
+  sw_handsOnMat: threat('You post your hands on the mat far from your body.'),
+  sw_armInside: counter('You push one arm between his legs.', 'triangle_cg'),
+  sw_leanForward: threat('You lean forward with no base.'),
+  // pass defense (you are on the bottom)
+  ps_flat: threat('You stay flat on your back.'),
+  ps_turnAway: pos('You turn away from him.', 'back', false, 'transition'),
+  ps_pushStraight: threat('You push him with straight arms.'),
+  // defending an advance (mount, knee on belly, back)
+  mt_pushStraight: threat('You push his chest with straight arms.'),
+  mt_turnBelly: pos('You turn onto your belly.', 'back', false, 'transition'),
+  bk_handsForward: threat('You leave your arms out front and let him get behind you.'),
+  // you are on top, he escapes
+  es_highHips: threat('You lift your hips too high.'),
+  es_relax: threat('You ease off the pressure to rest.'),
+  es_overreach: threat('You reach too deep for a submission.'),
+  // submissions
+  gu_pullBack: threat('You pull your head straight back.'),
+  gu_wrongSide: threat('You turn toward his choking arm.'),
+  tr_headDown: threat('You drop your head and drive forward.'),
+  tr_armInside: threat('You leave your arm inside and wait.'),
+  ab_pullStraight: threat('You pull your straight arm back toward you.'),
+  ab_bridgeWrong: threat('You bridge toward his legs.'),
+  sh_straighten: threat('You straighten your arm to get free.'),
+  sh_rollWrong: threat('You roll away from the lock.'),
+  at_armAcross: threat('You leave your arm across your face.'),
+  at_flat: threat('You stay flat and push his head.'),
+  ll_spinWrong: threat('You spin the wrong way out of the lock.'),
+  ll_pullKnee: threat('You pull your knee while he has your heel.'),
+  ll_wait: threat('You wait for him to let go.'),
+  rnc_pushElbow: threat('You push his elbow away.'),
+  rnc_wait: threat('You wait for him to run out of strength.'),
+  // general mistakes
+  g_freeze: threat('You freeze and wait.'),
+  g_explode: threat('You explode with no plan and burn your energy.'),
+  g_grabShorts: penalty('You grab his shorts (illegal).'),
+  stall: penalty('You just hold him and do nothing (stalling).'),
+  // your opportunities: wrong moves
+  op_st_reachLow: counter('You rush in with your head in front of your legs.', 'guill_st'),
+  op_st_cross: pos('You cross your feet while moving.', 'halfGuard', false, 'takedown'),
+  op_cg_open: pos('You open your legs with no plan.', 'butterfly', false, 'transition'),
+  op_cgt_armIn: counter('One arm in, one arm out.', 'triangle_cg'),
+  op_cgt_lean: counter('You sink forward and break your own posture.', 'guill_cg'),
+  op_bb_flat: pos('You lie flat on your back.', 'sideControl', false, 'pass'),
+  op_bt_kneel: counter('You kneel between his legs.', 'bSweep'),
+  op_bt_legIn: counter('You leave your leg deep between his.', 'heel_b'),
+  op_hb_flat: counter('You stay flat with no underhook.', 'kneeSlice_h'),
+  op_ht_handMat: counter('You leave your hand on the mat next to him.', 'kimura_hg'),
+  op_ht_highHips: counter('You lift your hips with no pressure.', 'uhSweep'),
+  op_sc_highHips: counter('You lift your hips and ease the pressure.', 'sideShrimp_e'),
+  op_sc_reachFar: counter('You reach over his head for the arm.', 'sideUnderhook_e'),
+  op_sb_push: counter('You push him with straight arms.', 'americana_s'),
+  op_sb_turnAway: pos('You turn your back to him.', 'back', false, 'transition'),
+  op_kt_overcommit: counter('You throw all your weight forward.', 'kobEscape_e'),
+  op_kb_pushStraight: counter('You push his knee with straight arms.', 'armbar_k'),
+  op_kb_turn: pos('You turn onto your belly.', 'back', false, 'transition'),
+  op_mt_handsMat: counter('You post your hands on the mat beside his head.', 'mountUpa_e'),
+  op_mt_lowKnees: counter('You widen your knees and sit low.', 'elbowKnee_e'),
+  op_mb_push: counter('You push him with straight arms.', 'armbar_m'),
+  op_mb_turn: pos('You turn onto your belly.', 'back', false, 'transition'),
+  op_bkt_cross: counter('You cross your feet in front of him.', 'backEscape_e'),
+  op_bkt_noHooks: counter('You drop your hooks and hold on with your arms only.', 'backEscape_e'),
+  op_bkb_handsDown: counter('You drop your hands and push his legs.', 'rnc_b'),
+  op_bkb_stand: counter('You try to stand up with him on your back.', 'rnc_b'),
+  op_nt_high: counter('You come up too high.', 'nsEscape'),
+  op_nb_push: counter('You push his head with straight arms.', 'kimura_ns'),
+  op_tt_overcommit: counter('You roll over him with no control.', 'standUp_t'),
+  op_tb_headUp: counter('You lift your head straight up.', 'guill_t'),
+  op_tb_extend: counter('You reach out with straight arms.', 'turtleBack'),
 };
 
 export const GENERIC_MISTAKES = ['g_freeze', 'g_explode', 'g_grabShorts'];
