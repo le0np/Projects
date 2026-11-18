@@ -1,6 +1,7 @@
 // What the bird's-eye gym view shows: where you are and what you are doing. Pure, no DOM, so it can be tested.
 import { MOVE_BY_ID } from '../data/moves.js';
 import { PHYSICAL, ACTIVITIES, slotProgress } from '../engine/progression.js';
+import { storyStep } from '../engine/story.js';
 
 
 // The player does one thing at a time. Saves from before that rule can still have several timers running:
@@ -24,5 +25,7 @@ export function gymScene(state, realNow = state.lastReal) {
   }
   if (w && you.spot === 'mat') side.push({ spot: w.attr === 'strength' ? 'weights' : 'cardio', label: `${PHYSICAL[w.attr].name} → ${w.toLevel}`, progress: progress(w) });
   if (a && you.spot !== 'away') side.push({ spot: 'away', label: ACTIVITIES[a.type].name, progress: progress(a) });
-  return { you, side, belt: state.belt };
+  // The coach's short line from the story start (null once it is done or skipped).
+  const coach = state.story?.intro ? storyStep(state)?.short ?? null : null;
+  return { you, side, belt: state.belt, coach };
 }

@@ -23,6 +23,7 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
 ## Kako se igra
 
 - **Dvorana odozgo:** na vrhu ekrana je animirani pogled na klub iz ptičje perspektive. Usred tatamija ti (plava majica) drilaš potez koji treniraš s partnerom (rušenja stojeći, sve ostalo u parteru), uz naziv poteza, razinu i traku napretka. Fizička priprema je u teretani ili na traci za trčanje, a dok si na seminaru ili open matu stoji natpis kod izlaza. Bez treninga sjediš na klupi. Ostali članovi kluba sparaju, a trener šeta oko tatamija. Uz smanjeno kretanje u sustavu slika miruje.
+- **Početak priče:** nova igra počinje uvodom u tri kartice („Prvi dan u klubu”), a zatim te Trener Mirko vodi kroz zadatke: šest osnova (Shrimp, Bridge, Zatvoreni gard, Postura u gardu, Elbow-knee bijeg, Hip bump sweep), prvi sparing, seminar ili open mat, prvo natjecanje i plavi pojas. Panel trenera stoji iznad stanja, a u dvorani odozgo trener ima oblačić. Vodič se može preskočiti.
 - **Klub:** popis poteza po skupinama (kretanje, rušenja, gardovi, sweepovi, prolazi, gornje pozicije, prijelazi, bijegovi, submissioni, obrane). Svaki potez ima razine 1–10. „Nauči” ili „Treniraj” pokreće trening. Igrač radi jednu stvar u isto vrijeme (potez, teretana, kardio, seminar ili open mat), a traka gore pokazuje koliko je ostalo.
   - Razina n traje `osnovno vrijeme × 2^(n−1)`. Prvi potezi traju 5–60 s, napredni potezi viših pojaseva nekoliko minuta.
   - Viši pojas uči brže od bijelog: plavi 20 %, ljubičasti 45 %, smeđi 65 %, crni 85 %.
