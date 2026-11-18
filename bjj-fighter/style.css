@@ -87,6 +87,10 @@ main { max-width: 980px; margin: 0 auto; padding: 16px; }
 #fight { max-width: 980px; margin: 0 auto; padding: 10px 16px 20px; }
 .stage { position: relative; border-radius: var(--radius); overflow: hidden; background: #000; }
 #canvas { width: 100%; display: block; aspect-ratio: 16 / 9; }
+#canvas[hidden] { display: none; }
+.view3d { position: relative; width: 100%; aspect-ratio: 16 / 9; }
+.view3d[hidden] { display: none; }
+.view3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .feedback { position: absolute; left: 50%; top: 96px; z-index: 3; transform: translateX(-50%); padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 14px; max-width: 90%; text-align: center; }
 .feedback.good { background: rgba(63,178,127,0.92); }
 .feedback.bad { background: rgba(214,69,69,0.92); }

@@ -31,6 +31,18 @@ let state = load();
 let activeTab = 'club';
 let fightCtx = null; // { fight, mode: 'spar'|'comp', stage, timer, feedbackUntil }
 let renderer = null;
+let renderer2d = null;
+let renderer3d = null;
+// 3D fighters are the default; the test panel can switch back to the 2D figures (a per-browser setting).
+const VIEW_KEY = 'bjj-fighter-view';
+let view3d = (() => { try { return localStorage.getItem(VIEW_KEY) !== '2d'; } catch { return true; } })();
+// The 3D module and the model load in the background so the first fight does not wait for them.
+const load3d = import('../render/renderer3d.js').then((m) => {
+  if (!m.webglAvailable()) throw new Error('WebGL is not available');
+  renderer3d = m.createRenderer3d($('canvas3d'), $('canvas3d-ui'));
+  return renderer3d.ready;
+}).catch((err) => { console.warn('3D view off:', err); renderer3d = null; });
+load3d.then(() => { if (activeTab === 'test' && !fightCtx) renderTab(); }); // the test panel says whether 3D works
 const gymView = createGymView($('gym-canvas'));
 
 function load() {
@@ -257,6 +269,9 @@ function renderTest() {
     <div class="test-row"><label>Activity</label><button class="secondary" data-finish-activity ${state.activity ? '' : 'disabled'}>⚡ Finish now</button>
       <span class="hint" style="margin:0">A seminar lasts one hour of real time and the speed setting does not affect it.</span></div>
     <div class="test-row"><label>Money</label><button class="secondary" data-money>+500 €</button></div>
+    <div class="test-row"><label for="view3d-toggle">3D fighters</label>
+      <input type="checkbox" id="view3d-toggle" ${view3d ? 'checked' : ''}>
+      <span class="hint" style="margin:0">${renderer3d ? 'On: the 3D model. Off: the 2D figures.' : 'The 3D view is not available in this browser, so fights use the 2D figures.'}</span></div>
     <div class="test-row"><label>New game</label><button class="ghost" data-reset>Delete progress</button></div>`;
 }
 
@@ -350,6 +365,11 @@ $('career').addEventListener('input', (ev) => {
 });
 
 $('career').addEventListener('change', (ev) => {
+  if (ev.target.id === 'view3d-toggle') {
+    view3d = ev.target.checked;
+    try { localStorage.setItem(VIEW_KEY, view3d ? '3d' : '2d'); } catch { /* ignore */ }
+    return;
+  }
   if (ev.target.id === 'unlock') state.unlockAll = ev.target.checked;
   else if (ev.target.id === 'belt-select') state.belt = ev.target.value;
   else return;
@@ -392,9 +412,23 @@ function openFight(mode, stage) {
     $(`sb-${w}-portrait`).style.borderColor = BELT_COLORS[belt];
     $(`sb-${w}-portrait`).dataset.belt = belt;
   }
-  if (!renderer) renderer = createRenderer($('canvas'));
-  renderer.resize();
+  pickRenderer();
   window.scrollTo(0, 0);
+}
+
+// 3D when it is switched on and loaded, otherwise the 2D figures. Chosen once per fight.
+function pickRenderer() {
+  const use3d = view3d && renderer3d?.isReady();
+  $('canvas').hidden = !!use3d;
+  $('view3d').hidden = !use3d;
+  if (use3d) {
+    renderer = renderer3d;
+    renderer.reset();
+  } else {
+    renderer2d ??= createRenderer($('canvas'));
+    renderer = renderer2d;
+  }
+  renderer.resize();
 }
 
 function closeFight() {

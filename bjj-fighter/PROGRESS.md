@@ -222,9 +222,27 @@ Vlasnik je u low-poly prototipu vidio likove s tankim udovima (blizu „štapić
 - `server.js` poslužuje `.gltf`, `.bin` i `.jpg`.
 - Igra (2D borba, dvorana odozgo) nije mijenjana.
 
+### 3D borba s modelom
+Vlasnik je odobrio model i poze („kasnije ćemo modele možda malo modificirati, ali sada me zanima kako će ovo izgledati”).
+- `src/render/renderer3d.js`: Three.js renderer borbe s istim sučeljem kao `renderer2d.js`. Sparing je u dvorani kluba (`src/render/gym3d.js`), a natjecanje u areni (tamna dvorana, sivi tatami s crvenim rubom, publika, reflektor). Pokreti kao u 2D-u, ali na 3D ciljevima: disanje, borba za stisak, pokret po vrsti tehnike (rušenje, sweep, prolaz, bijeg, submission, neuspjeh), tapkanje gubitnika, prijelaz s kratkim podizanjem. Kamera kadrira glave, šake i stopala oba borca i ostavlja mjesta semaforu i komentarima. Komentari, nazivi tehnika (složeni jedan ispod drugog, ispod semafora) i zatamnjenje u usporenom trenutku crtaju se na 2D platnu iznad 3D slike. HTML HUD i efekti nisu mijenjani.
+- `src/render/poses3d.js`: dodane 3D poze za half guard, butterfly, knee on belly, north-south i kornjaču (front headlock), sad svih 10 pozicija. Kad je igrač dolje, uzima pozu B (isto pravilo kao 2D).
+- `src/render/fighter3d.js`: `capture()` za početak prijelaza.
+- `app.js` i `index.html`: import mapa za `three`, 3D platno uz 2D platno, modul i model se učitavaju u pozadini kad se igra otvori. Borba je u 3D-u ako je model učitan i 3D uključen; inače 2D. Testni panel ima „3D fighters” (pamti se u `localStorage` pod `bjj-fighter-view`, jer je to postavka preglednika, a ne napredak). Bez WebGL-a panel piše da 3D nije dostupan.
+- Uklonjeni low-poly prototip (`tools/lowpoly.html`, `src/render/lowpoly.js`, `src/render/pose3d.js` i njegov test); tatami i dvorana premješteni su u `src/render/gym3d.js`.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 18. studenog 2026. (pregled 3D modela):
+Provedeno 18. studenog 2026. (3D borba):
+
+| Provjera | Rezultat |
+| --- | --- |
+| `npm test` | 112/112 prolazi (2 testa otišla su s low-poly prototipom) |
+| Playwright e2e (1100 px, WebGL) | sparing i natjecanje odigrani do kraja u 3D-u uz „Unlock everything” i ubrzanje 10x: kritični trenuci (kartice, „Coach shouts from the edge”), natpis „BACK!” i značka „+4” preko 3D slike, komentari dolje, ishod (pobjeda i poraz submissionom), arena u natjecanju; uloge se zamijene kad je igrač dolje; 0 grešaka u konzoli |
+| Playwright 2D | s isključenim „3D fighters” borba se crta na 2D platnu, 3D platno je skriveno |
+| Playwright mobitel (390 × 844) | 3D borba stane, nema horizontalnog scrolla |
+| `tools/model.html` | učitava se sa svih 10 pozicija |
+
+Prethodna provjera (18. studenog 2026., pregled 3D modela):
 
 | Provjera | Rezultat |
 | --- | --- |
@@ -283,9 +301,10 @@ Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 ## Poznata ograničenja
 
 - Postoji samo testna verzija (testni panel, ubrzanje, ⚡ +1).
-- 3D model je zasad samo na stranici za pregled (`tools/model.html`), s 5 od 10 pozicija. Tijela se mjestimično malo preklapaju (npr. bedra u zatvorenom gardu), a u stavu se ruke križaju; poze treba fino doraditi kad se odobri model.
+- 3D borba: svi protivnici imaju isti izgled (tamna koža, brada, crveni rashguard). Tijela se mjestimično malo preklapaju (npr. bedra u zatvorenom gardu i half guardu), u stavu se ruke križaju, a pokreti tehnika su pomaci ciljeva (nema posebne animacije za svaku tehniku). Brzina na pravom mobitelu nije izmjerena (provjereno u headless Chromiumu sa softverskim WebGL-om).
+- Prva borba odmah nakon otvaranja igre može biti u 2D-u ako se model još nije učitao (oko 1,5 MB).
 - Rashguard je obojena koža (bez nabora i ruba tkanine), a model u besplatnoj verziji postoji samo u dvije boje kože.
-- Animacije su po vrsti tehnike (rušenje, sweep, prolaz, bijeg, submission), ne za svaku tehniku posebno. Poze su ključne poze po poziciji, 2D. Borci su još stare 2D figure dok ne stigne 3D.
+- Animacije su po vrsti tehnike (rušenje, sweep, prolaz, bijeg, submission), ne za svaku tehniku posebno. Poze su ključne poze po poziciji, 2D. U 2D načinu borci su i dalje stare 2D figure.
 - Portreti na semaforu su siluete dok ne stigne 3D model.
 - Prasak na mjestu kontakta nije napravljen jer ovisi o položaju boraca, dolazi s 3D-om.
 - Reload usred borbe prekida borbu bez upisa rezultata.
@@ -296,7 +315,7 @@ Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 
 ## Sljedeći koraci
 
-1. Vlasnik pregleda `tools/model.html` i javi odgovaraju li model i poze. Ako da: 3D renderer borbe s istim sučeljem kao `renderer2d.js` (HUD i efekti ostaju, 2D kao rezerva u testnom panelu), 3D poze za preostale pozicije (half guard, butterfly, knee on belly, north-south, kornjača) i prijelaze; zatim dvorana u 3D-u. Low-poly likovi iz koda (`tools/lowpoly.html`, `src/render/lowpoly.js`) tada se mogu maknuti.
+1. Vlasnik isproba 3D borbu i javi što promijeniti (kamera, tempo, poze, izgled modela). Zatim: različiti izgledi protivnika (koža, kosa, brada, boja rashguarda), portreti na semaforu iz modela, dorada poza i prijelaza (preklapanja tijela), animacija po tehnici; zatim dvorana kluba u 3D-u.
 1. Vlasnik isproba uvod i trenera i javi treba li drukčiji ton, ime ili zaplet (npr. rival iz drugog kluba).
 1. Pogled na dvoranu: vlasnik isproba i javi treba li veći, manji ili drukčiji (npr. više članova kluba, zvukovi).
 1. Korak 2 drugog kruga: granice razina po pojasu, novi seminari (instruktori 1–5 ★, 40–90 %, trening pauziran). Korak 3: stil borbe, energija, ozljede.
@@ -308,7 +327,8 @@ Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 ## Handoff za novi chat
 
 1. Kod je u `bjj-fighter/` na grani `dev`. Prvo pročitaj `README.md`, `docs/KONCEPT.md` i ovaj dokument.
-2. Pokretanje: `npm start` (http://localhost:8080). Testovi: `npm test`. Poze: `tools/poses.html`.
+2. Pokretanje: `npm start` (http://localhost:8080). Testovi: `npm test`. 2D poze: `tools/poses.html`. 3D model i poze: `tools/model.html`.
+   - Borba je u 3D-u (`src/render/renderer3d.js`, model Quaternius CC0 u `assets/models/fighter/`), 2D je rezerva. 3D poze su ciljevi u `src/render/poses3d.js` (x uz borbu, y gore, z prema kameri), a `fighter3d.js` ih rješava IK-om. Nova pozicija treba pozu i u `poses.js` (2D) i u `poses3d.js` (3D); provjera izgleda u `tools/model.html`.
    - Sav tekst u igri je na engleskom (imena protivnika ostaju hrvatska). Dokumentacija ostaje na hrvatskom.
    - Smjer grafike: krajnji proizvod je 3D, blizak stilu MMA Managera, s atletskim (ne zdepastim) proporcijama. HUD i efekti su HTML preko canvasa (`src/ui/fightFx.js` + `style.css`) i ne ovise o rendereru.
 3. Granice arhitekture:

@@ -20,7 +20,7 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
 
 Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.html`.
 
-Prototip low-poly 3D stila (Three.js): `http://localhost:8080/tools/lowpoly.html`. Three.js 0.170 (MIT) je spremljen lokalno u `vendor/three/`, bez CDN-a i bez build alata.
+Three.js 0.170 (MIT) je spremljen lokalno u `vendor/three/`, bez CDN-a i bez build alata.
 
 Pregled pravog 3D modela u BJJ pozicijama (stav, zatvoreni gard, mount, leđa, side control): `http://localhost:8080/tools/model.html`. Model je „Universal Base Characters” od Quaterniusa (CC0, `assets/models/fighter/LICENSE.txt`).
 
@@ -65,14 +65,16 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 ## Kako je napravljeno
 
 - **Sav tekst u igri je na engleskom**, prema odluci vlasnika. Imena protivnika su hrvatska, a dokumentacija ostaje na hrvatskom.
-- **Čisti JavaScript moduli i Canvas 2D, bez paketa i build koraka**, kao dev-farm. Pokretanje je jednostavno, a testovi rade izravno u Nodeu. Phaser ili React bi donijeli ovisnosti i build, a borci su ionako proceduralno crtani.
+- **Čisti JavaScript moduli, Canvas 2D i Three.js, bez paketa i build koraka**, kao dev-farm. Pokretanje je jednostavno, a testovi rade izravno u Nodeu. Phaser ili React bi donijeli ovisnosti i build, a borci su ionako proceduralno crtani.
 - **Logika je potpuno odvojena od prikaza.** `src/engine` ne zna za DOM ni Canvas, a renderer samo čita stanje borbe (pozicija, tko je gore, kritični trenutak). Zato se 2D prikaz kasnije može zamijeniti 3D-om bez diranja pravila.
 - **Pozicije su graf.** Svaka akcija (`src/data/positions.js`) ima potez, poziciju, ulogu (gore, dolje ili stojeći), ciljnu poziciju, obrane i tipične greške. Kritični trenutak slaže do 5 opcija samo od poteza koje igrač zna: točnih obrana ili napada i drugih poteza iz iste pozicije (ili susjedne), nikad stojećih tehnika na podu. Ako igrač ne zna obranu, odluke nema i napad se riješi po razinama.
 - **Uspjeh ovisi o razinama.** Šansa raste s razinom tvog poteza u odnosu na najbolju obranu protivnika, uz slučajnost. Konstante su podešene simulacijom: igrač koji bira dobro ima prosječno oko 10 kritičnih trenutaka po borbi i pobjeđuje u oko 60 % borbi protiv bijelog pojasa.
 - **Sva slučajnost u engineu ide kroz zadani `rng`**, pa su testovi deterministični.
+- **3D borba ima isto sučelje kao 2D** (`draw(view, dt, { slowmo, mode })`, `resize`), pa je `app.js` samo bira na početku borbe. Model i modul se učitavaju u pozadini čim se igra otvori. Komentari, nazivi tehnika i zatamnjenje crtaju se na tankom 2D platnu iznad 3D slike, a HTML HUD i efekti ostaju isti.
 - **3D borci su pravi model s kosturom, ne likovi iz koda.** Low-poly likovi složeni od valjaka izgledali su kao štapići, pa je odabran besplatan CC0 model (Quaternius, Standard verzija, atletska građa, oko 13 tisuća trokuta). U repou je samo ono što se koristi (muški model, dvije boje kože, dvije frizure, brada; teksture smanjene na 1024 px, ukupno oko 1,5 MB). Model nema odjeću, pa se rashguard i hlačice boje u shaderu prema težinama kostiju (prsa i nadlaktice, kukovi i bedra). Poze su 3D ciljevi (`src/render/poses3d.js`: kukovi, smjer trupa, šake, stopala), a ruke i noge postavlja IK s dvije kosti s pravim duljinama kostiju modela (`src/render/fighter3d.js`). Prijelazi miješaju rotacije kostiju (slerp).
 - **HUD i efekti su HTML preko canvasa**, ne dio crteža. Logiku „što prikazati” (`src/ui/fightFx.js`) čini skup čistih funkcija nad stanjem borbe, pa HUD i efekti ostaju isti kad 2D prikaz zamijeni 3D. Font je Barlow Condensed (SIL OFL, `assets/fonts/OFL.txt`) spremljen u projekt, pa igra radi bez interneta.
-- **Borci** su 2D figure sa zglobovima u rashguardu i šorcu: igrač je plavi, protivnik crveni. Svaka pozicija ima ključnu pozu, a između njih se glatko prelazi. Kamera prati borce, a slow-motion i zatamnjenje rubova označavaju kritični trenutak.
+- **Borci** su 3D model u rashguardu i hlačicama: igrač je plavi, protivnik crveni. Sparing je u dvorani kluba, natjecanje u areni sa sivim tatamijem i publikom. Svaka pozicija ima ključnu pozu, a između njih se glatko prelazi uz kratki „scramble”. Borci dišu, bore se za stisak i rade pokret po vrsti tehnike (rušenje, sweep, prolaz, bijeg, submission), a gubitnik submissiona tapka. Kamera prati borce i kadrira oba cijela, a slow-motion i zatamnjenje rubova označavaju kritični trenutak.
+  - U testnom panelu „3D fighters” vraća stare 2D figure (postavka se pamti u pregledniku). Ako preglednik nema WebGL ili se model ne učita, borba je automatski u 2D-u.
 
 ## Struktura
 
@@ -87,7 +89,7 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 │   ├── engine/fight.js       # borba: bodovanje, runde, kritični trenuci
 │   ├── engine/opponent.js    # AI protivnici i igrač kao borac
 │   ├── engine/rng.js         # seedable slučajnost
-│   ├── render/               # Canvas 2D prikaz (poze, renderer borbe, dvorana odozgo) i 3D model (fighter3d.js, poses3d.js)
+│   ├── render/               # 2D prikaz (renderer2d, dvorana odozgo) i 3D (renderer3d, fighter3d, poses3d, gym3d)
 │   ├── ui/app.js             # ekrani, petlja igre, localStorage
 │   ├── ui/fightFx.js         # natpisi, značke s bodovima i energija za HUD (bez DOM-a)
 │   └── ui/gymScene.js        # gdje si u dvorani i što radiš, za pogled odozgo (bez DOM-a)
@@ -95,7 +97,6 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 ├── assets/fonts/             # Barlow Condensed (woff2) i licenca OFL
 ├── assets/models/fighter/    # 3D model boraca (Quaternius, CC0), teksture 1024 px
 ├── tools/poses.html          # pregled svih poza
-├── tools/lowpoly.html        # prototip low-poly 3D stila
 ├── tools/model.html          # pregled 3D modela u BJJ pozicijama
 ├── vendor/three/             # Three.js (MIT) i GLTFLoader, lokalno
 └── docs/                     # koncept, dizajn i plan izrade
@@ -104,6 +105,6 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 ## Moguća poboljšanja
 
 - Prava (ne-testna) verzija bez testnog panela, s početnim stanjem bez naučenih poteza.
-- 3D borba u stilu bliskom MMA Manageru: Three.js i besplatan humanoidni model, poze iz igre na kosturu modela. Portreti na semaforu tada postaju prikaz glave modela.
+- Portreti na semaforu kao prikaz glave 3D modela, različiti izgledi protivnika (koža, kosa, građa), animacija za svaku tehniku posebno.
 - Klub kao izometrijska dvorana sa stanicama za trening i odbrojavanjem iznad njih.
 - Klub koji se nadograđuje, karijera s rang-listom, MMA, PvP i računi.

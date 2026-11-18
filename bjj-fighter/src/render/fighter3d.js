@@ -226,9 +226,10 @@ export async function createFighter3d({ skin = 'light', hair = 'buzzed', beard =
 
   // Transitions: solve both poses once, then blend bone rotations (slerp) so turning never passes through zero.
   const boneList = Object.values(bones);
+  const capture = () => boneList.map((b) => [b.quaternion.clone(), b.position.clone()]);
   function snapshot(t) {
     setPose(t);
-    return boneList.map((b) => [b.quaternion.clone(), b.position.clone()]);
+    return capture();
   }
   function applyBlend(a, b, k) {
     boneList.forEach((bone, i) => {
@@ -247,7 +248,7 @@ export async function createFighter3d({ skin = 'light', hair = 'buzzed', beard =
   // World position of a named joint (for tests in the browser and for placing effects).
   const joint = (name) => wp(name).toArray();
 
-  return { object: root, setPose, snapshot, applyBlend, setColors, metrics, joint, bones };
+  return { object: root, setPose, snapshot, capture, applyBlend, setColors, metrics, joint, bones };
 }
 
 export { THREE };

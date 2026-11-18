@@ -28,10 +28,10 @@
 <script type="module">
   import * as THREE from 'three';
   import { createFighter3d } from '../src/render/fighter3d.js';
-  import { createMat } from '../src/render/lowpoly.js';
+  import { createMat } from '../src/render/gym3d.js';
   import { POSES3D } from '../src/render/poses3d.js';
 
-  const NAMES = { standing: 'Standing', closedGuard: 'Closed guard', mount: 'Mount', back: 'Back', sideControl: 'Side control' };
+  const NAMES = { standing: 'Standing', closedGuard: 'Closed guard', mount: 'Mount', back: 'Back', sideControl: 'Side control', halfGuard: 'Half guard', butterfly: 'Butterfly guard', kneeOnBelly: 'Knee on belly', northSouth: 'North-south', turtle: 'Turtle (front headlock)' };
   const params = new URLSearchParams(location.search);
   const canvas = document.getElementById('c');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: params.has('shot') });
@@ -75,10 +75,7 @@
   let from = solve(sel.value), to = from, blend = 1;
   function go() { const now = current(); from = now; to = solve(sel.value); blend = 0; }
   // Capture the blended pose as a starting point for the next transition.
-  const current = () => ({
-    blue: Object.values(blue.bones).map((b) => [b.quaternion.clone(), b.position.clone()]),
-    red: Object.values(red.bones).map((b) => [b.quaternion.clone(), b.position.clone()]),
-  });
+  const current = () => ({ blue: blue.capture(), red: red.capture() });
   sel.onchange = () => { auto.checked = false; go(); };
 
   // Orbit camera: drag to turn, wheel or pinch to zoom.
