@@ -12,12 +12,14 @@
   .ui h1 { margin: 0 8px 0 0; font-size: 16px; background: rgba(8,10,16,0.75); padding: 6px 10px; border-radius: 8px; }
   select, button, label { font: inherit; color: inherit; background: rgba(27,32,48,0.92); border: 1px solid #2e3650; border-radius: 8px; padding: 6px 10px; }
   .note { position: fixed; left: 12px; bottom: 12px; right: 12px; color: #98a1b8; font-size: 13px; background: rgba(8,10,16,0.7); padding: 6px 10px; border-radius: 8px; max-width: 680px; }
+  .audit { position: fixed; right: 12px; top: 56px; color: #e9ecf3; font: 13px/1.4 ui-monospace, monospace; background: rgba(8,10,16,0.75); padding: 6px 10px; border-radius: 8px; }
   .loading { position: fixed; inset: 0; display: grid; place-items: center; color: #98a1b8; pointer-events: none; }
 </style>
 <script type="importmap">{ "imports": { "three": "../vendor/three/three.module.min.js" } }</script>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div class="audit" id="audit"></div>
 <div class="loading" id="loading">Loading the model…</div>
 <div class="ui">
   <h1>3D model preview</h1>
@@ -30,6 +32,7 @@
   import { createFighter3d } from '../src/render/fighter3d.js';
   import { createMat } from '../src/render/gym3d.js';
   import { POSES3D } from '../src/render/poses3d.js';
+  import { overlap, belowMat, settle } from '../src/render/contact3d.js';
 
   const NAMES = { standing: 'Standing', closedGuard: 'Closed guard', mount: 'Mount', back: 'Back', sideControl: 'Side control', halfGuard: 'Half guard', butterfly: 'Butterfly guard', kneeOnBelly: 'Knee on belly', northSouth: 'North-south', turtle: 'Turtle (front headlock)' };
   const params = new URLSearchParams(location.search);
@@ -71,12 +74,34 @@
 
   // Each pose is solved once; transitions blend the solved bone rotations.
   const solved = {};
-  const solve = (key) => (solved[key] ??= { blue: blue.snapshot(POSES3D[key].T), red: red.snapshot(POSES3D[key].B) });
+  // Poses are settled once (out of the mat and out of each other) unless ?raw is in the address.
+  const settled = {};
+  const poseOf = (key) => (settled[key] ??= params.has('raw') ? POSES3D[key] : settle(blue, red, POSES3D[key].T, POSES3D[key].B));
+  const solve = (key) => (solved[key] ??= { blue: blue.snapshot(poseOf(key).T), red: red.snapshot(poseOf(key).B) });
   let from = solve(sel.value), to = from, blend = 1;
   function go() { const now = current(); from = now; to = solve(sel.value); blend = 0; }
   // Capture the blended pose as a starting point for the next transition.
   const current = () => ({ blue: blue.capture(), red: red.capture() });
   sel.onchange = () => { auto.checked = false; go(); };
+
+  // Contact check of a solved pose: skin below the mat and skin inside the other fighter, in cm.
+  const cm = (m) => Math.round(m * 100);
+  function audit(key) {
+    blue.setPose(poseOf(key).T);
+    red.setPose(poseOf(key).B);
+    const ob = overlap(blue, red), or = overlap(red, blue);
+    return { pos: key, blueBelow: cm(belowMat(blue)), redBelow: cm(belowMat(red)), blueInRed: cm(ob.depth), blueInRedPart: ob.part, redInBlue: cm(or.depth), redInBluePart: or.part };
+  }
+  window.auditAll = () => Object.keys(POSES3D).map(audit);
+  let audited = '';
+  function showAudit() {
+    if (blend < 1 || audited === sel.value) return;
+    audited = sel.value;
+    const a = audit(sel.value);
+    blue.applyBlend(to.blue, to.blue, 1);
+    red.applyBlend(to.red, to.red, 1);
+    document.getElementById('audit').textContent = `below mat: blue ${a.blueBelow} cm, red ${a.redBelow} cm · overlap: ${Math.max(a.blueInRed, a.redInBlue)} cm`;
+  }
 
   // Orbit camera: drag to turn, wheel or pinch to zoom.
   let yaw = Number(params.get('yaw') ?? 0.55), pitch = Number(params.get('pitch') ?? 0.38), dist = Number(params.get('dist') ?? 3.6);
@@ -129,6 +154,7 @@
     }
     blue.applyBlend(from.blue, to.blue, ease(blend));
     red.applyBlend(from.red, to.red, ease(blend));
+    showAudit();
     look.y += ((sel.value === 'standing' ? 0.85 : 0.4) - look.y) * Math.min(1, dt * 3);
     camera.position.set(look.x + dist * Math.cos(pitch) * Math.sin(yaw), look.y + dist * Math.sin(pitch), look.z + dist * Math.cos(pitch) * Math.cos(yaw));
     camera.lookAt(look);

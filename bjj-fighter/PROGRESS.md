@@ -230,6 +230,14 @@ Vlasnik je odobrio model i poze („kasnije ćemo modele možda malo modificirat
 - `app.js` i `index.html`: import mapa za `three`, 3D platno uz 2D platno, modul i model se učitavaju u pozadini kad se igra otvori. Borba je u 3D-u ako je model učitan i 3D uključen; inače 2D. Testni panel ima „3D fighters” (pamti se u `localStorage` pod `bjj-fighter-view`, jer je to postavka preglednika, a ne napredak). Bez WebGL-a panel piše da 3D nije dostupan.
 - Uklonjeni low-poly prototip (`tools/lowpoly.html`, `src/render/lowpoly.js`, `src/render/pose3d.js` i njegov test); tatami i dvorana premješteni su u `src/render/gym3d.js`.
 
+### Dorada 3D animacije (u tijeku)
+Vlasnik: animacija nije fluidna („kao da se slike mijenjaju u starim crtićima”), pod na turniru treperi crno-bijelo, udovi propadaju kroz tatami i jedni u druge.
+- Treperenje poda u areni (z-fighting): plohe su razmaknute po visini. Napravljeno.
+- `src/render/contact3d.js`: mjerenje kože ispod tatamija i u drugom borcu na stvarnim verteksima; `settle()` pri učitavanju slegne svih 10 poza (prije do 18 cm ispod tatamija i 11 cm preklapanja, sada 0–1 cm ispod i najviše oko 5 cm preklapanja); tijekom igre provjera poda i lagano guranje iz kontakta.
+- Pokreti: stalni živi pokret (težina, stisak, kukovi, glava), tehnike sa zaletom i smirivanjem koje se ne prekidaju, smjer tehnike određen na početku pokreta, prijelazi miješaju ciljeve poze (ravno + korak, trup kao cjelina, prsa i glava u odnosu na kukove) umjesto rotacija kostiju, trajanje prijelaza prema putu (0,7–1,8 s), IK pamti smjer savijanja lakta i koljena, mirnija kamera, automatsko smanjenje kvalitete ispod ~40 fps i FPS u testnom panelu.
+- `tools/anim-check.html`: zadani niz pozicija kroz 3D renderer točno 60 sličica/s; `window.result` daje najveći pomak zgloba po sličici, dubinu ispod tatamija i preklapanje.
+- Stanje mjerenja (60 sličica/s): najveći pomak po sličici pao je s 38 cm na oko 27 cm (bez korektora) / 40 cm (s njima); ostaje skok koljena crvenog u prijelazu u side control na t=0,5 koji se ne vidi kad se taj prijelaz pusti sam (ovisi o prethodnoj pozi; vjerojatno pamćenje smjera savijanja ili guranje iz kontakta). Preklapanje u sredini prijelaza do ~10 cm, kratko propadanje do ~10–17 cm (s korektorom poda).
+
 ## Zadnja automatizirana provjera
 
 Provedeno 18. studenog 2026. (3D borba):

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>3D animation check</title>
+<script type="importmap">{ "imports": { "three": "../vendor/three/three.module.min.js" } }</script>
+<style>body { margin: 0; background: #111; color: #ddd; font: 13px monospace; } canvas { width: 800px; height: 450px; display: block; }</style>
+</head>
+<body>
+<!-- Plays a fixed sequence of positions and techniques through the 3D fight renderer at exactly 60 frames
+     per second of animation time (however slow the machine renders), then reports in window.result:
+     the biggest per-frame joint move, the deepest sink into the mat and the deepest overlap. -->
+<div style="position:relative;width:800px;height:450px"><canvas id="c3"></canvas><canvas id="ui" style="position:absolute;inset:0"></canvas></div>
+<pre id="out">running…</pre>
+<script type="module">
+  import { createRenderer3d } from '../src/render/renderer3d.js';
+  const r = createRenderer3d(document.getElementById('c3'), document.getElementById('ui'));
+  await r.ready;
+  r.measure(true);
+  const q = new URLSearchParams(location.search);
+  r.tune({ push: !q.has('nopush'), ground: !q.has('noground') });
+  // [position, playerTop, action id that caused it, success]
+  const STEPS = [
+    ['standing', null, null], ['closedGuard', true, 'pull'], ['halfGuard', true, 'toreando'], ['sideControl', true, 'kneeSlice_b'],
+    ['mount', true, 'snap'], ['back', true, 'snap'], ['closedGuard', false, 'sideShrimp_e'], ['mount', false, 'hipBump'],
+    ['halfGuard', false, 'sideShrimp_e'], ['butterfly', false, 'recoverClosed'], ['sideControl', true, 'flower'],
+    ['kneeOnBelly', true, 'snap'], ['northSouth', true, 'snap'], ['turtle', false, 'kobEscape_e'], ['standing', null, 'sideUnderhook_e'],
+    ['halfGuard', true, 'td_single'],
+  ];
+  const view = { pos: 'standing', playerTop: null, log: [], ended: null, lastAction: null };
+  let seq = 0;
+  for (const [pos, top, action] of STEPS) {
+    if (action) view.lastAction = { seq: ++seq, actionId: action, who: top === false ? 'o' : 'p', success: true };
+    Object.assign(view, { pos, playerTop: top });
+    for (let i = 0; i < 150; i++) r.draw(view, 1 / 60, { mode: 'spar' }); // 2.5 s per position
+  }
+  window.result = r.stats();
+  document.getElementById('out').textContent = JSON.stringify(window.result, null, 1);
+</script>
+</body>
+</html>

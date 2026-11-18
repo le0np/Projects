@@ -100,7 +100,10 @@ function aim(bone, child, target) {
 }
 
 // Two-bone IK: root joint fixed, middle joint bends towards `pole`, end joint as close to `target` as the bones allow.
-function twoBone(upper, lower, end, target, pole) {
+// `memory` (optional) keeps the bend direction between frames: when the pole comes close to the line of
+// the limb its direction becomes unreliable and would flip the elbow or knee to the other side in one
+// frame, so the previous bend direction takes over there.
+function twoBone(upper, lower, end, target, pole, memory) {
   const A = upper.getWorldPosition(new THREE.Vector3());
   const l1 = lower.position.length();
   const l2 = end.position.length();
@@ -111,8 +114,17 @@ function twoBone(upper, lower, end, target, pole) {
   const sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
   const p = pole.clone().sub(A);
   const perp = p.addScaledVector(dir, -p.dot(dir));
+  const clear = perp.length(); // how far the pole is from the line of the limb
+  if (memory?.perp) {
+    const last = memory.perp.clone().addScaledVector(dir, -memory.perp.dot(dir));
+    if (last.lengthSq() > 1e-8) {
+      const trust = Math.min(1, Math.max(0, (clear - 0.03) / 0.15));
+      perp.normalize().multiplyScalar(trust).addScaledVector(last.normalize(), 1 - trust);
+    }
+  }
   if (perp.lengthSq() < 1e-8) perp.set(0, 1, 0).addScaledVector(dir, -dir.y);
   perp.normalize();
+  if (memory) memory.perp = perp.clone();
   const mid = A.clone().addScaledVector(dir, l1 * cosA).addScaledVector(perp, l1 * sinA);
   aim(upper, lower, mid);
   aim(lower, end, A.addScaledVector(dir, d));
@@ -200,7 +212,10 @@ export async function createFighter3d({ skin = 'light', hair = 'buzzed', beard =
   }
 
   // `t`: target, all in world metres (x along the mat, y up, z depth). See poses3d.js.
-  function setPose(t) {
+  // Bend directions remembered between frames (animation only; one-off solves start fresh).
+  const bendMemory = {};
+
+  function setPose(t, continuous = false) {
     resetPose();
     const pelvis = bones.pelvis;
     pelvis.parent.updateMatrixWorld(true);
@@ -216,8 +231,9 @@ export async function createFighter3d({ skin = 'light', hair = 'buzzed', beard =
     setWorldQuaternion(bones.Head, dHead.clone().multiply(restQ.Head));
     for (const s of ['l', 'r']) {
       const S = s.toUpperCase();
-      twoBone(bones[`upperarm_${s}`], bones[`lowerarm_${s}`], bones[`hand_${s}`], v3(t[`hand${S}`]), v3(t[`elbow${S}`]));
-      twoBone(bones[`thigh_${s}`], bones[`calf_${s}`], bones[`foot_${s}`], v3(t[`foot${S}`]), v3(t[`knee${S}`]));
+      const mem = (k) => (continuous ? (bendMemory[k] ??= {}) : null);
+      twoBone(bones[`upperarm_${s}`], bones[`lowerarm_${s}`], bones[`hand_${s}`], v3(t[`hand${S}`]), v3(t[`elbow${S}`]), mem(`arm${S}`));
+      twoBone(bones[`thigh_${s}`], bones[`calf_${s}`], bones[`foot_${s}`], v3(t[`foot${S}`]), v3(t[`knee${S}`]), mem(`leg${S}`));
       if (t[`toe${S}`]) aim(bones[`foot_${s}`], bones[`ball_${s}`], v3(t[`toe${S}`]));
       grip(s, t.grip ?? 0.6);
     }
@@ -248,7 +264,7 @@ export async function createFighter3d({ skin = 'light', hair = 'buzzed', beard =
   // World position of a named joint (for tests in the browser and for placing effects).
   const joint = (name) => wp(name).toArray();
 
-  return { object: root, setPose, snapshot, capture, applyBlend, setColors, metrics, joint, bones };
+  return { object: root, mesh: skinned, setPose, snapshot, capture, applyBlend, setColors, metrics, joint, bones };
 }
 
 export { THREE };

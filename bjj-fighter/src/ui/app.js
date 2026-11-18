@@ -40,6 +40,7 @@ let view3d = (() => { try { return localStorage.getItem(VIEW_KEY) !== '2d'; } ca
 const load3d = import('../render/renderer3d.js').then((m) => {
   if (!m.webglAvailable()) throw new Error('WebGL is not available');
   renderer3d = m.createRenderer3d($('canvas3d'), $('canvas3d-ui'));
+  window.__renderer3d = renderer3d; // for the browser checks (frame rate, smoothness)
   return renderer3d.ready;
 }).catch((err) => { console.warn('3D view off:', err); renderer3d = null; });
 load3d.then(() => { if (activeTab === 'test' && !fightCtx) renderTab(); }); // the test panel says whether 3D works
@@ -271,7 +272,7 @@ function renderTest() {
     <div class="test-row"><label>Money</label><button class="secondary" data-money>+500 €</button></div>
     <div class="test-row"><label for="view3d-toggle">3D fighters</label>
       <input type="checkbox" id="view3d-toggle" ${view3d ? 'checked' : ''}>
-      <span class="hint" style="margin:0">${renderer3d ? 'On: the 3D model. Off: the 2D figures.' : 'The 3D view is not available in this browser, so fights use the 2D figures.'}</span></div>
+      <span class="hint" style="margin:0">${renderer3d ? `On: the 3D model. Off: the 2D figures.${renderer3d.stats().fps ? ` Last 3D fight: ${renderer3d.stats().fps} fps (${renderer3d.stats().quality} quality).` : ''}` : 'The 3D view is not available in this browser, so fights use the 2D figures.'}</span></div>
     <div class="test-row"><label>New game</label><button class="ghost" data-reset>Delete progress</button></div>`;
 }
 
