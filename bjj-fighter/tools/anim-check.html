@@ -19,20 +19,21 @@
   r.measure(true);
   const q = new URLSearchParams(location.search);
   r.tune({ ground: !q.has('noground') });
-  // [position, playerTop, action id that caused it, success]
+  // [position after the action, playerTop after it, action id, who did it, success] — real actions from each position.
   const STEPS = [
-    ['standing', null, null], ['closedGuard', true, 'pull'], ['halfGuard', true, 'toreando'], ['sideControl', true, 'kneeSlice_b'],
-    ['mount', true, 'snap'], ['back', true, 'snap'], ['closedGuard', false, 'sideShrimp_e'], ['mount', false, 'hipBump'],
-    ['halfGuard', false, 'sideShrimp_e'], ['butterfly', false, 'recoverClosed'], ['sideControl', true, 'flower'],
-    ['kneeOnBelly', true, 'snap'], ['northSouth', true, 'snap'], ['turtle', false, 'kobEscape_e'], ['standing', null, 'sideUnderhook_e'],
-    ['halfGuard', true, 'td_single'],
+    ['standing', null, null], ['closedGuard', true, 'td_single', 'p', true], ['butterfly', true, 'openGuard', 'p', true],
+    ['sideControl', true, 'toreando', 'p', true], ['mount', true, 'sideToMount', 'p', true], ['mount', true, 'armbar_m', 'p', false],
+    ['back', true, 'mountToBack', 'p', true], ['back', true, 'rnc_b', 'p', false], ['closedGuard', false, 'backEscape_e', 'o', true],
+    ['closedGuard', false, 'armbar_cg', 'p', false], ['mount', true, 'hipBump', 'p', true], ['closedGuard', false, 'mountUpa_e', 'o', true],
+    ['halfGuard', false, 'recoverHalf', 'p', false], ['mount', true, 'scissor', 'p', true], ['northSouth', true, 'sideToMount', 'p', false],
+    ['standing', null, 'standUp_t', 'o', true], ['halfGuard', true, 'td_double', 'p', true],
   ];
   const view = { pos: 'standing', playerTop: null, log: [], ended: null, lastAction: null };
   let seq = 0;
-  for (const [pos, top, action] of STEPS) {
-    if (action) view.lastAction = { seq: ++seq, actionId: action, who: top === false ? 'o' : 'p', success: true };
+  for (const [pos, top, action, who, success] of STEPS) {
+    if (action) view.lastAction = { seq: ++seq, actionId: action, who, success };
     Object.assign(view, { pos, playerTop: top });
-    for (let i = 0; i < 150; i++) r.draw(view, 1 / 60, { mode: 'spar' }); // 2.5 s per position
+    for (let i = 0; i < 150; i++) r.draw(view, 1 / 60, { mode: 'spar' }); // 2.5 s per step
   }
   window.result = r.stats();
   document.getElementById('out').textContent = JSON.stringify(window.result, null, 1);

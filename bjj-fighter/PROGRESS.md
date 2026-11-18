@@ -248,9 +248,27 @@ Vlasnik: bijeli pojas s 10 poteza na maksimumu (shrimp, single leg, hip bump, ha
 - Simulacija (400 borbi protiv natjecatelja bijelog pojasa, točne kartice): vlasnikov sastav 46 % → 50 % pobjeda. Više od formula pomaže širina igre: isti sastav + 7 poteza na razini 6 (zatvoreni gard, elbow-knee, upa, toreando, postura u gardu, kimura, RNC) 85 %; obrane na 5 i snaga/kondicija 4 bez novih poteza 78 %; sve zajedno 98 %. Gubitci dolaze od raznih submissiona (obrane na 1, protivnici napadi oko 4–5 i snaga 3–4) i od pozicija u kojima igrač ne zna ništa pa se bori na instinkt (60 % greške). Težina natjecatelja nije mijenjana.
 - Testovi: 4 nova u `tests/fight.test.js`.
 
+### Animacije tehnika
+Vlasnik: „Moramo napraviti animacije za tehnike, tako će kretanje biti puno fluidnije i realnije.”
+- `src/render/techniques3d.js`: klipovi tehnika (ključni trenuci s pomacima ciljeva poze za napadača i branitelja, `K(t, a, d, { A, D })`, apsolutni ciljevi za završne oblike). 30 od 57 akcija ima vlastiti klip (rušenja, guard pull, snap down, guillotine, sweepovi iz garda, submissioni iz garda, prolazi, prijelazi side → mount / knee on belly, mount → leđa, bijegovi upa / elbow-knee / shrimp / s leđa, armbar iz mounta, garda i knee on belly, americana, kimura, RNC, d'arce, guillotine s kornjače, kornjača → leđa), ostale klip prema vrsti. Testovi: `tests/techniques3d.test.js` (5).
+- `renderer3d.js`: klip počinje s akcijom; odgovor na odluku nastavlja isti klip; prijelaz pozicije traje koliko klip; uspješan submission drži završni oblik. Nagib smjera „gore” okreće i smjer „naprijed” (inače se trup zavrtio kod sjedanja u hip bumpu). Šake, stopala i koljena ne idu ispod tatamija, a podizanje s poda je najviše 1,5 cm po sličici.
+- `tools/techniques.html`: svaka tehnika uspjeh/neuspjeh, usporeno; `?strip&action=…&outcome=…` slaže 6 sličica za provjeru.
+- Pregledano po sličicama: double leg, single leg, hip bump, armbar iz mounta (pravi završni oblik), armbar iz garda (iz ovog kuta kamere slabo se vidi), mount → leđa, RNC (ruka pod bradom), bijeg s leđa, neuspjeli armbar (pola zamaha pa natrag).
+- `tools/anim-check.html` sada koristi stvarne akcije iz svake pozicije, uključujući neuspjele submissione.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 18. studenog 2026. (dorada 3D animacije):
+Provedeno 18. studenog 2026. (animacije tehnika i ravnoteža):
+
+| Provjera | Rezultat |
+| --- | --- |
+| `npm test` | 127/127 prolazi |
+| `tools/anim-check.html` (60 sličica/s, 17 stvarnih akcija) | najveći pomak zgloba 9 cm po sličici (brzo prevrtanje kod upe), najdublje ispod tatamija 13 cm (trenutno, kod rušenja), najveće preklapanje 11 cm (trenutno, u bijegu) |
+| `tools/techniques.html` | snimke 9 tehnika, 0 grešaka |
+| Playwright e2e | sparing do kraja u 3D-u, 0 grešaka u konzoli |
+| Simulacija ravnoteže (400 borbi) | vlasnikov sastav 50 % pobjeda, sa 7 dodatnih poteza 85 % |
+
+Prethodna provjera (18. studenog 2026., dorada 3D animacije):
 
 | Provjera | Rezultat |
 | --- | --- |
@@ -327,7 +345,7 @@ Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 ## Poznata ograničenja
 
 - Postoji samo testna verzija (testni panel, ubrzanje, ⚡ +1).
-- 3D borba: svi protivnici imaju isti izgled (tamna koža, brada, crveni rashguard). U mirnim pozama tijela se preklapaju najviše oko 5 cm, a usred prijelaza kratko do oko 11 cm; u stavu se ruke križaju, a pokreti tehnika su pomaci ciljeva (nema posebne animacije za svaku tehniku). Brzina na pravom mobitelu nije izmjerena (provjereno u headless Chromiumu sa softverskim WebGL-om).
+- 3D borba: svi protivnici imaju isti izgled (tamna koža, brada, crveni rashguard). U mirnim pozama tijela se preklapaju najviše oko 5 cm, a usred prijelaza kratko do oko 11 cm; u stavu se ruke križaju. 30 tehnika ima vlastitu animaciju, ostale opću prema vrsti; usred prevrtanja kod hip bumpa gornji je nakratko previsoko, a armbar iz garda iz kuta kamere slabo se vidi. Brzina na pravom mobitelu nije izmjerena (provjereno u headless Chromiumu sa softverskim WebGL-om).
 - Prva borba odmah nakon otvaranja igre može biti u 2D-u ako se model još nije učitao (oko 1,5 MB).
 - Rashguard je obojena koža (bez nabora i ruba tkanine), a model u besplatnoj verziji postoji samo u dvije boje kože.
 - Animacije su po vrsti tehnike (rušenje, sweep, prolaz, bijeg, submission), ne za svaku tehniku posebno. Poze su ključne poze po poziciji, 2D. U 2D načinu borci su i dalje stare 2D figure.

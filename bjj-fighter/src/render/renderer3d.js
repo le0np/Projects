@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import { createFighter3d } from './fighter3d.js';
 import { createMat } from './gym3d.js';
-import { POSES3D, blendPose, poseTravel } from './poses3d.js';
+import { POSES3D, blendPose, poseTravel, completePose } from './poses3d.js';
+import { CLIPS, clipFor, clipAt, mirrorOffsets, mirrorAbsolute } from './techniques3d.js';
 import { settle, sampleSkin, overlap } from './contact3d.js';
 import { ACTION_BY_ID } from '../data/positions.js';
 import { MOVE_BY_ID } from '../data/moves.js';
@@ -22,9 +23,10 @@ const ease = (t) => t * t * t * (t * (t * 6 - 15) + 10);
 // Smooth wobble from layered sines (cheap stand-in for noise), roughly -1..1.
 const wobble = (t, seed) => (Math.sin(t * 0.9 + seed) * 0.5 + Math.sin(t * 1.7 + seed * 2.3) * 0.3 + Math.sin(t * 2.9 + seed * 4.1) * 0.2);
 const SMOOTH_JOINTS = ['Head', 'pelvis', 'hand_l', 'hand_r', 'foot_l', 'foot_r', 'calf_l', 'calf_r', 'lowerarm_l', 'lowerarm_r'];
+// Lowest height of the target of each end point (metres): the joint centre sits this far above the mat.
+const FLOOR_MIN = [['handL', 0.05], ['handR', 0.05], ['footL', 0.07], ['footR', 0.07], ['toeL', 0], ['toeR', 0], ['kneeL', 0.06], ['kneeR', 0.06], ['pelvis', 0.11]];
 const TOP_ARC = 0.12; // metres the top fighter's hips rise in the middle of a transition
 const TRANSITION = 0.85; // default seconds for a change of position
-const PULSE = 0.95; // seconds for a technique movement
 const add = (a, b, k = 1) => [a[0] + b[0] * k, a[1] + b[1] * k, a[2] + b[2] * k];
 const POINTS = ['pelvis', 'handL', 'handR', 'elbowL', 'elbowR', 'footL', 'footR', 'kneeL', 'kneeR', 'toeL', 'toeR'];
 const UPPER = ['handL', 'handR', 'elbowL', 'elbowR'];
@@ -36,6 +38,21 @@ function slots(view) {
   return view.playerTop ? { p: 'T', o: 'B' } : { p: 'B', o: 'T' };
 }
 
+const DIR_PAIRS = [['hipUp', 'hipFwd'], ['chestUp', 'chestFwd'], ['headUp', 'headFwd']];
+const unit = (v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
+// Rotate v by the smallest rotation that takes direction `from` to direction `to` (Rodrigues).
+function rotateLike(from, to, v) {
+  const a = unit(from);
+  const b = unit(to);
+  const axis = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const sin = Math.hypot(...axis);
+  const cos = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  if (sin < 1e-6) return v;
+  const k = axis.map((x) => x / sin);
+  const kv = k[0] * v[0] + k[1] * v[1] + k[2] * v[2];
+  const kxv = [k[1] * v[2] - k[2] * v[1], k[2] * v[0] - k[0] * v[2], k[0] * v[1] - k[1] * v[0]];
+  return v.map((x, i) => x * cos + kxv[i] * sin + k[i] * kv * (1 - cos));
+}
 const clonePose = (p) => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, Array.isArray(v) ? [...v] : v]));
 const shift = (p, keys, d, k = 1) => { for (const key of keys) if (p[key]) p[key] = add(p[key], d, k); };
 
@@ -111,7 +128,7 @@ export function createRenderer3d(canvas, overlay) {
   scene.add(gym, arena);
 
   const state = {
-    fighters: null, poses: {}, ready: false, failed: null, key: '', t: 1, from: null, time: 0, pulses: [], lastSeq: -1,
+    fighters: null, poses: {}, ready: false, failed: null, key: '', t: 1, from: null, time: 0, clips: [], lastSeq: -1,
     tapT: 0, labels: [], captions: [], logLen: 0, cam: null, frameMs: [], quality: 'high', fps: 0,
   };
 
@@ -174,28 +191,6 @@ export function createRenderer3d(canvas, overlay) {
     scene.fog = comp ? new THREE.Fog('#07080c', 8, 20) : new THREE.Fog('#1b2030', 9, 18);
   }
 
-  // Envelope of a technique movement (t in seconds): a short wind-up away from the opponent, the drive,
-  // then a slow settle. Zero speed at the start and the end, so a movement never pops in or out.
-  function envelope(t) {
-    const a = Math.min(1, Math.max(0, t / PULSE));
-    if (a < 0.18) return -0.25 * Math.sin(Math.PI * a / 0.18);
-    if (a < 0.5) return ease((a - 0.18) / 0.32);
-    return 1 - ease((a - 0.5) / 0.5);
-  }
-
-  // Offsets of one technique movement for the fighter who does it.
-  function attack(p, kind, k, dir, success, t) {
-    switch (kind) {
-      case 'takedown': shift(p, ['pelvis', ...UPPER], [dir * 0.3, -0.2, 0], k); shift(p, LOWER, [dir * 0.08, 0, 0], k); break; // shoot in low
-      case 'sweep': shift(p, ['pelvis'], [dir * 0.04, 0.05, 0], k); shift(p, LOWER, [dir * 0.04, 0.2, 0], k); break; // hooks elevate
-      case 'pass': shift(p, ['pelvis', ...UPPER], [dir * 0.22, 0.04, 0], k); shift(p, LOWER, [dir * 0.1, 0, 0], k); break; // drive around the legs
-      case 'escape': shift(p, ['pelvis', ...LOWER], [-dir * 0.2, 0.03, 0], k); break; // shrimp away
-      case 'sub': shift(p, ['handL', 'handR'], [-dir * 0.1, Math.sin(t * 40) * 0.02 * Math.abs(k), 0], k); break; // squeeze
-      default: shift(p, ['pelvis', ...UPPER], [dir * 0.12, 0.02, 0], k);
-    }
-    if (success === false) shift(p, ['pelvis', ...UPPER], [-dir * 0.07, 0, 0], Math.max(0, k) * 0.6); // botched: falls back
-  }
-
   // Breathing, weight shifts, hand fighting, technique movements and the tap, applied to the pose targets.
   function liven(pose, who, other, view) {
     const p = clonePose(pose);
@@ -223,17 +218,33 @@ export function createRenderer3d(canvas, overlay) {
       const ph = seed + i * 1.9;
       p[h] = add(p[h], [wobble(t * 1.3, ph) * 0.05, wobble(t * 1.1, ph + 7) * 0.04, wobble(t * 1.2, ph + 11) * 0.03]);
     });
-    for (const pulse of state.pulses) {
-      const k = envelope(pulse.t) * (pulse.success === false ? 0.6 : 1);
-      if (pulse.who === who) attack(p, pulse.kind, k, pulse.dir, pulse.success, pulse.t);
-      else if (pulse.kind === 'sub' && pulse.success !== true) {
+    // Technique clips: the attacker and the defender move through the technique's keyframes.
+    // First the offsets of every clip, then the tilt coupling, then the absolute targets (end shapes).
+    const before = Object.fromEntries(DIR_PAIRS.flat().map((k) => [k, p[k]]));
+    const parts = state.clips.map((c) => {
+      const off = clipAt(c.clip, c.t, c.outcome);
+      const mine = c.who === who ? off.a : off.d;
+      const abs = c.who === who ? off.A : off.D;
+      return { c, mine: c.mirror ? mirrorOffsets(mine) : mine, abs: c.mirror ? mirrorAbsolute(abs) : abs };
+    });
+    for (const { mine } of parts) for (const [k, v] of Object.entries(mine)) if (p[k]) p[k] = add(p[k], v);
+    // A clip that tilts a body part's up direction turns its front with it (sitting up turns the face
+    // forward too), so up and front never end up parallel and the body never flips.
+    for (const [up, fwd] of DIR_PAIRS) {
+      if (!before[up] || !p[up] || p[up] === before[up]) continue;
+      const turned = rotateLike(before[up], p[up], before[fwd]);
+      p[fwd] = p[fwd] === before[fwd] ? turned : add(turned, p[fwd].map((v, i) => v - before[fwd][i]));
+    }
+    for (const { abs } of parts) for (const [k, { v, w }] of Object.entries(abs)) if (p[k]) p[k] = p[k].map((x, i) => x + (v[i] - x) * w);
+    for (const { c } of parts) {
+      if (c.kind === 'sub' && c.who !== who && c.outcome !== 'fail') {
         // the one caught in a submission fights the grip
-        const s = Math.sin(pulse.t * 22) * 0.05 * Math.max(0, k);
-        shift(p, ['handL', 'handR'], [s, Math.abs(s), 0]);
-      } else if (pulse.kind === 'takedown' || pulse.kind === 'sweep') {
-        shift(p, ['pelvis', ...UPPER], [pulse.dir * 0.06, 0, 0], Math.max(0, k)); // the other one gets driven back
+        const sh = Math.sin(state.time * 22) * 0.04 * Math.min(1, c.t * 3);
+        shift(p, ['handL', 'handR'], [sh, Math.abs(sh), 0]);
       }
     }
+    // Hands, feet and knees stay on or above the mat however a clip moves them (a post, a step).
+    for (const [k, min] of FLOOR_MIN) if (p[k] && p[k][1] < min) p[k] = [p[k][0], min, p[k][2]];
     if (view.ended && view.ended.method === 'sub' && view.ended.winner !== who) {
       p.handR = add(p.handR, [0, Math.abs(Math.sin(state.tapT * 9)) * 0.1, 0]); // the tap
     }
@@ -257,6 +268,9 @@ export function createRenderer3d(canvas, overlay) {
         // Longer way, longer transition: a small adjustment takes 0.7 s, standing to the ground up to 1.6 s.
         const travel = Math.max(poseTravel(state.from.p, P[s.p]), poseTravel(state.from.o, P[s.o]));
         state.duration = Math.min(1.8, Math.max(0.7, 0.45 + travel * 0.75));
+        // A technique that moves to a new position takes as long as its clip, so both run together.
+        const fresh = state.clips.find((c) => c.fresh && c.outcome === 'success');
+        if (fresh) state.duration = Math.max(state.duration, fresh.clip.dur);
       }
       state.t = state.from ? 0 : 1;
       state.key = key;
@@ -272,7 +286,7 @@ export function createRenderer3d(canvas, overlay) {
     const top = s.p === 'T' ? 'p' : 'o';
     for (const w of ['p', 'o']) {
       const other = w === 'p' ? 'o' : 'p';
-      const base = moving ? blendPose(state.from[w], P[s[w]], k, 0.07) : P[s[w]];
+      const base = moving ? blendPose(state.from[w], P[s[w]], k, 0.07) : completePose(P[s[w]]);
       const otherBase = moving ? blendPose(state.from[other], P[s[other]], k) : P[s[other]];
       shown[w] = base;
       const f = state.fighters[w];
@@ -283,21 +297,23 @@ export function createRenderer3d(canvas, overlay) {
       if (below > (state.maxBelow ?? 0)) {
         state.maxBelow = below;
         const low = sampleSkin(f, 24).reduce((m, q) => (q[1] < m[1] ? q : m));
-        state.maxBelowWhen = `${w} ${state.key} t=${state.t.toFixed(2)} pulses=${state.pulses.map((q) => q.kind).join('+')} region=${low[3]}`;
+        state.maxBelowWhen = `${w} ${state.key} t=${state.t.toFixed(2)} clips=${state.clips.map((q) => q.kind).join('+')} region=${low[3]}`;
       }
       const g = (state.ground ??= { p: 0, o: 0 });
-      g[w] += (below - g[w]) * (below > g[w] ? 0.6 : 0.15); // rises quickly, settles back slowly
+      // Rises at most 1.5 cm per frame and settles back slowly, so a lift is never a jump.
+      g[w] += Math.max(-0.006, Math.min(0.015, (below - g[w]) * (below > g[w] ? 0.6 : 0.15)));
       f.object.position.y = state.tune?.ground === false ? 0 : g[w];
       f.object.updateMatrixWorld(true);
     }
     // Overlap check (for the browser checks): how deep one fighter's skin goes into the other.
     if (state.measure) {
       const d = Math.max(overlap(p, o, 24).depth, overlap(o, p, 24).depth);
-      if (d > (state.maxOverlap ?? 0)) { state.maxOverlap = d; state.maxOverlapWhen = `${state.key} t=${state.t.toFixed(2)} pulses=${state.pulses.map((q) => q.kind).join('+')}`; }
+      if (d > (state.maxOverlap ?? 0)) { state.maxOverlap = d; state.maxOverlapWhen = `${state.key} t=${state.t.toFixed(2)} clips=${state.clips.map((q) => q.kind).join('+')}`; }
     }
     // Remember the unanimated pose on screen, so the next transition starts exactly where this one is.
     state.shown = shown;
     if (!moving) state.from = null;
+    for (const c of state.clips) c.fresh = false;
   }
 
   // Camera beside the pair, a little in front and above. It frames the heads, hands and feet of both
@@ -339,26 +355,34 @@ export function createRenderer3d(canvas, overlay) {
     if (view.lastAction && view.lastAction.seq !== state.lastSeq) {
       state.lastSeq = view.lastAction.seq;
       const action = ACTION_BY_ID[view.lastAction.actionId];
-      // Movements overlap instead of replacing each other, so a new action never cuts the last one short.
-      // The direction (towards the opponent along the mat) is fixed when the move starts; worked out every
-      // frame it would flip the moment the hips pass each other in a transition.
-      const me = state.shown?.[view.lastAction.who]?.pelvis;
-      const them = state.shown?.[view.lastAction.who === 'p' ? 'o' : 'p']?.pelvis;
-      const dir = me && them ? Math.sign(them[0] - me[0]) || 1 : 1;
-      state.pulses.push({ who: view.lastAction.who, success: view.lastAction.success, t: 0, kind: action?.kind, dir });
-      if (state.pulses.length > 4) state.pulses.shift();
+      const who = view.lastAction.who;
+      const outcome = view.lastAction.success === true ? 'success' : view.lastAction.success === false ? 'fail' : 'pending';
+      // The answer to a move that waited for the player's decision continues the same clip.
+      const waiting = state.clips.find((c) => c.outcome === 'pending' && c.actionId === action?.id && c.who === who);
+      for (const c of state.clips) if (c !== waiting && c.outcome === 'pending') c.outcome = 'fail';
+      if (waiting) waiting.outcome = outcome;
+      else if (action && clipFor(action)) {
+        // A clip of its own is drawn in the start position's frame; a standing one by the right-hand fighter
+        // is mirrored. A generic clip points towards +x and is mirrored when the opponent is at -x.
+        const me = state.shown?.[who]?.pelvis;
+        const them = state.shown?.[who === 'p' ? 'o' : 'p']?.pelvis;
+        const dir = me && them ? Math.sign(them[0] - me[0]) || 1 : 1;
+        const mirror = CLIPS[action.id] ? action.role === 'neutral' && who === 'o' : dir < 0;
+        state.clips.push({ clip: clipFor(action), actionId: action.id, who, outcome, t: 0, mirror, kind: action.kind, fresh: true });
+        if (state.clips.length > 3) state.clips.shift();
+      }
       if (action) {
         const mark = view.lastAction.success === true ? ' ✔' : view.lastAction.success === false ? ' ✘' : '…';
         state.labels.push({ who: view.lastAction.who, text: `${MOVE_BY_ID[action.move].name}${mark}`, ok: view.lastAction.success, t: 0 });
         if (state.labels.length > 3) state.labels.shift();
       }
     }
-    for (const pulse of state.pulses) {
-      pulse.t += dt;
-      // A move still waiting for the player's decision holds at full stretch while time is slowed.
-      if (slowmo && pulse.success === null) pulse.t = Math.min(pulse.t, PULSE * 0.45);
+    for (const c of state.clips) {
+      c.t += dt / c.clip.dur;
+      // A move still waiting for the player's decision holds in the middle of the attempt.
+      if (c.outcome === 'pending') c.t = Math.min(c.t, 0.42);
     }
-    state.pulses = state.pulses.filter((pulse) => pulse.t < PULSE);
+    state.clips = state.clips.filter((c) => c.t < 1 || (c.clip.hold && c.outcome === 'success'));
     for (const l of state.labels) l.t += dtReal;
     state.labels = state.labels.filter((l) => l.t < 1.6);
     const log = view.log ?? [];
@@ -395,7 +419,7 @@ export function createRenderer3d(canvas, overlay) {
         state.maxStep = perFrame;
         const j = steps.indexOf(step);
         const joint = `${j < SMOOTH_JOINTS.length ? 'p' : 'o'}.${SMOOTH_JOINTS[j % SMOOTH_JOINTS.length]}`;
-        state.maxStepWhen = `${joint} ${state.from && state.t < 1 ? `transition to ${state.key} t=${state.t.toFixed(2)}` : state.pulses.length ? `move ${state.pulses.map((q) => q.kind).join('+')}` : 'idle'}`;
+        state.maxStepWhen = `${joint} [${state.clips.map((c) => `${c.actionId}:${c.outcome}@${c.t.toFixed(2)}`).join(' ')}] ${state.from && state.t < 1 ? `transition to ${state.key} t=${state.t.toFixed(2)}` : state.clips.length ? `move ${state.clips.map((q) => q.actionId).join("+")}` : 'idle'}`;
       }
     }
     state.lastJoints = now;
@@ -445,7 +469,7 @@ export function createRenderer3d(canvas, overlay) {
 
   // A fresh fight starts without the previous fight's camera, captions and animations.
   function reset() {
-    Object.assign(state, { standing: null, standKey: '', lastJoints: null, maxStep: 0, maxBelow: 0, maxOverlap: 0, ground: null, shown: null, key: '', t: 1, from: null, pulses: [], lastSeq: -1, tapT: 0, labels: [], captions: [], logLen: 0, cam: null, frameMs: [] });
+    Object.assign(state, { standing: null, standKey: '', lastJoints: null, maxStep: 0, maxBelow: 0, maxOverlap: 0, ground: null, shown: null, key: '', t: 1, from: null, clips: [], lastSeq: -1, tapT: 0, labels: [], captions: [], logLen: 0, cam: null, frameMs: [] });
   }
 
   resize();

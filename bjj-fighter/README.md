@@ -22,6 +22,8 @@ Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.ht
 
 Three.js 0.170 (MIT) je spremljen lokalno u `vendor/three/`, bez CDN-a i bez build alata.
 
+Pregled tehnika u 3D-u (svaka od 57 akcija, uspjeh ili neuspjeh, usporeno): `http://localhost:8080/tools/techniques.html`.
+
 Pregled pravog 3D modela u BJJ pozicijama (stav, zatvoreni gard, mount, leđa, side control): `http://localhost:8080/tools/model.html`. Model je „Universal Base Characters” od Quaterniusa (CC0, `assets/models/fighter/LICENSE.txt`).
 
 ## Kako se igra
@@ -71,6 +73,7 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 - **Pozicije su graf.** Svaka akcija (`src/data/positions.js`) ima potez, poziciju, ulogu (gore, dolje ili stojeći), ciljnu poziciju, obrane i tipične greške. Kritični trenutak slaže do 5 opcija samo od poteza koje igrač zna: točnih obrana ili napada i drugih poteza iz iste pozicije (ili susjedne), nikad stojećih tehnika na podu. Ako igrač ne zna obranu, odluke nema i napad se riješi po razinama.
 - **Uspjeh ovisi o razinama.** Šansa raste s razinom tvog poteza u odnosu na najbolju obranu protivnika, uz slučajnost. Odabrani submission ima 25 % između jednakih i +7 % po razini razlike (razina 10 protiv obrane 0: 95 %); sam od sebe između jednakih uspijeva rijetko (6 %, do najviše 60 %). Tko dobro zna neki napad, brani se od njega barem kao s pola te razine. Šansa greške prije borbe računa se samo od poteza koje borac zna. Konstante su podešene simulacijom: igrač koji bira dobro ima prosječno oko 10 kritičnih trenutaka po borbi i pobjeđuje u oko 60 % borbi protiv bijelog pojasa.
 - **Sva slučajnost u engineu ide kroz zadani `rng`**, pa su testovi deterministični.
+- **Tehnike imaju svoje animacije** (`src/render/techniques3d.js`): klip je niz ključnih trenutaka s pomacima ciljeva poze za napadača i branitelja, a za završne oblike i s apsolutnim ciljevima (npr. armbar: napadač leži okomito preko protivnika, ruka ispružena među nogama). Pomak je 0 na početku i kraju, pa klip ne mijenja pozicije, samo kretanje između njih. 30 akcija ima vlastiti klip, ostale klip prema vrsti. Uspjeh odigra klip do kraja, neuspjeh do pola pa natrag, odluka koja čeka zaustavi ga u napetosti, a uspješan submission ostaje u završnom položaju dok protivnik tapka. Kad klip nagne smjer „gore”, smjer „naprijed” okreće se s njim.
 - **3D borba ima isto sučelje kao 2D** (`draw(view, dt, { slowmo, mode })`, `resize`), pa je `app.js` samo bira na početku borbe. Model i modul se učitavaju u pozadini čim se igra otvori. Komentari, nazivi tehnika i zatamnjenje crtaju se na tankom 2D platnu iznad 3D slike, a HTML HUD i efekti ostaju isti.
 - **3D borci su pravi model s kosturom, ne likovi iz koda.** Low-poly likovi složeni od valjaka izgledali su kao štapići, pa je odabran besplatan CC0 model (Quaternius, Standard verzija, atletska građa, oko 13 tisuća trokuta). U repou je samo ono što se koristi (muški model, dvije boje kože, dvije frizure, brada; teksture smanjene na 1024 px, ukupno oko 1,5 MB). Model nema odjeću, pa se rashguard i hlačice boje u shaderu prema težinama kostiju (prsa i nadlaktice, kukovi i bedra). Poze su 3D ciljevi (`src/render/poses3d.js`: kukovi, smjer trupa, šake, stopala), a ruke i noge postavlja IK s dvije kosti s pravim duljinama kostiju modela (`src/render/fighter3d.js`). Prijelazi miješaju rotacije kostiju (slerp).
 - **HUD i efekti su HTML preko canvasa**, ne dio crteža. Logiku „što prikazati” (`src/ui/fightFx.js`) čini skup čistih funkcija nad stanjem borbe, pa HUD i efekti ostaju isti kad 2D prikaz zamijeni 3D. Font je Barlow Condensed (SIL OFL, `assets/fonts/OFL.txt`) spremljen u projekt, pa igra radi bez interneta.
@@ -99,6 +102,8 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 ├── assets/models/fighter/    # 3D model boraca (Quaternius, CC0), teksture 1024 px
 ├── tools/poses.html          # pregled svih poza
 ├── tools/model.html          # pregled 3D modela u BJJ pozicijama
+├── tools/techniques.html     # pregled animacija tehnika
+├── tools/anim-check.html     # provjera glatkoće animacije (60 sličica/s)
 ├── vendor/three/             # Three.js (MIT) i GLTFLoader, lokalno
 └── docs/                     # koncept, dizajn i plan izrade
 ```
