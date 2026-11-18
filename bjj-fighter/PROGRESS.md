@@ -194,9 +194,25 @@ Vlasnik: sparing bez nekoliko vještina nema smisla; početak treba biti zanimlj
 - Stanje priče je `state.story` (uvod, preskočeno, broj sparinga, aktivnosti i natjecanja). Stari save dobije priču s uvodom, a sparinzi i natjecanja izračunaju se iz omjera i medalja.
 - Testovi: `tests/story.test.js` (8).
 
+### Prototip low-poly 3D stila (Three.js)
+Vlasnik: mogu li animacije biti u Three.js, low-poly stilu. Dogovoreno: likovi složeni u kodu od jednostavnih oblika (opcija A, bez skinutog modela), prvo prototip na zasebnoj stranici da vlasnik odobri izgled. Ovo mijenja raniji plan („besplatan CC0 humanoidni model”): low-poly likovi iz koda ne traže model, ali izgledaju stilizirano i uglato, ne kao atletski likovi iz MMA Managera.
+- `tools/lowpoly.html`: tatami u dvorani, dva lika (plavi i crveni), izbornik svih 10 pozicija, „Plavi gore / dolje”, automatsko prebacivanje svih pozicija s glatkim prijelazom (0,7 s), disanje, sjene, kamera koja se okreće povlačenjem i zumira kotačićem ili s dva prsta.
+- `src/render/pose3d.js` (čisto, bez Three.js): postojeće 2D ključne poze pretvara u 3D zglobove (bliže ruke i noge naprijed, dalje natrag, ramena i kukovi dobiju širinu). Testovi: `tests/pose3d.test.js` (2).
+- `src/render/lowpoly.js`: lik od 6-stranih suženih valjaka između zglobova, ikosaedar za glavu, trup s rashguardom, kratke hlače i traka u boji pojasa na struku. `createMat()` je mala dvorana.
+- Three.js 0.170.0 (MIT) spremljen u `vendor/three/` (oko 690 KB).
+- 2D borba i dvorana odozgo nisu mijenjani.
+- Poznato u prototipu: tijela se mjestimično preklapaju (npr. noge donjeg u zatvorenom gardu prolaze kroz gornjeg) jer su poze 2D s dodanom dubinom; za pravu 3D borbu poze treba doraditi po poziciji.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 18. studenog 2026. (osnove i trener vodič):
+Provedeno 18. studenog 2026. (low-poly prototip):
+
+| Provjera | Rezultat |
+| --- | --- |
+| `npm test` | 111/111 prolazi |
+| Playwright (1000 px, WebGL) | `tools/lowpoly.html` crta stav, zatvoreni gard, mount, leđa, kornjaču; 0 grešaka u konzoli |
+
+Prethodna provjera (18. studenog 2026., osnove i trener vodič):
 
 | Provjera | Rezultat |
 | --- | --- |
@@ -243,7 +259,7 @@ Prethodna provjera (14. studenog 2026., nakon HUD-a i efekata):
 
 ## Sljedeći koraci
 
-1. Dogovoreno 18. 11.: prototip low-poly 3D stila u Three.js (likovi složeni u kodu od jednostavnih oblika) na test stranici, vlasnik odobri izgled prije prebacivanja borbe.
+1. Vlasnik pregleda `tools/lowpoly.html` i javi odgovara li stil. Ako da: 3D renderer borbe s istim sučeljem kao `renderer2d.js` (HUD i efekti ostaju), 2D kao rezerva u testnom panelu, poze dorađene po poziciji; zatim dvorana u low-poly 3D-u.
 1. Vlasnik isproba uvod i trenera i javi treba li drukčiji ton, ime ili zaplet (npr. rival iz drugog kluba).
 1. Pogled na dvoranu: vlasnik isproba i javi treba li veći, manji ili drukčiji (npr. više članova kluba, zvukovi).
 1. Grafika, korak 2: 3D borba (Three.js, besplatan CC0 humanoidni model, poze iz igre na kosturu, prijelazi, kamera), prvo kratki dizajn s vlasnikom. Zatim korak 3: klub kao izometrijska dvorana.

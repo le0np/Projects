@@ -20,6 +20,8 @@ Otvori `http://localhost:8080`. Drugi port: `PORT=3000 npm start`. Dvoklik na `i
 
 Alat za provjeru izgleda svih poza boraca: `http://localhost:8080/tools/poses.html`.
 
+Prototip low-poly 3D stila (Three.js): `http://localhost:8080/tools/lowpoly.html`. Three.js 0.170 (MIT) je spremljen lokalno u `vendor/three/`, bez CDN-a i bez build alata.
+
 ## Kako se igra
 
 - **Dvorana odozgo:** na vrhu ekrana je animirani pogled na klub iz ptičje perspektive. Usred tatamija ti (plava majica) drilaš potez koji treniraš s partnerom (rušenja stojeći, sve ostalo u parteru), uz naziv poteza, razinu i traku napretka. Fizička priprema je u teretani ili na traci za trčanje, a dok si na seminaru ili open matu stoji natpis kod izlaza. Bez treninga sjediš na klupi. Ostali članovi kluba sparaju, a trener šeta oko tatamija. Uz smanjeno kretanje u sustavu slika miruje.
@@ -88,6 +90,8 @@ Napredak se sprema u preglednik (`localStorage`) i teče i dok je igra zatvorena
 ├── tests/                    # node --test
 ├── assets/fonts/             # Barlow Condensed (woff2) i licenca OFL
 ├── tools/poses.html          # pregled svih poza
+├── tools/lowpoly.html        # prototip low-poly 3D stila
+├── vendor/three/             # Three.js (MIT), lokalno
 └── docs/                     # koncept, dizajn i plan izrade
 ```
 
