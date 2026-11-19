@@ -2175,3 +2175,102 @@ test('costNeeds lists money, materials and energy with what the farmer has', () 
   assert.deepEqual(costNeeds(s, null), []);
   assert.equal(costNeeds(s, { iron: 2 })[0].where, MATERIAL_SOURCE.iron);
 });
+
+// Joža takes the packed parcels to the post office on his way to the market (owner, 16. 11.)
+const withVan = () => {
+  const s = withShop();
+  Object.assign(s.market, { stall: true, van: true, worker: true });
+  s.money = zl(500);
+  return s;
+};
+const parcel = (s, id, crop = 'radish') => {
+  const o = { id, who: 'test', crop, kg: 1, tier: 2, due: s.day + 3, packed: false, items: [] };
+  o.pay = orderPay(o);
+  s.online.orders.push(o);
+  addItem(s.bag, cropItem(crop, 2), 1);
+  assert.ok(packOrder(s, id).ok);
+  return o;
+};
+const runVan = (s, events) => { for (let k = 0; k < 20000 && s.market.trips.van; k++) tick(s, 0.1, events); };
+
+test('van: Joža posts the parcels before the market for the post wage on top of his day', () => {
+  const s = withVan();
+  const o = parcel(s, 970);
+  addItem(s.cargo, cropItem('carrot', 2), 10);
+  s.clock = DAY_START;
+  const money = s.money;
+  const events = [];
+  assert.ok(sendVan(s, events).ok);
+  const start = events.find((e) => e.type === 'tripstart');
+  assert.equal(start.wage, zl(MARKET.wage + MARKET.postWage), 'the day wage and the post wage');
+  assert.equal(start.parcels, 1);
+  assert.equal(parcelsReady(s), 0, 'the parcel is in the van now, not in the box');
+  assert.equal(postTripProblem(s), 'noparcels', 'the farmer has nothing to take');
+  runVan(s, events);
+  const posted = events.find((e) => e.type === 'posted');
+  assert.ok(posted && posted.who === 'van' && posted.n === 1);
+  const arrive = events.findIndex((e) => e.type === 'triparrive');
+  assert.ok(events.indexOf(posted) > arrive, 'posted when he gets to town');
+  assert.ok(events.indexOf(posted) < events.findIndex((e) => e.type === 'marketsale'), 'before selling at the market');
+  assert.equal(s.online.orders.length, 0);
+  assert.ok(events.some((e) => e.type === 'marketsale'), 'and he still sells at the market');
+  const sold = events.filter((e) => e.type === 'marketsale' && e.who === 'van').reduce((a, e) => a + e.money, 0);
+  assert.equal(s.money - money, o.pay + sold - zl(MARKET.wage + MARKET.postWage));
+});
+
+test('van: only parcels and nothing to sell: Joža drives just to the post office, for the post wage', () => {
+  const s = withVan();
+  parcel(s, 971);
+  s.clock = 9 * 60;
+  const events = [];
+  assert.ok(sendVan(s, events).ok);
+  assert.equal(events.find((e) => e.type === 'tripstart').wage, zl(MARKET.postWage));
+  assert.ok(s.market.trips.van.post, 'a post-only trip');
+  runVan(s, events);
+  assert.ok(events.some((e) => e.type === 'posted' && e.who === 'van'));
+  assert.ok(!events.some((e) => e.type === 'marketsale'));
+  // the morning run goes for parcels too, and an empty van with no parcels stays home
+  parcel(s, 972);
+  const morning = nextDay(s);
+  assert.ok(morning.some((e) => e.type === 'tripstart' && e.who === 'van' && e.parcels === 1));
+  runVan(s, morning);
+  assert.ok(nextDay(s).some((e) => e.type === 'vanidle'));
+  // too late for the post office, nothing to sell: he stays
+  parcel(s, 973);
+  s.clock = ONLINE.postClose - MARKET.drive;
+  assert.equal(sendVan(s).reason, 'posttoolate');
+});
+
+test('van: a parcel in the van survives a reload; one that misses the post goes back to the box', () => {
+  const s = withVan();
+  parcel(s, 974);
+  addItem(s.cargo, cropItem('carrot', 2), 5);
+  s.clock = DAY_START;
+  assert.ok(sendVan(s).ok);
+  const { state: t } = deserialize(serialize(s));
+  assert.equal(t.online.orders[0].carried, 'van');
+  assert.ok(t.market.trips.van.parcels);
+  const events = [];
+  runVan(t, events);
+  assert.ok(events.some((e) => e.type === 'posted'));
+  // the farmer's post-only trip stays a post trip after a reload too
+  const u = withShop();
+  parcel(u, 975);
+  u.clock = 9 * 60;
+  goToPost(u);
+  for (let k = 0; k < 8000 && !u.market.trips.farmer; k++) tick(u, 0.1);
+  const { state: v } = deserialize(serialize(u));
+  assert.ok(v.market.trips.farmer.post);
+  // a van sent just before the post closes, with produce for... nothing: the market is closed too,
+  // so a late van can only carry parcels; if it gets there late, they come back to the box
+  const w = withVan();
+  const o = parcel(w, 976);
+  w.clock = ONLINE.postClose - MARKET.drive - 1;
+  assert.ok(sendVan(w).ok);
+  w.clock = ONLINE.postClose; // held up on the way
+  const late = [];
+  runVan(w, late);
+  assert.ok(!late.some((e) => e.type === 'posted'));
+  assert.equal(o.carried, undefined, 'back in the parcel box');
+  assert.equal(parcelsReady(w), 1);
+});

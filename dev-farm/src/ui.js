@@ -13,7 +13,7 @@ import {
   upgradeProblem, nextStep, levelValue, matsText, pumpCapacity, tankDoses, runningSprinklers, irrigationMissing, fishById, fertDoses, requestHave, requestPay, orderPick, orderPay, dayName, dayNameGen,
   buybackList, hiveAt, decorAt, farmerTripProblem, vanTripProblem, pumpStatus, orderPack, shopItemById,
   owns, recipeAmount, hensMax, feederCap, hiveCap, chestSize, cropDays, hasTap,
-  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount, costNeeds,
+  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount, costNeeds, vanPlan,
 } from './sim.js';
 import { idx, objectAt, isPlotTile, OBJECTS, TAP } from './world.js';
 import { iconUrl } from './render.js';
@@ -842,14 +842,15 @@ export function createUI(cb) {
         el('div', 'small', `${o.who}: ${o.kg} ${unit} ${goodById[o.crop].gen ?? goodById[o.crop].name.toLowerCase()}${o.tier > 2 || cropById[o.crop] ? ` ${stars(o.tier)} ili bolje` : ''}, poslati ${when}`),
         el('div', 'small muted', o.packed ? `Plaća ${formatMoney(o.pay)} (vrijednost paketa +${Math.round(ONLINE.markup * 100)} %).`
           : `Plaća vrijednost robe +${Math.round(ONLINE.markup * 100)} %, najmanje ${formatMoney(o.pay)}. U torbi: ${have} ${unit}${have >= o.kg ? ` → ${formatMoney(orderPay({ ...o, items: orderPick(s, o) }))}` : ''}.`),
-        o.packed ? el('p', 'small ok', '✔ Spakirano, čeka poštu')
+        o.packed ? el('p', 'small ok', o.carried === 'van' ? `🚐 ${MARKET.worker} ga vozi na poštu` : '✔ Spakirano, čeka poštu')
           : button(have >= o.kg ? `Spakiraj iz torbe · ${ONLINE.packEnergy} ⚡` : `Fali još ${o.kg - have} ${unit}`, () => cb.onPack(o.id), { disabled: have < o.kg }),
       );
       out.push(card);
     }
     const pp = postTripProblem(s);
     const why = { noparcels: 'Nema spakiranih paketa', intown: 'Farmer je u gradu', posttoolate: `Prekasno: pošta radi do ${formatClock(ONLINE.postClose)}` }[pp];
-    out.push(el('p', 'small', `Pošta je u gradu (pješice ${MARKET.walk / 60} h, radi do ${formatClock(ONLINE.postClose)}). Pakete nosi i kad ide na tržnicu.`));
+    out.push(el('p', 'small', `Pošta je u gradu (pješice ${MARKET.walk / 60} h, radi do ${formatClock(ONLINE.postClose)}). Pakete nosi i kad ide na tržnicu.${
+      s.market.worker ? ` ${MARKET.worker} ih ujutro u 6 h sam odveze na poštu prije tržnice (+${formatMoney(zl(MARKET.postWage))} na dnevnicu).` : ''}`));
     out.push(button(why ?? `Odnesi ${parcelsReady(s)} ${parcelsReady(s) === 1 ? 'paket' : parcelsReady(s) < 5 ? 'paketa' : 'paketa'} na poštu`, cb.onGoPost, { cls: 'btn primary', disabled: Boolean(pp) }));
     return out;
   }
@@ -879,7 +880,8 @@ export function createUI(cb) {
     const fp = farmerTripProblem(s);
     const vp = vanTripProblem(s);
     const goods = countWhere(s.bag, isSellable);
-    const sig = JSON.stringify(['market', m.stall, m.van, m.worker, tv && [tv.phase, tv.kg, tv.money], s.cargo, fp, vp, goods,
+    const plan = vanPlan(s);
+    const sig = JSON.stringify(['market', m.stall, m.van, m.worker, tv && [tv.phase, tv.kg, tv.money, tv.post], s.cargo, fp, vp, goods, plan,
       s.money >= zl(MARKET.van), s.money >= zl(MARKET.stall), s.online, s.online.orders.map((o) => requestHave(s, o)), postTripProblem(s), s.day]);
     renderIfChanged(els.panel, sig, () => {
       const out = [head(), ...parcelBox(s), el('p', 'muted', `Cesta na sjever vodi u grad: pješice ${MARKET.walk / 60} h, kombijem ${MARKET.drive} min. Tržnica radi ${formatClock(MARKET.open)}–${formatClock(MARKET.close)}: kupaca je puno više nego na štandu uz cestu i uzimaju po ${MARKET.kg[0]}–${MARKET.kg[1]} kg. Cijene su iste.`)];
@@ -903,8 +905,9 @@ export function createUI(cb) {
         return out;
       }
       if (tv) {
-        const where = { go: 'je na putu u grad', sell: 'je na tržnici', back: 'se vraća' }[tv.phase];
-        out.push(el('p', '', `🚐 ${MARKET.worker} ${where} · prodano ${tv.kg} kg · ${formatMoney(tv.money)}`));
+        const where = tv.post ? { go: 'vozi pakete na poštu', sell: 'je na pošti', back: 'se vraća s pošte' }[tv.phase]
+          : { go: 'je na putu u grad', sell: 'je na tržnici', back: 'se vraća' }[tv.phase];
+        out.push(el('p', '', `🚐 ${MARKET.worker} ${where}${tv.post ? '' : ` · prodano ${tv.kg} kg · ${formatMoney(tv.money)}`}`));
       } else {
         const grid = el('div', 'slots');
         s.cargo.forEach((it, i) => grid.append(slotButton(it, it ? () => cb.onMove('cargo', i, 'bag') : null, { from: 'cargo', slot: i })));
@@ -914,11 +917,12 @@ export function createUI(cb) {
         out.push(el('p', 'small', `Dnevnica je ${formatMoney(zl(MARKET.wage))} i plaća se samo na dane kad vozi.`));
         out.push(button(`Zaposli: ${MARKET.worker}`, () => cb.onHire(true), { cls: 'btn primary' }));
       } else {
-        out.push(el('p', 'small', `${MARKET.worker} vozi svako jutro u 6 h ako u kombiju ima robe. Dnevnica ${formatMoney(zl(MARKET.wage))}, samo na dane kad vozi.${m.stall ? '' : ' Prvo treba zakupiti klupu.'}`));
+        out.push(el('p', 'small', `${MARKET.worker} vozi svako jutro u 6 h ako u kombiju ima robe ili u kutiji spakiranih paketa. Dnevnica ${formatMoney(zl(MARKET.wage))}, samo na dane kad vozi na tržnicu; pakete prvo odnese na poštu (tržnica se ionako otvara tek u ${formatClock(MARKET.open)}) za još ${formatMoney(zl(MARKET.postWage))}. Ako nema robe, vozi samo pakete.${m.stall ? '' : ' Za tržnicu treba zakupiti klupu.'}`));
         const row = el('div', 'row');
         if (!tv) {
-          const why = { nothingtosell: 'Kombi je prazan', toolate: 'Danas je prekasno', coins: 'Nema novca za dnevnicu', nostall: 'Nema klupe' }[vp];
-          row.append(button(why ?? `Pošalji sad · ${formatMoney(zl(MARKET.wage))}`, cb.onSendVan, { disabled: Boolean(vp) }));
+          const why = { nothingtosell: 'Kombi je prazan', toolate: 'Danas je prekasno', coins: 'Nema novca za dnevnicu', nostall: 'Nema klupe', posttoolate: 'Prekasno i za poštu' }[vp];
+          const where = plan.market && plan.parcels ? 'pošta i tržnica' : plan.parcels ? 'samo pošta' : '';
+          row.append(button(why ?? `Pošalji sad${where ? ` (${where})` : ''} · ${formatMoney(plan.wage)}`, cb.onSendVan, { disabled: Boolean(vp) }));
         }
         row.append(button('Otpusti', () => cb.onHire(false)));
         out.push(row);

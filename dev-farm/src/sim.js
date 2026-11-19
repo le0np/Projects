@@ -1241,7 +1241,8 @@ function morning(s, events) {
   s.pond.caught = 0;
   if (s.market.van && s.market.worker) {
     // the hired hand drives whatever is loaded to the market; an empty van stays home (no wage)
-    if (countWhere(s.cargo, isSellable)) sendVan(s, events);
+    // and takes the packed parcels to the post office on the way (or just them)
+    if (countWhere(s.cargo, isSellable) || parcelsReady(s)) sendVan(s, events);
     else events.push({ type: 'vanidle' });
   }
   const waiting = [];
@@ -1779,16 +1780,18 @@ export function packOrder(s, id, events = []) {
   return { ok: true };
 }
 
-export const parcelsReady = (s) => s.online.orders.filter((o) => o.packed).length;
+// parcels waiting in the box at the parking lot (not the ones already on their way in the van)
+export const parcelsReady = (s) => s.online.orders.filter((o) => o.packed && !o.carried).length;
 
-// At the post office: every packed parcel is sent and paid.
-function postParcels(s, events) {
-  const sent = s.online.orders.filter((o) => o.packed);
+// At the post office: every parcel the farmer (from the box) or Joža (in the van) brought is sent and paid.
+function postParcels(s, events, who = 'farmer') {
+  const brought = (o) => o.packed && (who === 'van' ? o.carried === 'van' : !o.carried);
+  const sent = s.online.orders.filter(brought);
   if (!sent.length || s.clock >= ONLINE.postClose) return;
-  s.online.orders = s.online.orders.filter((o) => !o.packed);
+  s.online.orders = s.online.orders.filter((o) => !brought(o));
   const money = sent.reduce((a, o) => a + o.pay, 0);
   addMoney(s, money, events);
-  events.push({ type: 'posted', n: sent.length, money, orders: sent.map((o) => o.id) });
+  events.push({ type: 'posted', who, n: sent.length, money, orders: sent.map((o) => o.id) });
 }
 
 // Why the farmer can't walk to the post office with the parcels now (null = he can).
@@ -2127,15 +2130,28 @@ export function farmerTripProblem(s) {
   return null;
 }
 
+// Where the van would go now: to the market with the load, to the post office with the packed
+// parcels (first, before the market opens), or both, and what Joža is paid for it (srebrenjaci).
+export function vanPlan(s) {
+  const market = Boolean(s.market.stall && countWhere(s.cargo, isSellable) && !tooLate(s, 'van'));
+  const parcels = s.clock + MARKET.drive < ONLINE.postClose ? parcelsReady(s) : 0;
+  return { market, parcels, wage: (market ? zl(MARKET.wage) : 0) + (parcels ? zl(MARKET.postWage) : 0) };
+}
+
 // Why the van can't go now (null = it can).
 export function vanTripProblem(s) {
   if (!s.market.van) return 'novan';
   if (!s.market.worker) return 'noworker';
-  if (!s.market.stall) return 'nostall';
   if (s.market.trips.van) return 'vanaway';
-  if (!countWhere(s.cargo, isSellable)) return 'nothingtosell';
-  if (tooLate(s, 'van')) return 'toolate';
-  if (s.money < zl(MARKET.wage)) return 'coins';
+  const plan = vanPlan(s);
+  if (!plan.market && !plan.parcels) {
+    // nothing to do in town: say why the market is out (parcels too late for the post come last)
+    if (parcelsReady(s)) return !countWhere(s.cargo, isSellable) || !s.market.stall || tooLate(s, 'van') ? 'posttoolate' : 'toolate';
+    if (!s.market.stall) return 'nostall';
+    if (!countWhere(s.cargo, isSellable)) return 'nothingtosell';
+    return 'toolate';
+  }
+  if (s.money < plan.wage) return 'coins';
   return null;
 }
 
@@ -2163,10 +2179,13 @@ function leaveForTown(s, events, post = false) {
 
 export function sendVan(s, events = []) {
   const problem = vanTripProblem(s);
-  if (problem) return fail(events, problem, { need: zl(MARKET.wage), who: 'van' });
-  s.money -= zl(MARKET.wage);
-  s.market.trips.van = newTrip('van');
-  events.push({ type: 'tripstart', who: 'van', wage: zl(MARKET.wage) });
+  const plan = vanPlan(s);
+  if (problem) return fail(events, problem, { need: plan.wage || zl(MARKET.wage), who: 'van' });
+  s.money -= plan.wage;
+  // post: no market today, straight back from the post office; parcels: the packed ones ride along
+  s.market.trips.van = { ...newTrip('van'), ...(plan.market ? {} : { post: true }), ...(plan.parcels ? { parcels: true } : {}) };
+  if (plan.parcels) for (const o of s.online.orders) if (o.packed && !o.carried) o.carried = 'van';
+  events.push({ type: 'tripstart', who: 'van', wage: plan.wage, parcels: plan.parcels, market: plan.market });
   return { ok: true };
 }
 
@@ -2183,6 +2202,8 @@ export function comeBack(s, who = 'farmer', events = []) {
 function endTrip(s, who, events) {
   const t = s.market.trips[who];
   s.market.trips[who] = null;
+  // parcels that got to town after the post office closed come back to the box
+  if (who === 'van') for (const o of s.online.orders) delete o.carried;
   const left = countWhere(tripSlots(s, who), isSellable);
   events.push({ type: 'tripdone', who, kg: t.kg, money: t.money, left });
   if (who === 'farmer') {
@@ -2203,7 +2224,7 @@ function runTrips(s, dt, events) {
         t.phase = 'sell';
         t.left = 0;
         events.push({ type: 'triparrive', who });
-        if (who === 'farmer') postParcels(s, events);
+        if (who === 'farmer' || t.parcels) postParcels(s, events, who);
         if (t.post) {
           // nothing to sell: straight back home
           t.phase = 'back';

@@ -188,8 +188,10 @@ export function deserialize(raw) {
     const trip = (t) => (t && ['go', 'sell', 'back'].includes(t.phase) ? {
       phase: t.phase, left: num(t.left, 0, travel, 0), timer: num(t.timer, 0, 60, 1),
       kg: int(t.kg, 0, big, 0), money: int(t.money, 0, big, 0),
+      ...(t.post === true ? { post: true } : {}), ...(t.parcels === true ? { parcels: true } : {}),
     } : null);
-    s.market.trips.farmer = s.market.stall ? trip(d.market.trips?.farmer) : null;
+    // a trip only to the post office needs no market stall
+    s.market.trips.farmer = s.market.stall || d.market.trips?.farmer?.post === true ? trip(d.market.trips?.farmer) : null;
     s.market.trips.van = s.market.van ? trip(d.market.trips?.van) : null;
   }
   if (s.market.van) slots(d.cargo, s.cargo, isSellable);
@@ -216,6 +218,8 @@ export function deserialize(raw) {
           order.items = o.items.slice(0, 6).filter((it) => it && isSellable(it.id)).map((it) => ({ id: it.id, n: int(it.n, 1, 999, 1) }));
         }
         order.pay = orderPay(order);
+        // a parcel on its way to the post office in the van
+        if (order.packed && o.carried === 'van' && s.market.trips.van?.parcels) order.carried = 'van';
         return order;
       });
     }

@@ -272,14 +272,20 @@ function report(events) {
       case 'tripstart':
         if (e.who === 'farmer') {
           closePanel();
-        } else mapNote('lot', `🚐 ${MARKET.worker} vozi na tržnicu · dnevnica −${formatMoney(e.wage)}`);
+        } else {
+          const where = e.market && e.parcels ? `na poštu (${e.parcels} ${e.parcels === 1 ? 'paket' : 'paketa'}) i na tržnicu` : e.parcels ? `pakete na poštu (${e.parcels})` : 'na tržnicu';
+          mapNote('lot', `🚐 ${MARKET.worker} vozi ${where} · −${formatMoney(e.wage)}`);
+        }
         break;
       case 'tripdone':
         if (e.who === 'farmer') {
           ui.say(e.kg ? `Doma sam! Na tržnici prodano ${e.kg} kg, +${formatMoney(e.money)}.` : 'Doma sam.', e.kg ? 'happy' : '');
         } else {
-          mapNote('lot', `🚐 Prodano ${e.kg} kg · +${formatMoney(e.money)}${e.left ? ` · ostalo ${e.left}` : ''}`, 'ok');
-          browserNote('🚐 Kombi se vratio', `Prodano ${e.kg} kg · +${formatMoney(e.money)}`);
+          if (!e.kg && !e.left) mapNote('lot', `🚐 ${MARKET.worker} se vratio`, 'ok');
+          else {
+            mapNote('lot', `🚐 Prodano ${e.kg} kg · +${formatMoney(e.money)}${e.left ? ` · ostalo ${e.left}` : ''}`, 'ok');
+            browserNote('🚐 Kombi se vratio', `Prodano ${e.kg} kg · +${formatMoney(e.money)}`);
+          }
         }
         break;
       case 'vanidle':
@@ -333,7 +339,8 @@ function report(events) {
         break;
       case 'posted':
         mapNote('lot', `📮 Pošta: ${e.n} ${e.n === 1 ? 'paket' : 'paketa'} · +${formatMoney(e.money)}`, 'ok');
-        ui.say(`Paketi su poslani! +${formatMoney(e.money)}`, 'happy');
+        if (e.who === 'van') ui.notify(`📮 ${MARKET.worker} je predao ${e.n} ${e.n === 1 ? 'paket' : 'paketa'} na pošti · +${formatMoney(e.money)}`, 'ok');
+        else ui.say(`Paketi su poslani! +${formatMoney(e.money)}`, 'happy');
         break;
       case 'gigstart':
         ui.say('Kodiram… 💻');

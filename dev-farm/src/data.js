@@ -139,6 +139,9 @@ export const MARKET = {
   kg: [2, 6], // a market customer buys 2–6 kg
   van: 800, // zl, a used van
   wage: 30, // zl, the hired hand's pay for a day at the market (only on days he drives)
+  // zl on top of the wage when he takes the packed parcels to the post office in town first (owner, 16. 11.:
+  // he gets there before the market opens anyway); with no produce to sell he drives just to the post for it
+  postWage: 10,
   vanSize: 12, // slots in the van
   worker: 'Joža',
   markup: 0.1, // the market pays 10 % more than the stand: on a full day about the hired hand's wage
