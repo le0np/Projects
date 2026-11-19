@@ -208,6 +208,7 @@ export function deserialize(raw) {
   // selling online (v9)
   if (d.online && typeof d.online === 'object') {
     for (const c of ONLINE.channels) s.online.channels[c.id] = d.online.channels?.[c.id] === true;
+    s.online.packer = d.online.packer === true;
     if (!s.online.channels.webshop) for (const c of ONLINE.channels) s.online.channels[c.id] = false;
     if (Array.isArray(d.online.orders)) {
       s.online.orders = d.online.orders.slice(0, ONLINE.max).filter((o) => o && goodById[o.crop]).map((o) => {

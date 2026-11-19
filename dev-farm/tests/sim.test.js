@@ -10,7 +10,7 @@ import {
   matsText, stopFishing, placeItem, removeItem, fulfillRequest, sellBack, buybackList, adoptPet, patPet, walkFn, requestPay,
   owns, chestSize, hensMax, feederCap, levelValue, cropDays,
   buildOnline, onlineProblem, packOrder, goToPost, postTripProblem, parcelsReady, orderPay,
-  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds, usableFert, setFertTier, renamePet,
+  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds, usableFert, setFertTier, renamePet, hirePacker,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -2328,4 +2328,48 @@ test('pet: gets a name of the player\'s choosing, kept in the save', () => {
   assert.ok(renamePet(s, 'Ime koje je predugo za psa').ok);
   assert.equal(s.pet.name.length, PET_NAME_MAX);
   assert.equal(deserialize(serialize(s)).state.pet.name, s.pet.name);
+});
+
+test('packer: hired at the parcel box, packs the morning orders from the chest before Joža leaves', () => {
+  const s = withVan();
+  assert.equal(hirePacker(createState()).reason, 'nowebshop');
+  assert.ok(hirePacker(s).ok);
+  assert.ok(s.online.packer);
+  s.upgrades.coldroom = true; // the chest keeps its classes overnight
+  const o = { id: 980, who: 'test', crop: 'carrot', kg: 4, tier: 3, due: s.day + 3, packed: false, items: [] };
+  o.pay = orderPay(o);
+  const short = { ...o, id: 981, crop: 'tomato', items: [] };
+  s.online.orders.push(o, short);
+  addItem(s.chest, cropItem('carrot', 2), 10);
+  addItem(s.chest, cropItem('carrot', 3), 3);
+  addItem(s.chest, cropItem('carrot', 5), 4);
+  const money = s.money;
+  const events = nextDay(s);
+  const done = events.find((e) => e.type === 'packerdone');
+  assert.ok(done && done.n === 1, 'one order could be packed from the chest');
+  assert.ok(o.packed);
+  assert.deepEqual(o.items, [{ id: cropItem('carrot', 3), n: 3 }, { id: cropItem('carrot', 5), n: 1 }], 'the worst good-enough produce first');
+  assert.equal(countWhere(s.chest, (id) => id === cropItem('carrot', 5)), 3);
+  assert.ok(!short.packed, 'no tomatoes in the chest');
+  // packed in the morning, so Joža takes it straight away
+  const start = events.find((e) => e.type === 'tripstart' && e.who === 'van');
+  assert.equal(start?.parcels, 1);
+  assert.equal(money - s.money, zl(ONLINE.packer.wage) + zl(MARKET.postWage), 'her wage and the post wage');
+  // a day with nothing to pack costs nothing
+  s.online.orders = [];
+  const before = s.money;
+  const quiet = nextDay(s);
+  assert.ok(!quiet.some((e) => e.type === 'packerdone'));
+  assert.equal(s.money, before);
+  // not enough money for her wage: she does not pack
+  const o2 = { ...o, id: 982, packed: false, items: [], due: s.day + 3 };
+  s.online.orders = [o2];
+  addItem(s.chest, cropItem('carrot', 3), 4);
+  s.money = 0;
+  const broke = nextDay(s);
+  assert.ok(broke.some((e) => e.type === 'fail' && e.reason === 'coins' && e.who === 'packer'));
+  assert.ok(!o2.packed);
+  assert.ok(deserialize(serialize(s)).state.online.packer, 'kept in the save');
+  assert.ok(hirePacker(s, false).ok);
+  assert.equal(s.online.packer, false);
 });

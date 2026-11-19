@@ -66,7 +66,7 @@ function baseState(seed) {
     tomorrow: 'sun', // the forecast
     requests: [], // customers' orders at the stand
     // selling online: what is built on the laptop, and the orders (packed ones wait in the parcel box)
-    online: { channels: Object.fromEntries(ONLINE.channels.map((c) => [c.id, false])), orders: [] },
+    online: { channels: Object.fromEntries(ONLINE.channels.map((c) => [c.id, false])), orders: [], packer: false },
     hives: [], // { x, y, honey, days }
     decor: [], // { x, y, kind }
     pet: null, // { kind: 'dog' | 'cat', name, patted: day }
@@ -1230,6 +1230,7 @@ function morning(s, events) {
   agingChest(s, events);
   customerRequests(s, events);
   onlineOrders(s, events);
+  packerRun(s, events); // before Joža leaves at 6, so the parcels go today
   for (const h of s.hives) {
     h.days = (h.days ?? 0) + 1;
     if (h.days % levelValue(s, 'hiveRate') === 0) h.honey = Math.min(hiveCap(s), (h.honey ?? 0) + 1);
@@ -1789,6 +1790,37 @@ export function packOrder(s, id, events = []) {
 }
 
 // parcels waiting in the box at the parking lot (not the ones already on their way in the van)
+// The packer (Kata): hired at the parcel box once the web shop is up.
+export function hirePacker(s, hire = true, events = []) {
+  if (hire && !hasWebshop(s)) return fail(events, 'nowebshop');
+  s.online.packer = hire;
+  events.push({ type: hire ? 'packerhired' : 'packerfired' });
+  return { ok: true };
+}
+
+// Every morning she packs what she can from the chest; her wage is paid only if she packs something.
+function packerRun(s, events) {
+  if (!s.online.packer || !hasWebshop(s)) return;
+  const can = s.online.orders.filter((o) => !o.packed && requestHave(s, o, s.chest) >= o.kg);
+  if (!can.length) return;
+  const wage = zl(ONLINE.packer.wage);
+  if (s.money < wage) {
+    fail(events, 'coins', { who: 'packer', need: wage });
+    return;
+  }
+  s.money -= wage;
+  let n = 0;
+  for (const o of can) {
+    if (requestHave(s, o, s.chest) < o.kg) continue; // two orders for the same thing
+    o.items = orderPick(s, o, s.chest);
+    for (const it of o.items) takeWhere(s.chest, (x) => x === it.id, it.n);
+    o.pay = orderPay(o);
+    o.packed = true;
+    n++;
+  }
+  events.push({ type: 'packerdone', n, wage, orders: can.map((o) => o.id) });
+}
+
 export const parcelsReady = (s) => s.online.orders.filter((o) => o.packed && !o.carried).length;
 
 // At the post office: every parcel the farmer (from the box) or Joža (in the van) brought is sent and paid.
@@ -2029,18 +2061,18 @@ function customerRequests(s, events) {
 }
 
 // What in the bag would fill the order: produce of that crop in that class or better.
-export const requestHave = (s, r) => countWhere(s.bag, (id) => {
+export const requestHave = (s, r, slots = s.bag) => countWhere(slots, (id) => {
   const p = parseItem(id);
   return p?.kind === 'crop' && p.crop === r.crop && p.tier >= r.tier;
 });
 
 // What would go to the customer from the bag: the worst produce that is good enough, as [{ id, n }].
-export function orderPick(s, r) {
+export function orderPick(s, r, slots = s.bag) {
   const out = [];
   let left = r.kg;
   for (let t = r.tier; t <= MAX_TIER && left; t++) {
     const id = cropItem(r.crop, t);
-    const n = Math.min(left, countWhere(s.bag, (x) => x === id));
+    const n = Math.min(left, countWhere(slots, (x) => x === id));
     if (n) out.push({ id, n });
     left -= n;
   }

@@ -303,6 +303,9 @@ export const ONLINE = {
   markup: 0.3, // online buyers pay 30 % more than the stand
   packEnergy: 1,
   postClose: 17 * 60, // the post office in town takes parcels until 17 h
+  // hired at the parcel box: every morning she packs the new orders from the chest (worst good-enough
+  // produce first), so Joža can take them to the post at 6 h; paid only on days she packs something
+  packer: { name: 'Kata', wage: 6 },
   who: ['Marina iz Zagreba', 'obitelj Kovač', 'bistro Zrno', 'Petra (Instagram)', 'g. Babić', 'vrtić Sunce', 'Luka iz Splita', 'Eko-kutija d.o.o.'],
 };
 

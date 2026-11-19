@@ -876,6 +876,12 @@ export function createUI(cb) {
       );
       out.push(card);
     }
+    // Kata packs the morning orders from the chest
+    const k = ONLINE.packer;
+    out.push(el('p', 'small', s.online.packer
+      ? `📦 ${k.name} svako jutro u 6 h spakira nove narudžbe iz škrinje (najslabiju dovoljno dobru robu). Dnevnica ${formatMoney(zl(k.wage))}, samo na dane kad pakira.`
+      : `📦 ${k.name} može svako jutro sama pakirati narudžbe iz škrinje, za ${formatMoney(zl(k.wage))} na dan kad pakira.`));
+    out.push(button(s.online.packer ? `Otpusti: ${k.name}` : `Zaposli: ${k.name}`, () => cb.onHirePacker(!s.online.packer), { cls: 'btn small-btn' }));
     const pp = postTripProblem(s);
     const why = { noparcels: 'Nema spakiranih paketa', intown: 'Farmer je u gradu', posttoolate: `Prekasno: pošta radi do ${formatClock(ONLINE.postClose)}` }[pp];
     out.push(el('p', 'small', `Pošta je u gradu (pješice ${MARKET.walk / 60} h, radi do ${formatClock(ONLINE.postClose)}). Pakete nosi i kad ide na tržnicu.${

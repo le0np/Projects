@@ -7,7 +7,7 @@ import {
   countWhere, extractSeeds, makeCompost, orderSeeds, startJob, upgrade, fillTank, orderItem, feedHens, acceptGig, sprinklerAt,
   goWork, goodById, forageById, shopItemById, matCount, matsText, cancelOrder, stopFishing, fishById,
   placeItem, removeItem, fulfillRequest, sellBack, adoptPet, patPet, dayNameGen, rentStall, buyVan, hireWorker, goToMarket, sendVan, comeBack,
-  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn, sortSlots, dropItem, setFertTier, renamePet,
+  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn, sortSlots, dropItem, setFertTier, renamePet, hirePacker,
 } from './sim.js';
 import { ONLINE } from './data.js';
 import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES, UPGRADES, TANK_SIZE } from './data.js';
@@ -37,7 +37,7 @@ if (savedZoom > 0) renderer.setZoom(savedZoom);
 
 const ui = createUI({
   onTool, onSeed, onMove, onSort, onDrop, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
-  onUpgrade, onFillTank, onOrderItem, onAcceptGig, onGoWork, onSetting, onLayout, onFertTier, onRenamePet,
+  onUpgrade, onFillTank, onOrderItem, onAcceptGig, onGoWork, onSetting, onLayout, onFertTier, onRenamePet, onHirePacker,
   onRentStall, onBuyVan, onHire, onGoMarket, onSendVan, onComeBack, onCancelOrder, onCompost,
   onPlaceItem, onRemoveMode, onFulfill, onSellBack, onAdopt, onNotifySetting, onBuildOnline, onPack, onGoPost,
   onClosePanel: closePanel,
@@ -196,6 +196,10 @@ function report(events) {
           lastAwayNote = performance.now();
           break;
         }
+        if (e.who === 'packer') {
+          ui.notify(`📦 ${ONLINE.packer.name} danas ne pakira: nema novca za dnevnicu (${formatMoney(e.need)}).`, 'err');
+          break;
+        }
         if (e.who === 'van') {
           ui.notify(`🚐 ${MARKET.worker} danas ne vozi: ${e.reason === 'coins' ? `nema novca za dnevnicu (${formatMoney(e.need)})` : 'nešto nije u redu'}.`, 'err');
           break;
@@ -337,6 +341,15 @@ function report(events) {
         break;
       case 'onlinemissed':
         ui.notify(`🌐 Online narudžba je propala: ${e.who} nije dobio ${e.kg} ${goodById[e.crop].unit} ${goodById[e.crop].gen}.${e.packed ? ' Paket se vratio u škrinju.' : ''}`, 'err');
+        break;
+      case 'packerhired':
+        mapNote('lot', `📦 ${ONLINE.packer.name} pakira svako jutro u 6 h`, 'ok');
+        break;
+      case 'packerfired':
+        mapNote('lot', `📦 ${ONLINE.packer.name} više ne pakira`);
+        break;
+      case 'packerdone':
+        mapNote('lot', `📦 ${ONLINE.packer.name} je spakirala ${e.n} ${e.n === 1 ? 'paket' : 'paketa'} · −${formatMoney(e.wage)}`, 'ok');
         break;
       case 'packed':
         ui.say(`Spakirano za ${e.who}. 📦`, 'happy');
@@ -693,6 +706,7 @@ function onRemoveMode() {
 function onFulfill(id) { act((ev) => fulfillRequest(state, id, ev)); }
 function onSellBack(id) { act((ev) => sellBack(state, id, ev)); }
 function onAdopt(kind) { act((ev) => adoptPet(state, kind, ev)); }
+function onHirePacker(hire) { act((ev) => hirePacker(state, hire, ev)); }
 function onRenamePet(name) { act((ev) => renamePet(state, name, ev)); }
 
 function onPlace() {
