@@ -176,6 +176,7 @@ export function deserialize(raw) {
         ripeDays: legacy ? 0 : int(p.ripeDays, 0, 99, 0),
         rotten: p.rotten === true,
         pollen: p.pollen === true,
+        pecked: int(p.pecked, 0, 50, 0),
       };
     }
   }

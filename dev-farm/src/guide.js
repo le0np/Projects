@@ -8,7 +8,7 @@ import {
   CROPS, RECIPES, BUILDINGS, SHOP_ITEMS, GOODS, FORAGE, COOP, MARKET, GIGS, CAN_SIZE, UPGRADES, TANK_SIZE, COFFEE, EAT_ENERGY,
   ENERGY_COST, TIER_PRICE, SEEDS_FROM_FRUIT, SEED_PACK, HOUSE_SEEDS, FERTILIZER_PRICE,
   TIER_NAMES, FERT_BONUS, FERT_DOSES, COMPOST_KG, BOUGHT_FERT_TIER,
-  RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, BUYBACK, REPUTATION,
+  RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, BUYBACK, REPUTATION, PESTS,
   HOSE_PER_SPRINKLER, ROT_DAY, SHOP_OPEN, SHOP_CLOSE, SLEEP_FROM, BAG_SIZE, CHEST_SIZE,
   STAND_SIZE, CUSTOMER_KG, AD_NAMES, ONLINE, POLLEN_BONUS, GIG_ENERGY_PER_HOUR, MAX_ENERGY, FISH, FISHING, GAME_MIN_PER_SEC,
   WORK_SECONDS, WALK_SPEED,
@@ -346,6 +346,7 @@ export function guideTopics() {
         `Mobitel → Dostava → Ljubimac: udomi psa (${PETS.dog.name}) ili mačku (${PETS.cat.name}) iz skloništa za ${zl(PETS.adopt)}.`,
         `Ljubimac prati farmera po farmi i sjedne kad farmer stane. Klik na njega: maženje, a jednom na dan i +${PETS.pat} ⚡.`,
         'Ime ljubimca biraš sam: Dostava → Ljubimac → „Promijeni ime“.',
+        `Od ${PESTS.from}. dana neka jutra dođu vrane i kljucaju ${PESTS.crows.plots[0]}–${PESTS.crows.plots[1]} biljke koje rastu (svaka gubi ${PESTS.crows.points} bodova kvalitete), a neke noći miševi u škrinji pojedu ${PESTS.mice.kg[0]}–${PESTS.mice.kg[1]} kg ploda. **Pas tjera vrane, mačka lovi miševe**, pa izbor ljubimca nešto znači.`.replace(/\*\*/g, ''),
       ],
     },
     {

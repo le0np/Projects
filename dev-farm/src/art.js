@@ -1918,3 +1918,19 @@ export function wildPlot(variant) {
   }
   return p;
 }
+
+// A crow pecking at a plot (frame 0: head up, 1: head down).
+export function crow(frame = 0) {
+  const p = new Pix(14, 12);
+  const ink = ['#0e1014', '#1a1d24', '#262b35', '#3a4150'];
+  p.ellipse(7, 7, 4.5, 3.2, (nx, ny, x, y) => ink[ny < -0.2 ? 2 : ny < 0.4 ? 1 : 0]);
+  p.rect(10, 6, 3, 2, ink[1]); // tail
+  p.set(12, 5, ink[0]);
+  const hy = frame ? 7 : 4;
+  p.ellipse(3.5, hy, 2.2, 2, ink[1]);
+  p.set(3, hy - 1, '#d9dde4'); // eye
+  p.set(1, hy, '#6b6f78'); p.set(0, hy + (frame ? 1 : 0), '#6b6f78'); // beak
+  p.set(6, 10, '#2a2d33'); p.set(8, 10, '#2a2d33');
+  p.set(6, 11, '#2a2d33'); p.set(8, 11, '#2a2d33');
+  return p.outline(0.35);
+}

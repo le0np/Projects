@@ -10,7 +10,7 @@ import {
   buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn, sortSlots, dropItem, setFertTier, renamePet, hirePacker, buyPlot,
 } from './sim.js';
 import { ONLINE } from './data.js';
-import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES, UPGRADES, TANK_SIZE } from './data.js';
+import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES, UPGRADES, TANK_SIZE, PESTS } from './data.js';
 import { SAVE_KEY, OLDER_KEYS, serialize, deserialize } from './save.js';
 import { isPlotTile } from './world.js';
 import { createRenderer } from './render.js';
@@ -344,6 +344,14 @@ function report(events) {
         break;
       case 'onlinemissed':
         ui.notify(`🌐 Online narudžba je propala: ${e.who} nije dobio ${e.kg} ${goodById[e.crop].unit} ${goodById[e.crop].gen}.${e.packed ? ' Paket se vratio u škrinju.' : ''}`, 'err');
+        break;
+      case 'crows':
+        if (e.chased) mapNote([23, 9], `🐕 ${e.name} je otjerao vrane s polja`, 'ok');
+        else ui.notify(`🐦‍⬛ Vrane su jutros kljucale ${e.n} ${plots(e.n)} (−${PESTS.crows.points} bodova kvalitete).${state.pet ? '' : ' Pas bi ih tjerao (Dostava → Ljubimac).'}`, 'err');
+        break;
+      case 'mice':
+        if (e.caught) mapNote('chest', `🐈 ${e.name} je ulovila miša`, 'ok');
+        else ui.notify(`🐭 Miševi su noćas u škrinji pojeli ${e.n} ${goodById[e.crop].unit} ${goodById[e.crop].gen ?? goodById[e.crop].name.toLowerCase()}.${state.pet ? '' : ' Mačka bi ih ulovila (Dostava → Ljubimac).'}`, 'err');
         break;
       case 'plotbought':
         ui.say(`Nova parcela! Raščišćena za ${formatMoney(e.price)}.`, 'happy');

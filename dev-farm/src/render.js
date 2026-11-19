@@ -360,6 +360,14 @@ export function createRenderer(canvas) {
         else if (s.plots[i] && (inFieldA(i) || s.upgrades.field2)) img(art(`wild${(x * 5 + y * 3) % 4}`, () => A.wildPlot((x * 5 + y * 3) % 4)), x * TS, y * TS);
       }
     }
+    // crows on the plots they pecked this morning, until about 9 h (the dog chases them off before they land)
+    if (s.crows?.day === s.day && s.clock < 9 * 60) {
+      s.crows.at.forEach((i, k) => {
+        const [x, y] = xy(i);
+        const frame = Math.floor(now / 260 + k * 1.7) % 3 === 0 ? 1 : 0;
+        img(art(`crow${frame}`, () => A.crow(frame)), x * TS + 10 + (k % 2) * 4, y * TS + 3);
+      });
+    }
     // the greenhouse: glass panes on a light frame over the fields
     if (levelValue(s, 'greenhouse')) {
       for (const f of s.upgrades.field2 ? [FIELD_A, FIELD_B] : [FIELD_A]) {

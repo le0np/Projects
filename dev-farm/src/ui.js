@@ -1375,7 +1375,7 @@ export function createUI(cb) {
         const late = p.ripeDays > 0;
         text = `${cropById[p.crop].name} je zrela: sad bi bila ${stars(tier)} (${TIER_NAMES[tier]})${late ? ' i gubi kvalitetu' : ''}. Istrune za ${days(ROT_DAY - p.ripeDays)}.`;
       } else if (p) {
-        const care = [p.wet ? (p.wetLeft > 1 ? 'vlažna još sutra (malč)' : 'danas zalivena') : 'danas suha 💧', p.fert ? `pognojena (${stars(p.fert === true ? 2 : p.fert)})` : 'bez gnojiva', ...(p.mulch ? ['malč'] : [])].join(', ');
+        const care = [p.wet ? (p.wetLeft > 1 ? 'vlažna još sutra (malč)' : 'danas zalivena') : 'danas suha 💧', p.fert ? `pognojena (${stars(p.fert === true ? 2 : p.fert)})` : 'bez gnojiva', ...(p.mulch ? ['malč'] : []), ...(p.pecked ? [`vrane kljucale (−${p.pecked})`] : [])].join(', ');
         const left = daysLeft(p, s);
         text = `${cropById[p.crop].name}: još ${days(left)} uz zalijevanje · ${care}`;
       }

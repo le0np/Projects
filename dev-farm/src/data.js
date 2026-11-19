@@ -196,6 +196,15 @@ export const DECOR = {
 
 SHOP_ITEMS.push(...decorShopItems(DECOR));
 
+// Pests (owner, 19. 11.: the pet gets a useful habit). From day `from`, some mornings crows land on the
+// field and peck a few growing plots (−points quality each); some nights mice nibble a stack of produce in
+// the chest. A dog chases the crows off, a cat catches the mice.
+export const PESTS = {
+  from: 4,
+  crows: { chance: 0.3, plots: [1, 3], points: 10 },
+  mice: { chance: 0.25, kg: [1, 2] },
+};
+
 // A dog or a cat from the shelter follows the farmer around. A pat once a day gives energy.
 export const PETS = { dog: { name: 'Šarko', species: 'pas' }, cat: { name: 'Maca', species: 'mačka' }, adopt: 5, pat: 5 };
 export const PET_NAME_MAX = 16; // letters in a pet's name, chosen by the player

@@ -12,7 +12,7 @@ import {
   PUMP_INSTALL_SECONDS, SHOP_ITEMS, BUILDINGS,
   GOODS, FORAGE, FORAGE_START, FORAGE_DAILY, FORAGE_MAX, COOP, GIGS, GIG_OFFERS, GIG_ENERGY_PER_HOUR, MARKET, FISH, FISHING,
   FERT_BONUS, TIER_AT, MAX_TIER, FERT_DOSES, COMPOST_KG, fertId,
-  MATERIALS, MATERIAL_SOURCE, ONLINE, RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, PET_NAME_MAX, FIELD_PLOTS, REPUTATION, BUYBACK, DAY_NAMES, DAY_NAMES_GEN,
+  MATERIALS, MATERIAL_SOURCE, ONLINE, RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, PET_NAME_MAX, FIELD_PLOTS, REPUTATION, PESTS, BUYBACK, DAY_NAMES, DAY_NAMES_GEN,
 } from './data.js';
 import {
   idx, xy, charAt, isWalkable, isPlotTile, objectAt, OBJECTS, PLOTS_A, PLOTS_B, inFieldA, PLOT_ORDER, PLOT_RANK, fieldOf,
@@ -35,7 +35,7 @@ const EPS = 1e-9;
 // it grew it was watered (quality); ripeDays: days it has been waiting ripe; mulch: 0 or how
 // many days the mulch keeps the soil moist; pollen: bees from a hive reached it while growing.
 export function makePlot() {
-  return { crop: null, progress: 0, wet: false, wetBy: null, wetDays: 0, growDays: 0, fert: 0, mulch: 0, wetLeft: 0, ripeDays: 0, rotten: false, pollen: false };
+  return { crop: null, progress: 0, wet: false, wetBy: null, wetDays: 0, growDays: 0, fert: 0, mulch: 0, wetLeft: 0, ripeDays: 0, rotten: false, pollen: false, pecked: 0 };
 }
 
 const emptySlots = (n) => Array(n).fill(null);
@@ -71,6 +71,7 @@ function baseState(seed) {
     hives: [], // { x, y, honey, days }
     decor: [], // { x, y, kind }
     pet: null, // { kind: 'dog' | 'cat', name, patted: day }
+    crows: null, // { day, at: [plot] }: where the crows sat this morning (only drawn, not saved)
     pond: { fish: 0, caught: 0 }, // fish still to be caught today (the day's luck, not shown), caught today
     // upgrade levels (see UPGRADES): 1 = as first made
     levels: Object.fromEntries(Object.keys(UPGRADES).map((k) => [k, 1])),
@@ -276,7 +277,7 @@ function takeWhere(slots, pred, n) {
 export function qualityScore(p) {
   const waterFrac = p.growDays > 0 ? Math.min(1, p.wetDays / p.growDays) : 0;
   const care = 35 + 45 * waterFrac + FERT_BONUS[fertTier(p)];
-  const penalty = RIPE_PENALTY[Math.min(RIPE_PENALTY.length - 1, p.ripeDays)] - (p.pollen ? POLLEN_BONUS : 0);
+  const penalty = RIPE_PENALTY[Math.min(RIPE_PENALTY.length - 1, p.ripeDays)] - (p.pollen ? POLLEN_BONUS : 0) + (p.pecked ?? 0);
   return Math.max(0, Math.min(100, Math.round(care - penalty)));
 }
 
@@ -1251,6 +1252,7 @@ function morning(s, events) {
   }
   events.push({ type: 'forecast', today: s.weather, tomorrow: s.tomorrow });
   agingChest(s, events);
+  pests(s, events);
   // nothing sold at the market yesterday: people forget a little
   if (s.market.stall && s.market.soldDay < s.day - 1 && s.market.rep > 0) s.market.rep = Math.max(0, s.market.rep - REPUTATION.decay);
   customerRequests(s, events);
@@ -2045,6 +2047,41 @@ export function patPet(s, events = []) {
 // ---------------------------------------------------------------- chest and cold room
 
 // Produce in the chest loses a class now and then, unless the chest is a cold room.
+// Crows in the morning and mice overnight (see PESTS); the pet deals with its own kind.
+function pests(s, events) {
+  if (s.day < PESTS.from) return;
+  const between = ([a, b]) => a + Math.floor(rand(s) * (b - a + 1));
+  if (rand(s) < PESTS.crows.chance) {
+    const growing = Object.keys(s.plots).map(Number).filter((i) => {
+      const p = s.plots[i];
+      return p.crop && !p.rotten && p.progress < 1 && !p.pecked && plotUnlocked(s, i);
+    });
+    if (growing.length) {
+      if (s.pet?.kind === 'dog') events.push({ type: 'crows', n: 0, chased: true, name: s.pet.name });
+      else {
+        const hit = [];
+        for (let k = between(PESTS.crows.plots); k > 0 && growing.length; k--) hit.push(...growing.splice(Math.floor(rand(s) * growing.length), 1));
+        for (const i of hit) s.plots[i].pecked = PESTS.crows.points;
+        s.crows = { day: s.day, at: hit };
+        events.push({ type: 'crows', n: hit.length, at: hit.map(xy) });
+      }
+    }
+  }
+  if (rand(s) < PESTS.mice.chance) {
+    const stacks = s.chest.map((it, k) => [it, k]).filter(([it]) => it && parseItem(it.id)?.kind === 'crop');
+    if (stacks.length) {
+      if (s.pet?.kind === 'cat') events.push({ type: 'mice', n: 0, caught: true, name: s.pet.name });
+      else {
+        const [it, k] = stacks[Math.floor(rand(s) * stacks.length)];
+        const n = Math.min(it.n, between(PESTS.mice.kg));
+        it.n -= n;
+        if (!it.n) s.chest[k] = null;
+        events.push({ type: 'mice', n, crop: parseItem(it.id).crop });
+      }
+    }
+  }
+}
+
 function agingChest(s, events) {
   if (s.upgrades.coldroom) return;
   // a stack loses a class where it lies, so the player's own layout stays ("Sortiraj" merges later)

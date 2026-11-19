@@ -19,7 +19,7 @@ import {
 import { findPath } from '../src/path.js';
 import {
   BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZE, UPGRADES, CROPS, START_FINDS, HOUSE_SEEDS,
-  RECIPES, zl, ROT_DAY, MATERIAL_SOURCE, PET_NAME_MAX, FIELD_PLOTS, REPUTATION, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
+  RECIPES, zl, ROT_DAY, MATERIAL_SOURCE, PET_NAME_MAX, FIELD_PLOTS, REPUTATION, PESTS, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
 } from '../src/data.js';
 
 // Most tests work on the whole first field, as it was before plots were bought one by one;
@@ -1551,6 +1551,7 @@ test('mulch: made at the workbench from wood, keeps the soil wet for two days', 
 
 test('the chest: produce slowly loses quality, the cold room keeps it', () => {
   const s = createState();
+  s.pet = { kind: 'cat', name: 'Maca', patted: 0 }; // no mice in this test
   addItem(s.chest, cropItem('tomato', 4), 10);
   for (let d = 0; d < 12; d++) nextDay(s);
   const t = s.chest.find(Boolean);
@@ -2468,4 +2469,56 @@ test('market reputation: good produce raises it, škart and staying away lower i
   assert.equal(marketBoost(s), 1 + REPUTATION.bonus);
   assert.ok(up > 0);
   assert.equal(deserialize(serialize(s)).state.market.rep, REPUTATION.max);
+});
+
+test('pests: crows peck growing plots, mice nibble in the chest; a dog chases crows, a cat catches mice', () => {
+  const grow = (s) => { for (const i of PLOTS_A.slice(0, 10)) s.plots[i] = { ...makePlot(), crop: 'pumpkin', progress: 0.1, growDays: 1, wetDays: 1 }; };
+  // count over many mornings with a fixed luck
+  const run = (pet) => {
+    let pecked = 0; let nibbled = 0; let chased = 0; let caught = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const s = createState(seed);
+      s.day = PESTS.from + 1;
+      s.pet = pet ? { kind: pet, name: 'x', patted: 0 } : null;
+      grow(s);
+      s.chest[0] = { id: cropItem('carrot', 3), n: 20 };
+      const ev = nextDay(s);
+      for (const e of ev) {
+        if (e.type === 'crows') { if (e.chased) chased++; else pecked += e.n; }
+        if (e.type === 'mice') { if (e.caught) caught++; else nibbled += e.n; }
+      }
+      if (!pet) {
+        // what the crows did is in the plots, and the mice took from the chest
+        const hit = PLOTS_A.slice(0, 10).filter((i) => s.plots[i].pecked);
+        const e = ev.find((x) => x.type === 'crows');
+        assert.equal(hit.length, e ? e.n : 0);
+        for (const i of hit) assert.equal(s.plots[i].pecked, PESTS.crows.points);
+        const m = ev.find((x) => x.type === 'mice');
+        assert.equal(s.chest[0].n, 20 - (m ? m.n : 0));
+      }
+    }
+    return { pecked, nibbled, chased, caught };
+  };
+  const none = run(null);
+  assert.ok(none.pecked > 0 && none.nibbled > 0, 'without a pet, crows and mice do some harm');
+  const dog = run('dog');
+  assert.equal(dog.pecked, 0);
+  assert.ok(dog.chased > 0, 'the dog chases them off');
+  assert.ok(dog.nibbled > 0, 'but mice are not his business');
+  const cat = run('cat');
+  assert.equal(cat.nibbled, 0);
+  assert.ok(cat.caught > 0);
+  assert.ok(cat.pecked > 0);
+  // pecking costs quality; a new crop starts clean; it is kept in the save
+  const p = { ...makePlot(), crop: 'carrot', progress: 1, growDays: 1, wetDays: 1 };
+  assert.equal(qualityScore({ ...p, pecked: PESTS.crows.points }), qualityScore(p) - PESTS.crows.points);
+  assert.equal(makePlot().pecked, 0);
+  const s = createState();
+  s.plots[PLOTS_A[0]] = { ...p, progress: 0.5, pecked: 10 };
+  assert.equal(deserialize(serialize(s)).state.plots[PLOTS_A[0]].pecked, 10);
+  // none in the first days
+  const early = createState(3);
+  grow(early);
+  early.chest[0] = { id: cropItem('carrot', 3), n: 20 };
+  for (let d = 0; d < PESTS.from - 1; d++) assert.ok(!nextDay(early).some((e) => e.type === 'crows' || e.type === 'mice'));
 });
