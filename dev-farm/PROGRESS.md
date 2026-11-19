@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša (brzinom kupaca) i radi sa šest alata (ruke, sjeme, kanta, gnojivo, pecaljka, malč); svaki radi biljku po biljku, povlačenjem miša preko polja ili, preko ▾, na cijelom polju, a ruke imaju i seriju berba → sadnja → zalijevanje. Svaki posao na parceli traje 1–2 s (traka napretka, farmer se sagne ili nagne kantu). Torba, škrinja, štand i kombi imaju gumb „Sortiraj“ (po količini), a predmeti se premještaju i povlačenjem mišem. Sadi, zalijeva, gnoji i bere, skuplja u šumi, peca, drži kokoši i pčele, a plodove prodaje na štandu uz cestu ili na tržnici u gradu (sam, ili kombijem i zaposlenikom). Usjevi rastu po danima (dan traje 10 minuta, rast svako jutro), uz kišu i prognozu. Kvaliteta ploda ima pet klasa (★ do ★★★★★) i ovisi o zalijevanju, gnojivu, berbi na vrijeme i oprašivanju. Novac su zlatnici i srebrenjaci s omjerima prema hrvatskim tržišnim cijenama. Na radnom stolu se izrađuju izumi i zgrade (bunar, kokošinjac, navodnjavanje, dron, replant.py, hladnjača, pecaljka, košnica, malč, Reklame i plakati, drugo polje), a gotovo sve ima nadogradnje (tablica `UPGRADES`; koraci 1 i 2 su gotovi). Web shop s laptopa u kući donosi online narudžbe koje se pakiraju na parkiralištu i nose na poštu (korak 3, prvi dio). Mobitel služi za obavijesti, Dostavu (web shop s brojačem, otkup, uređenje, ljubimac), honorarce i priručnik, a farmer u oblačiću govori što radi i što ne može. Sva grafika je pixel art generiran u kodu.
+Igra je igriva u browseru. Farmer se kreće po mapi 48×32 klikovima miša (brzinom kupaca) i radi sa šest alata (ruke, sjeme, kanta, gnojivo, pecaljka, malč); svaki radi biljku po biljku, povlačenjem miša preko polja ili, preko ▾, na cijelom polju, a ruke imaju i seriju berba → sadnja → zalijevanje. Svaki posao na parceli traje 1–2 s (traka napretka, farmer se sagne ili nagne kantu). Torba, škrinja, štand i kombi imaju gumb „Sortiraj“ (po količini), a predmeti se premještaju i povlačenjem mišem. Sadi, zalijeva, gnoji i bere, skuplja u šumi, peca, drži kokoši i pčele, a plodove prodaje na štandu uz cestu ili na tržnici u gradu (sam, ili kombijem i zaposlenikom). Usjevi rastu po danima (dan traje 10 minuta, rast svako jutro), uz kišu i prognozu. Kvaliteta ploda ima pet klasa (★ do ★★★★★) i ovisi o zalijevanju, gnojivu, berbi na vrijeme i oprašivanju. Novac su zlatnici i srebrenjaci s omjerima prema hrvatskim tržišnim cijenama. Na radnom stolu se izrađuju izumi i zgrade (bunar, kokošinjac, navodnjavanje, dron, replant.py, hladnjača, pecaljka, košnica, malč, Reklame i plakati, drugo polje), a gotovo sve ima nadogradnje (tablica `UPGRADES`; koraci 1 i 2 su gotovi). Kartice radnog stola imaju sličicu i oznake „imaš/treba“ za novac, materijal i snagu. Web shop s laptopa u kući donosi online narudžbe koje se pakiraju na parkiralištu (ručno ili ih ujutro iz škrinje spakira pakirica Kata) i nose na poštu: farmer pješice ili Joža kombijem prije tržnice (korak 3 je gotov osim drugog kombija). Redoslijed alata i sve tipke mogu se promijeniti u postavkama, gnojivo se može birati, a ljubimac dobiti ime. Mobitel služi za obavijesti, Dostavu (web shop s brojačem, otkup, uređenje, ljubimac), honorarce i priručnik, a farmer u oblačiću govori što radi i što ne može. Sva grafika je pixel art generiran u kodu.
 
 ## Napravljeno 12. studenog 2026.
 
@@ -387,9 +387,50 @@ Dizajn: `docs/specs/2026-11-16-bag-sort-drag-design.md`, plan: `docs/plans/2026-
 - popravci nakon završnog pregleda: spuštanje na punu hrpu istog predmeta (99) ide na prvo slobodno mjesto umjesto lažnog „škrinja/torba puna“ (koji je u škrinji javljao i poruku drona); plodovi koji u škrinji bez hladnjače izgube klasu ostaju na svom mjestu (prije su se premještali, pa bi ručni raspored nestao preko noći)
 - priručnik (Torba, škrinja i dostava) i README; testovi: 6 novih (puna hrpa, kvarenje na mjestu, sortiranje i spajanje hrpa, abecedno kod jednake količine, povlačenje unutar mreže, između mreža s pravilima i zastarjelim izvorom) i provjera priručnika
 
+## Napravljeno 19. studenog 2026.
+
+Vlasnik: „Napravi sve što možeš bez mene, a ono što od mene očekuje odobrenje ili odgovore ostavi za kraj.“ Odluke koje su pale na mene zapisane su u README-u („Odluke od 19. 11.“), a pitanja su u „Sljedeći koraci“ pod točkom 0.
+
+### v38 – radni stol: sličice i oznake za ono što fali (točka 3 vlasnikove liste, drugi dio)
+
+- `costNeeds(s, cost)` u `sim.js`: za cijenu (zl, drva, kamen, željezo, plastika, energija) vrati svaku stavku s `need`, `have`, `ok` i `where`; `MATERIAL_SOURCE` u `data.js` kaže gdje se materijal nalazi
+- svaka kartica radnog stola (izumi, planovi zgrada, kartice zgrada i polja, navodnjavanje, nadogradnje) ima red oznaka: zeleno „✔ 2 drva“, crveno „4/6 drva“ i „150 zl · fali 130 zl“, ispod „Gdje naći: …“ za materijale koji fale. Gumbi su kraći („Izradi“, „Nadogradi“, „fali materijala“, „nedovoljno novca“), jer oznake kažu ostalo. Plan zgrade pokazuje što će trebati gradnja („plan je besplatan“)
+- „skice“: sličica 32 px u naslovu svake kartice; nove ikone u `art.js`: bunar, kokošinjac, hladnjača, dron, skripta (replant.py), plakat, polje
+- priručnik (Radni stol) i test za `costNeeds`
+
+### v39 – vlastiti raspored alatne trake i tipki (točka 3, treći dio)
+
+- novi modul `src/keys.js` (čista logika, `tests/keys.test.js`): popis akcija s tipkama (6 alata, 4 skupna posla, torba, mobitel, zoom), `keymap` (provjera spremljenog: nepoznato van, rezervirane tipke Esc/Tab/Enter i dvostruke tipke na zadano), `bindKey` (zauzeta tipka: dvije akcije se zamijene), `actionFor` („=“ i dalje približava), `toolOrder`, `moveTool`
+- postavke ⚙ → „Alatna traka i tipke“: ◀ ▶ uz svaki alat, gumb s tipkom (klik → „pritisni tipku…“, Esc odustaje), „Vrati zadano“. Traka, oznake na alatima i naslovi gumba (Torba (T)…) prate promjene; sprema se u postavke browsera (`settings.keys`, `settings.toolOrder`)
+- popravak usput: klik na gumb koji se iscrta iznova zatvarao je postavke (provjera sad ide preko `composedPath`)
+
+### v40 – Joža vozi pakete na poštu prije tržnice (korak 3, drugi dio; odluka vlasnika 16. 11.)
+
+- `vanPlan(s)`: tržnica (ima robe, klupe i vremena) i/ili pošta (spakirani paketi, stiže prije 17 h) i plaća: dnevnica 30 zl za tržnicu + `MARKET.postWage` 10 zl za poštu. Bez robe vozi samo pakete za 10 zl. Ujutro u 6 h vozi i kad ima samo pakete
+- paketi u kombiju imaju `carried: 'van'` (farmer ih ne može odnijeti dvaput); na dolasku u grad Joža ih preda prije prve prodaje; ako stigne nakon zatvaranja pošte, paketi se vrate u kutiju
+- sučelje: „Pošalji sad (samo pošta) · 10 zl“ / „(pošta i tržnica)“, „🚐 Joža ga vozi na poštu“ na paketu, oznake na parkiralištu, poruka kad je predao pakete
+- **stara greška**: farmerov put samo na poštu nakon ponovnog učitavanja nestao je ako klupa na tržnici nije bila zakupljena, a sa zakupljenom klupom postao bi put na tržnicu (polje `post` se nije spremalo). Sad se sprema `post` i `parcels`
+- testovi: 3 nova (pošta prije tržnice i plaća, samo pošta i jutarnja vožnja, paketi i put nakon učitavanja, zakašnjeli paketi natrag u kutiju)
+
+### v41 – sitnice s popisa ograničenja i ideja
+
+- **biranje gnojiva** (ideja 6): `s.fertTier` (0 = najbolje prvo, 1–3 samo to), `usableFert`, `setFertTier`; dok je gnojivo u ruci, vrećica ispod alata nudi „Najbolje prvo“ i gnojiva koja imaš. Kad odabranog nestane, posao stane s porukom (ne troši se drugo). Sprema se
+- **jaja na tržnici** broje se u komadima (`trip.pcs`), odvojeno od kg: „prodano 12 kg i 10 jaja“
+- **odabrani predmet u torbi** prati predmet kad ga „Sortiraj“ ili povlačenje premjesti
+- **dvije poruke odjednom**: druga čeka dok se prva ne pročita (prva ostaje barem 1,5 s); čekaju najviše dvije, ista se ne ponavlja
+- **ime ljubimca** (ideja 7, prvi dio): Dostava → Ljubimac → „Promijeni ime“ (`renamePet`, najviše 16 slova)
+
+### v42 – pakirica Kata (korak 3, treći dio, prvi dio; vlasnik je odobrio „zaposlenika za pakiranje“ uz v27)
+
+- zapošljava se kod kutije za pakete (treba web shop); svako jutro, nakon novih narudžbi a prije Jožinog polaska, spakira iz **škrinje** sve narudžbe za koje ima robe (najslabija dovoljno dobra klasa, kao pri ručnom pakiranju). `ONLINE.packer` = Kata, 6 zl, plaća se samo na dan kad spakira barem jedan paket; bez novca taj dan ne pakira (poruka)
+- `requestHave` i `orderPick` primaju mrežu (torba ili škrinja); spremanje `online.packer`
+- test: pakiranje iz škrinje, Joža isti dan vozi, dan bez posla ne košta, bez novca ne pakira, spremanje
+
+Spremanje ostaje v9: nova polja (`fertTier`, `online.packer`, `carried`, `trip.pcs`, `trip.post`, `trip.parcels`) su neobavezna i imaju zadane vrijednosti, pa stare farme rade bez prijenosa.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 16. studenog 2026. nakon v37 i popravaka iz pregleda: `npm test` 109/109; pravo povlačenje mišem u Chromiumu (CDP `Input.setInterceptDrags` + `dispatchDragEvent`) prebacilo je drva iz torbe na 4. mjesto škrinje; u Firefoxu 160 (WebDriver BiDi) pravi miš pokreće povlačenje s gumba mjesta i `dragenter`/`dragover` stižu do mjesta, ali headless Firefox ne isporuči završni `drop` iz WebDriver radnji, pa je spuštanje u Firefoxu provjereno sintetskim `DragEvent` (radi); headless Chromium bez JS grešaka: škrinja s 3 × 40 kg rotkvica, kamenjem i drvima → „Sortiraj“ → 99 + 21 kg rotkvica, 7 kamenja, 3 drva, ostalo prazno; mrkva povučena unutar torbe na prazno mjesto; drva povučena iz torbe na 8. mjesto škrinje; „Sortiraj“ u torbi složi bez praznina. Nakon v36: `npm test` 102/102; headless Chromium bez JS grešaka: polje s 2 zrele rotkvice i 3 trule mrkve, alat ruku „zrelih: 2 · trulih: 3“, tipka B → „Idem u berbu: 5 parcela (trule čistim).“ → „Gotovo! Ubrano 2, očišćeno trulih 3 (★★★ 2 kg).“, sve parcele prazne. Nakon v35 i popravaka iz pregleda: `npm test` 98/98; Esc usred povlačenja ne radi ništa, a sljedeći klik radi normalno; Esc usred sadnje je prekine bez troška sjemena; headless Chromium bez JS grešaka: sadnja klikom (farmer čučne, traka ispod nogu, posađeno nakon 1,5 s), zalijevanje (nagnuta kanta s kapima, energija 100 → 97), povlačenje preko 5 parcela s preskokom miša (svih 5 u žutom okviru, „sadi 0/5“, 4/5 posađeno nakon 9 s), kratki klik i dalje šalje farmera na jednu parcelu, klik na travu usred sadnje prekida posao bez troška („Dobro, prekidam sadnju.“), Ruke ▾ → Serija → Sve zrelo („serija 0/6“, ■; parcele pobrane, posađene i zalivene), povlačenje rukama = berba, uz Shift = serija. Nakon vraćanja v25–v34 u `dev`: `npm test` 82/82, igra se učitava u headless Chromiumu bez JS grešaka (spremanje v9, sve linije nadogradnji u stanju). Provedeno 13. studenog 2026. nakon v34: `npm test` 82/82 i učitavanje igre u headless Chromiumu bez JS grešaka. Nakon v33 isto. Nakon v32 (`npm test` i učitavanje igre u headless Chromiumu bez JS grešaka; kartice narudžbi nisu klikane u pregledniku, logika je pokrivena testovima). Ranije, nakon v31:
+Provedeno 19. studenog 2026. nakon v42: `npm test` 121/121. Headless Chromium bez JS grešaka (scenariji u scratchpadu sesije, CDP): radni stol s 20 zl, 4 drva i 3 željeza pokazuje „150 zl · fali 130 zl“, „4/6 drva“, „0/12 kamena“, „✔ 30 ⚡“ i „Gdje naći: grane uz rub šume; kamenje uz rub šume.“, sličice bunara, drona i ostalih na karticama; postavke → Alatna traka i tipke: Kanta dvaput ◀ (traka „3 Kanta, 1 Ruke, 2 Sjeme, 4 Gnojivo“, postavke ostaju otvorene), Torba → B (Poberi sve dobije T), B zatim otvara torbu, raspored ostaje nakon ponovnog učitavanja; „Pošalji sad (samo pošta) · 10 zl“ → „🚐 Joža ga vozi na poštu“, sat kasnije paket plaćen (−10 zl +3 zl) i Joža doma; Kata zaposlena, ujutro „packerdone:1“ i Joža odmah vozi paket; gnojivo u ruci → vrećica „Najbolje prvo × 14 | Gnojivo ★★★ × 10 | Gnojivo ★★ × 4“, odabir ★★★ mijenja alat na „★★★ · 10 doza“; drva odabrana na 6. mjestu torbe nakon „Sortiraj“ ostaju odabrana na 1. mjestu; preimenovanje mačke u „Mrvica“ i oblačić „Mrvica! Zamijauče.“; tri dana zaredom s Katom, Jožom, kombijem s jajima i ★-gnojivom, pa ponovno učitavanje (fertTier i Kata ostaju). Ranije, 16. studenog 2026. nakon v37 i popravaka iz pregleda: `npm test` 109/109; pravo povlačenje mišem u Chromiumu (CDP `Input.setInterceptDrags` + `dispatchDragEvent`) prebacilo je drva iz torbe na 4. mjesto škrinje; u Firefoxu 160 (WebDriver BiDi) pravi miš pokreće povlačenje s gumba mjesta i `dragenter`/`dragover` stižu do mjesta, ali headless Firefox ne isporuči završni `drop` iz WebDriver radnji, pa je spuštanje u Firefoxu provjereno sintetskim `DragEvent` (radi); headless Chromium bez JS grešaka: škrinja s 3 × 40 kg rotkvica, kamenjem i drvima → „Sortiraj“ → 99 + 21 kg rotkvica, 7 kamenja, 3 drva, ostalo prazno; mrkva povučena unutar torbe na prazno mjesto; drva povučena iz torbe na 8. mjesto škrinje; „Sortiraj“ u torbi složi bez praznina. Nakon v36: `npm test` 102/102; headless Chromium bez JS grešaka: polje s 2 zrele rotkvice i 3 trule mrkve, alat ruku „zrelih: 2 · trulih: 3“, tipka B → „Idem u berbu: 5 parcela (trule čistim).“ → „Gotovo! Ubrano 2, očišćeno trulih 3 (★★★ 2 kg).“, sve parcele prazne. Nakon v35 i popravaka iz pregleda: `npm test` 98/98; Esc usred povlačenja ne radi ništa, a sljedeći klik radi normalno; Esc usred sadnje je prekine bez troška sjemena; headless Chromium bez JS grešaka: sadnja klikom (farmer čučne, traka ispod nogu, posađeno nakon 1,5 s), zalijevanje (nagnuta kanta s kapima, energija 100 → 97), povlačenje preko 5 parcela s preskokom miša (svih 5 u žutom okviru, „sadi 0/5“, 4/5 posađeno nakon 9 s), kratki klik i dalje šalje farmera na jednu parcelu, klik na travu usred sadnje prekida posao bez troška („Dobro, prekidam sadnju.“), Ruke ▾ → Serija → Sve zrelo („serija 0/6“, ■; parcele pobrane, posađene i zalivene), povlačenje rukama = berba, uz Shift = serija. Nakon vraćanja v25–v34 u `dev`: `npm test` 82/82, igra se učitava u headless Chromiumu bez JS grešaka (spremanje v9, sve linije nadogradnji u stanju). Provedeno 13. studenog 2026. nakon v34: `npm test` 82/82 i učitavanje igre u headless Chromiumu bez JS grešaka. Nakon v33 isto. Nakon v32 (`npm test` i učitavanje igre u headless Chromiumu bez JS grešaka; kartice narudžbi nisu klikane u pregledniku, logika je pokrivena testovima). Ranije, nakon v31:
 
 | Provjera | Rezultat |
 | --- | --- |
@@ -426,18 +467,19 @@ Provedeno 16. studenog 2026. nakon v37 i popravaka iz pregleda: `npm test` 109/1
 - Nadogradnje košnice i malča mogu se kupiti i prije prve košnice ili vreće malča.
 - Cijene nadogradnji (v27) su procjene. Nova farma sad počinje sa slabijom vodom iz prskalica (50 % umjesto 75 %) i dronom koji bere samo ★★, pa rana automatizacija vrijedi manje nego prije v27.
 - Prva berba stiže drugo jutro (rotkvica, mrkva); prvi dan igru nose šuma, kokošinjac i honorarci. Novi tempo rasta nije isproban igranjem.
-- Ako se dvije farmerove poruke dogode istovremeno, druga zamijeni prvu u oblačiću.
+- Jožin dodatak za poštu (10 zl) i Katina dnevnica (6 zl) su moje procjene (19. 11.), nisu isprobane igranjem.
+- Kata pakira samo iz škrinje i samo ujutro; narudžba koja stigne a za nju u škrinji nema robe čeka ručno pakiranje ili sljedeće jutro.
+- Ime ljubimca se upisuje u prozorčić browsera (`prompt`), ne u polje unutar igre.
+- Tipke u priručniku i README-u su zadane; kad igrač promijeni tipke, tekstovi ih ne prate (gumbi i naslovi na traci prate).
 - Tempo ručnog rada (v35) nije isproban igranjem: serija na 48 parcela traje oko 7 sati u igri. Radnja u tijeku i red poslova ne spremaju se; nakon ponovnog učitavanja farmer stoji.
 - Berba s punom torbom javi „torba puna“ tek nakon 1,5 s rada; brojač kod dodavanja sadnje povlačenjem može pokazati više parcela nego što ima sjemena (posao stane kad sjeme nestane).
 - Povlačenje radi samo mišem; na dodirnom ekranu nije rađeno (ni povlačenje po polju ni premještanje predmeta).
 - Premještanje predmeta mišem u Firefoxu nije isprobano do kraja ručno (automatski: povlačenje kreće i prelazi preko mjesta, spuštanje radi sintetski); vrijedi jednom probati rukom.
-- Nakon „Sortiraj“ ili povlačenja odabrani predmet u torbi ostaje označen na starom mjestu.
 - Oznake na mapi vide se samo kad je to mjesto u kadru; što se dogodi izvan kadra (npr. kupnja dok je farmer na polju) nigdje ne ostaje zapisano. Upozorenja koja stižu jednom na dan pamte se samo do ponovnog učitavanja stranice.
 - Glatkoća zooma nije provjerena automatski, samo da konačni prikaz radi.
 - Dijelovi pločica ribnjaka uz uglove izgledaju kao trava, ali farmer na njih ne može.
 - Ime aplikacije na mobitelu još nije odabrano (zasad „📱 Mobitel“).
 - Grad se ne vidi: farmer i kombi samo odu s mape, a prodaja na tržnici se simulira. Ravnoteža tržnice (zakup, kombi, dnevnica, broj kupaca) nije isprobana igranjem.
-- Na tržnici se jaja broje zajedno s kilogramima u zbroju „prodano X kg“.
 - Na uskim ekranima (ispod oko 700 px) ploče nad mapom prekrivaju velik dio mape; mobilni raspored nije posebno rađen.
 - Pumpa koja je već dostavljena dvaput (prije v15) ostaje u škrinji; višak se zasad ne može prodati.
 - `pixel-runner` nije pokretan na ovom računalu (nema Pygame).
@@ -446,21 +488,28 @@ Provedeno 16. studenog 2026. nakon v37 i popravaka iz pregleda: `npm test` 109/1
 
 Ideje koje su predložene, a još nisu napravljene:
 
-0. **Vlasnikova lista od 16. 11.** (redom): ~~1. rad na polju~~ (v35, v36); **3. sučelje**: ~~sortiranje i premještanje u torbi i škrinji~~ (v37), jasnije oznake na radnom stolu za ono što fali (sa skicama), vlastiti raspored alatne trake i tipki; **4. materijali** (rezanje drva, kamenolom ili dostava kamena, čavli, čekić, boja) – **prije izrade stati i dogovoriti s vlasnikom logičan potez**; 5. staja i životinje (koze, krave, ovce), ovisi o 4. Na pauzi: 2. polje koje se kupuje parcelu po parcelu (počinje s 4 parcele; ×1,5 po parceli raste prebrzo, treba dogovoriti drugu krivulju) i 6. reputacija na tržnici.
-1. **Korak 3, drugi dio**: Joža vozi pakete na poštu **prije tržnice** (odluka vlasnika 16. 11.: ionako stigne ranije i čeka da se tržnica otvori) za dodatnu dnevnicu (jedini trošak dostave; kupac plaća samo online cijenu, bez poštarine). **Treći dio**: drugi kombi s drugim vozačem samo za dostavu i zaposlenik koji pakira pakete (vidi v27).
-2. Isprobati igranjem novu ravnotežu (nadogradnje iz koraka 1 i 2, tržnica, kiša, malč, med i tegle, narudžbe, hladnjača) i po potrebi prilagoditi brojke u `src/data.js`.
-3. Grad kao vlastita scena po kojoj farmer hoda (tržnica s drugim prodavačima, trgovina); tržnica bi mogla imati dnevnu potražnju po vrsti ploda.
-4. **Lov (ideja vlasnika):** u šumi divljač (zec, fazan, divlja svinja); treba nešto napraviti ili kupiti (npr. luk i strijele ili lovačka dozvola), idle kao pecanje, meso za prodaju ili jelo, ograničen broj po danu.
-5. Odabrati ime aplikacije na mobitelu.
-6. Biranje gnojiva pri gnojenju (sad se uvijek prvo troši najbolje).
-7. Ime ljubimca po izboru; ljubimac s nekom korisnom navikom (pas tjera vrane, mačka miševe iz škrinje).
+0. **Čeka vlasnika (19. 11.):**
+   - **4. materijali**: kako logično (vidi dolje); bez dogovora se ne radi. Moj prijedlog za razgovor: drva se režu u šumi sjekirom (alat, Dostava), kamen iz kamenoloma na rubu mape ili dostavom, čavli i boja samo dostavom, čekić je alat; zgrade (staja, ograde) traže čavle, a ukrasi boju
+   - **drugo polje parcelu po parcelu**: koja krivulja cijene umjesto ×1,5 (npr. +10 zl po parceli, ili ×1,1)
+   - **reputacija na tržnici**: što je podiže (kvaliteta, narudžbe na vrijeme) i što daje (više kupaca, veća cijena)
+   - **drugi kombi samo za dostavu**: treba li još, sad kad Joža vozi pakete prije tržnice
+   - potvrditi brojke: Jožin dodatak 10 zl, Katina dnevnica 6 zl
+   - **korisna navika ljubimca**: pas tjera vrane, mačka miševe; to su nove mehanike (vrane koje kljucaju usjeve, miševi u škrinji). Treba li to uopće uvesti
+   - ime aplikacije na mobitelu; lov (luk ili dozvola, koje životinje, koliko na dan)
+1. **Vlasnikova lista od 16. 11.** (redom): ~~1. rad na polju~~ (v35, v36); ~~**3. sučelje**: sortiranje i premještanje u torbi i škrinji (v37), jasnije oznake na radnom stolu za ono što fali, sa skicama (v38), vlastiti raspored alatne trake i tipki (v39)~~; **4. materijali** (rezanje drva, kamenolom ili dostava kamena, čavli, čekić, boja) – **prije izrade stati i dogovoriti s vlasnikom logičan potez**; 5. staja i životinje (koze, krave, ovce), ovisi o 4. Na pauzi: 2. polje koje se kupuje parcelu po parcelu (počinje s 4 parcele; ×1,5 po parceli raste prebrzo, treba dogovoriti drugu krivulju) i 6. reputacija na tržnici.
+2. ~~**Korak 3, drugi dio**: Joža vozi pakete na poštu prije tržnice~~ (v40). **Treći dio**: ~~zaposlenik koji pakira pakete~~ (v42, Kata); drugi kombi s drugim vozačem samo za dostavu čeka odgovor (točka 0).
+3. Isprobati igranjem novu ravnotežu (nadogradnje iz koraka 1 i 2, tržnica, kiša, malč, med i tegle, narudžbe, hladnjača) i po potrebi prilagoditi brojke u `src/data.js`.
+4. Grad kao vlastita scena po kojoj farmer hoda (tržnica s drugim prodavačima, trgovina); tržnica bi mogla imati dnevnu potražnju po vrsti ploda.
+5. **Lov (ideja vlasnika):** u šumi divljač (zec, fazan, divlja svinja); treba nešto napraviti ili kupiti (npr. luk i strijele ili lovačka dozvola), idle kao pecanje, meso za prodaju ili jelo, ograničen broj po danu.
+6. Odabrati ime aplikacije na mobitelu.
+7. ~~Biranje gnojiva pri gnojenju~~ (v41). ~~Ime ljubimca po izboru~~ (v41); ljubimac s nekom korisnom navikom čeka odgovor (točka 0).
 
 ## Handoff za novi chat
 
 1. Repo je `/home/leon/Desktop/Work-Stuff/Projects` (GitHub `le0np/Projects`), radi se na grani `dev`. Projekt je u `dev-farm/`.
 2. Prvo pročitati korijenski `CLAUDE.md`, `dev-farm/README.md` i ovaj dokument.
 3. Pokretanje: `cd dev-farm && npm start` (http://localhost:8080). Testovi: `npm test`.
-4. Arhitektura: `src/data.js` (brojke) → `src/sim.js` (čista pravila, testirana) → `src/render.js` + `src/art.js` (crtanje) i `src/ui.js` (DOM) → `src/main.js` (petlja, ulaz, poruke). Pravila ne smiju ovisiti o DOM-u.
+4. Arhitektura: `src/data.js` (brojke) → `src/sim.js` (čista pravila, testirana; `src/keys.js` za tipke i raspored alata) → `src/render.js` + `src/art.js` (crtanje) i `src/ui.js` (DOM) → `src/main.js` (petlja, ulaz, poruke). Pravila ne smiju ovisiti o DOM-u.
 5. Novac se u stanju čuva u srebrenjacima (cijeli brojevi), cijene se u `data.js` pišu u zlatnicima (`zl()`).
 6. Format spremanja je v9 (`src/save.js`); kod promjene stanja dodati prijenos starijih spremanja. Nadogradnje izuma su u `UPGRADES` (`data.js`), razine u `s.levels`; nova linija se dodaje samo u tablicu, radni stol je sam crta. `of` kaže čija je linija (`owns()` u `sim.js`): izum s `once`, `well`, `coop`, `field` ili recept koji se radi više puta (`mulch`, `hive`).
 7. Provjera u browseru: `devFarm.skip(sekunde)` premota vrijeme; headless Chromium je u `~/.cache/ms-playwright/chromium-1208/` i može se voziti preko DevTools protokola (Node 24 ima ugrađen `WebSocket`).
