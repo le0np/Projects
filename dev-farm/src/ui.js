@@ -4,7 +4,7 @@
 import {
   CROPS, RECIPES, MAX_ENERGY, COFFEE, EAT_ENERGY, TIER_NAMES, SHOP_OPEN, SHOP_CLOSE, ROT_DAY,
   SEEDS_FROM_FRUIT, SEED_PACK, WELL_BUILD, zl, SLEEP_FROM, COOP, SHOP_ITEMS, HOSE_PER_SPRINKLER, BUILDINGS, MARKET,
-  COMPOST_KG, FERT_DOSES, DECOR, PETS, REQUESTS, HIVES, UPGRADES, TANK_SIZE, MATERIALS, ONLINE, GIG_ENERGY_PER_HOUR,
+  COMPOST_KG, FERT_DOSES, DECOR, PETS, REQUESTS, HIVES, UPGRADES, TANK_SIZE, MATERIALS, ONLINE, GIG_ENERGY_PER_HOUR, REPUTATION,
 } from './data.js';
 import {
   parseItem, isUnlocked, canSize, countWhere, canCraft, salePrice, isSellable, cropById,
@@ -13,7 +13,7 @@ import {
   upgradeProblem, nextStep, levelValue, matsText, pumpCapacity, tankDoses, runningSprinklers, irrigationMissing, fishById, fertDoses, requestHave, requestPay, orderPick, orderPay, dayName, dayNameGen,
   buybackList, hiveAt, decorAt, farmerTripProblem, vanTripProblem, pumpStatus, orderPack, shopItemById,
   owns, recipeAmount, hensMax, feederCap, hiveCap, chestSize, cropDays, hasTap,
-  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount, costNeeds, vanPlan, usableFert, nextPlot, plotPrice,
+  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount, costNeeds, vanPlan, usableFert, nextPlot, plotPrice, marketBoost,
 } from './sim.js';
 import { idx, objectAt, isPlotTile, OBJECTS, TAP, PLOT_ORDER, inFieldA } from './world.js';
 import { iconUrl } from './render.js';
@@ -918,11 +918,23 @@ export function createUI(cb) {
     const vp = vanTripProblem(s);
     const goods = countWhere(s.bag, isSellable);
     const plan = vanPlan(s);
-    const sig = JSON.stringify(['market', m.stall, m.van, m.worker, tv && [tv.phase, tv.kg, tv.pcs, tv.money, tv.post], s.cargo, fp, vp, goods, plan,
+    const sig = JSON.stringify(['market', Math.round(m.rep), m.stall, m.van, m.worker, tv && [tv.phase, tv.kg, tv.pcs, tv.money, tv.post], s.cargo, fp, vp, goods, plan,
       s.money >= zl(MARKET.van), s.money >= zl(MARKET.stall), s.online, s.online.orders.map((o) => requestHave(s, o)), postTripProblem(s), s.day]);
     renderIfChanged(els.panel, sig, () => {
-      const out = [head(), ...parcelBox(s), el('p', 'muted', `Cesta na sjever vodi u grad: pješice ${MARKET.walk / 60} h, kombijem ${MARKET.drive} min. Tržnica radi ${formatClock(MARKET.open)}–${formatClock(MARKET.close)}: kupaca je puno više nego na štandu uz cestu i uzimaju po ${MARKET.kg[0]}–${MARKET.kg[1]} kg. Cijene su iste.`)];
+      const out = [head(), ...parcelBox(s), el('p', 'muted', `Cesta na sjever vodi u grad: pješice ${MARKET.walk / 60} h, kombijem ${MARKET.drive} min. Tržnica radi ${formatClock(MARKET.open)}–${formatClock(MARKET.close)}: kupaca je puno više nego na štandu uz cestu i uzimaju po ${MARKET.kg[0]}–${MARKET.kg[1]} kg i plaćaju ${Math.round(MARKET.markup * 100)} % više nego na štandu.`)];
       out.push(el('p', 'small catalog-head', '🧺 Klupa na tržnici'));
+      if (m.stall) {
+        // reputation: a meter and what it gives
+        const rep = Math.round(m.rep);
+        const box = el('div', 'upgrade');
+        const headRow = el('div', 'upgrade-head');
+        const meter = el('span', 'meter');
+        meter.style.gridTemplateColumns = 'repeat(10, 1fr)';
+        for (let k = 1; k <= 10; k++) meter.append(el('span', k * 10 <= rep ? 'on' : ''));
+        headRow.append(el('span', 'upgrade-name', `⭐ Ugled ${rep}/${REPUTATION.max}`), meter);
+        box.append(headRow, el('p', 'small muted', `+${Math.round((marketBoost(s) - 1) * 100)} % kupaca. Raste kad kupci dobiju dobru robu (★★★ i bolje), pada od škarta (★) i kad dan prođe bez prodaje na tržnici.`));
+        out.push(box);
+      }
       if (!m.stall) {
         out.push(el('p', 'small', 'Klupa se zakupljuje jednom, za cijelu sezonu.'));
         out.push(button(`Zakupi klupu · ${formatMoney(zl(MARKET.stall))}`, cb.onRentStall, { cls: 'btn primary', disabled: s.money < zl(MARKET.stall) }));

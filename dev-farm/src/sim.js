@@ -12,7 +12,7 @@ import {
   PUMP_INSTALL_SECONDS, SHOP_ITEMS, BUILDINGS,
   GOODS, FORAGE, FORAGE_START, FORAGE_DAILY, FORAGE_MAX, COOP, GIGS, GIG_OFFERS, GIG_ENERGY_PER_HOUR, MARKET, FISH, FISHING,
   FERT_BONUS, TIER_AT, MAX_TIER, FERT_DOSES, COMPOST_KG, fertId,
-  MATERIALS, MATERIAL_SOURCE, ONLINE, RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, PET_NAME_MAX, FIELD_PLOTS, BUYBACK, DAY_NAMES, DAY_NAMES_GEN,
+  MATERIALS, MATERIAL_SOURCE, ONLINE, RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, PET_NAME_MAX, FIELD_PLOTS, REPUTATION, BUYBACK, DAY_NAMES, DAY_NAMES_GEN,
 } from './data.js';
 import {
   idx, xy, charAt, isWalkable, isPlotTile, objectAt, OBJECTS, PLOTS_A, PLOTS_B, inFieldA, PLOT_ORDER, PLOT_RANK, fieldOf,
@@ -82,7 +82,8 @@ function baseState(seed) {
     stand: emptySlots(STAND_SIZE),
     cargo: emptySlots(MARKET.vanSize), // what is loaded in the van
     // the town market: trips.farmer / trips.van are { phase: 'go' | 'sell' | 'back', left, timer, kg, money }
-    market: { stall: false, van: false, worker: false, trips: { farmer: null, van: null } },
+    // rep: reputation at the market (REPUTATION), soldDay: the last day something was sold there
+    market: { stall: false, van: false, worker: false, trips: { farmer: null, van: null }, rep: 0, soldDay: 0 },
     sprinklers: [],
     // load: what the drone carries to the chest; carried: plots picked on this flight
     drone: { x: DRONE_HOME[0], y: DRONE_HOME[1], target: null, cool: 0, blocked: false, load: [], carried: 0 },
@@ -1250,6 +1251,8 @@ function morning(s, events) {
   }
   events.push({ type: 'forecast', today: s.weather, tomorrow: s.tomorrow });
   agingChest(s, events);
+  // nothing sold at the market yesterday: people forget a little
+  if (s.market.stall && s.market.soldDay < s.day - 1 && s.market.rep > 0) s.market.rep = Math.max(0, s.market.rep - REPUTATION.decay);
   customerRequests(s, events);
   onlineOrders(s, events);
   packerRun(s, events); // before Joža leaves at 6, so the parcels go today
@@ -2161,6 +2164,9 @@ export function sellBack(s, id, events = []) {
 
 // ---------------------------------------------------------------- the town market
 
+// how much more often customers come to the stall at the market thanks to its reputation
+export const marketBoost = (s) => 1 + REPUTATION.bonus * (s.market.rep / REPUTATION.max);
+
 // game minutes to town: the farmer walks, Joža drives the van
 export const tripMinutes = (who) => (who === 'van' ? MARKET.drive : MARKET.walk);
 const travelSeconds = (who) => tripMinutes(who) / GAME_MIN_PER_SEC;
@@ -2316,9 +2322,11 @@ function runTrips(s, dt, events) {
       t.timer -= dt;
       if (t.timer > 0) continue;
       const [a, b] = MARKET.interval;
-      t.timer = a + rand(s) * (b - a);
+      t.timer = (a + rand(s) * (b - a)) / marketBoost(s);
       const sale = sellOne(s, slots, MARKET.kg, events, MARKET.markup);
       if (sale) {
+        s.market.rep = Math.max(0, Math.min(REPUTATION.max, s.market.rep + REPUTATION.gain[sale.tier]));
+        s.market.soldDay = s.day;
         if (goodById[sale.crop].unit === 'kom') t.pcs = (t.pcs ?? 0) + sale.qty;
         else t.kg += sale.qty;
         t.money += sale.money;

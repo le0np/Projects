@@ -6,7 +6,7 @@ import {
 } from './sim.js';
 import {
   SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, UPGRADES, TANK_SIZE, COOP, FORAGE_MAX, GIGS, MARKET, GAME_MIN_PER_SEC, FISHING,
-  REQUESTS, HIVES, DECOR, PETS, ONLINE,
+  REQUESTS, HIVES, DECOR, PETS, ONLINE, REPUTATION,
 } from './data.js';
 import { W, H, isWalkable, isPlotTile, OBJECTS, charAt, PLOT_ORDER } from './world.js';
 
@@ -188,6 +188,8 @@ export function deserialize(raw) {
   if (d.market && typeof d.market === 'object') {
     for (const k of ['stall', 'van', 'worker']) s.market[k] = d.market[k] === true;
     s.market.worker = s.market.worker && s.market.van;
+    s.market.rep = num(d.market.rep, 0, REPUTATION.max, 0);
+    s.market.soldDay = int(d.market.soldDay, 0, 1e6, 0);
     const travel = Math.max(MARKET.walk, MARKET.drive) / GAME_MIN_PER_SEC;
     const trip = (t) => (t && ['go', 'sell', 'back'].includes(t.phase) ? {
       phase: t.phase, left: num(t.left, 0, travel, 0), timer: num(t.timer, 0, 60, 1),

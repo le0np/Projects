@@ -10,7 +10,7 @@ import {
   matsText, stopFishing, placeItem, removeItem, fulfillRequest, sellBack, buybackList, adoptPet, patPet, walkFn, requestPay,
   owns, chestSize, hensMax, feederCap, levelValue, cropDays,
   buildOnline, onlineProblem, packOrder, goToPost, postTripProblem, parcelsReady, orderPay,
-  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds, usableFert, setFertTier, renamePet, hirePacker, buyPlot, plotPrice, nextPlot, plotUnlocked,
+  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds, usableFert, setFertTier, renamePet, hirePacker, buyPlot, plotPrice, nextPlot, plotUnlocked, marketBoost,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -19,7 +19,7 @@ import {
 import { findPath } from '../src/path.js';
 import {
   BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZE, UPGRADES, CROPS, START_FINDS, HOUSE_SEEDS,
-  RECIPES, zl, ROT_DAY, MATERIAL_SOURCE, PET_NAME_MAX, FIELD_PLOTS, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
+  RECIPES, zl, ROT_DAY, MATERIAL_SOURCE, PET_NAME_MAX, FIELD_PLOTS, REPUTATION, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
 } from '../src/data.js';
 
 // Most tests work on the whole first field, as it was before plots were bought one by one;
@@ -2432,4 +2432,40 @@ test('fields: bought plots are kept in the save; farms from before keep every pl
   const { state: t } = deserialize(JSON.stringify(old));
   assert.equal(t.fieldOpen.a, PLOTS_A.length);
   assert.equal(t.fieldOpen.b, PLOTS_B.length);
+});
+
+test('market reputation: good produce raises it, škart and staying away lower it; it brings more customers', () => {
+  const s = withVan();
+  assert.equal(s.market.rep, 0);
+  assert.equal(marketBoost(s), 1);
+  // a day of ★★★★ carrots at the market
+  addItem(s.cargo, cropItem('carrot', 4), 99);
+  s.clock = DAY_START;
+  const events = [];
+  assert.ok(sendVan(s, events).ok);
+  runVan(s, events);
+  const sales = events.filter((e) => e.type === 'marketsale').length;
+  assert.ok(s.market.rep > 0, 'up after good sales');
+  assert.ok(Math.abs(s.market.rep - Math.min(REPUTATION.max, sales * REPUTATION.gain[4])) < 1e-6);
+  const up = s.market.rep;
+  assert.ok(marketBoost(s) > 1);
+  // škart costs reputation
+  s.market.rep = 50;
+  addItem(s.cargo, cropItem('carrot', 1), 30);
+  s.clock = DAY_START;
+  assert.ok(sendVan(s).ok);
+  runVan(s);
+  assert.ok(s.market.rep < 50, 'down after selling škart');
+  // a morning after a day nobody came to the market: it slips a little
+  s.market.rep = 50;
+  s.market.soldDay = s.day; // sold today: no loss tomorrow morning
+  nextDay(s);
+  assert.equal(s.market.rep, 50);
+  nextDay(s); // yesterday nothing was sold
+  assert.equal(s.market.rep, 50 - REPUTATION.decay);
+  // more customers: at the top, the time between customers is cut by the bonus
+  s.market.rep = REPUTATION.max;
+  assert.equal(marketBoost(s), 1 + REPUTATION.bonus);
+  assert.ok(up > 0);
+  assert.equal(deserialize(serialize(s)).state.market.rep, REPUTATION.max);
 });

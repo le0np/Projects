@@ -147,6 +147,11 @@ export const MARKET = {
   markup: 0.1, // the market pays 10 % more than the stand: on a full day about the hired hand's wage
 };
 
+// Reputation at the market (owner, 19. 11.: it brings more customers). 0–100: every customer who buys
+// moves it by gain[tier] (good produce up, škart down); a morning after a day with no sales there it
+// slips by `decay`. At the top, customers come `bonus` × more often (+50 %).
+export const REPUTATION = { max: 100, gain: [0, -1.5, 0, 0.2, 0.35, 0.5], decay: 2, bonus: 0.5 };
+
 // Weather: some days it rains and the rain waters everything planted (counts like watering by
 // hand). Tomorrow's weather is known a day ahead (the forecast on the phone).
 export const RAIN_CHANCE = 0.22;
