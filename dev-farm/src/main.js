@@ -14,6 +14,7 @@ import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES, UPGRADES,
 import { SAVE_KEY, OLDER_KEYS, serialize, deserialize } from './save.js';
 import { isPlotTile } from './world.js';
 import { createRenderer } from './render.js';
+import { keymap, actionFor, toolOrder } from './keys.js';
 import { createUI, itemName, stars, formatMoney, plots } from './ui.js';
 
 const ZOOM_KEY = 'dev-farm/zoom';
@@ -36,7 +37,7 @@ if (savedZoom > 0) renderer.setZoom(savedZoom);
 
 const ui = createUI({
   onTool, onSeed, onMove, onSort, onDrop, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
-  onUpgrade, onFillTank, onOrderItem, onAcceptGig, onGoWork, onSetting,
+  onUpgrade, onFillTank, onOrderItem, onAcceptGig, onGoWork, onSetting, onLayout,
   onRentStall, onBuyVan, onHire, onGoMarket, onSendVan, onComeBack, onCancelOrder, onCompost,
   onPlaceItem, onRemoveMode, onFulfill, onSellBack, onAdopt, onNotifySetting, onBuildOnline, onPack, onGoPost,
   onClosePanel: closePanel,
@@ -588,6 +589,13 @@ function onGoPost() {
 
 // ---- settings, and time passing while the game is not on screen
 const settings = (() => { try { return { bgTime: false, ...JSON.parse(storage.get(SETTINGS_KEY) ?? '{}') }; } catch { return { bgTime: false }; } })();
+// the toolbar order and keys are settings too
+let keys = keymap(settings.keys);
+function onLayout(layout) {
+  keys = layout.keys;
+  onSetting('keys', layout.keys);
+  onSetting('toolOrder', layout.order);
+}
 function onSetting(key, value) {
   settings[key] = value;
   storage.set(SETTINGS_KEY, JSON.stringify(settings));
@@ -847,16 +855,14 @@ canvas.addEventListener('wheel', (e) => {
 
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement || e.ctrlKey || e.metaKey || e.altKey) return;
-  const tool = { 1: 'hand', 2: 'seed', 3: 'can', 4: 'fert', 5: 'rod', 6: 'mulch' }[e.key];
-  if (tool) onTool(tool);
-  else if (e.key === 'p' || e.key === 'P') onJob('plant');
-  else if (e.key === 'b' || e.key === 'B') onJob('harvest');
-  else if (e.key === 'z' || e.key === 'Z') onJob('water');
-  else if (e.key === 'g' || e.key === 'G') onJob('fertilize');
-  else if (e.key === 't' || e.key === 'T') ui.toggle('bag');
-  else if (e.key === 'm' || e.key === 'M') ui.toggle('phone');
-  else if (e.key === '+' || e.key === '=') onZoom(1);
-  else if (e.key === '-') onZoom(-1);
+  // the player's own keys (settings → Alatna traka i tipke)
+  const action = actionFor(keys, e.key);
+  if (action?.startsWith('tool:')) onTool(action.slice(5));
+  else if (action?.startsWith('job:')) onJob(action.slice(4));
+  else if (action === 'bag') ui.toggle('bag');
+  else if (action === 'phone') ui.toggle('phone');
+  else if (action === 'zoomIn') onZoom(1);
+  else if (action === 'zoomOut') onZoom(-1);
   else if (e.key === 'Escape') {
     endDrag(true);
     if (fishing()) act((ev) => stopFishing(state, ev));
@@ -914,6 +920,7 @@ window.addEventListener('pagehide', save);
 if (loaded.restored) ui.notify(`👋 Dan ${state.day}: farma je tu gdje je i bila.`, 'info');
 else intro();
 ui.setSettings(settings);
+ui.setLayout({ order: toolOrder(settings.toolOrder), keys });
 refresh();
 renderer.draw(state, performance.now());
 requestAnimationFrame(frame);

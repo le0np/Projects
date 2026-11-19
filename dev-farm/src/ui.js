@@ -18,6 +18,7 @@ import {
 import { idx, objectAt, isPlotTile, OBJECTS, TAP } from './world.js';
 import { iconUrl } from './render.js';
 import { guideTopics, searchGuide } from './guide.js';
+import { ACTIONS, TOOL_ORDER, DEFAULT_KEYS, bindKey, canBind, keyLabel, moveTool } from './keys.js';
 
 const numberFormat = new Intl.NumberFormat('hr-HR');
 // srebrenjaci → "3 zl 50 sr" (1 zlatnik = 100 srebrenjaka)
@@ -336,6 +337,7 @@ export function createUI(cb) {
   const jobOf = (job) => (job?.kind === 'series' ? 'harvest' : job?.kind);
   const toolEls = new Map();
   const moreBtns = new Map();
+  const toolNodes = new Map(); // what stands on the hotbar for each tool (the split pair or the button)
   for (const t of tools) {
     const b = button('', () => cb.onTool(t.id), { cls: 'tool' });
     b.append(el('kbd', '', t.key), icon(t.icon, 'tool-icon'), el('span', 'tool-name', t.name), el('span', 'tool-sub'));
@@ -346,10 +348,12 @@ export function createUI(cb) {
       wrap.append(b, more);
       els.hotbar.append(wrap);
       moreBtns.set(kind, { more, tool: t.id });
+      toolNodes.set(t.id, wrap);
     } else {
       els.hotbar.append(b);
+      toolNodes.set(t.id, b);
     }
-    toolEls.set(t.id, { b, sub: b.querySelector('.tool-sub') });
+    toolEls.set(t.id, { b, sub: b.querySelector('.tool-sub'), kbd: b.querySelector('kbd') });
   }
 
   // bulk jobs: each button opens a menu — everything, or one kind of crop
@@ -401,13 +405,76 @@ export function createUI(cb) {
   });
   for (const j of jobs) jobEls.set(j.kind, { b: moreBtns.get(j.kind).more, j, tool: moreBtns.get(j.kind).tool });
 
+  // ---- the player's own toolbar order and keys (settings → Alatna traka i tipke)
+  let layout = { order: [...TOOL_ORDER], keys: { ...DEFAULT_KEYS } };
+  let capturing = null; // the action waiting for its new key
+  function setLayout(next) {
+    layout = { order: [...next.order], keys: { ...next.keys } };
+    for (const id of layout.order) els.hotbar.append(toolNodes.get(id));
+    for (const t of tools) {
+      const k = keyLabel(layout.keys[`tool:${t.id}`]);
+      toolEls.get(t.id).kbd.textContent = k;
+      toolEls.get(t.id).b.title = `${t.name} (${k})`;
+    }
+    for (const j of jobs) j.key = keyLabel(layout.keys[j.kind === 'mulch' ? 'tool:mulch' : `job:${j.kind}`]);
+    els.bagBtn.title = `Torba (${keyLabel(layout.keys.bag)})`;
+    els.phoneBtn.title = `Mobitel (${keyLabel(layout.keys.phone)})`;
+    els.zoomIn.title = `Približi (${keyLabel(layout.keys.zoomIn)})`;
+    els.zoomOut.title = `Udalji (${keyLabel(layout.keys.zoomOut)})`;
+    $('bag-close').title = `Zatvori (${keyLabel(layout.keys.bag)})`;
+    $('phone-close').title = `Zatvori (${keyLabel(layout.keys.phone)})`;
+    keySettings();
+  }
+  const changeLayout = (next) => { setLayout(next); cb.onLayout(layout); };
+  const keyBox = $('set-keys');
+  function keySettings() {
+    const toolName = Object.fromEntries(tools.map((t) => [t.id, t.name]));
+    const keyButton = (action) => {
+      const b = button(capturing === action ? 'pritisni tipku…' : keyLabel(layout.keys[action]), () => {
+        capturing = capturing === action ? null : action;
+        keySettings();
+      }, { cls: `btn key-btn${capturing === action ? ' capturing' : ''}`, title: 'Klikni pa pritisni novu tipku (Esc odustaje)' });
+      return b;
+    };
+    const rows = [el('p', 'small muted', 'Redoslijed alata na traci (◀ ▶) i tipke. Ako odabereš tipku koju već ima nešto drugo, njih dvije se zamijene.')];
+    const toolList = el('div', 'key-rows');
+    layout.order.forEach((id, i) => {
+      const row = el('div', 'key-row');
+      row.append(
+        button('◀', () => changeLayout({ ...layout, order: moveTool(layout.order, id, -1) }), { cls: 'btn key-move', disabled: i === 0, title: 'Pomakni lijevo' }),
+        button('▶', () => changeLayout({ ...layout, order: moveTool(layout.order, id, 1) }), { cls: 'btn key-move', disabled: i === layout.order.length - 1, title: 'Pomakni desno' }),
+        el('span', 'grow', toolName[id]), keyButton(`tool:${id}`));
+      toolList.append(row);
+    });
+    const other = el('div', 'key-rows');
+    for (const a of ACTIONS.filter((x) => !x.id.startsWith('tool:'))) {
+      const row = el('div', 'key-row');
+      row.append(el('span', 'grow', a.name), keyButton(a.id));
+      other.append(row);
+    }
+    keyBox.replaceChildren(...rows, toolList, other,
+      button('Vrati zadano', () => { capturing = null; changeLayout({ order: [...TOOL_ORDER], keys: { ...DEFAULT_KEYS } }); }, { cls: 'btn small-btn' }));
+  }
+  // while a key is being picked, the next key press is the new key and does nothing else
+  window.addEventListener('keydown', (e) => {
+    if (!capturing) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.key === 'Escape') { capturing = null; keySettings(); return; }
+    if (!canBind(e.key)) return;
+    const action = capturing;
+    capturing = null;
+    changeLayout({ ...layout, keys: bindKey(layout.keys, action, e.key) });
+  }, true);
+
   for (const [id, kind] of [['hud-gold-icon', 'gold'], ['hud-silver-icon', 'silver']]) $(id).src = iconUrl(kind);
 
   $('reset').addEventListener('click', cb.onReset);
   const settingsBox = $('settings');
   $('settings-btn').addEventListener('click', () => { settingsBox.hidden = !settingsBox.hidden; });
   document.addEventListener('click', (e) => {
-    if (!settingsBox.hidden && !e.target.closest('.settings-wrap')) settingsBox.hidden = true;
+    // composedPath: a button that redrew itself is no longer in the page, but it was clicked inside
+    if (!settingsBox.hidden && !e.composedPath().includes(settingsBox.parentElement)) { settingsBox.hidden = true; capturing = null; }
   });
   $('set-bgtime').addEventListener('change', (e) => cb.onSetting('bgTime', e.target.checked));
   $('set-notify').addEventListener('change', (e) => cb.onNotifySetting(e.target.checked));
@@ -1228,6 +1295,7 @@ export function createUI(cb) {
     // Esc: close whatever floats over the map
     closeAll() { ui.panel = null; ui.bagOpen = false; ui.phoneOpen = false; },
     clear() { els.feed.textContent = ''; },
+    setLayout,
     setSettings(set) {
       $('set-bgtime').checked = Boolean(set.bgTime);
       $('set-notify').checked = Boolean(set.notify);

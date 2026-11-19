@@ -448,3 +448,14 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .need.miss { color: #f09a8a; border-color: #5a2a26; background: #2a1715; }
 .need-icon { width: 16px; height: 16px; image-rendering: pixelated; }
 .need-where { margin: 0; color: #e0b48a; }
+
+/* settings: the player's own toolbar order and keys */
+.settings { max-height: 80vh; overflow-y: auto; }
+.key-settings summary { cursor: pointer; margin: 6px 0; }
+.key-rows { display: grid; gap: 3px; margin: 6px 0; }
+.key-row { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+.key-row .grow { flex: 1; }
+.key-move { padding: 1px 6px; font-size: 11px; }
+.key-btn { min-width: 44px; padding: 2px 8px; font-size: 12px; text-align: center; }
+.key-btn.capturing { border-color: var(--yellow); color: var(--yellow); }
+.small-btn { padding: 3px 8px; font-size: 12px; }
