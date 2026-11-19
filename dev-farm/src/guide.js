@@ -8,7 +8,7 @@ import {
   CROPS, RECIPES, BUILDINGS, SHOP_ITEMS, GOODS, FORAGE, COOP, MARKET, GIGS, CAN_SIZE, UPGRADES, TANK_SIZE, COFFEE, EAT_ENERGY,
   ENERGY_COST, TIER_PRICE, SEEDS_FROM_FRUIT, SEED_PACK, HOUSE_SEEDS, FERTILIZER_PRICE,
   TIER_NAMES, FERT_BONUS, FERT_DOSES, COMPOST_KG, BOUGHT_FERT_TIER,
-  RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, BUYBACK,
+  RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, BUYBACK, REPUTATION,
   HOSE_PER_SPRINKLER, ROT_DAY, SHOP_OPEN, SHOP_CLOSE, SLEEP_FROM, BAG_SIZE, CHEST_SIZE,
   STAND_SIZE, CUSTOMER_KG, AD_NAMES, ONLINE, POLLEN_BONUS, GIG_ENERGY_PER_HOUR, MAX_ENERGY, FISH, FISHING, GAME_MIN_PER_SEC,
   WORK_SECONDS, WALK_SPEED,
@@ -231,6 +231,7 @@ export function guideTopics() {
       id: 'market', icon: '🧺', title: 'Tržnica, kombi i zaposlenik',
       body: [
         `Parkiralište s putokazom „GRAD“ uz cestu. Ondje se jednom zakupi klupa na tržnici (${zl(MARKET.stall)}).`,
+        `Ugled na tržnici (0–${REPUTATION.max}) donosi više kupaca, do +${Math.round(REPUTATION.bonus * 100)} % kad je pun. Raste svaki put kad kupac dobije robu ★★★ ili bolju (★★★★★ najviše), pada od škarta (★), a svako jutro nakon dana bez prodaje na tržnici malo padne. Piše na parkiralištu, uz klupu.`,
         `Tržnica radi ${hour(MARKET.open)}–${hour(MARKET.close)}, do grada je pješice ${MARKET.walk / 60} h, a kombijem ${MARKET.drive} min. Kupaca je puno više nego na štandu i uzimaju ${MARKET.kg[0]}–${MARKET.kg[1]} kg, a plaćaju ${Math.round(MARKET.markup * 100)} % više nego na štandu (klupa, put i dnevnica koštaju).`,
         { list: [
           'Sam: napuni torbu robom i na parkiralištu klikni „Idi na tržnicu s torbom“. Farmer se vraća kad sve proda ili kad se tržnica zatvori. Klik na 🧺 u gornjoj traci vraća ga ranije.',
