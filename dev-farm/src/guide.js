@@ -275,6 +275,7 @@ export function guideTopics() {
           return `${r.name} (${cost}): ${r.desc}`;
         }) },
         'Izrađeni izumi ostaju na radnom stolu s nadogradnjama (vidi „Nadogradnje izuma“).',
+        'Svaka kartica ima sličicu onoga što se radi i oznake za sve što treba: zeleno ✔ znači da to već imaš, crveno pokazuje koliko imaš od potrebnog (npr. 4/6 drva) i koliko novca fali. Ispod piše gdje se nabavlja ono što fali (drva i kamen uz rub šume, željezo i plastika u Dostavi ili među odbačenim dijelovima u šumi).',
       ],
     },
     {

@@ -437,3 +437,14 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .upgrade-next .grow { flex: 1; min-width: 120px; }
 .upgrade-next .btn { padding: 4px 8px; font-size: 12px; }
 #bag-sort { margin: 0 8px 0 auto; }
+
+/* workbench: a sketch of what is made, and chips for what it needs (green: have it, red: missing) */
+.recipe-title { display: inline-flex; align-items: center; gap: 6px; }
+.sketch { width: 32px; height: 32px; image-rendering: pixelated; flex: none; }
+.needs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.needs-label { margin-right: 2px; }
+.need { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 10px; font-size: 12px; border: 1px solid; white-space: nowrap; }
+.need.ok { color: var(--green); border-color: #2c4a34; background: #16251b; }
+.need.miss { color: #f09a8a; border-color: #5a2a26; background: #2a1715; }
+.need-icon { width: 16px; height: 16px; image-rendering: pixelated; }
+.need-where { margin: 0; color: #e0b48a; }

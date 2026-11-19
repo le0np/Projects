@@ -12,7 +12,7 @@ import {
   PUMP_INSTALL_SECONDS, SHOP_ITEMS, BUILDINGS,
   GOODS, FORAGE, FORAGE_START, FORAGE_DAILY, FORAGE_MAX, COOP, GIGS, GIG_OFFERS, GIG_ENERGY_PER_HOUR, MARKET, FISH, FISHING,
   FERT_BONUS, TIER_AT, MAX_TIER, FERT_DOSES, COMPOST_KG, fertId,
-  MATERIALS, ONLINE, RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, BUYBACK, DAY_NAMES, DAY_NAMES_GEN,
+  MATERIALS, MATERIAL_SOURCE, ONLINE, RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, BUYBACK, DAY_NAMES, DAY_NAMES_GEN,
 } from './data.js';
 import {
   idx, xy, charAt, isWalkable, isPlotTile, objectAt, OBJECTS, PLOTS_A, PLOTS_B, inFieldA,
@@ -1006,6 +1006,17 @@ function useMats(s, need) {
 }
 // "4 željeza, 3 plastike" for whatever materials a recipe or an upgrade needs
 export const matsText = (need) => (need ? Object.entries(MATERIALS).filter(([m]) => need[m]).map(([m, x]) => `${need[m]} ${x.gen}`).join(', ') : '');
+// Everything a cost asks for ({ price in zl, materials, energy }), each with what the farmer has:
+// [{ what: 'money' | material | 'energy', need, have, ok, where }]. Money is in srebrenjaci.
+export function costNeeds(s, cost) {
+  if (!cost) return [];
+  const out = [];
+  if (cost.price) out.push({ what: 'money', need: zl(cost.price), have: s.money });
+  for (const m of Object.keys(MATERIALS)) if (cost[m]) out.push({ what: m, need: cost[m], have: matCount(s, m), where: MATERIAL_SOURCE[m] });
+  if (cost.energy) out.push({ what: 'energy', need: cost.energy, have: Math.floor(s.energy) });
+  for (const n of out) n.ok = n.have >= n.need;
+  return out;
+}
 // Whether the thing an upgrade line belongs to is there: the coop, the fields (always), a
 // recipe made many times like mulch or hives (always: it can be upgraded before it is made),
 // or anything made once.

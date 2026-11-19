@@ -1575,6 +1575,65 @@ export function icon(name) {
       p.rect(2, 14, 12, 1, leather[1]);
       break;
     }
+    // sketches on the workbench cards: what is being made
+    case 'well':
+      // a round stone well with a little roof and a bucket
+      p.rect(3, 2, 10, 2, (x, y) => pick(RAMP.roof, 0.75 - (y - 2) * 0.25, x, y));
+      p.rect(4, 4, 1, 6, RAMP.wood[2]); p.rect(11, 4, 1, 6, RAMP.wood[2]);
+      p.line(5, 5, 10, 5, RAMP.wood[4]);
+      p.line(8, 5, 8, 7, '#c9b48a');
+      p.rect(7, 7, 3, 2, RAMP.metal[3]);
+      p.rect(2, 10, 12, 5, (x, y) => pick(RAMP.stone, 0.75 - (y - 10) * 0.1 + ((x + y) % 3 === 0 ? -0.2 : 0), x, y));
+      p.rect(3, 10, 10, 1, RAMP.water[3]);
+      break;
+    case 'coop':
+      // a small wooden hen house with a ramp and a hen in the door
+      p.rect(2, 5, 12, 2, (x, y) => pick(RAMP.roof, 0.8 - (y - 5) * 0.3, x, y));
+      for (let y = 2; y < 5; y++) p.rect(8 - (y - 1) * 2, y, (y - 1) * 4, 1, RAMP.roof[4 - (y - 2)]);
+      p.rect(3, 7, 10, 6, (x, y) => pick(RAMP.wood, 0.7 - (x % 3 === 0 ? 0.2 : 0), x, y));
+      p.rect(6, 9, 4, 4, '#2a1a10');
+      p.rect(7, 10, 2, 2, RAMP.hen[3]); p.set(8, 9.5, '#d23a2c');
+      p.line(9, 13, 14, 15, RAMP.wood[4]);
+      break;
+    case 'coldroom':
+      // the chest turned into a cold room: a white box with a snowflake
+      p.rect(2, 4, 12, 10, (x, y) => pick(RAMP.glass, 0.95 - (y - 4) * 0.04 - (x === 2 ? 0.2 : 0), x, y));
+      p.rect(2, 4, 12, 2, (x, y) => pick(RAMP.metal, 0.8 - (y - 4) * 0.2, x, y));
+      p.line(8, 7, 8, 12, '#ffffff'); p.line(5.5, 9.5, 10.5, 9.5, '#ffffff');
+      p.line(6, 7.5, 10, 11.5, '#e4f3ff'); p.line(10, 7.5, 6, 11.5, '#e4f3ff');
+      break;
+    case 'drone':
+      // a quadcopter seen from the front: four rotors, a body and a camera
+      for (const x0 of [1, 11]) p.rect(x0, 3, 4, 1, RAMP.metal[4]);
+      p.rect(2.5, 4, 1, 3, RAMP.metal[1]); p.rect(12.5, 4, 1, 3, RAMP.metal[1]);
+      p.rect(2, 7, 12, 2, (x, y) => pick(RAMP.metal, 0.6 - (y - 7) * 0.3, x, y));
+      p.rect(5, 6, 6, 5, (x, y) => pick(RAMP.redShirt, 0.8 - (y - 6) * 0.1, x, y));
+      p.rect(7, 11, 2, 2, '#1d2124'); p.set(7.5, 11.5, RAMP.glass[5]);
+      p.rect(4, 13, 8, 1, RAMP.metal[2]);
+      break;
+    case 'script':
+      // a terminal window with a prompt and a line of code
+      p.rect(1, 2, 14, 12, '#11161b');
+      p.rect(1, 2, 14, 2, RAMP.metal[2]);
+      for (const [x, c] of [[2, '#e8604f'], [4, '#f2c14b'], [6, '#7bd389']]) p.set(x, 2.5, c);
+      p.set(3, 6, '#7bd389'); p.set(4, 7, '#7bd389'); p.set(3, 8, '#7bd389');
+      p.rect(6, 7, 6, 1, '#cfd6dd'); p.rect(3, 10, 8, 1, '#6d9bb8'); p.rect(3, 12, 5, 1, '#cfd6dd');
+      break;
+    case 'poster':
+      // a poster on a wooden pole
+      p.rect(7, 9, 2, 7, (x, y) => pick(RAMP.wood, 0.7 - (x - 7) * 0.3, x, y));
+      p.rect(2, 1, 12, 9, '#f4ecd6');
+      p.rect(3, 2, 10, 3, RAMP.leaf[4]);
+      p.rect(3, 6, 6, 1, '#5a4a3a'); p.rect(3, 8, 8, 1, '#8a7a6a');
+      p.ellipse(11.5, 7, 1.5, 1.5, RAMP.radish[3]);
+      break;
+    case 'field':
+      // rows of tilled soil with sprouts
+      for (let r = 0; r < 4; r++) {
+        p.rect(1, 3 + r * 3, 14, 2, (x, y) => pick(RAMP.soil, 0.75 - (y - 3 - r * 3) * 0.3, x, y));
+        for (let x = 2 + (r % 2) * 2; x < 15; x += 4) { p.set(x, 2 + r * 3, RAMP.leaf[5]); p.set(x + 1, 2 + r * 3, RAMP.leaf[4]); }
+      }
+      break;
     case 'drop':
       for (let y = 2; y < 15; y++) {
         const w = y < 8 ? (y - 2) * 0.75 : Math.sqrt(Math.max(0, 25 - (y - 9.5) ** 2));

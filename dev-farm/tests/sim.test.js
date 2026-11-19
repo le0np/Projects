@@ -10,7 +10,7 @@ import {
   matsText, stopFishing, placeItem, removeItem, fulfillRequest, sellBack, buybackList, adoptPet, patPet, walkFn, requestPay,
   owns, chestSize, hensMax, feederCap, levelValue, cropDays,
   buildOnline, onlineProblem, packOrder, goToPost, postTripProblem, parcelsReady, orderPay,
-  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem,
+  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -19,7 +19,7 @@ import {
 import { findPath } from '../src/path.js';
 import {
   BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZE, UPGRADES, CROPS, START_FINDS, HOUSE_SEEDS,
-  RECIPES, zl, ROT_DAY, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
+  RECIPES, zl, ROT_DAY, MATERIAL_SOURCE, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
 } from '../src/data.js';
 
 const [AX, AY] = xy(PLOTS_A[0]);
@@ -2155,4 +2155,23 @@ test('produce losing quality in the chest stays where the player put it', () => 
   for (let d = 0; d < 30 && s.chest[5]?.id === 'crop:radish:3'; d++) nextDay(s);
   assert.deepEqual(s.chest[5], { id: 'crop:radish:2', n: 4 }, 'decayed one class, same slot');
   assert.ok(s.chest.every((it, k) => k === 5 || it === null));
+});
+
+test('costNeeds lists money, materials and energy with what the farmer has', () => {
+  const s = createState(1);
+  s.money = zl(20);
+  s.energy = 50;
+  s.bag = Array(BAG_SIZE).fill(null);
+  addItem(s.bag, 'wood', 4);
+  const needs = costNeeds(s, { price: 150, wood: 6, stone: 12, energy: 30 });
+  assert.deepEqual(needs.map((n) => [n.what, n.need, n.have, n.ok]), [
+    ['money', zl(150), zl(20), false],
+    ['wood', 6, 4, false],
+    ['stone', 12, 0, false],
+    ['energy', 30, 50, true],
+  ]);
+  // nothing asked, nothing listed; a free recipe lists no money
+  assert.deepEqual(costNeeds(s, { price: 0 }), []);
+  assert.deepEqual(costNeeds(s, null), []);
+  assert.equal(costNeeds(s, { iron: 2 })[0].where, MATERIAL_SOURCE.iron);
 });

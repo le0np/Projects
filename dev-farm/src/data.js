@@ -100,6 +100,13 @@ export const MATERIALS = {
   iron: { name: 'Željezo', gen: 'željeza' },
   plastic: { name: 'Plastika', gen: 'plastike' },
 };
+// Where each material is found, shown on the workbench next to what is missing.
+export const MATERIAL_SOURCE = {
+  wood: 'grane uz rub šume',
+  stone: 'kamenje uz rub šume',
+  iron: 'Dostava ili odbačeni dijelovi u šumi',
+  plastic: 'Dostava ili odbačeni dijelovi u šumi',
+};
 
 // Delivered to the chest the next morning, ordered on the phone.
 export const SHOP_ITEMS = [

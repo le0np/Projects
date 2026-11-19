@@ -13,7 +13,7 @@ import {
   upgradeProblem, nextStep, levelValue, matsText, pumpCapacity, tankDoses, runningSprinklers, irrigationMissing, fishById, fertDoses, requestHave, requestPay, orderPick, orderPay, dayName, dayNameGen,
   buybackList, hiveAt, decorAt, farmerTripProblem, vanTripProblem, pumpStatus, orderPack, shopItemById,
   owns, recipeAmount, hensMax, feederCap, hiveCap, chestSize, cropDays, hasTap,
-  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount,
+  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount, costNeeds,
 } from './sim.js';
 import { idx, objectAt, isPlotTile, OBJECTS, TAP } from './world.js';
 import { iconUrl } from './render.js';
@@ -95,6 +95,46 @@ const button = (label, onClick, { disabled = false, cls = 'btn', title = '' } = 
   b.addEventListener('click', onClick);
   return b;
 };
+
+// What a workbench card costs, as chips: an icon and the amount, green when the farmer has it,
+// red with what is missing when not; a line under them says where missing materials are found.
+const NEED_LABEL = { wood: 'drva', stone: 'kamena', iron: 'željeza', plastic: 'plastike' };
+function needChips(s, cost, label = '') {
+  const needs = costNeeds(s, cost);
+  if (!needs.length) return [];
+  const row = el('div', 'needs');
+  if (label) row.append(el('span', 'needs-label small muted', label));
+  for (const n of needs) {
+    const chip = el('span', `need ${n.ok ? 'ok' : 'miss'}`);
+    if (n.what === 'money') {
+      chip.append(n.ok ? `✔ ${formatMoney(n.need)}` : `${formatMoney(n.need)} · fali ${formatMoney(Math.ceil((n.need - n.have) / 100) * 100)}`);
+      chip.title = `imaš ${formatMoney(n.have)}`;
+    } else if (n.what === 'energy') {
+      chip.append(n.ok ? `✔ ${n.need} ⚡` : `${n.have}/${n.need} ⚡`);
+      chip.title = 'snaga; kava u kući ili san je vraćaju';
+    } else {
+      chip.append(icon(n.what, 'need-icon'), n.ok ? `✔ ${n.need} ${NEED_LABEL[n.what]}` : `${n.have}/${n.need} ${NEED_LABEL[n.what]}`);
+      chip.title = `u torbi: ${n.have}; ${n.where}`;
+    }
+    row.append(chip);
+  }
+  const where = [...new Set(needs.filter((n) => !n.ok && n.where).map((n) => n.where))];
+  return where.length ? [row, el('p', 'small need-where', `Gdje naći: ${where.join('; ')}.`)] : [row];
+}
+// The picture on each workbench card: what is being made (a little sketch, 16 × 16 pixels).
+const SKETCH = {
+  coopPlan: 'coop', wellPlan: 'well', rod: 'rod', mulch: 'mulch', hive: 'hive', coldroom: 'coldroom', bigCan: 'can',
+  drone: 'drone', replant: 'script', ads: 'poster', field2: 'field', well: 'well', coop: 'coop', field: 'field',
+};
+function cardHead(sketchOf, title, note = '') {
+  const top = el('div', 'recipe-head');
+  const name = el('span', 'recipe-title');
+  if (SKETCH[sketchOf] ?? sketchOf) name.append(icon(SKETCH[sketchOf] ?? sketchOf, 'sketch'));
+  name.append(el('code', '', title));
+  top.append(name);
+  if (note) top.append(el('span', 'muted', note));
+  return top;
+}
 
 // Dragging items with the mouse between slots (bag, chest, stand, van): set by createUI.
 let onDropItem = null;
@@ -630,21 +670,12 @@ export function createUI(cb) {
         // plans already sketched: what the build needs and what is still missing
         for (const [id, b] of pending) {
           const card = el('div', 'recipe');
-          const top = el('div', 'recipe-head');
-          top.append(el('code', '', `${b.name} · plan je gotov`), el('span', 'muted', id === 'well' ? 'gradilište kod kuće' : 'stari kokošinjac'));
-          const parts = el('ul', 'parts');
-          for (const [ok, text] of [
-            [s.money >= zl(b.price), `novac: ${formatMoney(zl(b.price))} (imaš ${formatMoney(s.money)})`],
-            [matCount(s, 'wood') >= b.wood, `drva: ${b.wood} u torbi (imaš ${matCount(s, 'wood')})`],
-            [matCount(s, 'stone') >= b.stone, `kamen: ${b.stone} u torbi (imaš ${matCount(s, 'stone')})`],
-            [s.energy >= b.energy, `snaga: ${b.energy} ⚡ (imaš ${Math.floor(s.energy)})`],
-          ]) parts.append(el('li', ok ? 'ok' : '', `${ok ? '✔' : '○'} ${text}`));
-          card.append(top, parts, el('p', 'small muted', 'Plaća se tek kad je gradnja gotova. Klikni gradilište na mapi i farmer počne.'));
+          const top = cardHead(id, `${b.name} · plan je gotov`, id === 'well' ? 'gradilište kod kuće' : 'stari kokošinjac');
+          card.append(top, ...needChips(s, b, 'gradnja:'), el('p', 'small muted', 'Plaća se tek kad je gradnja gotova. Klikni gradilište na mapi i farmer počne.'));
           list.append(card);
         }
         const seedBox = el('div', 'recipe');
-        seedBox.append(el('div', 'recipe-head'));
-        seedBox.firstChild.append(el('code', '', 'Sjeme i kompost iz plodova'));
+        seedBox.append(cardHead('seeds', 'Sjeme i kompost iz plodova'));
         seedBox.append(
           el('p', 'small', `Sjeme: 1 plod → ${SEEDS_FROM_FRUIT[0]}–${SEEDS_FROM_FRUIT[1]} sjemenki.`),
           el('p', 'small', `Kompost: ${COMPOST_KG} kg ploda → vreća gnojiva (${FERT_DOSES} doza) iste kvalitete, najviše ★★★.`),
@@ -664,8 +695,7 @@ export function createUI(cb) {
         for (const [key, title, note] of [['well', 'Bunar', 'sazidan'], ['coop', 'Kokošinjac', 'popravljen'], ['field', 'Polje', 'parcele']]) {
           if (!owns(s, key)) continue;
           const card = el('div', `recipe${key === 'field' ? '' : ' owned'}`);
-          const top = el('div', 'recipe-head');
-          top.append(el('code', '', `${key === 'field' ? '' : '✔ '}${title}`), el('span', 'muted', note));
+          const top = cardHead(key, `${key === 'field' ? '' : '✔ '}${title}`, note);
           card.append(top, ...Object.keys(UPGRADES).filter((k) => UPGRADES[k].of === key).map((k) => upgradeLine(s, k)));
           list.append(card);
         }
@@ -676,24 +706,23 @@ export function createUI(cb) {
             const lines = Object.keys(UPGRADES).filter((k) => UPGRADES[k].of === r.once);
             if (!lines.length) continue;
             const card = el('div', 'recipe owned');
-            const top = el('div', 'recipe-head');
-            top.append(el('code', '', `✔ ${r.name}`), el('span', 'muted', 'nadogradnje'));
+            const top = cardHead(r.id, `✔ ${r.name}`, 'nadogradnje');
             card.append(top, ...lines.map((k) => upgradeLine(s, k)));
             list.append(card);
             continue;
           }
           const card = el('div', 'recipe');
-          const top = el('div', 'recipe-head');
-          top.append(el('code', '', r.name), el('span', 'muted', [r.price ? formatMoney(zl(r.price)) : '', matsText(r.mats)].filter(Boolean).join(' · ')));
+          const bld = Object.values(BUILDINGS).find((b) => b.plan === r.id);
+          const top = cardHead(r.id, r.name, bld ? 'plan je besplatan' : '');
           const why = {
-            coins: 'nedovoljno novca', nomats: `u torbi treba ${matsText(r.mats)}`,
+            coins: 'nedovoljno novca', nomats: 'fali materijala',
             bagfull: 'torba je puna',
             requires: { well: 'prvo sazidaj bunar', drone: 'prvo izradi harvest-drone', coop: 'prvo popravi kokošinjac' }[r.requires],
           }[problem];
-          const bld = Object.values(BUILDINGS).find((b) => b.plan === r.id);
-          if (bld) top.lastChild.textContent = `gradnja ${formatMoney(zl(bld.price))} · ${matsText(bld)} · ${bld.energy} ⚡`;
           const desc = r.nLine ? `${r.desc} Vreća ima ${recipeAmount(s, r)} doza.` : r.desc;
-          card.append(top, el('p', 'small', desc), button(why ?? (bld ? 'Skiciraj plan' : 'Izradi'), () => cb.onCraft(r.id), { disabled: Boolean(problem) }));
+          // a building's plan is free: the chips show what the build itself will need
+          const chips = bld ? needChips(s, bld, 'gradnja:') : needChips(s, { price: r.price, ...r.mats });
+          card.append(top, el('p', 'small', desc), ...chips, button(why ?? (bld ? 'Skiciraj plan' : 'Izradi'), () => cb.onCraft(r.id), { disabled: Boolean(problem) }));
           // things made many times (mulch, hives) are upgraded on their own card
           card.append(...Object.keys(UPGRADES).filter((k) => UPGRADES[k].of === r.id).map((k) => upgradeLine(s, k)));
           list.append(card);
@@ -847,13 +876,14 @@ export function createUI(cb) {
     const step = nextStep(s, line);
     if (step) {
       const problem = upgradeProblem(s, line);
-      const mats = matsText(step);
       const first = { pump: 'prvo montiraj pumpu', coop: 'prvo popravi kokošinjac', well: 'prvo sazidaj bunar' }[u.of] ?? 'prvo izradi';
-      const why = { requires: first, nomats: `u torbi treba ${mats}`, coins: 'nedovoljno novca' }[problem];
+      const why = { requires: first, nomats: 'fali materijala', coins: 'nedovoljno novca' }[problem];
       const row = el('div', 'row upgrade-next');
       row.append(el('span', 'small muted grow', `Razina ${level + 1}: ${u.text(u.values[level], level + 1)}`),
-        button(why ?? `Nadogradi · ${[formatMoney(zl(step.price)), mats].filter(Boolean).join(' · ')}`, () => cb.onUpgrade(line), { disabled: Boolean(problem) }));
+        button(why ?? 'Nadogradi', () => cb.onUpgrade(line), { disabled: Boolean(problem) }));
       box.append(row);
+      // until the thing itself is there, its upgrades only say so; then the chips show the price
+      if (problem !== 'requires') box.append(...needChips(s, step));
     } else box.append(el('p', 'small muted', 'Najviša razina.'));
     return box;
   }
@@ -861,7 +891,6 @@ export function createUI(cb) {
   // Irrigation: the parts, how many sprinklers the pump drives, the nozzles and the fertilizer tank.
   function irrigationCard(s) {
     const card = el('div', 'recipe');
-    const top = el('div', 'recipe-head');
     const hose = matCount(s, 'hose');
     const cap = pumpCapacity(s);
     const parts = el('ul', 'parts');
@@ -871,7 +900,7 @@ export function createUI(cb) {
       [hose >= HOSE_PER_SPRINKLER, `crijevo: ${hose} m u torbi (${HOSE_PER_SPRINKLER} m po prskalici)`],
       [matCount(s, 'sprinkler') > 0 || s.sprinklers.length > 0, `prskalice: ${matCount(s, 'sprinkler')} u torbi, ${s.sprinklers.length} od ${cap} postavljeno`],
     ]) parts.append(el('li', ok ? 'ok' : '', `${ok ? '✔' : '○'} ${text}`));
-    top.append(el('code', '', 'Navodnjavanje · water.sh'), el('span', 'muted', s.upgrades.pump ? `${runningSprinklers(s).length} prskalica radi` : 'čeka pumpu'));
+    const top = cardHead('sprinkler', 'Navodnjavanje · water.sh', s.upgrades.pump ? `${runningSprinklers(s).length} prskalica radi` : 'čeka pumpu');
     card.append(top, el('p', 'small', 'Prskalica stoji na križanju četiri parcele i svako jutro zalije te četiri. Pumpa određuje koliko prskalica radi, a mlaznice koliko dobro zalijevaju (ručno zalijevanje je 100 %).'),
       parts, upgradeLine(s, 'pump'), upgradeLine(s, 'nozzles'));
     if (s.levels.nozzles >= 4) {
