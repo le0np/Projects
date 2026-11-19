@@ -1121,6 +1121,10 @@ export function createUI(cb) {
       out.push(el('p', 'small catalog-head', 'Ljubimac'));
       if (s.pet) {
         out.push(el('p', 'small', `${s.pet.kind === 'dog' ? '🐕' : '🐈'} ${s.pet.name} te prati po farmi. Klik na ${s.pet.kind === 'dog' ? 'njega' : 'nju'}: maženje (jednom na dan +${PETS.pat} ⚡).`));
+        out.push(button('✏️ Promijeni ime', () => {
+          const name = window.prompt(`Kako se zove ${s.pet.kind === 'dog' ? 'tvoj pas' : 'tvoja mačka'}?`, s.pet.name);
+          if (name !== null) cb.onRenamePet(name);
+        }, { cls: 'btn small-btn' }));
       } else {
         const row = el('div', 'row');
         for (const kind of ['dog', 'cat']) row.append(button(`Udomi: ${PETS[kind].species} (${PETS[kind].name}) · ${formatMoney(zl(PETS.adopt))}`, () => cb.onAdopt(kind), { disabled: s.money < zl(PETS.adopt) }));

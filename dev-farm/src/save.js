@@ -246,7 +246,7 @@ export function deserialize(raw) {
     }
   }
   if (d.pet && PETS[d.pet.kind]) {
-    s.pet = { kind: d.pet.kind, name: typeof d.pet.name === 'string' ? d.pet.name.slice(0, 20) : PETS[d.pet.kind].name, patted: int(d.pet.patted, 0, 1e6, 0) };
+    s.pet = { kind: d.pet.kind, name: typeof d.pet.name === 'string' && d.pet.name.trim() ? d.pet.name.trim().slice(0, 20) : PETS[d.pet.kind].name, patted: int(d.pet.patted, 0, 1e6, 0) };
   }
 
   if (Array.isArray(d.sprinklers)) {

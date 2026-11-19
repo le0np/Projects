@@ -343,6 +343,7 @@ export function guideTopics() {
       body: [
         `Mobitel → Dostava → Ljubimac: udomi psa (${PETS.dog.name}) ili mačku (${PETS.cat.name}) iz skloništa za ${zl(PETS.adopt)}.`,
         `Ljubimac prati farmera po farmi i sjedne kad farmer stane. Klik na njega: maženje, a jednom na dan i +${PETS.pat} ⚡.`,
+        'Ime ljubimca biraš sam: Dostava → Ljubimac → „Promijeni ime“.',
       ],
     },
     {

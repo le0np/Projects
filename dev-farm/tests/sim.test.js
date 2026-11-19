@@ -10,7 +10,7 @@ import {
   matsText, stopFishing, placeItem, removeItem, fulfillRequest, sellBack, buybackList, adoptPet, patPet, walkFn, requestPay,
   owns, chestSize, hensMax, feederCap, levelValue, cropDays,
   buildOnline, onlineProblem, packOrder, goToPost, postTripProblem, parcelsReady, orderPay,
-  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds, usableFert, setFertTier,
+  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds, usableFert, setFertTier, renamePet,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -19,7 +19,7 @@ import {
 import { findPath } from '../src/path.js';
 import {
   BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZE, UPGRADES, CROPS, START_FINDS, HOUSE_SEEDS,
-  RECIPES, zl, ROT_DAY, MATERIAL_SOURCE, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
+  RECIPES, zl, ROT_DAY, MATERIAL_SOURCE, PET_NAME_MAX, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
 } from '../src/data.js';
 
 const [AX, AY] = xy(PLOTS_A[0]);
@@ -2315,4 +2315,17 @@ test('fertilizer: the player picks which one is used; best first by default', ()
   // kept in the save
   setFertTier(s, 2);
   assert.equal(deserialize(serialize(s)).state.fertTier, 2);
+});
+
+test('pet: gets a name of the player\'s choosing, kept in the save', () => {
+  const s = createState();
+  s.money = zl(50);
+  assert.equal(renamePet(s, 'Rex').reason, 'nopet');
+  assert.ok(adoptPet(s, 'dog').ok);
+  assert.ok(renamePet(s, '  Rex  ').ok);
+  assert.equal(s.pet.name, 'Rex');
+  assert.equal(renamePet(s, '   ').reason, 'noname');
+  assert.ok(renamePet(s, 'Ime koje je predugo za psa').ok);
+  assert.equal(s.pet.name.length, PET_NAME_MAX);
+  assert.equal(deserialize(serialize(s)).state.pet.name, s.pet.name);
 });

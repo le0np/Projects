@@ -193,6 +193,7 @@ SHOP_ITEMS.push(...decorShopItems(DECOR));
 
 // A dog or a cat from the shelter follows the farmer around. A pat once a day gives energy.
 export const PETS = { dog: { name: 'Šarko', species: 'pas' }, cat: { name: 'Maca', species: 'mačka' }, adopt: 5, pat: 5 };
+export const PET_NAME_MAX = 16; // letters in a pet's name, chosen by the player
 
 export const CUSTOMER_INTERVAL = [18, 36]; // seconds between customers
 export const CUSTOMER_KG = [1, 4]; // a customer buys 1–4 kg

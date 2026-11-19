@@ -7,7 +7,7 @@ import {
   countWhere, extractSeeds, makeCompost, orderSeeds, startJob, upgrade, fillTank, orderItem, feedHens, acceptGig, sprinklerAt,
   goWork, goodById, forageById, shopItemById, matCount, matsText, cancelOrder, stopFishing, fishById,
   placeItem, removeItem, fulfillRequest, sellBack, adoptPet, patPet, dayNameGen, rentStall, buyVan, hireWorker, goToMarket, sendVan, comeBack,
-  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn, sortSlots, dropItem, setFertTier,
+  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn, sortSlots, dropItem, setFertTier, renamePet,
 } from './sim.js';
 import { ONLINE } from './data.js';
 import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES, UPGRADES, TANK_SIZE } from './data.js';
@@ -37,7 +37,7 @@ if (savedZoom > 0) renderer.setZoom(savedZoom);
 
 const ui = createUI({
   onTool, onSeed, onMove, onSort, onDrop, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
-  onUpgrade, onFillTank, onOrderItem, onAcceptGig, onGoWork, onSetting, onLayout, onFertTier,
+  onUpgrade, onFillTank, onOrderItem, onAcceptGig, onGoWork, onSetting, onLayout, onFertTier, onRenamePet,
   onRentStall, onBuyVan, onHire, onGoMarket, onSendVan, onComeBack, onCancelOrder, onCompost,
   onPlaceItem, onRemoveMode, onFulfill, onSellBack, onAdopt, onNotifySetting, onBuildOnline, onPack, onGoPost,
   onClosePanel: closePanel,
@@ -115,6 +115,7 @@ function farmerSays(e) {
     case 'nothingripe': return 'Još ništa nije zrelo.';
     case 'nomulch': return 'Nemam malča u torbi. Radim ga na radnom stolu od 2 drva ili ga naručim.';
     case 'mulched': return 'Ova je već malčirana.';
+    case 'noname': return 'Ime ne može biti prazno.';
     case 'nothingtomulch': return 'Nema parcela bez malča.';
     case 'placegrass': return 'To ide samo na travu.';
     case 'placetaken': return 'Tu je već nešto.';
@@ -235,6 +236,9 @@ function report(events) {
         break;
       case 'adopted':
         ui.say(`Dobrodošao${e.kind === 'cat' ? 'la' : ''}, ${e.name}!`, 'happy');
+        break;
+      case 'petnamed':
+        ui.say(`${e.name}! ${e.kind === 'dog' ? 'Mahne repom.' : 'Zamijauče.'}`, 'happy');
         break;
       case 'patted':
         ui.say(e.gain ? `${e.kind === 'dog' ? 'Dobar pas' : 'Dobra maca'}, ${e.name}! +${e.gain} ⚡` : `${e.kind === 'dog' ? 'Vau!' : 'Mjau.'} 💛`, 'happy');
@@ -689,6 +693,7 @@ function onRemoveMode() {
 function onFulfill(id) { act((ev) => fulfillRequest(state, id, ev)); }
 function onSellBack(id) { act((ev) => sellBack(state, id, ev)); }
 function onAdopt(kind) { act((ev) => adoptPet(state, kind, ev)); }
+function onRenamePet(name) { act((ev) => renamePet(state, name, ev)); }
 
 function onPlace() {
   if (!countWhere(state.bag, (id) => id === 'sprinkler')) return;

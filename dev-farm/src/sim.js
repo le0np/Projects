@@ -12,7 +12,7 @@ import {
   PUMP_INSTALL_SECONDS, SHOP_ITEMS, BUILDINGS,
   GOODS, FORAGE, FORAGE_START, FORAGE_DAILY, FORAGE_MAX, COOP, GIGS, GIG_OFFERS, GIG_ENERGY_PER_HOUR, MARKET, FISH, FISHING,
   FERT_BONUS, TIER_AT, MAX_TIER, FERT_DOSES, COMPOST_KG, fertId,
-  MATERIALS, MATERIAL_SOURCE, ONLINE, RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, BUYBACK, DAY_NAMES, DAY_NAMES_GEN,
+  MATERIALS, MATERIAL_SOURCE, ONLINE, RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, PET_NAME_MAX, BUYBACK, DAY_NAMES, DAY_NAMES_GEN,
 } from './data.js';
 import {
   idx, xy, charAt, isWalkable, isPlotTile, objectAt, OBJECTS, PLOTS_A, PLOTS_B, inFieldA,
@@ -1960,6 +1960,16 @@ export function adoptPet(s, kind, events = []) {
   s.money -= zl(PETS.adopt);
   s.pet = { kind, name: PETS[kind].name, patted: 0 };
   events.push({ type: 'adopted', kind, name: s.pet.name });
+  return { ok: true };
+}
+
+// The player names the pet (trimmed, at most PET_NAME_MAX letters).
+export function renamePet(s, name, events = []) {
+  if (!s.pet) return fail(events, 'nopet');
+  const clean = String(name ?? '').replace(/\s+/g, ' ').trim().slice(0, PET_NAME_MAX).trim();
+  if (!clean) return fail(events, 'noname');
+  s.pet.name = clean;
+  events.push({ type: 'petnamed', kind: s.pet.kind, name: clean });
   return { ok: true };
 }
 
