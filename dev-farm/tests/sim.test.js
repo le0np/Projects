@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  createState, command, plotAction, objectAction, advance, tick, sleep, craft, moveItem, eat,
+  createState as newFarm, command, plotAction, objectAction, advance, tick, sleep, craft, moveItem, eat,
   coffee, addItem, qualityScore, tierOf, cropItem, makePlot, isSellable, ripeCount, extractSeeds,
   orderSeeds, packPrice, salePrice, startJob, sprinklerReach, upgrade, upgradeProblem, fillTank, runningSprinklers, irrigationMissing, orderFertilizer,
   daysLeft, matCount, forageAt, feedHens, acceptGig, goWork, orderItem, countWhere,
@@ -10,18 +10,25 @@ import {
   matsText, stopFishing, placeItem, removeItem, fulfillRequest, sellBack, buybackList, adoptPet, patPet, walkFn, requestPay,
   owns, chestSize, hensMax, feederCap, levelValue, cropDays,
   buildOnline, onlineProblem, packOrder, goToPost, postTripProblem, parcelsReady, orderPay,
-  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds, usableFert, setFertTier, renamePet, hirePacker,
+  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds, usableFert, setFertTier, renamePet, hirePacker, buyPlot, plotPrice, nextPlot, plotUnlocked,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
-  W, H, MAP, idx, isWalkable, OBJECTS, PLOTS_A, PLOTS_B, HOUSE_DOOR, SPAWNS, CUSTOMER_SPOT, xy, TOWN_EXIT, TAP,
+  W, H, MAP, idx, isWalkable, OBJECTS, PLOTS_A, PLOTS_B, PLOT_ORDER, HOUSE_DOOR, SPAWNS, CUSTOMER_SPOT, xy, TOWN_EXIT, TAP,
 } from '../src/world.js';
 import { findPath } from '../src/path.js';
 import {
   BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZE, UPGRADES, CROPS, START_FINDS, HOUSE_SEEDS,
-  RECIPES, zl, ROT_DAY, MATERIAL_SOURCE, PET_NAME_MAX, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
+  RECIPES, zl, ROT_DAY, MATERIAL_SOURCE, PET_NAME_MAX, FIELD_PLOTS, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
 } from '../src/data.js';
 
+// Most tests work on the whole first field, as it was before plots were bought one by one;
+// newFarm() is a farm as it starts now (8 open plots).
+const createState = (...args) => {
+  const s = newFarm(...args);
+  s.fieldOpen.a = PLOTS_A.length;
+  return s;
+};
 const [AX, AY] = xy(PLOTS_A[0]);
 const plotOf = (s, x = AX, y = AY) => s.plots[idx(x, y)];
 const ripePlot = (crop, over = {}) => ({ ...makePlot(), crop, progress: 1, growDays: 3, wetDays: 3, ...over });
@@ -668,12 +675,13 @@ test('compost: 5 kg of produce make a bag (10 doses) of the same quality, ★★
   plotAction(s, AX, AY);
   assert.equal(plotOf(s).fert, 3);
 
-  const [bx, by] = xy(PLOTS_B[0]);
+  const [bx, by] = xy(PLOT_ORDER.b[0]);
   s.tool = 'seed';
   assert.equal(plotAction(s, bx, by).reason, 'locked');
   s.money = zl(1000);
   assert.ok(craft(s, 'field2').ok);
-  assert.ok(plotAction(s, bx, by).ok);
+  assert.ok(plotAction(s, bx, by).ok, 'the plots by the gate are open');
+  assert.equal(s.fieldOpen.b, FIELD_PLOTS.start);
 });
 
 test('plant all: the farmer walks the field and plants every seed he has', () => {
@@ -2372,4 +2380,56 @@ test('packer: hired at the parcel box, packs the morning orders from the chest b
   assert.ok(deserialize(serialize(s)).state.online.packer, 'kept in the save');
   assert.ok(hirePacker(s, false).ok);
   assert.equal(s.online.packer, false);
+});
+
+test('fields: a new farm has 8 plots by the gate; the rest are bought one by one, each 1.1 × the last', () => {
+  const s = newFarm();
+  const open = PLOTS_A.filter((i) => plotUnlocked(s, i));
+  assert.equal(open.length, FIELD_PLOTS.start);
+  assert.deepEqual(open.map((i) => xy(i)).sort(), [[21, 10], [21, 9], [22, 10], [22, 9], [23, 10], [23, 9], [24, 10], [24, 9]].sort(), 'a 4 × 2 block by the gate');
+  const [lx, ly] = xy(PLOTS_A[0]); // the far corner is still wild
+  s.tool = 'hand';
+  const ev = [];
+  plotAction(s, lx, ly, ev);
+  assert.equal(ev.find((e) => e.type === 'fail')?.reason, 'locked');
+  assert.equal(ev.find((e) => e.type === 'fail').price, zl(FIELD_PLOTS.price));
+  // buying: the first costs the base price, every next one 1.1 times more
+  s.money = zl(100);
+  const next = nextPlot(s, 'a');
+  assert.equal(next, PLOT_ORDER.a[FIELD_PLOTS.start]);
+  const events = [];
+  assert.ok(buyPlot(s, 'a', events).ok);
+  assert.ok(plotUnlocked(s, next));
+  assert.equal(s.money, zl(100) - zl(FIELD_PLOTS.price));
+  assert.equal(events[0].type, 'plotbought');
+  assert.equal(plotPrice(s, 'a'), zl(FIELD_PLOTS.price * FIELD_PLOTS.growth));
+  assert.ok(buyPlot(s, 'a').ok);
+  assert.equal(plotPrice(s, 'a'), zl(FIELD_PLOTS.price * FIELD_PLOTS.growth ** 2));
+  s.money = 0;
+  assert.equal(buyPlot(s, 'a').reason, 'coins');
+  // the second field is wild until git clone polje
+  assert.equal(buyPlot(s, 'b').reason, 'locked');
+  // all bought: nothing more to buy
+  s.money = zl(1e6);
+  while (buyPlot(s, 'a').ok);
+  assert.equal(s.fieldOpen.a, PLOTS_A.length);
+  assert.equal(buyPlot(s, 'a').reason, 'fieldfull');
+  // jobs only see open plots
+  const t = newFarm();
+  t.seeds.radish = 40;
+  t.seed = 'radish';
+  assert.equal(startJob(t, 'plant').total, FIELD_PLOTS.start);
+});
+
+test('fields: bought plots are kept in the save; farms from before keep every plot', () => {
+  const s = newFarm();
+  s.money = zl(100);
+  buyPlot(s, 'a');
+  assert.equal(deserialize(serialize(s)).state.fieldOpen.a, FIELD_PLOTS.start + 1);
+  const old = JSON.parse(serialize(s));
+  delete old.fieldOpen;
+  old.upgrades.field2 = true;
+  const { state: t } = deserialize(JSON.stringify(old));
+  assert.equal(t.fieldOpen.a, PLOTS_A.length);
+  assert.equal(t.fieldOpen.b, PLOTS_B.length);
 });

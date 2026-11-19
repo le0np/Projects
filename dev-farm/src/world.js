@@ -111,6 +111,17 @@ export const PLOTS_A = collect('P');
 export const PLOTS_B = collect('Q');
 const PLOTS_A_SET = new Set(PLOTS_A);
 export const inFieldA = (i) => PLOTS_A_SET.has(i);
+// Plots are opened (bought) one by one, starting at the gate and spreading out: the order of each
+// field's plots by distance from its gate (the middle of the gap in the fence).
+const FIELD_GATE = { a: [23, 11], b: [23, 16] };
+const byGate = (plots, [gx, gy]) => [...plots].sort((i, j) => {
+  const [ax, ay] = xy(i);
+  const [bx, by] = xy(j);
+  return Math.hypot(ax + 0.5 - gx, ay + 0.5 - gy) - Math.hypot(bx + 0.5 - gx, by + 0.5 - gy) || Math.abs(ay - gy) - Math.abs(by - gy) || ax - bx;
+});
+export const PLOT_ORDER = { a: byGate(PLOTS_A, FIELD_GATE.a), b: byGate(PLOTS_B, FIELD_GATE.b) };
+export const PLOT_RANK = new Map([...PLOT_ORDER.a.map((i, k) => [i, k]), ...PLOT_ORDER.b.map((i, k) => [i, k])]);
+export const fieldOf = (i) => (inFieldA(i) ? 'a' : PLOT_RANK.has(i) ? 'b' : null);
 
 const pondAccess = () => {
   const seen = new Set();

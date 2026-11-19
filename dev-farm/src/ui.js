@@ -13,9 +13,9 @@ import {
   upgradeProblem, nextStep, levelValue, matsText, pumpCapacity, tankDoses, runningSprinklers, irrigationMissing, fishById, fertDoses, requestHave, requestPay, orderPick, orderPay, dayName, dayNameGen,
   buybackList, hiveAt, decorAt, farmerTripProblem, vanTripProblem, pumpStatus, orderPack, shopItemById,
   owns, recipeAmount, hensMax, feederCap, hiveCap, chestSize, cropDays, hasTap,
-  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount, costNeeds, vanPlan, usableFert,
+  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount, costNeeds, vanPlan, usableFert, nextPlot, plotPrice,
 } from './sim.js';
-import { idx, objectAt, isPlotTile, OBJECTS, TAP } from './world.js';
+import { idx, objectAt, isPlotTile, OBJECTS, TAP, PLOT_ORDER, inFieldA } from './world.js';
 import { iconUrl } from './render.js';
 import { guideTopics, searchGuide } from './guide.js';
 import { ACTIONS, TOOL_ORDER, DEFAULT_KEYS, bindKey, canBind, keyLabel, moveTool } from './keys.js';
@@ -760,7 +760,7 @@ export function createUI(cb) {
       const pending = Object.entries(BUILDINGS).filter(([id, b]) => s.upgrades[b.plan] && !(id === 'coop' ? s.coop.built : s.upgrades[id]));
       const have = [Math.floor(s.money / 100), ...Object.keys(MATERIALS).map((m) => matCount(s, m)), Math.floor(s.energy)];
       const sig = JSON.stringify(['wb', RECIPES.map((r) => canCraft(s, r.id)), fruits, pending.map(([id]) => id), have,
-        s.levels, s.tank, s.upgrades, s.coop.built, s.sprinklers.length, matCount(s, 'hose'), matCount(s, 'sprinkler'), fertDoses(s)]);
+        s.levels, s.tank, s.upgrades, s.fieldOpen, s.money, s.coop.built, s.sprinklers.length, matCount(s, 'hose'), matCount(s, 'sprinkler'), fertDoses(s)]);
       renderIfChanged(els.panel, sig, () => {
         const list = el('div', 'recipes');
         // plans already sketched: what the build needs and what is still missing
@@ -792,7 +792,9 @@ export function createUI(cb) {
           if (!owns(s, key)) continue;
           const card = el('div', `recipe${key === 'field' ? '' : ' owned'}`);
           const top = cardHead(key, `${key === 'field' ? '' : '✔ '}${title}`, note);
-          card.append(top, ...Object.keys(UPGRADES).filter((k) => UPGRADES[k].of === key).map((k) => upgradeLine(s, k)));
+          if (key === 'field') card.append(top, ...plotRows(s));
+          else card.append(top);
+          card.append(...Object.keys(UPGRADES).filter((k) => UPGRADES[k].of === key).map((k) => upgradeLine(s, k)));
           list.append(card);
         }
         for (const r of RECIPES) {
@@ -966,6 +968,32 @@ export function createUI(cb) {
     });
   }
 
+
+  // Buying plots one by one, for each field that is there (radni stol → Polje)
+  function plotRows(s) {
+    const out = [];
+    for (const [f, name] of [['a', 'Prvo polje'], ['b', 'Drugo polje']]) {
+      if (f === 'b' && !s.upgrades.field2) continue;
+      const box = el('div', 'upgrade');
+      const total = PLOT_ORDER[f].length;
+      const head = el('div', 'upgrade-head');
+      const meter = el('span', 'meter');
+      meter.style.gridTemplateColumns = 'repeat(12, 1fr)';
+      for (let k = 0; k < 12; k++) meter.append(el('span', (k + 1) * (total / 12) <= s.fieldOpen[f] ? 'on' : ''));
+      head.append(el('span', 'upgrade-name', `${name} ${s.fieldOpen[f]}/${total}`), meter);
+      box.append(head);
+      if (nextPlot(s, f) === null) box.append(el('p', 'small muted', 'Sve parcele su kupljene.'));
+      else {
+        const price = plotPrice(s, f);
+        const row = el('div', 'row upgrade-next');
+        row.append(el('span', 'small muted grow', 'Sljedeća parcela uz već otvorene (zarasla na mapi); svaka iduća je 10 % skuplja.'),
+          button(s.money < price ? 'nedovoljno novca' : 'Kupi parcelu', () => cb.onBuyPlot(f), { disabled: s.money < price }));
+        box.append(row, ...needChips(s, { price: price / 100 }));
+      }
+      out.push(box);
+    }
+    return out;
+  }
 
   // One upgrade line: name, level meter, what it gives now and next, and the button.
   function upgradeLine(s, line) {
@@ -1321,7 +1349,10 @@ export function createUI(cb) {
           market: s.market.van ? 'Parkiralište: kombi, utovar robe i put u grad na tržnicu.' : 'Put u grad: tržnica (zakup klupe), kasnije kombi i zaposlenik.',
         }[obj];
       } else if (isPlotTile(x, y) && !plotUnlocked(s, i)) {
-        text = 'Zaraslo polje. Otključava se na radnom stolu: git clone polje.';
+        const f = inFieldA(i) ? 'a' : 'b';
+        text = f === 'b' && !s.upgrades.field2 ? 'Zaraslo polje. Otključava se na radnom stolu: git clone polje.'
+          : nextPlot(s, f) === i ? `Zarasla parcela, sljedeća za kupnju: ${formatMoney(plotPrice(s, f))} (radni stol → Polje).`
+            : 'Zarasla parcela. Parcele se kupuju na radnom stolu (Polje), redom od ulaza u polje.';
       } else if (p && !p.crop) {
         text = s.tool === 'seed' ? `Prazna parcela: klik posadi ${cropById[s.seed].name} (imaš ${s.seeds[s.seed]}).`
           : 'Prazna parcela. Uzmi sjeme (2) za sadnju.';

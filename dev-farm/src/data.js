@@ -305,7 +305,7 @@ export const ONLINE = {
   postClose: 17 * 60, // the post office in town takes parcels until 17 h
   // hired at the parcel box: every morning she packs the new orders from the chest (worst good-enough
   // produce first), so Joža can take them to the post at 6 h; paid only on days she packs something
-  packer: { name: 'Kata', wage: 6 },
+  packer: { name: 'Kata', wage: 15 }, // owner, 19. 11.: 6 zl was too little
   who: ['Marina iz Zagreba', 'obitelj Kovač', 'bistro Zrno', 'Petra (Instagram)', 'g. Babić', 'vrtić Sunce', 'Luka iz Splita', 'Eko-kutija d.o.o.'],
 };
 
@@ -356,9 +356,15 @@ export const RECIPES = [
   },
   {
     id: 'field2', name: 'git clone polje', once: 'field2', price: 400,
-    desc: 'Raščisti zaraslo polje južno od staze: još 48 parcela.',
+    desc: 'Raščisti zaraslo polje južno od staze: prvih 8 parcela uz ulaz, ostale se kupuju jedna po jedna kao na prvom polju.',
   },
 ];
+
+// The fields grow plot by plot (owner, 19. 11.): a new farm has 8 open plots by the gate of the first
+// field; every other plot is bought at the workbench (Polje), nearest the gate first. The first one
+// bought costs `price` zl and each next one `growth` times more (per field: the second field, once
+// cleared with "git clone polje", opens 8 plots and starts again from `price`).
+export const FIELD_PLOTS = { start: 8, price: 10, growth: 1.1 };
 
 // Upgrades of what was made at the workbench (or built from parts). Each line has levels:
 // level 1 is what you get when the thing is first made; every next level is bought on its

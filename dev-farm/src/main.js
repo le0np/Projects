@@ -7,7 +7,7 @@ import {
   countWhere, extractSeeds, makeCompost, orderSeeds, startJob, upgrade, fillTank, orderItem, feedHens, acceptGig, sprinklerAt,
   goWork, goodById, forageById, shopItemById, matCount, matsText, cancelOrder, stopFishing, fishById,
   placeItem, removeItem, fulfillRequest, sellBack, adoptPet, patPet, dayNameGen, rentStall, buyVan, hireWorker, goToMarket, sendVan, comeBack,
-  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn, sortSlots, dropItem, setFertTier, renamePet, hirePacker,
+  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn, sortSlots, dropItem, setFertTier, renamePet, hirePacker, buyPlot,
 } from './sim.js';
 import { ONLINE } from './data.js';
 import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES, UPGRADES, TANK_SIZE } from './data.js';
@@ -37,7 +37,7 @@ if (savedZoom > 0) renderer.setZoom(savedZoom);
 
 const ui = createUI({
   onTool, onSeed, onMove, onSort, onDrop, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
-  onUpgrade, onFillTank, onOrderItem, onAcceptGig, onGoWork, onSetting, onLayout, onFertTier, onRenamePet, onHirePacker,
+  onUpgrade, onFillTank, onOrderItem, onAcceptGig, onGoWork, onSetting, onLayout, onFertTier, onRenamePet, onHirePacker, onBuyPlot,
   onRentStall, onBuyVan, onHire, onGoMarket, onSendVan, onComeBack, onCancelOrder, onCompost,
   onPlaceItem, onRemoveMode, onFulfill, onSellBack, onAdopt, onNotifySetting, onBuildOnline, onPack, onGoPost,
   onClosePanel: closePanel,
@@ -80,7 +80,10 @@ function farmerSays(e) {
     case 'noseeds':
       if (!state.found.house) return 'Nemam sjemena… Možda u kući nešto ima?';
       return e.crop ? `Nemam više sjemena za ${name(e.crop)}. Izvadit ću ga iz ploda ili naručiti.` : 'Nemam sjemena.';
-    case 'locked': return 'Sve je zaraslo. Za ovo treba plan: git clone polje.';
+    case 'locked': return e.field === 'a' || (e.field === 'b' && state.upgrades.field2)
+      ? `Ova parcela je zarasla. Parcele se kupuju na radnom stolu (Polje)${e.price ? `, sljedeća košta ${formatMoney(e.price)}` : ''}.`
+      : 'Sve je zaraslo. Za ovo treba plan: git clone polje.';
+    case 'fieldfull': return 'Sve parcele na ovom polju su već kupljene.';
     case 'nopath': return 'Ne mogu doći do tamo.';
     case 'placeplot': return 'Prskalica ide na križanje gdje se dodiruju parcele.';
     case 'nowell': return state.upgrades.wellPlan ? 'Prvo treba sazidati bunar.' : 'Za navodnjavanje trebam bunar. Plan ću skicirati na radnom stolu.';
@@ -341,6 +344,10 @@ function report(events) {
         break;
       case 'onlinemissed':
         ui.notify(`🌐 Online narudžba je propala: ${e.who} nije dobio ${e.kg} ${goodById[e.crop].unit} ${goodById[e.crop].gen}.${e.packed ? ' Paket se vratio u škrinju.' : ''}`, 'err');
+        break;
+      case 'plotbought':
+        ui.say(`Nova parcela! Raščišćena za ${formatMoney(e.price)}.`, 'happy');
+        renderer.note([e.x, e.y], `🌱 +1 parcela · −${formatMoney(e.price)}`, 'ok');
         break;
       case 'packerhired':
         mapNote('lot', `📦 ${ONLINE.packer.name} pakira svako jutro u 6 h`, 'ok');
@@ -706,6 +713,7 @@ function onRemoveMode() {
 function onFulfill(id) { act((ev) => fulfillRequest(state, id, ev)); }
 function onSellBack(id) { act((ev) => sellBack(state, id, ev)); }
 function onAdopt(kind) { act((ev) => adoptPet(state, kind, ev)); }
+function onBuyPlot(field) { act((ev) => buyPlot(state, field, ev)); }
 function onHirePacker(hire) { act((ev) => hirePacker(state, hire, ev)); }
 function onRenamePet(name) { act((ev) => renamePet(state, name, ev)); }
 

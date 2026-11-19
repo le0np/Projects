@@ -12,10 +12,10 @@ import {
   PUMP_INSTALL_SECONDS, SHOP_ITEMS, BUILDINGS,
   GOODS, FORAGE, FORAGE_START, FORAGE_DAILY, FORAGE_MAX, COOP, GIGS, GIG_OFFERS, GIG_ENERGY_PER_HOUR, MARKET, FISH, FISHING,
   FERT_BONUS, TIER_AT, MAX_TIER, FERT_DOSES, COMPOST_KG, fertId,
-  MATERIALS, MATERIAL_SOURCE, ONLINE, RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, PET_NAME_MAX, BUYBACK, DAY_NAMES, DAY_NAMES_GEN,
+  MATERIALS, MATERIAL_SOURCE, ONLINE, RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, PET_NAME_MAX, FIELD_PLOTS, BUYBACK, DAY_NAMES, DAY_NAMES_GEN,
 } from './data.js';
 import {
-  idx, xy, charAt, isWalkable, isPlotTile, objectAt, OBJECTS, PLOTS_A, PLOTS_B, inFieldA,
+  idx, xy, charAt, isWalkable, isPlotTile, objectAt, OBJECTS, PLOTS_A, PLOTS_B, inFieldA, PLOT_ORDER, PLOT_RANK, fieldOf,
   HOUSE_DOOR, DRONE_HOME, SPAWNS, CUSTOMER_SPOT, npcCost, FOREST_EDGE, TOWN_EXIT, POND_CENTER, TAP, W, H,
 } from './world.js';
 import { findPath } from './path.js';
@@ -52,6 +52,7 @@ function baseState(seed) {
     energy: MAX_ENERGY,
     tool: 'hand',
     seed: CROPS[0].id,
+    fieldOpen: { a: FIELD_PLOTS.start, b: 0 }, // plots open in each field (see FIELD_PLOTS)
     fertTier: 0, // which fertilizer the tool uses: 0 = the best in the bag first, 1–3 only that one
     water: CAN_SIZE,
     seeds: Object.fromEntries(CROPS.map((c) => [c.id, 0])),
@@ -133,7 +134,27 @@ export const shopOpen = (clock) => clock >= SHOP_OPEN && clock < SHOP_CLOSE;
 // "unlocked" = available in the seed delivery catalogue
 export const isUnlocked = (s, id) => Boolean(cropById[id]) && s.totalEarned >= zl(cropById[id].unlock);
 export const findAt = (s, x, y) => s.finds.findIndex((f) => f.x === x && f.y === y);
-export const plotUnlocked = (s, i) => inFieldA(i) || (s.upgrades.field2 && s.plots[i] !== undefined);
+// A plot can be worked when its field is there (the second one needs "git clone polje") and it has been bought.
+export const plotUnlocked = (s, i) => {
+  const f = fieldOf(i);
+  if (!f || (f === 'b' && !s.upgrades.field2)) return false;
+  return PLOT_RANK.get(i) < s.fieldOpen[f];
+};
+// the next plot of a field to buy (null when the field is all open, or the second field is still wild)
+export const nextPlot = (s, f) => (f === 'b' && !s.upgrades.field2 ? null : PLOT_ORDER[f][s.fieldOpen[f]] ?? null);
+// what the next plot of a field costs (srebrenjaci)
+export const plotPrice = (s, f) => zl(FIELD_PLOTS.price * FIELD_PLOTS.growth ** Math.max(0, s.fieldOpen[f] - FIELD_PLOTS.start));
+export function buyPlot(s, f = 'a', events = []) {
+  const i = nextPlot(s, f);
+  if (i === null) return fail(events, f === 'b' && !s.upgrades.field2 ? 'locked' : 'fieldfull');
+  const price = plotPrice(s, f);
+  if (s.money < price) return fail(events, 'coins', { need: price });
+  s.money -= price;
+  s.fieldOpen[f]++;
+  const [x, y] = xy(i);
+  events.push({ type: 'plotbought', field: f, x, y, price, open: s.fieldOpen[f] });
+  return { ok: true };
+}
 // Sprinklers sit on grid crossings: (x, y) is the corner shared by tiles (x-1..x, y-1..y).
 export const sprinklerAt = (s, x, y) => s.sprinklers.findIndex((p) => p.x === x && p.y === y);
 const cornerTiles = (x, y) => [[x - 1, y - 1], [x, y - 1], [x - 1, y], [x, y]];
@@ -789,7 +810,7 @@ export function objectAction(s, id, events = []) {
 export function plotAction(s, x, y, events = []) {
   const i = idx(x, y);
   if (!s.plots[i]) return fail(events, 'notplot');
-  if (!plotUnlocked(s, i)) return fail(events, 'locked');
+  if (!plotUnlocked(s, i)) return fail(events, 'locked', { field: fieldOf(i), price: nextPlot(s, fieldOf(i)) === null ? 0 : plotPrice(s, fieldOf(i)) });
   const p = s.plots[i];
   if (p.rotten) return clearPlot(s, i, events);
   if (p.crop && p.progress >= 1) return harvestHand(s, i, events);
@@ -1057,6 +1078,7 @@ export function craft(s, id, events = []) {
   if (r.gives) addItem(s.bag, r.gives, recipeAmount(s, r));
   if (r.once) s.upgrades[r.once] = true;
   if (r.once === 'bigCan') s.water = canSize(s);
+  if (r.once === 'field2') s.fieldOpen.b = Math.max(s.fieldOpen.b, FIELD_PLOTS.start);
   events.push({ type: 'craft', recipe: id });
   return { ok: true };
 }

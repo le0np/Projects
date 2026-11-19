@@ -1,7 +1,7 @@
 // Draws the world with a camera that follows the farmer.
 // Art comes from art.js (generated once and cached as canvases); game state from sim.js.
 
-import { W, H, MAP, HOUSE, STAND, COOP_AREA, LOT, POND_CENTER, HOUSE_DOOR, TAP, FIELD_A, FIELD_B, xy } from './world.js';
+import { W, H, MAP, HOUSE, STAND, COOP_AREA, LOT, POND_CENTER, HOUSE_DOOR, TAP, FIELD_A, FIELD_B, xy, inFieldA } from './world.js';
 import { MARKET, GAME_MIN_PER_SEC, DECOR } from './data.js';
 import { plotUnlocked, parseItem, sprinklerReach, sprinklerAt, placeProblem, decorAt, pumpCapacity, hasTap, levelValue } from './sim.js';
 import { Pix, hash01, withAlpha } from './pixel.js';
@@ -107,6 +107,7 @@ const NOTE_TONES = { ok: '#a8ec7e', info: '#8cc6f0', err: '#ff8f7f' };
 // world pixel just above each place that gets notes (the drone's moves with it)
 function noteAnchor(s, at) {
   if (at === 'drone') return [s.drone.x * TS + 16, s.drone.y * TS - 22];
+  if (Array.isArray(at)) return [at[0] * TS + 16, at[1] * TS - 4]; // a tile, e.g. a plot just bought
   return {
     stand: [(STAND.x + 1) * TS, STAND.y * TS - 26],
     coop: [(COOP_AREA.x + 1) * TS, COOP_AREA.y * TS - 26],
@@ -355,6 +356,8 @@ export function createRenderer(canvas) {
       for (let x = x0; x <= x1; x++) {
         const i = y * W + x;
         if (s.plots[i] && plotUnlocked(s, i)) drawPlot(s, i, now);
+        // not bought yet: grown over (the second field is drawn wild in the terrain until it is cleared)
+        else if (s.plots[i] && (inFieldA(i) || s.upgrades.field2)) img(art(`wild${(x * 5 + y * 3) % 4}`, () => A.wildPlot((x * 5 + y * 3) % 4)), x * TS, y * TS);
       }
     }
     // the greenhouse: glass panes on a light frame over the fields

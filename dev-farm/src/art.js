@@ -1889,3 +1889,32 @@ export function fertOverlay() {
   for (let k = 0; k < 26; k++) p.set(2 + Math.floor(r() * 28), 2 + Math.floor(r() * 28), k % 3 ? '#d9cf9f' : '#a5c27a');
   return p;
 }
+
+// A plot not bought yet: grass grown over the soil, with weeds and the odd flower.
+export function wildPlot(variant) {
+  const p = new Pix(32, 32);
+  const G = RAMP.grass;
+  for (let y = 0; y < 32; y++) {
+    for (let x = 0; x < 32; x++) {
+      const n = vnoise(x / 3 + variant * 11, y / 3, 41) - 0.5;
+      // a little soil still shows through here and there
+      if (vnoise(x / 4 + variant * 5, y / 4, 42) < 0.1) p.set(x, y, pick(RAMP.soil, 0.45 + n * 0.3, x, y));
+      else p.set(x, y, pick(G, 0.42 + n * 0.35 + (y === 0 ? 0.08 : 0) - (y === 31 ? 0.12 : 0), x, y));
+    }
+  }
+  const r = rng(variant * 17 + 5);
+  for (let k = 0; k < 9; k++) {
+    const x = 2 + Math.floor(r() * 28);
+    const y = 9 + Math.floor(r() * 21);
+    const hgt = 4 + Math.floor(r() * 6);
+    const dry = r() < 0.3;
+    const lean = (r() - 0.5) * 3;
+    p.line(x, y, x + lean, y - hgt, (px, py, t) => (dry ? pick(RAMP.straw, 0.3 + t * 0.5, px, py) : pick(G, 0.15 + t * 0.75, px, py)));
+  }
+  if (r() < 0.5) {
+    const x = 6 + Math.floor(r() * 20);
+    const y = 6 + Math.floor(r() * 20);
+    p.set(x, y, '#e8d36a'); p.set(x + 1, y, '#e8d36a'); p.set(x, y + 1, '#c9a63e');
+  }
+  return p;
+}

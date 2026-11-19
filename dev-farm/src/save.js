@@ -8,7 +8,7 @@ import {
   SAVE_VERSION, MAX_ENERGY, DAY_START, PASS_OUT, STACK_MAX, UPGRADES, TANK_SIZE, COOP, FORAGE_MAX, GIGS, MARKET, GAME_MIN_PER_SEC, FISHING,
   REQUESTS, HIVES, DECOR, PETS, ONLINE,
 } from './data.js';
-import { W, H, isWalkable, isPlotTile, OBJECTS, charAt } from './world.js';
+import { W, H, isWalkable, isPlotTile, OBJECTS, charAt, PLOT_ORDER } from './world.js';
 
 
 export const SAVE_KEY = 'dev-farm/save-v4';
@@ -71,6 +71,9 @@ export function deserialize(raw) {
   for (const k of Object.keys(s.upgrades)) s.upgrades[k] = d.upgrades?.[k] === true;
   if (cropById[d.seed]) s.seed = d.seed;
   s.fertTier = int(d.fertTier, 0, 3, 0);
+  // plots bought one by one (19. 11.); farms from before had every plot of their fields open
+  s.fieldOpen.a = int(d.fieldOpen?.a, 0, PLOT_ORDER.a.length, PLOT_ORDER.a.length);
+  s.fieldOpen.b = s.upgrades.field2 ? int(d.fieldOpen?.b, 0, PLOT_ORDER.b.length, PLOT_ORDER.b.length) : 0;
   for (const k of Object.keys(s.seeds)) s.seeds[k] = int(d.seeds?.[k], 0, 99999, 0);
   s.found.house = d.found?.house === true;
   if (Array.isArray(d.finds)) {
