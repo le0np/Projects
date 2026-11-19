@@ -247,7 +247,7 @@ export function guideTopics() {
         `Pakiranje: na parkiralištu je kutija za pakete. Otvori je, i uz plodove u torbi klikni „Spakiraj iz torbe“ (${ONLINE.packEnergy} ⚡). Uzima se najslabija dovoljno dobra klasa. Spakirani paketi stoje kraj putokaza.`,
         `Slanje: „Odnesi pakete na poštu“ (pješice ${MARKET.walk / 60} h u jednom smjeru, pošta radi do ${hour(ONLINE.postClose)}). Pakete farmer odnese i kad ide na tržnicu s torbom. Plaća se kad su paketi predani na pošti.`,
         `S kombijem i vozačem: ${MARKET.worker} u 6 h uzme sve spakirane pakete iz kutije i prvo ih preda na pošti, pa ide na tržnicu (ionako stigne prije otvaranja). To košta ${zl(MARKET.postWage)} povrh dnevnice. Ako u kombiju nema robe, vozi samo pakete na poštu, za ${zl(MARKET.postWage)}. Kupac plaća samo online cijenu.`,
-        `Pakiricu ${ONLINE.packer.name} zaposliš kod kutije za pakete: svako jutro u 6 h spakira nove narudžbe iz škrinje (najslabiju dovoljno dobru robu), pa ih ${MARKET.worker} odmah odveze. Dnevnica ${zl(ONLINE.packer.wage)}, samo na dane kad nešto spakira. Roba za nju mora biti u škrinji (hladnjača čuva klasu).`,
+        `Pakericu ${ONLINE.packer.name} zaposliš kod kutije za pakete: svako jutro u 6 h spakira nove narudžbe iz škrinje (najslabiju dovoljno dobru robu), pa ih ${MARKET.worker} odmah odveze. Dnevnica ${zl(ONLINE.packer.wage)}, samo na dane kad nešto spakira. Roba za nju mora biti u škrinji (hladnjača čuva klasu).`,
         `Rok: narudžba se mora poslati do svog dana (${ONLINE.days[0]}–${ONLINE.days[1]} dana). Inače kupac odustane, a spakirani paket se vrati u škrinju.`,
         'Popis online narudžbi je i na mobitelu (Poslovi).',
       ],
