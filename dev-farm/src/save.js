@@ -70,6 +70,7 @@ export function deserialize(raw) {
   if (TOOLS.includes(d.tool)) s.tool = d.tool;
   for (const k of Object.keys(s.upgrades)) s.upgrades[k] = d.upgrades?.[k] === true;
   if (cropById[d.seed]) s.seed = d.seed;
+  s.fertTier = int(d.fertTier, 0, 3, 0);
   for (const k of Object.keys(s.seeds)) s.seeds[k] = int(d.seeds?.[k], 0, 99999, 0);
   s.found.house = d.found?.house === true;
   if (Array.isArray(d.finds)) {
@@ -187,7 +188,7 @@ export function deserialize(raw) {
     const travel = Math.max(MARKET.walk, MARKET.drive) / GAME_MIN_PER_SEC;
     const trip = (t) => (t && ['go', 'sell', 'back'].includes(t.phase) ? {
       phase: t.phase, left: num(t.left, 0, travel, 0), timer: num(t.timer, 0, 60, 1),
-      kg: int(t.kg, 0, big, 0), money: int(t.money, 0, big, 0),
+      kg: int(t.kg, 0, big, 0), pcs: int(t.pcs, 0, big, 0), money: int(t.money, 0, big, 0),
       ...(t.post === true ? { post: true } : {}), ...(t.parcels === true ? { parcels: true } : {}),
     } : null);
     // a trip only to the post office needs no market stall

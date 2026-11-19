@@ -48,7 +48,7 @@ export function guideTopics() {
           `Kompost na radnom stolu: ${COMPOST_KG} kg jedne vrste ploda iz torbe daju 1 vreću (${FERT_DOSES} doza). Kompost je iste kvalitete kao plod: od škarta (★) je ★ gnojivo, od II. klase ★★, a od I. klase i boljeg ★★★.`,
           `Mobitel → Dostava → Gnojivo: ${zl(FERTILIZER_PRICE)} za vreću (${FERT_DOSES} doza) gnojiva ${stars(BOUGHT_FERT_TIER)}. Stiže sutra ujutro u škrinju, a odande ga prebaci u torbu.`,
         ] },
-        `Gnoji se biljka koja još raste (ne zrela). Uzmi gnojivo u ruku (tipka 4) i klikni biljku, ili ▾ uz gnojivo (tipka G) pognoji sve redom, koliko ima doza u torbi. Jedna doza = jedna biljka, ${ENERGY_COST.fertilize} ⚡. Prvo se troši najbolje gnojivo iz torbe.`,
+        `Gnoji se biljka koja još raste (ne zrela). Uzmi gnojivo u ruku (tipka 4) i klikni biljku, ili ▾ uz gnojivo (tipka G) pognoji sve redom, koliko ima doza u torbi. Jedna doza = jedna biljka, ${ENERGY_COST.fertilize} ⚡. Prvo se troši najbolje gnojivo iz torbe, osim ako ispod alata (dok je gnojivo u ruci) odabereš jedno: tada se troši samo ono, a ostalo čuvaš, npr. ★★★ za skuplje usjeve.`,
         `Što je gnojivo bolje, to bolji plod: ★ gnojivo +${FERT_BONUS[1]}, ★★ +${FERT_BONUS[2]}, ★★★ +${FERT_BONUS[3]} bodova kvalitete. Plod ★★★★★ (${TIER_NAMES[5]}) može dati samo ★★★ gnojivo, uz zalijevanje svaki dan i berbu isti dan kad sazri.`,
       ],
     },

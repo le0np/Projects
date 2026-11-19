@@ -52,6 +52,7 @@ function baseState(seed) {
     energy: MAX_ENERGY,
     tool: 'hand',
     seed: CROPS[0].id,
+    fertTier: 0, // which fertilizer the tool uses: 0 = the best in the bag first, 1–3 only that one
     water: CAN_SIZE,
     seeds: Object.fromEntries(CROPS.map((c) => [c.id, 0])),
     found: { house: false },
@@ -192,6 +193,13 @@ export const isSellable = (id) => parseItem(id)?.kind === 'crop';
 export const isFert = (id) => parseItem(id)?.kind === 'fertilizer';
 // doses of fertilizer in the bag (one dose = one plot)
 export const fertDoses = (s) => countWhere(s.bag, isFert);
+// doses of the fertilizer the player picked (all of them when it is "best first")
+export const usableFert = (s) => (s.fertTier ? countWhere(s.bag, (id) => id === fertId(s.fertTier)) : fertDoses(s));
+export function setFertTier(s, tier, events = []) {
+  if (![0, 1, 2, 3].includes(tier)) return fail(events, 'unknown');
+  s.fertTier = tier;
+  return { ok: true };
+}
 // the plot's fertilizer quality: 0 none, 1–3 (old saves stored true)
 const fertTier = (p) => (p.fert === true ? 2 : Number(p.fert) || 0);
 // srebrenjaci per kg
@@ -389,13 +397,13 @@ function workKind(s, t) {
       if (ripe) return 'harvest';
       if (!p.crop) return s.tool === 'seed' && s.seeds[s.seed] > 0 ? 'plant' : null;
       if (s.tool === 'can') return !p.wet && s.water > 0 ? 'water' : null;
-      if (s.tool === 'fert') return !p.fert && fertDoses(s) ? 'fertilize' : null;
+      if (s.tool === 'fert') return !p.fert && usableFert(s) ? 'fertilize' : null;
       if (s.tool === 'mulch') return !p.mulch && hasMulch(s) ? 'mulch' : null;
       return null;
     case 'jobplant': return !p.crop && seedFor(s, t.crop) ? 'plant' : null;
     case 'jobharvest': return p.rotten ? 'clear' : ripe ? 'harvest' : null;
     case 'jobwater': return needsWater(p) && s.water > 0 ? 'water' : null;
-    case 'jobfert': return unfertilized(p) && fertDoses(s) ? 'fertilize' : null;
+    case 'jobfert': return unfertilized(p) && usableFert(s) ? 'fertilize' : null;
     case 'jobmulch': return unmulched(p) && hasMulch(s) ? 'mulch' : null;
     case 'jobseries':
       if (t.step === 'plant') return !p.crop && seriesSeed(s, t.crop) ? 'plant' : null;
@@ -470,7 +478,7 @@ function jobFits(s, kind, i, crop = null) {
 // How many plots a job can do at most: seeds, fertilizer doses or mulch in the bag.
 function jobCap(s, kind, crop = null) {
   if (kind === 'plant') return crop ? s.seeds[crop] : totalSeeds(s);
-  if (kind === 'fertilize') return fertDoses(s);
+  if (kind === 'fertilize') return usableFert(s);
   if (kind === 'mulch') return countWhere(s.bag, (id) => id === 'mulch');
   return Infinity;
 }
@@ -556,7 +564,7 @@ export function startJob(s, kind, crop = null, events = []) {
     if (!targets.length) return fail(events, 'nofreeplots');
     targets = route(s, targets).slice(0, seeds);
   } else {
-    if (kind === 'fertilize' && !fertDoses(s)) return fail(events, 'nofert');
+    if (kind === 'fertilize' && !usableFert(s)) return fail(events, 'nofert', { tier: s.fertTier });
     if (kind === 'mulch' && !countWhere(s.bag, (id) => id === 'mulch')) return fail(events, 'nomulch');
     targets = jobTargets(s, kind, crop);
     if (!targets.length) return fail(events, { water: 'nothingdry', fertilize: 'nothingtofert', mulch: 'nothingtomulch' }[kind] ?? 'nothingripe');
@@ -843,10 +851,10 @@ function mulchPlot(s, i, events) {
 function fertilize(s, i, events) {
   const p = s.plots[i];
   if (p.fert) return fail(events, 'fertilized');
-  if (!fertDoses(s)) return fail(events, 'nofert');
+  if (!usableFert(s)) return fail(events, 'nofert', { tier: s.fertTier });
   if (!spend(s, ENERGY_COST.fertilize, events)) return { ok: false, reason: 'tired' };
-  // the best fertilizer in the bag goes first
-  const tier = Math.max(...s.bag.filter((it) => it && isFert(it.id)).map((it) => parseItem(it.id).tier));
+  // the one the player picked, or the best in the bag first
+  const tier = s.fertTier || Math.max(...s.bag.filter((it) => it && isFert(it.id)).map((it) => parseItem(it.id).tier));
   takeWhere(s.bag, (id) => id === fertId(tier), 1);
   p.fert = tier;
   const [x, y] = xy(i);
@@ -2166,7 +2174,8 @@ export function goToMarket(s, events = []) {
   return { ok: true };
 }
 
-const newTrip = (who) => ({ phase: 'go', left: travelSeconds(who), timer: 1, kg: 0, money: 0 });
+// kg: produce sold by weight, pcs: eggs (sold by the piece)
+const newTrip = (who) => ({ phase: 'go', left: travelSeconds(who), timer: 1, kg: 0, pcs: 0, money: 0 });
 
 // post: only to the post office with the parcels (a market trip takes them along too)
 function leaveForTown(s, events, post = false) {
@@ -2195,7 +2204,7 @@ export function comeBack(s, who = 'farmer', events = []) {
   if (!t || t.phase === 'back') return { ok: false };
   t.left = t.phase === 'go' ? travelSeconds(who) - t.left : travelSeconds(who);
   t.phase = 'back';
-  events.push({ type: 'tripback', who, kg: t.kg, money: t.money, early: true });
+  events.push({ type: 'tripback', who, kg: t.kg, pcs: t.pcs ?? 0, money: t.money, early: true });
   return { ok: true };
 }
 
@@ -2205,7 +2214,7 @@ function endTrip(s, who, events) {
   // parcels that got to town after the post office closed come back to the box
   if (who === 'van') for (const o of s.online.orders) delete o.carried;
   const left = countWhere(tripSlots(s, who), isSellable);
-  events.push({ type: 'tripdone', who, kg: t.kg, money: t.money, left });
+  events.push({ type: 'tripdone', who, kg: t.kg, pcs: t.pcs ?? 0, money: t.money, left });
   if (who === 'farmer') {
     // back on the farm where the road comes in, then down to the parking lot
     const f = s.farmer;
@@ -2236,7 +2245,7 @@ function runTrips(s, dt, events) {
       if (s.clock >= MARKET.close || !countWhere(slots, isSellable)) {
         t.phase = 'back';
         t.left = travelSeconds(who);
-        events.push({ type: 'tripback', who, kg: t.kg, money: t.money, soldOut: s.clock < MARKET.close });
+        events.push({ type: 'tripback', who, kg: t.kg, pcs: t.pcs ?? 0, money: t.money, soldOut: s.clock < MARKET.close });
         continue;
       }
       if (s.clock < MARKET.open) continue;
@@ -2246,7 +2255,8 @@ function runTrips(s, dt, events) {
       t.timer = a + rand(s) * (b - a);
       const sale = sellOne(s, slots, MARKET.kg, events, MARKET.markup);
       if (sale) {
-        t.kg += sale.qty;
+        if (goodById[sale.crop].unit === 'kom') t.pcs = (t.pcs ?? 0) + sale.qty;
+        else t.kg += sale.qty;
         t.money += sale.money;
         events.push({ type: 'marketsale', who, ...sale });
       }

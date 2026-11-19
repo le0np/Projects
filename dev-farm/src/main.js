@@ -7,7 +7,7 @@ import {
   countWhere, extractSeeds, makeCompost, orderSeeds, startJob, upgrade, fillTank, orderItem, feedHens, acceptGig, sprinklerAt,
   goWork, goodById, forageById, shopItemById, matCount, matsText, cancelOrder, stopFishing, fishById,
   placeItem, removeItem, fulfillRequest, sellBack, adoptPet, patPet, dayNameGen, rentStall, buyVan, hireWorker, goToMarket, sendVan, comeBack,
-  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn, sortSlots, dropItem,
+  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn, sortSlots, dropItem, setFertTier,
 } from './sim.js';
 import { ONLINE } from './data.js';
 import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES, UPGRADES, TANK_SIZE } from './data.js';
@@ -15,7 +15,7 @@ import { SAVE_KEY, OLDER_KEYS, serialize, deserialize } from './save.js';
 import { isPlotTile } from './world.js';
 import { createRenderer } from './render.js';
 import { keymap, actionFor, toolOrder } from './keys.js';
-import { createUI, itemName, stars, formatMoney, plots } from './ui.js';
+import { createUI, itemName, stars, formatMoney, plots, soldText } from './ui.js';
 
 const ZOOM_KEY = 'dev-farm/zoom';
 const SETTINGS_KEY = 'dev-farm/settings';
@@ -37,7 +37,7 @@ if (savedZoom > 0) renderer.setZoom(savedZoom);
 
 const ui = createUI({
   onTool, onSeed, onMove, onSort, onDrop, onEat, onPlace, onSleep, onCoffee, onCraft, onReset, onExtract, onOrder, onZoom, onJob,
-  onUpgrade, onFillTank, onOrderItem, onAcceptGig, onGoWork, onSetting, onLayout,
+  onUpgrade, onFillTank, onOrderItem, onAcceptGig, onGoWork, onSetting, onLayout, onFertTier,
   onRentStall, onBuyVan, onHire, onGoMarket, onSendVan, onComeBack, onCancelOrder, onCompost,
   onPlaceItem, onRemoveMode, onFulfill, onSellBack, onAdopt, onNotifySetting, onBuildOnline, onPack, onGoPost,
   onClosePanel: closePanel,
@@ -72,7 +72,7 @@ function farmerSays(e) {
     case 'canempty': return state.upgrades.well ? 'Kanta je prazna. Idem po vodu na bunar ili ribnjak.' : 'Kanta je prazna. Moram po vodu na ribnjak.';
     case 'wet': return 'Ova je još dobro zalivena.';
     case 'bagfull': return 'Torba je puna. Nešto moram odložiti u škrinju ili na štand.';
-    case 'nofert': return 'Nemam gnojiva u torbi. Kompost se radi na radnom stolu od 5 kg ploda, a može se i naručiti (📖 Priručnik → Gnojivo).';
+    case 'nofert': return e.tier ? `Nemam više gnojiva ${stars(e.tier)} u torbi. Ispod alata mogu odabrati drugo ili „Najbolje prvo“.` : 'Nemam gnojiva u torbi. Kompost se radi na radnom stolu od 5 kg ploda, a može se i naručiti (📖 Priručnik → Gnojivo).';
     case 'compostkg': return `Za kompost trebam 5 kg iste vrste ploda u torbi, a imam ${e.have} kg.`;
     case 'notcompost': return 'Od toga nema komposta. Treba plod s polja.';
     case 'fertilized': return 'Ova je već pognojena.';
@@ -279,12 +279,12 @@ function report(events) {
         break;
       case 'tripdone':
         if (e.who === 'farmer') {
-          ui.say(e.kg ? `Doma sam! Na tržnici prodano ${e.kg} kg, +${formatMoney(e.money)}.` : 'Doma sam.', e.kg ? 'happy' : '');
+          ui.say(e.kg || e.pcs ? `Doma sam! Na tržnici prodano ${soldText(e.kg, e.pcs)}, +${formatMoney(e.money)}.` : 'Doma sam.', e.kg || e.pcs ? 'happy' : '');
         } else {
-          if (!e.kg && !e.left) mapNote('lot', `🚐 ${MARKET.worker} se vratio`, 'ok');
+          if (!e.kg && !e.pcs && !e.left) mapNote('lot', `🚐 ${MARKET.worker} se vratio`, 'ok');
           else {
-            mapNote('lot', `🚐 Prodano ${e.kg} kg · +${formatMoney(e.money)}${e.left ? ` · ostalo ${e.left}` : ''}`, 'ok');
-            browserNote('🚐 Kombi se vratio', `Prodano ${e.kg} kg · +${formatMoney(e.money)}`);
+            mapNote('lot', `🚐 Prodano ${soldText(e.kg, e.pcs)} · +${formatMoney(e.money)}${e.left ? ` · ostalo ${e.left}` : ''}`, 'ok');
+            browserNote('🚐 Kombi se vratio', `Prodano ${soldText(e.kg, e.pcs)} · +${formatMoney(e.money)}`);
           }
         }
         break;
@@ -549,6 +549,12 @@ function onTool(tool) {
   refresh();
 }
 
+function onFertTier(tier) {
+  act((ev) => setFertTier(state, tier, ev));
+  state.tool = 'fert';
+  refresh();
+}
+
 function onSeed(id) {
   state.seed = id;
   state.tool = 'seed';
@@ -558,12 +564,21 @@ function onSeed(id) {
 
 // "Sortiraj": the thing there is most of first, by its name when amounts are equal
 function onSort(which) {
-  act((ev) => sortSlots(state, which, itemName, ev));
+  keepSelection(() => act((ev) => sortSlots(state, which, itemName, ev)));
 }
 
 // an item dragged with the mouse onto another slot
 function onDrop(from, slot, to, target) {
-  act((ev) => dropItem(state, from, slot, to, target, ev));
+  keepSelection(() => act((ev) => dropItem(state, from, slot, to, target, ev)));
+}
+
+// the item picked in the bag stays picked when sorting or dragging moves it to another slot
+function keepSelection(fn) {
+  const sel = ui.state.selected;
+  const id = state.bag[sel]?.id;
+  fn();
+  if (sel >= 0 && state.bag[sel]?.id !== id) ui.state.selected = id ? state.bag.findIndex((it) => it?.id === id) : -1;
+  refresh();
 }
 
 function onMove(from, slot, to) {

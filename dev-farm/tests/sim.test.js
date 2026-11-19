@@ -10,7 +10,7 @@ import {
   matsText, stopFishing, placeItem, removeItem, fulfillRequest, sellBack, buybackList, adoptPet, patPet, walkFn, requestPay,
   owns, chestSize, hensMax, feederCap, levelValue, cropDays,
   buildOnline, onlineProblem, packOrder, goToPost, postTripProblem, parcelsReady, orderPay,
-  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds,
+  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds, usableFert, setFertTier,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -2273,4 +2273,46 @@ test('van: a parcel in the van survives a reload; one that misses the post goes 
   assert.ok(!late.some((e) => e.type === 'posted'));
   assert.equal(o.carried, undefined, 'back in the parcel box');
   assert.equal(parcelsReady(w), 1);
+});
+
+test('market: eggs are counted in pieces, apart from the kilograms', () => {
+  const s = withVan();
+  addItem(s.cargo, 'crop:egg:2', 12);
+  addItem(s.cargo, cropItem('carrot', 2), 6);
+  s.clock = DAY_START;
+  const events = [];
+  assert.ok(sendVan(s, events).ok);
+  runVan(s, events);
+  const done = events.find((e) => e.type === 'tripdone');
+  const sold = (unit) => events.filter((e) => e.type === 'marketsale' && (e.crop === 'egg') === (unit === 'kom')).reduce((a, e) => a + e.qty, 0);
+  assert.equal(done.kg, sold('kg'));
+  assert.equal(done.pcs, sold('kom'));
+  assert.ok(done.pcs > 0, 'eggs were sold');
+});
+
+test('fertilizer: the player picks which one is used; best first by default', () => {
+  const s = createState();
+  addItem(s.bag, 'fertilizer:3', 2);
+  addItem(s.bag, 'fertilizer:1', 2);
+  for (const i of PLOTS_A.slice(0, 4)) s.plots[i] = { ...makePlot(), crop: 'carrot', progress: 0.2 };
+  const run = () => { const ev = []; for (let k = 0; k < 3000 && s.farmer.job; k++) tick(s, 0.1, ev); return ev; };
+  assert.equal(s.fertTier, 0, 'best first');
+  assert.equal(usableFert(s), 4);
+  // save the ★★★ for later: only ★ is used, and the job stops when it runs out
+  assert.ok(setFertTier(s, 1).ok);
+  assert.equal(usableFert(s), 2);
+  assert.equal(startJob(s, 'fertilize').total, 2);
+  run();
+  assert.equal(PLOTS_A.slice(0, 4).filter((i) => s.plots[i].fert === 1).length, 2);
+  assert.equal(countWhere(s.bag, (id) => id === 'fertilizer:3'), 2, 'the ★★★ is kept');
+  assert.equal(startJob(s, 'fertilize').reason, 'nofert', 'no ★ left');
+  // back to best first
+  assert.ok(setFertTier(s, 0).ok);
+  assert.equal(startJob(s, 'fertilize').total, 2);
+  run();
+  assert.equal(PLOTS_A.slice(0, 4).filter((i) => s.plots[i].fert === 3).length, 2);
+  assert.equal(setFertTier(s, 7).ok, false);
+  // kept in the save
+  setFertTier(s, 2);
+  assert.equal(deserialize(serialize(s)).state.fertTier, 2);
 });

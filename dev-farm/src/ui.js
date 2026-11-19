@@ -13,7 +13,7 @@ import {
   upgradeProblem, nextStep, levelValue, matsText, pumpCapacity, tankDoses, runningSprinklers, irrigationMissing, fishById, fertDoses, requestHave, requestPay, orderPick, orderPay, dayName, dayNameGen,
   buybackList, hiveAt, decorAt, farmerTripProblem, vanTripProblem, pumpStatus, orderPack, shopItemById,
   owns, recipeAmount, hensMax, feederCap, hiveCap, chestSize, cropDays, hasTap,
-  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount, costNeeds, vanPlan,
+  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount, costNeeds, vanPlan, usableFert,
 } from './sim.js';
 import { idx, objectAt, isPlotTile, OBJECTS, TAP } from './world.js';
 import { iconUrl } from './render.js';
@@ -32,6 +32,11 @@ export function formatMoney(sr) {
 export const kgText = (kg) => new Intl.NumberFormat('hr-HR', { maximumFractionDigits: 1 }).format(kg);
 export const days = (n) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'dan' : 'dana'}`;
 export const stars = (tier) => '★'.repeat(tier);
+// what a market trip sold: "5 kg", "12 jaja" or "5 kg i 12 jaja" (eggs go by the piece)
+export const soldText = (kg, pcs = 0) => {
+  const eggs = pcs ? `${pcs} ${pcs % 10 === 1 && pcs % 100 !== 11 ? 'jaje' : 'jaja'}` : '';
+  return kg && eggs ? `${kg} kg i ${eggs}` : eggs || `${kg} kg`;
+};
 
 // Croatian plural: 1 parcela, 2–4 parcele, 5+ parcela (11–14 count as many)
 export function plots(n) {
@@ -514,8 +519,8 @@ export function createUI(cb) {
     const { farmer: tf, van: tv } = s.market.trips;
     const tripText = (t) => (t.post ? (t.phase === 'go' ? 'nosi pakete na poštu' : 'se vraća s pošte')
       : t.phase === 'go' ? 'putuje u grad'
-      : t.phase === 'sell' ? (s.clock < MARKET.open ? 'čeka otvaranje tržnice' : `na tržnici · ${t.kg} kg · ${formatMoney(t.money)}`)
-        : `se vraća · ${t.kg} kg · ${formatMoney(t.money)}`);
+      : t.phase === 'sell' ? (s.clock < MARKET.open ? 'čeka otvaranje tržnice' : `na tržnici · ${soldText(t.kg, t.pcs)} · ${formatMoney(t.money)}`)
+        : `se vraća · ${soldText(t.kg, t.pcs)} · ${formatMoney(t.money)}`);
     els.trip.hidden = !tf && !tv;
     setText(els.trip, [tf && `${tf.post ? '📮' : '🧺'} Farmer ${tripText(tf)}${tf.phase !== 'back' ? ' · ↩' : ''}`, tv && `🚐 ${MARKET.worker} ${tripText(tv)}`].filter(Boolean).join('  ·  '));
     els.trip.disabled = !tf || tf.phase === 'back';
@@ -562,17 +567,41 @@ export function createUI(cb) {
   }
 
   // the fertilizer tool: how many doses, and the best quality (it is used first)
+  const dosesWord = (n) => (n % 10 === 1 && n % 100 !== 11 ? 'doza' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'doze' : 'doza');
   function fertSub(s) {
-    const doses = fertDoses(s);
+    const doses = usableFert(s);
+    if (s.fertTier) return doses ? `${stars(s.fertTier)} · ${doses} ${dosesWord(doses)}` : `nema ${stars(s.fertTier)}`;
     if (!doses) return 'nema gnojiva';
     const best = Math.max(...s.bag.filter((it) => it && parseItem(it.id).kind === 'fertilizer').map((it) => parseItem(it.id).tier));
-    return `${stars(best)} · ${doses} ${doses === 1 ? 'doza' : doses % 10 >= 2 && doses % 10 <= 4 && (doses % 100 < 12 || doses % 100 > 14) ? 'doze' : 'doza'}`;
+    return `${stars(best)} · ${doses} ${dosesWord(doses)}`;
+  }
+
+  // with the fertilizer in hand, the pouch under the tools picks which one is used
+  function fertPouch(s) {
+    const have = [1, 2, 3].map((t) => countWhere(s.bag, (id) => id === `fertilizer:${t}`));
+    renderIfChanged(els.seeds, JSON.stringify(['fert', have, s.fertTier]), () => {
+      const pick = (tier, label, n, title) => {
+        const b = button('', () => cb.onFertTier(tier), { cls: 'seed', disabled: tier && !n && s.fertTier !== tier });
+        b.classList.toggle('selected', s.fertTier === tier);
+        b.title = title;
+        b.append(icon('fertilizer', ''), el('span', 'seed-name', label), el('span', 'seed-count', `× ${n}`));
+        return b;
+      };
+      return [
+        pick(0, 'Najbolje prvo', have[0] + have[1] + have[2], 'Prvo se troši najbolje gnojivo iz torbe'),
+        ...[3, 2, 1].filter((t) => have[t - 1] || s.fertTier === t).map((t) => pick(t, `Gnojivo ${stars(t)}`, have[t - 1], `Troši samo gnojivo ${stars(t)}; ostalo čuvaš`)),
+      ];
+    });
   }
 
   // ---- seed pouch: only what you actually have, with counts
   function pouch(s) {
+    if (s.tool === 'fert' && !ui.placing) {
+      fertPouch(s);
+      return;
+    }
     const owned = CROPS.filter((c) => s.seeds[c.id] > 0 || c.id === s.seed);
-    const sig = JSON.stringify([s.seeds, s.seed, s.levels.greenhouse]);
+    const sig = JSON.stringify(['seeds', s.seeds, s.seed, s.levels.greenhouse]);
     renderIfChanged(els.seeds, sig, () => {
       if (!Object.values(s.seeds).some((n) => n > 0)) {
         return [el('span', 'pouch-empty', 'Vrećica sa sjemenom je prazna. Potraži ga po imanju ili naruči dostavu na mobitelu.')];
@@ -881,7 +910,7 @@ export function createUI(cb) {
     const vp = vanTripProblem(s);
     const goods = countWhere(s.bag, isSellable);
     const plan = vanPlan(s);
-    const sig = JSON.stringify(['market', m.stall, m.van, m.worker, tv && [tv.phase, tv.kg, tv.money, tv.post], s.cargo, fp, vp, goods, plan,
+    const sig = JSON.stringify(['market', m.stall, m.van, m.worker, tv && [tv.phase, tv.kg, tv.pcs, tv.money, tv.post], s.cargo, fp, vp, goods, plan,
       s.money >= zl(MARKET.van), s.money >= zl(MARKET.stall), s.online, s.online.orders.map((o) => requestHave(s, o)), postTripProblem(s), s.day]);
     renderIfChanged(els.panel, sig, () => {
       const out = [head(), ...parcelBox(s), el('p', 'muted', `Cesta na sjever vodi u grad: pješice ${MARKET.walk / 60} h, kombijem ${MARKET.drive} min. Tržnica radi ${formatClock(MARKET.open)}–${formatClock(MARKET.close)}: kupaca je puno više nego na štandu uz cestu i uzimaju po ${MARKET.kg[0]}–${MARKET.kg[1]} kg. Cijene su iste.`)];
@@ -907,7 +936,7 @@ export function createUI(cb) {
       if (tv) {
         const where = tv.post ? { go: 'vozi pakete na poštu', sell: 'je na pošti', back: 'se vraća s pošte' }[tv.phase]
           : { go: 'je na putu u grad', sell: 'je na tržnici', back: 'se vraća' }[tv.phase];
-        out.push(el('p', '', `🚐 ${MARKET.worker} ${where}${tv.post ? '' : ` · prodano ${tv.kg} kg · ${formatMoney(tv.money)}`}`));
+        out.push(el('p', '', `🚐 ${MARKET.worker} ${where}${tv.post ? '' : ` · prodano ${soldText(tv.kg, tv.pcs)} · ${formatMoney(tv.money)}`}`));
       } else {
         const grid = el('div', 'slots');
         s.cargo.forEach((it, i) => grid.append(slotButton(it, it ? () => cb.onMove('cargo', i, 'bag') : null, { from: 'cargo', slot: i })));
@@ -1180,18 +1209,41 @@ export function createUI(cb) {
 
   // ---- the farmer's speech bubble
   let bubbleUntil = 0;
+  // Two things said at almost the same time: the second waits until the first has been read
+  // (the first then stays a little shorter). Only a couple wait; the same text is not said twice.
+  const BUBBLE_MIN = 1500;
+  let bubbleAt = -1e9;
+  let bubbleText = '';
+  const bubbleQueue = [];
   function say(text, mood = '') {
+    const now = performance.now();
+    if (!els.bubble.hidden && now < bubbleUntil && now - bubbleAt < BUBBLE_MIN) {
+      if (text === bubbleText || bubbleQueue.some((q) => q.text === text)) return;
+      if (bubbleQueue.length >= 2) bubbleQueue.shift();
+      bubbleQueue.push({ text, mood });
+      bubbleUntil = Math.min(bubbleUntil, bubbleAt + BUBBLE_MIN);
+      return;
+    }
+    showBubble(text, mood, now);
+  }
+  function showBubble(text, mood, now) {
     els.bubble.textContent = text;
     coinify(els.bubble);
     els.bubble.className = `bubble ${mood}`;
     els.bubble.hidden = false;
-    bubbleUntil = performance.now() + 2200 + text.length * 45;
+    bubbleAt = now;
+    bubbleText = text;
+    bubbleUntil = now + 2200 + text.length * 45;
   }
   function placeBubble(x, y, now) {
     if (els.bubble.hidden) return;
     if (now > bubbleUntil) {
-      els.bubble.hidden = true;
-      return;
+      const next = bubbleQueue.shift();
+      if (next) showBubble(next.text, next.mood, now);
+      else {
+        els.bubble.hidden = true;
+        return;
+      }
     }
     const wrap = els.bubble.parentElement.getBoundingClientRect();
     const half = els.bubble.offsetWidth / 2;
