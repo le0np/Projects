@@ -3,12 +3,12 @@
 // No DOM here: topics are plain data ({ id, icon, title, body }), the UI draws them.
 // A body block is a paragraph (string) or a list ({ list: [...] }).
 
-import { matsText } from './sim.js';
+import { matsText, shopItemById } from './sim.js';
 import {
   CROPS, RECIPES, BUILDINGS, SHOP_ITEMS, GOODS, FORAGE, COOP, MARKET, GIGS, CAN_SIZE, UPGRADES, TANK_SIZE, COFFEE, EAT_ENERGY,
   ENERGY_COST, TIER_PRICE, SEEDS_FROM_FRUIT, SEED_PACK, HOUSE_SEEDS, FERTILIZER_PRICE,
   TIER_NAMES, FERT_BONUS, FERT_DOSES, COMPOST_KG, BOUGHT_FERT_TIER,
-  RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, BUYBACK, REPUTATION, PESTS,
+  RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, BUYBACK, REPUTATION, PESTS, CHOP, QUARRY,
   HOSE_PER_SPRINKLER, ROT_DAY, SHOP_OPEN, SHOP_CLOSE, SLEEP_FROM, BAG_SIZE, CHEST_SIZE,
   STAND_SIZE, CUSTOMER_KG, AD_NAMES, ONLINE, POLLEN_BONUS, GIG_ENERGY_PER_HOUR, MAX_ENERGY, FISH, FISHING, GAME_MIN_PER_SEC,
   WORK_SECONDS, WALK_SPEED,
@@ -266,6 +266,16 @@ export function guideTopics() {
       body: [
         `Mobitel → Poslovi: svako jutro stigne nekoliko ponuda. Prihvaćeni posao farmer radi kod kuće za laptopom (${Math.min(...GIGS.map((g) => g.hours))}–${Math.max(...GIGS.map((g) => g.hours))} h, ${GIG_ENERGY_PER_HOUR} ⚡ po satu) i odmah je plaćen (${zl(Math.min(...GIGS.map((g) => g.pay[0])))}–${zl(Math.max(...GIGS.map((g) => g.pay[1])))}).`,
         'Ako ga pozoveš van, napredak ostaje. Posao se nastavlja iz kuće ili s mobitela.',
+      ],
+    },
+    {
+      id: 'materials', icon: '🪓', title: 'Alati i građevinski materijal (drva, kamen, čavli, boja)',
+      body: [
+        `Alati se kupuju jednom, na mobitelu (Dostava → Alati), i stižu sutra ujutro: sjekira (${shopItemById.axe.price} zl) i čekić (${shopItemById.hammer.price} zl).`,
+        `Sjekira je alat 7: klik na stablo u šumi i farmer siječe drva (+${CHOP.wood} drva, ${CHOP.energy} ⚡, ${secs(WORK_SECONDS.chop)}). Jedno stablo daje drva jednom na dan, a stabala ima puno.`,
+        `Kamenolom je na jugu mape, uz šumu. S čekićem klik na stijenu daje ${QUARRY.stone} kamena (${QUARRY.energy} ⚡), najviše ${QUARRY.daily} na dan. Kamen se može i naručiti (vreća od 10).`,
+        'Čavli i boja stižu samo Dostavom (Građevinski materijal). Grane i kamenje uz rub šume i dalje se skupljaju rukama.',
+        `Za svaku gradnju (bunar, kokošinjac) treba čekić. Kokošinjac traži i ${BUILDINGS.coop.nails} čavala. Na radnom stolu se od drva i čavala rade ograda i klupa (klupa treba i boju).`,
       ],
     },
     {

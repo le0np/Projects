@@ -1575,6 +1575,34 @@ export function icon(name) {
       p.rect(2, 14, 12, 1, leather[1]);
       break;
     }
+    case 'axe':
+      // a wooden handle and a steel head
+      p.line(4, 14, 11, 3, (x, y, t) => pick(RAMP.wood, 0.75 - t * 0.2, x, y));
+      p.line(5, 14, 12, 3, RAMP.wood[2]);
+      p.rect(9, 1, 5, 5, (x, y) => pick(RAMP.metal, 0.9 - (x - 9) * 0.12 - (y - 1) * 0.05, x, y));
+      p.set(14, 1, RAMP.metal[5]); p.set(14, 5, RAMP.metal[2]);
+      break;
+    case 'hammer':
+      p.line(4, 14, 10, 6, (x, y, t) => pick(RAMP.wood, 0.75 - t * 0.2, x, y));
+      p.line(5, 14, 11, 6, RAMP.wood[2]);
+      p.rect(6, 2, 9, 4, (x, y) => pick(RAMP.metal, 0.85 - (y - 2) * 0.15, x, y));
+      p.rect(5, 3, 1, 2, RAMP.metal[2]);
+      break;
+    case 'nails':
+      // three nails
+      for (const [x0, y0] of [[3, 3], [7, 2], [11, 4]]) {
+        p.rect(x0 - 1, y0, 3, 1, RAMP.metal[4]);
+        p.line(x0, y0 + 1, x0, y0 + 10, (x, y, t) => pick(RAMP.metal, 0.7 - t * 0.3, x, y));
+      }
+      break;
+    case 'paint':
+      // a paint tin with a drip
+      p.rect(3, 5, 10, 10, (x, y) => pick(RAMP.metal, 0.75 - (x - 3) * 0.04, x, y));
+      p.rect(3, 4, 10, 2, '#3f8fd6');
+      p.rect(4, 6, 2, 4, '#3f8fd6');
+      p.rect(5, 9, 6, 4, '#f4ecd6');
+      p.line(3, 3, 8, 1, RAMP.metal[2]); p.line(8, 1, 13, 3, RAMP.metal[2]);
+      break;
     // sketches on the workbench cards: what is being made
     case 'well':
       // a round stone well with a little roof and a bucket
@@ -1933,4 +1961,25 @@ export function crow(frame = 0) {
   p.set(6, 10, '#2a2d33'); p.set(8, 10, '#2a2d33');
   p.set(6, 11, '#2a2d33'); p.set(8, 11, '#2a2d33');
   return p.outline(0.35);
+}
+
+// The quarry: a grey rock face against the woods, broken stone at its foot (4 × 2 tiles).
+export function quarry() {
+  const p = new Pix(128, 72);
+  const S = RAMP.stone;
+  // the rock face: big blocks, lit from the top left
+  for (const [cx, cy, rx, ry] of [[22, 30, 22, 26], [60, 26, 26, 24], [100, 30, 24, 26], [40, 44, 20, 16], [82, 46, 22, 15]]) {
+    p.ellipse(cx, cy, rx, ry, (nx, ny, x, y) => pick(S, 0.25 + sphere(nx, ny) * 0.65 + (vnoise(x / 5, y / 5, 61) - 0.5) * 0.25, x, y));
+  }
+  // cracks
+  for (const [x0, y0, x1, y1] of [[30, 12, 36, 30], [64, 8, 58, 28], [92, 14, 98, 34], [48, 34, 54, 50]]) p.line(x0, y0, x1, y1, S[0]);
+  // loose stones and chips at the foot
+  const r = rng(77);
+  for (let k = 0; k < 14; k++) {
+    const x = 8 + Math.floor(r() * 112);
+    const y = 58 + Math.floor(r() * 10);
+    const w = 2 + r() * 3;
+    p.ellipse(x, y, w, w * 0.7, (nx, ny, px, py) => pick(S, 0.35 + sphere(nx, ny) * 0.55, px, py));
+  }
+  return p.outline(0.4);
 }

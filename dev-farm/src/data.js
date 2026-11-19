@@ -38,7 +38,7 @@ export const ROT_DAY = 4; // rotten on the 4th morning after ripening
 
 export const ENERGY_COST = { plant: 2, water: 1, fertilize: 1, harvest: 1, clear: 1 };
 // Work on a plot takes time (real seconds; 1 s = 2 game minutes). Energy is spent when it is done.
-export const WORK_SECONDS = { plant: 1.5, harvest: 1.5, clear: 1.5, refill: 2, water: 1, fertilize: 1, mulch: 1 };
+export const WORK_SECONDS = { plant: 1.5, harvest: 1.5, clear: 1.5, refill: 2, water: 1, fertilize: 1, mulch: 1, chop: 3, quarry: 3 };
 export const COFFEE = { price: 1.5, energy: 35 };
 export const EAT_ENERGY = [0, 6, 10, 15, 20, 25]; // per kg eaten, by quality tier
 
@@ -78,8 +78,8 @@ export const fertId = (tier) => `fertilizer:${tier}`;
 // Buildings: a plan is sketched at the workbench, then the farmer builds on site.
 // Every future building follows the same pattern: add it here and give it a plan recipe.
 export const BUILDINGS = {
-  well: { name: 'Bunar', plan: 'wellPlan', price: 150, wood: 6, stone: 12, energy: 30, seconds: 6 },
-  coop: { name: 'Kokošinjac', plan: 'coopPlan', price: 25, wood: 10, stone: 4, energy: 20, seconds: 6 },
+  well: { name: 'Bunar', plan: 'wellPlan', price: 150, wood: 6, stone: 12, energy: 30, seconds: 6, tool: 'hammer' },
+  coop: { name: 'Kokošinjac', plan: 'coopPlan', price: 25, wood: 10, stone: 4, nails: 10, energy: 20, seconds: 6, tool: 'hammer' },
 };
 export const WELL_BUILD = BUILDINGS.well;
 
@@ -99,14 +99,30 @@ export const MATERIALS = {
   stone: { name: 'Kamenje', gen: 'kamena' },
   iron: { name: 'Željezo', gen: 'željeza' },
   plastic: { name: 'Plastika', gen: 'plastike' },
+  // building materials (owner, 19. 11.): nails for buildings and wooden things, paint for decorations
+  nails: { name: 'Čavli', gen: 'čavala' },
+  paint: { name: 'Boja', gen: 'boje' },
 };
 // Where each material is found, shown on the workbench next to what is missing.
 export const MATERIAL_SOURCE = {
-  wood: 'grane uz rub šume',
-  stone: 'kamenje uz rub šume',
+  wood: 'grane uz rub šume ili sjekirom u šumi',
+  stone: 'kamenje uz rub šume, kamenolom (čekić) ili Dostava',
   iron: 'Dostava ili odbačeni dijelovi u šumi',
   plastic: 'Dostava ili odbačeni dijelovi u šumi',
+  nails: 'Dostava',
+  paint: 'Dostava',
 };
+
+// Tools bought once on the phone (Dostava → Alati), owned for good. The axe cuts wood from the trees in
+// the woods (tool 7); the hammer breaks stone at the quarry and is needed for every building.
+export const HAND_TOOLS = {
+  axe: { name: 'Sjekira' }, // prices are in SHOP_ITEMS
+  hammer: { name: 'Čekić' },
+};
+// Cutting wood: a tree gives wood once a day. The quarry at the south edge gives stone, up to `daily` a day.
+// (how long each takes is in WORK_SECONDS)
+export const CHOP = { wood: 2, energy: 4 };
+export const QUARRY = { stone: 2, energy: 5, daily: 12 };
 
 // Delivered to the chest the next morning, ordered on the phone.
 export const SHOP_ITEMS = [
@@ -119,6 +135,12 @@ export const SHOP_ITEMS = [
   { id: 'iron', name: 'Željezo (šipke)', n: 5, unit: 'kom', price: 8 },
   { id: 'plastic', name: 'Plastika (ploče)', n: 5, unit: 'kom', price: 6 },
   { id: 'jar', name: 'Tegle za med', n: 10, unit: 'kom', price: 3 }, // honey needs a jar per kg
+  { id: 'nails', name: 'Čavli', n: 20, unit: 'kom', price: 3 },
+  { id: 'paint', name: 'Boja (kanta)', n: 1, unit: 'kom', price: 6 },
+  { id: 'stone', name: 'Kamen (vreća)', n: 10, unit: 'kom', price: 6 },
+  // tools: owned once delivered (s.upgrades.axe / hammer), not things in the bag
+  { id: 'axe', name: 'Sjekira', n: 1, unit: 'kom', price: 12, tool: true },
+  { id: 'hammer', name: 'Čekić', n: 1, unit: 'kom', price: 8, tool: true },
 ];
 // decorations are in the catalogue too (Dostava → Uređenje); DECOR is declared further down
 export const decorShopItems = (decor) => Object.entries(decor).map(([k, d]) => ({ id: `deco:${k}`, name: d.name, n: d.n, unit: 'kom', price: d.price, decor: true }));
@@ -347,6 +369,15 @@ export const RECIPES = [
   {
     id: 'hive', name: 'Košnica', gives: 'hive', price: 10, mats: { wood: 6 },
     desc: 'Postavi je na travu. Pčele svaki drugi dan napune 1 kg meda (najviše 6 kg); med se skuplja u tegle (Dostava), tegla po kilogramu.',
+  },
+  {
+    // wooden decorations from the workbench (the same ones can be bought ready on the phone)
+    id: 'fenceKit', name: 'Ograda (4 kom)', gives: 'deco:fence', n: 4, price: 0, mats: { wood: 2, nails: 4 },
+    desc: 'Četiri komada ograde od drva i čavala. Postavljaju se iz torbe kao i kupljena ograda.',
+  },
+  {
+    id: 'benchKit', name: 'Klupa', gives: 'deco:bench', price: 0, mats: { wood: 4, nails: 6, paint: 1 },
+    desc: 'Obojena klupa od drva i čavala. Postavlja se iz torbe na travu.',
   },
   {
     id: 'coldroom', name: 'Hladnjača', once: 'coldroom', price: 150, mats: { iron: 6, plastic: 4 },

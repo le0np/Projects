@@ -12,7 +12,7 @@ import {
   PUMP_INSTALL_SECONDS, SHOP_ITEMS, BUILDINGS,
   GOODS, FORAGE, FORAGE_START, FORAGE_DAILY, FORAGE_MAX, COOP, GIGS, GIG_OFFERS, GIG_ENERGY_PER_HOUR, MARKET, FISH, FISHING,
   FERT_BONUS, TIER_AT, MAX_TIER, FERT_DOSES, COMPOST_KG, fertId,
-  MATERIALS, MATERIAL_SOURCE, ONLINE, RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, PET_NAME_MAX, FIELD_PLOTS, REPUTATION, PESTS, BUYBACK, DAY_NAMES, DAY_NAMES_GEN,
+  MATERIALS, MATERIAL_SOURCE, ONLINE, RAIN_CHANCE, RAIN_CUSTOMERS, MULCH_DAYS, CHEST_DECAY, REQUESTS, HIVES, DECOR, PETS, PET_NAME_MAX, FIELD_PLOTS, REPUTATION, PESTS, HAND_TOOLS, CHOP, QUARRY, BUYBACK, DAY_NAMES, DAY_NAMES_GEN,
 } from './data.js';
 import {
   idx, xy, charAt, isWalkable, isPlotTile, objectAt, OBJECTS, PLOTS_A, PLOTS_B, inFieldA, PLOT_ORDER, PLOT_RANK, fieldOf,
@@ -25,7 +25,7 @@ export const cropById = Object.fromEntries(CROPS.map((c) => [c.id, c]));
 export const goodById = Object.fromEntries([...CROPS, ...GOODS].map((g) => [g.id, { unit: 'kg', ...g }]));
 export const forageById = Object.fromEntries(FORAGE.map((f) => [f.id, f]));
 export const recipeById = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
-export const TOOLS = ['hand', 'seed', 'can', 'fert', 'rod'];
+export const TOOLS = ['hand', 'seed', 'can', 'fert', 'rod', 'mulch', 'axe'];
 export const fishById = Object.fromEntries(FISH.map((f) => [f.id, f]));
 const EPS = 1e-9;
 
@@ -62,7 +62,9 @@ function baseState(seed) {
     forage: [],
     coop: { built: false, hens: 0, feed: 0, eggs: 0, hatch: 0 }, // hatch: mornings the incubator has been warming an egg
     gigs: { offers: [], active: null, done: 0 },
-    upgrades: { wellPlan: false, well: false, pump: false, coopPlan: false, bigCan: false, drone: false, replant: false, ads: false, field2: false, rod: false, coldroom: false },
+    upgrades: { wellPlan: false, well: false, pump: false, coopPlan: false, bigCan: false, drone: false, replant: false, ads: false, field2: false, rod: false, coldroom: false, axe: false, hammer: false },
+    chopped: {}, // tree tile → the day it was last cut (a tree gives wood once a day)
+    quarry: { day: 0, n: 0 }, // stone broken at the quarry today
     weather: 'sun', // today: 'sun' or 'rain'
     tomorrow: 'sun', // the forecast
     requests: [], // customers' orders at the stand
@@ -363,6 +365,10 @@ export function command(s, x, y, mode = 'auto', events = [], itemId = null) {
     if (mode === 'pickup' && sprinklerAt(s, x, y) < 0) return { ok: false, reason: 'blocked' };
     task = { type: mode, x, y };
     goals = cornerTiles(x, y).filter(([tx, ty]) => walkFn(s)(tx, ty));
+  } else if (s.tool === 'axe' && charAt(x, y) === 't') {
+    // cutting wood: stand next to the tree
+    task = { type: 'chop', x, y };
+    goals = around();
   } else if (obj) {
     task = { type: 'object', id: obj };
     goals = OBJECTS[obj].access;
@@ -393,7 +399,7 @@ export function workAct(s, t) {
   const act = workKind(s, t);
   if (!act) return null;
   const cost = { clear: ENERGY_COST.clear, harvest: ENERGY_COST.harvest, plant: ENERGY_COST.plant, water: ENERGY_COST.water,
-    fertilize: ENERGY_COST.fertilize, mulch: ENERGY_COST.fertilize, refill: 0 }[act];
+    fertilize: ENERGY_COST.fertilize, mulch: ENERGY_COST.fertilize, refill: 0, chop: CHOP.energy, quarry: QUARRY.energy }[act];
   return s.energy < cost ? null : act;
 }
 
@@ -402,6 +408,8 @@ const seedFor = (s, only) => (only ? s.seeds[only] > 0 : totalSeeds(s) > 0);
 
 function workKind(s, t) {
   if (t.type === 'jobrefill') return 'refill';
+  if (t.type === 'chop') return chopProblem(s, t.x, t.y) ? null : 'chop';
+  if (t.type === 'object' && t.id === 'quarry') return quarryProblem(s) ? null : 'quarry';
   if (t.type === 'object') {
     const id = t.id;
     const source = (id === 'pond' && !(s.tool === 'rod' && s.upgrades.rod))
@@ -454,6 +462,7 @@ function arrive(s, events) {
 function doTask(s, t, events) {
   if (t.type === 'plot') plotAction(s, t.x, t.y, events);
   else if (t.type === 'object') objectAction(s, t.id, events);
+  else if (t.type === 'chop') chopTree(s, t.x, t.y, events);
   else if (t.type === 'place') placeSprinkler(s, t.x, t.y, events);
   else if (t.type === 'pickup') pickUpSprinkler(s, t.x, t.y, events);
   else if (t.type === 'find') pickUpFind(s, t.x, t.y, events);
@@ -756,6 +765,7 @@ function moveFarmer(s, dt, events) {
 function startBuilding(s, id, events) {
   const b = BUILDINGS[id];
   if (!s.upgrades[b.plan]) return fail(events, 'noplan', { what: id });
+  if (b.tool && !s.upgrades[b.tool]) return fail(events, 'nohammer', { what: id });
   // say everything that is missing at once, not just the first thing
   if (s.money < zl(b.price) || !hasMats(s, b) || s.energy < b.energy) {
     return fail(events, s.money < zl(b.price) ? 'coins' : !hasMats(s, b) ? 'nomats' : 'tired', { need: zl(b.price), what: id, mats: b });
@@ -776,7 +786,48 @@ function pickUpFind(s, x, y, events) {
   return { ok: true };
 }
 
+// ---------------------------------------------------------------- wood and stone
+
+// Why this tree can't be cut now (null = it can).
+export function chopProblem(s, x, y) {
+  if (!s.upgrades.axe) return 'noaxe';
+  if (charAt(x, y) !== 't') return 'notree';
+  if (s.chopped[idx(x, y)] === s.day) return 'chopped';
+  if (s.energy < CHOP.energy) return 'tired';
+  if (spaceFor(s.bag, 'wood') < CHOP.wood) return 'bagfull';
+  return null;
+}
+function chopTree(s, x, y, events) {
+  const problem = chopProblem(s, x, y);
+  if (problem) return fail(events, problem);
+  s.energy -= CHOP.energy;
+  s.chopped[idx(x, y)] = s.day;
+  addItem(s.bag, 'wood', CHOP.wood);
+  events.push({ type: 'chopped', x, y, n: CHOP.wood });
+  return { ok: true };
+}
+// stone broken today (the count starts again every day)
+export const quarryToday = (s) => (s.quarry.day === s.day ? s.quarry.n : 0);
+export function quarryProblem(s) {
+  if (!s.upgrades.hammer) return 'nohammer';
+  if (quarryToday(s) >= QUARRY.daily) return 'quarrydone';
+  if (s.energy < QUARRY.energy) return 'tired';
+  if (spaceFor(s.bag, 'stone') < QUARRY.stone) return 'bagfull';
+  return null;
+}
+function breakStone(s, events) {
+  const problem = quarryProblem(s);
+  if (problem) return fail(events, problem, { daily: QUARRY.daily });
+  const n = Math.min(QUARRY.stone, QUARRY.daily - quarryToday(s));
+  s.energy -= QUARRY.energy;
+  s.quarry = { day: s.day, n: quarryToday(s) + n };
+  addItem(s.bag, 'stone', n);
+  events.push({ type: 'quarried', n, left: QUARRY.daily - s.quarry.n });
+  return { ok: true };
+}
+
 export function objectAction(s, id, events = []) {
+  if (id === 'quarry') return breakStone(s, events);
   if ((id === 'well' && !s.upgrades.well) || (id === 'coop' && !s.coop.built)) return startBuilding(s, id, events);
   if (id === 'coop') {
     if (s.coop.eggs) {
@@ -1045,6 +1096,7 @@ export function costNeeds(s, cost) {
   if (cost.price) out.push({ what: 'money', need: zl(cost.price), have: s.money });
   for (const m of Object.keys(MATERIALS)) if (cost[m]) out.push({ what: m, need: cost[m], have: matCount(s, m), where: MATERIAL_SOURCE[m] });
   if (cost.energy) out.push({ what: 'energy', need: cost.energy, have: Math.floor(s.energy) });
+  if (cost.tool) out.push({ what: 'tool', id: cost.tool, need: 1, have: s.upgrades[cost.tool] ? 1 : 0, where: 'Dostava → Alati' });
   for (const n of out) n.ok = n.have >= n.need;
   return out;
 }
@@ -1186,6 +1238,8 @@ export function orderItem(s, id, events = []) {
   }
   // the well takes one pump: no second one by mistake
   if (id === 'pump' && pumpStatus(s)) return fail(events, 'pump' + pumpStatus(s));
+  // a tool is bought once
+  if (it.tool && (s.upgrades[id] || s.orders.some((o) => o.item === id))) return fail(events, 'havetool', { item: id });
   if (s.money < zl(it.price)) return fail(events, 'coins', { need: zl(it.price) });
   s.money -= zl(it.price);
   const o = s.orders.find((x) => x.item === id);
@@ -1286,6 +1340,9 @@ function morning(s, events) {
     if (o.item === 'hen') {
       s.coop.hens = Math.min(hensMax(s), s.coop.hens + o.n);
       events.push({ type: 'delivered', item: 'hen', n: o.n });
+    } else if (shopItemById[o.item]?.tool) {
+      s.upgrades[o.item] = true;
+      events.push({ type: 'delivered', item: o.item, n: 1, tool: true });
     } else if (o.item) {
       const n = addItem(s.chest, shopItemById[o.item]?.give ?? o.item, o.n);
       if (n) events.push({ type: 'delivered', item: o.item, n });

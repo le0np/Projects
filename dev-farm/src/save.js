@@ -71,6 +71,11 @@ export function deserialize(raw) {
   for (const k of Object.keys(s.upgrades)) s.upgrades[k] = d.upgrades?.[k] === true;
   if (cropById[d.seed]) s.seed = d.seed;
   s.fertTier = int(d.fertTier, 0, 3, 0);
+  // trees cut and stone broken today (so a reload does not give the day's wood twice)
+  if (d.chopped && typeof d.chopped === 'object') {
+    for (const [k, v] of Object.entries(d.chopped)) if (charAt(...[Number(k) % W, Math.floor(Number(k) / W)]) === 't' && int(v, 0, 1e6, 0) === s.day) s.chopped[k] = s.day;
+  }
+  if (d.quarry) s.quarry = { day: int(d.quarry.day, 0, 1e6, 0), n: int(d.quarry.n, 0, 999, 0) };
   // plots bought one by one (19. 11.); farms from before had every plot of their fields open
   s.fieldOpen.a = int(d.fieldOpen?.a, 0, PLOT_ORDER.a.length, PLOT_ORDER.a.length);
   s.fieldOpen.b = s.upgrades.field2 ? int(d.fieldOpen?.b, 0, PLOT_ORDER.b.length, PLOT_ORDER.b.length) : 0;

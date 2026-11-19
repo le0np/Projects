@@ -7,10 +7,10 @@ import {
   countWhere, extractSeeds, makeCompost, orderSeeds, startJob, upgrade, fillTank, orderItem, feedHens, acceptGig, sprinklerAt,
   goWork, goodById, forageById, shopItemById, matCount, matsText, cancelOrder, stopFishing, fishById,
   placeItem, removeItem, fulfillRequest, sellBack, adoptPet, patPet, dayNameGen, rentStall, buyVan, hireWorker, goToMarket, sendVan, comeBack,
-  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn, sortSlots, dropItem, setFertTier, renamePet, hirePacker, buyPlot,
+  buildOnline, packOrder, goToPost, channelById, TOOL_JOB, tilesBetween, dragTargets, startJobOn, sortSlots, dropItem, setFertTier, renamePet, hirePacker, buyPlot, costNeeds,
 } from './sim.js';
 import { ONLINE } from './data.js';
-import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES, UPGRADES, TANK_SIZE, PESTS } from './data.js';
+import { TIER_NAMES, HOSE_PER_SPRINKLER, MARKET, BUILDINGS, zl, HIVES, UPGRADES, TANK_SIZE, PESTS, MATERIALS } from './data.js';
 import { SAVE_KEY, OLDER_KEYS, serialize, deserialize } from './save.js';
 import { isPlotTile } from './world.js';
 import { createRenderer } from './render.js';
@@ -54,13 +54,10 @@ const name = (crop) => cropById[crop].name.toLowerCase();
 function buildingNeeds(id) {
   const b = BUILDINGS[id];
   const what = { well: 'bunar', coop: 'popravak kokošinjca' }[id] ?? b.name.toLowerCase();
-  const missing = [];
-  if (state.money < zl(b.price)) missing.push(`još ${formatMoney(zl(b.price) - state.money)}`);
-  if (matCount(state, 'wood') < b.wood) missing.push(`${b.wood - matCount(state, 'wood')} drva`);
-  if (matCount(state, 'stone') < b.stone) missing.push(`${b.stone - matCount(state, 'stone')} kamena`);
-  if (state.energy < b.energy) missing.push(`snage (${b.energy} ⚡)`);
-  return `Za ${what} trebam ${formatMoney(zl(b.price))}, ${b.wood} drva, ${b.stone} kamena i ${b.energy} ⚡. Fali mi ${missing.join(', ')}.${
-    missing.some((m) => m.includes('drva') || m.includes('kamena')) ? ' Drva i kamenja ima uz rub šume (u torbu).' : ''}`;
+  const missing = costNeeds(state, b).filter((n) => !n.ok).map((n) => (n.what === 'money' ? `još ${formatMoney(n.need - n.have)}`
+    : n.what === 'energy' ? `snage (${b.energy} ⚡)` : n.what === 'tool' ? 'čekić' : `${n.need - n.have} ${MATERIALS[n.what].gen}`));
+  const where = [...new Set(costNeeds(state, b).filter((n) => !n.ok && n.where).map((n) => n.where))];
+  return `Za ${what} trebam ${formatMoney(zl(b.price))}, ${matsText(b)} i ${b.energy} ⚡. Fali mi ${missing.join(', ')}.${where.length ? ` (${where.join('; ')})` : ''}`;
 }
 
 function farmerSays(e) {
@@ -129,6 +126,12 @@ function farmerSays(e) {
     case 'nojars': return `Med je spreman (${e.honey} kg), ali nemam tegle u torbi. Naručit ću ih na mobitelu (Dostava → Tegle za med).`;
     case 'requestshort': return `Za narudžbu mi fali još ${e.request.kg} kg dovoljno dobrog ploda u torbi.`;
     case 'fishdark': return 'Prekasno je za pecanje, već je mrak. Sutra ujutro.';
+    case 'noaxe': return 'Nemam sjekiru. Naručit ću je na mobitelu (Dostava → Alati).';
+    case 'notree': return 'Tu nema stabla.';
+    case 'chopped': return 'Ovo stablo sam danas već sjekao. Sutra opet, ili drugo stablo.';
+    case 'nohammer': return e.what ? 'Za gradnju mi treba čekić (Dostava → Alati).' : 'Za kamen mi treba čekić (Dostava → Alati).';
+    case 'quarrydone': return `Za danas je dosta kamena (${e.daily}). Sutra opet.`;
+    case 'havetool': return 'Taj alat već imam (ili je naručen).';
     case 'norod': return 'Nemam pecaljku. Napravit ću je na radnom stolu od 2 drva (📖 Priručnik → Pecanje).';
     case 'nostall': return 'Prvo moram zakupiti klupu na tržnici.';
     case 'nothingtosell': return 'Nemam ništa za prodaju u torbi.';
@@ -440,8 +443,15 @@ function report(events) {
       case 'unlock':
         ui.notify(`📦 Novo u katalogu dostave: ${cropById[e.crop].name}.`, 'ok');
         break;
+      case 'chopped':
+        ui.say(`+${e.n} drva.`, 'happy');
+        break;
+      case 'quarried':
+        ui.say(`+${e.n} kamena. Danas još ${e.left}.`, 'happy');
+        break;
       case 'delivered':
-        if (e.item === 'hen') mapNote('coop', `🐔 Stiglo kokoši: ${e.n}`, 'ok');
+        if (e.tool) ui.notify(`📦 Stigao je alat: ${shopItemById[e.item].name}.${e.item === 'axe' ? ' Sjekira je alat 7: klik na stablo u šumi daje drva.' : ' Čekićem se gradi i razbija kamen u kamenolomu na jugu.'}`, 'ok');
+        else if (e.item === 'hen') mapNote('coop', `🐔 Stiglo kokoši: ${e.n}`, 'ok');
         else mapNote('chest', e.item ? `📦 ${shopItemById[e.item].name} · ${e.n} ${shopItemById[e.item].unit}` : `📦 Sjeme: ${name(e.crop)} × ${e.n}`, 'ok');
         break;
       case 'buildstart':
@@ -570,6 +580,10 @@ function closePanel() {
 function onTool(tool) {
   if (tool === 'rod' && !state.upgrades.rod) {
     report([{ type: 'fail', reason: 'norod' }]);
+    return;
+  }
+  if (tool === 'axe' && !state.upgrades.axe) {
+    report([{ type: 'fail', reason: 'noaxe' }]);
     return;
   }
   if (tool === 'mulch' && !countWhere(state.bag, (id) => id === 'mulch')) {

@@ -6,6 +6,7 @@
 //   Q  plot in the overgrown second field (unlocked with "git clone polje")
 //   H  house        S  stand         C  chest         W  well          B  workbench
 //   V  parking lot by the road: the way to town (market, van)
+//   R  the quarry at the south edge of the woods (stone, with the hammer)
 
 export const W = 48;
 export const H = 32;
@@ -14,6 +15,7 @@ export const HOUSE = { x: 5, y: 4, w: 6, h: 5 };
 export const STAND = { x: 40, y: 10, w: 2, h: 2 }; // by the road, where customers come from
 export const COOP_AREA = { x: 12, y: 3, w: 2, h: 2 }; // the old chicken coop by the house
 export const LOT = { x: 41, y: 14, w: 2, h: 2 }; // parking lot by the road, the way to town
+export const QUARRY_AREA = { x: 20, y: 28, w: 4, h: 2 }; // rock face against the south woods
 export const TOWN_EXIT = [43, 0]; // where the road leaves the map towards town
 export const HOUSE_DOOR = [8, 9]; // tile in front of the door
 export const DRONE_HOME = [8, 5]; // on the roof
@@ -74,8 +76,11 @@ function build() {
   rect(32, 17, 37, 22, '~');
   for (const [x, y] of [[32, 17], [37, 17], [32, 22], [37, 22]]) g[y][x] = '.';
 
+  // the quarry
+  rect(QUARRY_AREA.x, QUARRY_AREA.y, QUARRY_AREA.x + QUARRY_AREA.w - 1, QUARRY_AREA.y + QUARRY_AREA.h - 1, 'R');
+
   // keep the areas around buildings and paths clear of trees
-  for (const [x0, y0, x1, y1] of [[2, 9, 16, 13], [12, 4, 17, 9], [29, 11, 42, 13], [30, 15, 39, 24]]) {
+  for (const [x0, y0, x1, y1] of [[2, 9, 16, 13], [12, 4, 17, 9], [29, 11, 42, 13], [30, 15, 39, 24], [18, 26, 25, 27]]) {
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (g[y][x] === 't') g[y][x] = '.';
   }
 
@@ -149,10 +154,11 @@ export const OBJECTS = {
   workbench: { name: 'Radni stol', access: [[3, 9]] },
   pond: { name: 'Ribnjak', access: pondAccess() },
   market: { name: 'Put u grad', access: [[41, 13], [42, 13], [43, 14], [43, 15]] },
+  quarry: { name: 'Kamenolom', access: [[21, 27], [22, 27], [20, 27], [23, 27]] },
   tap: { name: 'Slavina', access: [[TAP[0], TAP[1] + 1], [TAP[0], TAP[1] - 1]] }, // only once it is built
 };
 
-const CHAR_OBJECT = { H: 'house', S: 'stand', C: 'chest', W: 'well', B: 'workbench', K: 'coop', V: 'market', '~': 'pond' };
+const CHAR_OBJECT = { H: 'house', S: 'stand', C: 'chest', W: 'well', B: 'workbench', K: 'coop', V: 'market', '~': 'pond', R: 'quarry' };
 export const objectAt = (x, y) => CHAR_OBJECT[charAt(x, y)] ?? null;
 
 // grass next to the woods, where forage grows

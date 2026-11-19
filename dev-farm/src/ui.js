@@ -4,7 +4,7 @@
 import {
   CROPS, RECIPES, MAX_ENERGY, COFFEE, EAT_ENERGY, TIER_NAMES, SHOP_OPEN, SHOP_CLOSE, ROT_DAY,
   SEEDS_FROM_FRUIT, SEED_PACK, WELL_BUILD, zl, SLEEP_FROM, COOP, SHOP_ITEMS, HOSE_PER_SPRINKLER, BUILDINGS, MARKET,
-  COMPOST_KG, FERT_DOSES, DECOR, PETS, REQUESTS, HIVES, UPGRADES, TANK_SIZE, MATERIALS, ONLINE, GIG_ENERGY_PER_HOUR, REPUTATION,
+  COMPOST_KG, FERT_DOSES, DECOR, PETS, REQUESTS, HIVES, UPGRADES, TANK_SIZE, MATERIALS, ONLINE, GIG_ENERGY_PER_HOUR, REPUTATION, HAND_TOOLS, CHOP, QUARRY,
 } from './data.js';
 import {
   parseItem, isUnlocked, canSize, countWhere, canCraft, salePrice, isSellable, cropById,
@@ -13,9 +13,9 @@ import {
   upgradeProblem, nextStep, levelValue, matsText, pumpCapacity, tankDoses, runningSprinklers, irrigationMissing, fishById, fertDoses, requestHave, requestPay, orderPick, orderPay, dayName, dayNameGen,
   buybackList, hiveAt, decorAt, farmerTripProblem, vanTripProblem, pumpStatus, orderPack, shopItemById,
   owns, recipeAmount, hensMax, feederCap, hiveCap, chestSize, cropDays, hasTap,
-  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount, costNeeds, vanPlan, usableFert, nextPlot, plotPrice, marketBoost,
+  onlineProblem, parcelsReady, postTripProblem, hasWebshop, TOOL_JOB, rottenCount, costNeeds, vanPlan, usableFert, nextPlot, plotPrice, marketBoost, chopProblem, quarryToday,
 } from './sim.js';
-import { idx, objectAt, isPlotTile, OBJECTS, TAP, PLOT_ORDER, inFieldA } from './world.js';
+import { idx, objectAt, isPlotTile, OBJECTS, TAP, PLOT_ORDER, inFieldA, charAt } from './world.js';
 import { iconUrl } from './render.js';
 import { guideTopics, searchGuide } from './guide.js';
 import { ACTIONS, TOOL_ORDER, DEFAULT_KEYS, bindKey, canBind, keyLabel, moveTool } from './keys.js';
@@ -104,7 +104,7 @@ const button = (label, onClick, { disabled = false, cls = 'btn', title = '' } = 
 
 // What a workbench card costs, as chips: an icon and the amount, green when the farmer has it,
 // red with what is missing when not; a line under them says where missing materials are found.
-const NEED_LABEL = { wood: 'drva', stone: 'kamena', iron: 'željeza', plastic: 'plastike' };
+const NEED_LABEL = { wood: 'drva', stone: 'kamena', iron: 'željeza', plastic: 'plastike', nails: 'čavala', paint: 'boje' };
 function needChips(s, cost, label = '') {
   const needs = costNeeds(s, cost);
   if (!needs.length) return [];
@@ -115,6 +115,9 @@ function needChips(s, cost, label = '') {
     if (n.what === 'money') {
       chip.append(n.ok ? `✔ ${formatMoney(n.need)}` : `${formatMoney(n.need)} · fali ${formatMoney(Math.ceil((n.need - n.have) / 100) * 100)}`);
       chip.title = `imaš ${formatMoney(n.have)}`;
+    } else if (n.what === 'tool') {
+      chip.append(icon(n.id, 'need-icon'), n.ok ? `✔ ${HAND_TOOLS[n.id].name.toLowerCase()}` : `treba ${HAND_TOOLS[n.id].name.toLowerCase()}`);
+      chip.title = n.ok ? 'imaš ga' : n.where;
     } else if (n.what === 'energy') {
       chip.append(n.ok ? `✔ ${n.need} ⚡` : `${n.have}/${n.need} ⚡`);
       chip.title = 'snaga; kava u kući ili san je vraćaju';
@@ -131,6 +134,7 @@ function needChips(s, cost, label = '') {
 const SKETCH = {
   coopPlan: 'coop', wellPlan: 'well', rod: 'rod', mulch: 'mulch', hive: 'hive', coldroom: 'coldroom', bigCan: 'can',
   drone: 'drone', replant: 'script', ads: 'poster', field2: 'field', well: 'well', coop: 'coop', field: 'field',
+  fenceKit: 'deco:fence', benchKit: 'deco:bench',
 };
 function cardHead(sketchOf, title, note = '') {
   const top = el('div', 'recipe-head');
@@ -329,6 +333,7 @@ export function createUI(cb) {
     { id: 'fert', key: '4', icon: 'fertilizer', name: 'Gnojivo' },
     { id: 'rod', key: '5', icon: 'rod', name: 'Pecaljka' }, // shown once it is made
     { id: 'mulch', key: '6', icon: 'mulch', name: 'Malč' }, // shown when there is mulch in the bag
+    { id: 'axe', key: '7', icon: 'axe', name: 'Sjekira' }, // shown once bought: cuts wood in the woods
   ];
   // Seeds and the can are split buttons: the tool itself works plant by plant,
   // the ▾ next to it runs the bulk job (everything, or one kind of crop).
@@ -530,10 +535,11 @@ export function createUI(cb) {
       const { b, sub } = toolEls.get(t.id);
       b.classList.toggle('selected', s.tool === t.id && !ui.placing);
       const mulchDoses = countWhere(s.bag, (id) => id === 'mulch');
-      const hide = (t.id === 'rod' && !s.upgrades.rod) || (t.id === 'mulch' && !mulchDoses && s.tool !== 'mulch');
+      const hide = (t.id === 'rod' && !s.upgrades.rod) || (t.id === 'mulch' && !mulchDoses && s.tool !== 'mulch') || (t.id === 'axe' && !s.upgrades.axe);
       (b.parentElement.classList.contains('tool-split') ? b.parentElement : b).hidden = hide;
       const fishing = s.farmer.busy?.what === 'fish' ? s.farmer.busy : null;
-      const text = t.id === 'rod' ? `${fishing ? 'peca… ' : ''}ulov danas: ${s.pond.caught}`
+      const text = t.id === 'axe' ? `drva u torbi: ${matCount(s, 'wood')}`
+        : t.id === 'rod' ? `${fishing ? 'peca… ' : ''}ulov danas: ${s.pond.caught}`
         : t.id === 'mulch' ? `${mulchDoses} doza`
         : t.id === 'seed' ? `${cropById[s.seed].name} × ${s.seeds[s.seed]}`
         : t.id === 'can' ? `💧 ${s.water}/${canSize(s)}`
@@ -1088,7 +1094,7 @@ export function createUI(cb) {
     els.badge.hidden = !ui.unread;
     if (ui.phoneTab !== 'shop') return;
     const pump = pumpStatus(s);
-    const sig = JSON.stringify(['shop', s.money, s.totalEarned, s.orders, s.coop.built, pump, buybackList(s), s.pet, ui.placing === 'remove']);
+    const sig = JSON.stringify(['shop', s.money, s.totalEarned, s.orders, s.coop.built, pump, buybackList(s), s.pet, ui.placing === 'remove', s.upgrades.axe, s.upgrades.hammer]);
     renderIfChanged(els.shopTab, sig, () => {
       const out = [];
       // Like a web shop: every row has its price and a "− count +" stepper. The count is how many
@@ -1120,6 +1126,7 @@ export function createUI(cb) {
       const shopRow = (it) => {
         const row = el('div', 'catalog-row');
         const why = it.id === 'hen' && !s.coop.built ? 'treba kokošinjac'
+          : it.tool && s.upgrades[it.id] ? 'već ga imaš' : it.tool && s.orders.some((o) => o.item === it.id) ? 'već naručen'
           : it.id === 'pump' && pump ? { installed: 'već je na bunaru', ordered: 'već naručena', have: 'već je imaš' }[pump] : '';
         const k = orderIndex((o) => o.item === it.id);
         const cost = zl(it.price);
@@ -1135,6 +1142,8 @@ export function createUI(cb) {
         for (const id of ids) out.push(shopRow(shopItemById[id]));
       };
       group('Vrt', ['fertilizer', 'mulch', 'jar']);
+      group('Alati', ['axe', 'hammer']);
+      group('Građevinski materijal', ['nails', 'paint', 'stone']);
       group('Materijal za strojeve', ['iron', 'plastic']);
       group('Navodnjavanje', ['pump', 'hose', 'sprinkler']);
       group('Kokošinjac', ['hen']);
@@ -1338,6 +1347,12 @@ export function createUI(cb) {
         text = `Košnica: ${hv.honey}/${hiveCap(s)} kg meda${!hv.honey ? '. Pčele rade, med je za dan-dva.' : jars ? `. Klik: farmer ga skupi u tegle (u torbi ${jars}).` : '. Za med trebaju tegle u torbi (Dostava → Tegle za med).'}`;
       } else if (dc && dc.kind !== 'path') {
         text = `${DECOR[dc.kind].name}. Ukloniti se može na mobitelu (Dostava → Uređenje → Ukloni).`;
+      } else if (obj === 'quarry') {
+        text = s.upgrades.hammer ? `Kamenolom: klik i farmer čekićem razbije ${QUARRY.stone} kamena (${QUARRY.energy} ⚡). Danas još ${QUARRY.daily - quarryToday(s)}.`
+          : 'Kamenolom. Za kamen treba čekić (Dostava → Alati).';
+      } else if (s.tool === 'axe' && charAt(x, y) === 't') {
+        const why = chopProblem(s, x, y);
+        text = why === 'chopped' ? 'Ovo stablo je danas već sječeno. Sutra opet.' : `Stablo: klik i farmer siječe drva (+${CHOP.wood} drva, ${CHOP.energy} ⚡).`;
       } else if (fo) {
         text = `U šumi: ${forageById[fo.type].name}. Klik: farmer ode ubrati.`;
       } else if (f) {

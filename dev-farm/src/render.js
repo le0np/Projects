@@ -1,7 +1,7 @@
 // Draws the world with a camera that follows the farmer.
 // Art comes from art.js (generated once and cached as canvases); game state from sim.js.
 
-import { W, H, MAP, HOUSE, STAND, COOP_AREA, LOT, POND_CENTER, HOUSE_DOOR, TAP, FIELD_A, FIELD_B, xy, inFieldA } from './world.js';
+import { W, H, MAP, HOUSE, STAND, COOP_AREA, LOT, POND_CENTER, HOUSE_DOOR, TAP, FIELD_A, FIELD_B, xy, inFieldA, QUARRY_AREA } from './world.js';
 import { MARKET, GAME_MIN_PER_SEC, DECOR } from './data.js';
 import { plotUnlocked, parseItem, sprinklerReach, sprinklerAt, placeProblem, decorAt, pumpCapacity, hasTap, levelValue } from './sim.js';
 import { Pix, hash01, withAlpha } from './pixel.js';
@@ -73,6 +73,7 @@ function buildProps(field2, hasWell, coopBuilt, hasPump, cold, tap) {
   if (hasPump) list.push({ img: art('pumpProp', A.pumpProp), x: 16 * TS + 2, y: 6 * TS + 8, base: 6 * TS + 28 });
   if (tap) list.push({ img: art('tap', A.tap), x: TAP[0] * TS + 6, y: TAP[1] * TS - 16, base: TAP[1] * TS + 31 });
   list.push({ img: art('workbench', A.workbench), x: 3 * TS - 6, y: 8 * TS - 8, base: 8 * TS + 30 });
+  list.push({ img: art('quarry', A.quarry), x: QUARRY_AREA.x * TS, y: QUARRY_AREA.y * TS - 10, base: (QUARRY_AREA.y + QUARRY_AREA.h) * TS - 1 });
   if (!field2) list.push({ img: art('sign', A.sign), x: 21 * TS, y: 13 * TS - 8, base: 13 * TS + 30 });
   list.push({ img: art('townSign', A.townSign), x: LOT.x * TS - 12, y: LOT.y * TS - 30, base: LOT.y * TS + 8 });
   list.push({

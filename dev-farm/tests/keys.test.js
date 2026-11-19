@@ -39,8 +39,8 @@ test('keys: saved settings are checked', () => {
 
 test('toolbar order: saved order is checked, tools move one place', () => {
   assert.deepEqual(toolOrder(null), TOOL_ORDER);
-  assert.deepEqual(toolOrder(['can', 'hand', 'can', 'axe']), ['can', 'hand', 'seed', 'fert', 'rod', 'mulch']);
-  assert.deepEqual(moveTool(TOOL_ORDER, 'can', -1), ['hand', 'can', 'seed', 'fert', 'rod', 'mulch']);
+  assert.deepEqual(toolOrder(['can', 'hand', 'can', 'saw']), ['can', 'hand', 'seed', 'fert', 'rod', 'mulch', 'axe']);
+  assert.deepEqual(moveTool(TOOL_ORDER, 'can', -1), ['hand', 'can', 'seed', 'fert', 'rod', 'mulch', 'axe']);
   assert.deepEqual(moveTool(TOOL_ORDER, 'hand', -1), TOOL_ORDER);
-  assert.deepEqual(moveTool(TOOL_ORDER, 'mulch', 1), TOOL_ORDER);
+  assert.deepEqual(moveTool(TOOL_ORDER, 'axe', 1), TOOL_ORDER);
 });

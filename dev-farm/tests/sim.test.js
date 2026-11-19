@@ -10,7 +10,7 @@ import {
   matsText, stopFishing, placeItem, removeItem, fulfillRequest, sellBack, buybackList, adoptPet, patPet, walkFn, requestPay,
   owns, chestSize, hensMax, feederCap, levelValue, cropDays,
   buildOnline, onlineProblem, packOrder, goToPost, postTripProblem, parcelsReady, orderPay,
-  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds, usableFert, setFertTier, renamePet, hirePacker, buyPlot, plotPrice, nextPlot, plotUnlocked, marketBoost,
+  tilesBetween, dragTargets, startJobOn, rottenCount, sortSlots, dropItem, costNeeds, usableFert, setFertTier, renamePet, hirePacker, buyPlot, plotPrice, nextPlot, plotUnlocked, marketBoost, chopProblem, quarryProblem, quarryToday,
 } from '../src/sim.js';
 import { serialize, deserialize } from '../src/save.js';
 import {
@@ -19,7 +19,7 @@ import {
 import { findPath } from '../src/path.js';
 import {
   BAG_SIZE, DAY_START, PASS_OUT, SHOP_OPEN, MAX_ENERGY, CAN_SIZE, UPGRADES, CROPS, START_FINDS, HOUSE_SEEDS,
-  RECIPES, zl, ROT_DAY, MATERIAL_SOURCE, PET_NAME_MAX, FIELD_PLOTS, REPUTATION, PESTS, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
+  RECIPES, zl, ROT_DAY, MATERIAL_SOURCE, PET_NAME_MAX, FIELD_PLOTS, REPUTATION, PESTS, CHOP, QUARRY, WALK_SPEED, NPC_SPEED, FORAGE_START, FORAGE_MAX, MARKET, FISHING, CHEST_SIZE, COOP, POLLEN_BONUS, ONLINE, GIG_ENERGY_PER_HOUR, REQUESTS,
 } from '../src/data.js';
 
 // Most tests work on the whole first field, as it was before plots were bought one by one;
@@ -27,6 +27,7 @@ import {
 const createState = (...args) => {
   const s = newFarm(...args);
   s.fieldOpen.a = PLOTS_A.length;
+  s.upgrades.hammer = true; // buildings need the hammer since 19. 11.; its own test uses newFarm()
   return s;
 };
 const [AX, AY] = xy(PLOTS_A[0]);
@@ -957,6 +958,8 @@ test('the coop is built like the well, hens are bought one by one and lay when f
   assert.equal(walkTo(s, 12, 3).events.find((e) => e.type === 'fail').reason, 'nomats');
   addItem(s.bag, 'wood', 10);
   addItem(s.bag, 'stone', 4);
+  assert.equal(walkTo(s, 12, 3).events.find((e) => e.type === 'fail').reason, 'nomats', 'and nails');
+  addItem(s.bag, 'nails', 10);
   assert.ok(walkTo(s, 12, 3).events.some((e) => e.type === 'buildstart' && e.what === 'coop'));
   assert.ok(advance(s, 7).some((e) => e.type === 'built' && e.what === 'coop'));
   assert.ok(s.coop.built);
@@ -2521,4 +2524,87 @@ test('pests: crows peck growing plots, mice nibble in the chest; a dog chases cr
   grow(early);
   early.chest[0] = { id: cropItem('carrot', 3), n: 20 };
   for (let d = 0; d < PESTS.from - 1; d++) assert.ok(!nextDay(early).some((e) => e.type === 'crows' || e.type === 'mice'));
+});
+
+test('tools: the axe and the hammer are bought once and arrive in the morning', () => {
+  const s = newFarm();
+  s.money = zl(100);
+  assert.ok(orderItem(s, 'axe').ok);
+  assert.equal(orderItem(s, 'axe').reason, 'havetool', 'not twice');
+  assert.ok(orderItem(s, 'hammer').ok);
+  const ev = nextDay(s);
+  assert.ok(s.upgrades.axe && s.upgrades.hammer);
+  assert.ok(ev.some((e) => e.type === 'delivered' && e.item === 'axe' && e.tool));
+  assert.equal(countWhere(s.chest, (id) => id === 'axe'), 0, 'not an item in the chest');
+  assert.equal(orderItem(s, 'hammer').reason, 'havetool');
+  assert.ok(deserialize(serialize(s)).state.upgrades.axe);
+});
+
+test('axe: a tree in the woods gives wood once a day', () => {
+  const s = newFarm();
+  // a tree with grass next to it, near the house
+  const [tx, ty] = [3, 4];
+  assert.equal(MAP[ty][tx], 't');
+  s.tool = 'axe';
+  assert.equal(chopProblem(s, tx, ty), 'noaxe');
+  let r = walkTo(s, tx, ty);
+  assert.equal(r.events.find((e) => e.type === 'fail')?.reason, 'noaxe');
+  s.upgrades.axe = true;
+  const energy = s.energy;
+  r = walkTo(s, tx, ty);
+  advance(s, 4);
+  assert.equal(matCount(s, 'wood'), CHOP.wood);
+  assert.equal(s.energy, energy - CHOP.energy);
+  assert.equal(chopProblem(s, tx, ty), 'chopped', 'once a day');
+  const ev = walkTo(s, tx, ty).events;
+  assert.equal(ev.find((e) => e.type === 'fail')?.reason, 'chopped');
+  nextDay(s);
+  assert.equal(chopProblem(s, tx, ty), null, 'grown back by morning');
+  // without the axe in hand, a tree is just a tree
+  s.tool = 'hand';
+  assert.equal(command(s, tx, ty).ok, false);
+});
+
+test('quarry: the hammer breaks stone, up to a limit a day', () => {
+  const s = newFarm();
+  assert.equal(quarryProblem(s), 'nohammer');
+  s.upgrades.hammer = true;
+  s.energy = MAX_ENERGY;
+  let stone = 0;
+  for (let k = 0; k < 10; k++) {
+    walkTo(s, 21, 28);
+    advance(s, 4);
+    s.energy = MAX_ENERGY;
+  }
+  stone = matCount(s, 'stone');
+  assert.equal(stone, QUARRY.daily, 'no more than the daily limit');
+  assert.equal(quarryToday(s), QUARRY.daily);
+  assert.equal(quarryProblem(s), 'quarrydone');
+  nextDay(s);
+  assert.equal(quarryToday(s), 0);
+  assert.equal(deserialize(serialize(s)).state.quarry.day, s.quarry.day);
+});
+
+test('buildings need the hammer; wooden decorations are made at the workbench', () => {
+  const s = newFarm();
+  s.money = zl(300);
+  assert.ok(craft(s, 'coopPlan').ok);
+  addItem(s.bag, 'wood', 10);
+  addItem(s.bag, 'stone', 4);
+  addItem(s.bag, 'nails', 10);
+  assert.equal(walkTo(s, 12, 3).events.find((e) => e.type === 'fail')?.reason, 'nohammer');
+  s.upgrades.hammer = true;
+  assert.ok(walkTo(s, 12, 3).events.some((e) => e.type === 'buildstart'));
+  // a fence from wood and nails, a painted bench
+  const t = newFarm();
+  assert.equal(craft(t, 'fenceKit').reason, 'nomats');
+  addItem(t.bag, 'wood', 6);
+  addItem(t.bag, 'nails', 10);
+  assert.ok(craft(t, 'fenceKit').ok);
+  assert.equal(countWhere(t.bag, (id) => id === 'deco:fence'), 4);
+  assert.equal(craft(t, 'benchKit').reason, 'nomats', 'needs paint');
+  addItem(t.bag, 'paint', 1);
+  assert.ok(craft(t, 'benchKit').ok);
+  assert.equal(countWhere(t.bag, (id) => id === 'deco:bench'), 1);
+  assert.equal(matCount(t, 'paint'), 0);
 });

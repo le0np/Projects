@@ -1,7 +1,7 @@
 // The player's own toolbar layout and keys (settings, kept in the browser like the other
 // settings, not in the save). Pure functions: no DOM, so they are tested like the rules.
 
-export const TOOL_ORDER = ['hand', 'seed', 'can', 'fert', 'rod', 'mulch'];
+export const TOOL_ORDER = ['hand', 'seed', 'can', 'fert', 'rod', 'mulch', 'axe'];
 
 // Everything that has a key. Tools are picked by key; jobs run on everything (like ▾).
 export const ACTIONS = [
@@ -11,6 +11,7 @@ export const ACTIONS = [
   { id: 'tool:fert', name: 'Gnojivo', key: '4' },
   { id: 'tool:rod', name: 'Pecaljka', key: '5' },
   { id: 'tool:mulch', name: 'Malč', key: '6' },
+  { id: 'tool:axe', name: 'Sjekira', key: '7' },
   { id: 'job:plant', name: 'Posadi sve', key: 'p' },
   { id: 'job:harvest', name: 'Poberi sve', key: 'b' },
   { id: 'job:water', name: 'Zalij sve', key: 'z' },
