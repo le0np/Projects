@@ -42,7 +42,7 @@ Bez API ključa: `npm run assets:prompts` napravi `assets-src/TRIPO-PROMPTS.md` 
 - Kretanje u trećem licu: hodanje, trčanje, sprint sa staminom, skok s buffer-om i coyote time-om, kolizija s drvećem i kamenjem, ograničenje strmine.
 - Kamera iza ramena: miš (pointer lock), zoom kotačićem, izbjegavanje terena, FOV efekt pri sprintu.
 - Stilizirani izgled: toon sjenčanje s rim svjetlom, trava i krošnje na vjetru, anime nebo s oblacima, magla, bloom i meke sjene.
-- Proceduralni animirani zamjenski lik (idle, hod, trk, sprint, skok, pad, doskok) u bojama odabranog elementa.
+- Ženski lik je pravi Tripo model (anime stil, rig, animacije idle/walk/run/jump/fall). Muški lik je zasad proceduralni zamjenski model u bojama odabranog elementa.
 - Tripo pipeline: manifest svih ~20 asseta, API skripta (model, rig, animacije), optimizacija GLB-ova i automatska zamjena placeholdera pravim modelom.
 - HUD: stamina, naziv regije pri ulasku, kontrole (H), debug (F3), pauza (Esc).
 

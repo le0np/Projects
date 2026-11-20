@@ -190,7 +190,7 @@ async function main() {
     writeFileSync(
       join(dir, 'asset.json'),
       JSON.stringify(
-        { id: a.id, kind: a.kind, out: a.out, model: st.files.model, animations: st.files.animations, targetHeight: a.targetHeight, yawOffset: a.yawOffset ?? 0 },
+        { id: a.id, kind: a.kind, out: a.out, model: st.files.model, animations: st.files.animations, targetHeight: a.targetHeight, yawOffset: a.yawOffset ?? manifest.defaults.yawOffset ?? 0 },
         null,
         2,
       ),

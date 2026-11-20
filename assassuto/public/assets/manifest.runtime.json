@@ -1,5 +1,25 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-20T14:30:50.023Z",
-  "assets": {}
+  "generatedAt": "2026-11-20T14:58:47.799Z",
+  "assets": {
+    "player_feminine": {
+      "id": "player_feminine",
+      "kind": "character",
+      "model": "characters/player_feminine/model.glb",
+      "animations": [
+        {
+          "file": "characters/player_feminine/anims_4bbe8a9c.glb",
+          "clips": [
+            "idle",
+            "walk",
+            "run",
+            "jump",
+            "fall"
+          ]
+        }
+      ],
+      "targetHeight": 1.68,
+      "yawOffset": -1.5708
+    }
+  }
 }

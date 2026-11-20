@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-Faza 1 od 8 je gotova. Igra se pokreće u browseru, a igrač u stiliziranom 3D-u bira jednu od četiri regije i u njoj se kreće (trčanje, sprint, skok, kamera iza ramena). Lik je zasad proceduralni placeholder. Tripo pipeline je napravljen i testiran na sintetičkom modelu, ali nijedan pravi Tripo model još nije generiran jer `TRIPO_API_KEY` još nije upisan.
+Faza 1 od 8 je gotova. Igra se pokreće u browseru, a igrač u stiliziranom 3D-u bira jednu od četiri regije i u njoj se kreće (trčanje, sprint, skok, kamera iza ramena). Ženski lik je pravi Tripo model s rigom i animacijama idle, walk, run, jump i fall. Muški lik je još proceduralni placeholder.
 
 ## Napravljeno 20. studenoga 2026.
 
@@ -28,6 +28,14 @@ Faza 1 od 8 je gotova. Igra se pokreće u browseru, a igrač u stiliziranom 3D-u
 - Tripo pipeline: `assets-src/manifest.json` (21 asset po fazama, zajednički stilski sufiks, negative prompt), `tools/tripo/client.ts`, `generate.ts` (dry-run s procjenom kredita, nastavak bez dvostrukog plaćanja, mapiranje clipova), `prompts.ts` (TRIPO-PROMPTS.md), `tools/assets/optimize.ts` (WebP teksture ≤1024, meshopt, runtime manifest).
 - Naslovni ekran (privremen do faze 2) i HUD (stamina, banner regije, pomoć, debug, pauza).
 
+### Prvi Tripo model (`player_feminine`)
+
+- Vlasnik je uplatio 1000 API kredita. Stanje prije generiranja: 970 kredita (+30 zamrznutih od ranijeg zadatka), poslije: 790.
+- Prema izvještajima zadataka: model 30, rig 25, retarget 5 animacija u jednom pozivu. Ukupan pad stanja je 180 kredita (uključujući ranije zamrznutih 30), što je više od procjene od ~105. Procjene u `--dry-run` zato treba shvatiti kao donju granicu.
+- Rezultat: anime avanturistica u bijelom kaputu s kapuljačom, duga tamna kosa, 41 kost (Root, Hip, Pelvis, L_Thigh…). Clipovi su točno imenovani (`idle`, `walk`, `run`, `jump`, `fall`), pa mapiranje ide po imenu.
+- Optimizacija: 9,9 MB → 0,66 MB model + 0,24 MB animacije.
+- Ispravak: Tripo izvozi modele okrenute prema +X, a igra očekuje +Z. Zato je u manifestu dodan `defaults.yawOffset = -π/2` za sve Tripo modele.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 20. studenoga 2026.:
@@ -38,12 +46,14 @@ Provedeno 20. studenoga 2026.:
 | `npm test` | 15/15 prolazi (motor 6, Tripo klijent i manifest 8, pipeline 1) |
 | `npm run e2e` | sve prolazi: naslovni ekran i 4 regije (spawn na tlu, skok i doskok, kretanje, potrošnja stamine), bez console grešaka |
 | `npm run build` | prolazi, JS 700 kB (187 kB gzip) |
-| GLB lik u igri | sintetički riggani GLB je prošao `optimizeAll`, igra ga je učitala kao igrača (`view: gltf`) i animacija pomiče kost |
+| GLB lik u igri | sintetički riggani GLB je prošao `optimizeAll` i animacija pomiče kost. Pravi Tripo `player_feminine` je učitan u igri (`view: gltf`), screenshotovi sprijeda, straga, u trku i skoku ispravni, bez console grešaka |
+| `npm run e2e` s Tripo modelom | sve prolazi |
 | `assets:generate --dry-run` | svi asseti ~1730 kredita (gornja procjena), prvi test ~105 kredita |
 
 ## Poznata ograničenja
 
-- Nijedan pravi Tripo model još nije generiran, jer API ključ još nije upisan. Orijentaciju modela (`yawOffset`), imena clipova i kvalitetu riga treba provjeriti na prvom pravom modelu.
+- Generiran je samo `player_feminine` i to samo s 5 locomotion animacija. Combat animacije (slash, chop, box, kick, cast_a_spell, hug, hit reakcije…) još nisu retargetirane.
+- Kosa i odjeća Tripo modela su prilično sjajni zbog PBR materijala. Materijal treba ugoditi prema toon izgledu u fazi 2 ili 7.
 - Tripo nema preset animacije za avian rig, a quadruped ima samo `walk`. Animacije stvorenja i mountova bit će dijelom proceduralne.
 - Kustomizacija frizure s Tripo modelima (zasebni meshevi kose na head boneu) još nije isprobana. Testira se u fazi 2 nakon prvog lika.
 - Headless Chromium sa softverskim GL-om vrti igru na ~12 FPS-a, pa e2e test zbog toga koristi polling. Na pravom GPU-u igra je glatka.
@@ -51,7 +61,7 @@ Provedeno 20. studenoga 2026.:
 
 ## Sljedeći koraci
 
-1. Vlasnik upisuje `TRIPO_API_KEY` u `assassuto/.env` i odobrava trošak. Zatim `npm run assets:generate -- --only player_feminine --anims phase1` i `npm run assets`, pa provjera izgleda, riga i animacija u igri.
+1. Uz odobrenje vlasnika potrošiti preostale kredite (790) redom: combat animacije za `player_feminine`, zatim `player_masculine` i `enemy_raider`. Ostale modele raditi u kodu dok ne bude novih kredita.
 2. Faza 2: glavni izbornik (New Game, Continue, Settings, Credits), kreator lika u 6 koraka s live 3D previewom, Echo upitnik, verzionirani save (localStorage).
 3. Faza 3: combat jezgra (combo graf, hitboxovi, poise i stagger, dodge, block, parry, counter, finisher) i Raider s AI-em.
 4. Faza 4: četiri elementalne sposobnosti, Archer i Brute, discovery na shrineovima, Tripo propsi.

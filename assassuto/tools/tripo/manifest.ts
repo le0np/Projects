@@ -27,7 +27,7 @@ export interface AssetSpec {
 
 export interface Manifest {
   style: Record<StyleKey | 'negative', string>;
-  defaults: { model: string; texture_quality: string; pbr: boolean; face_limit: number };
+  defaults: { model: string; texture_quality: string; pbr: boolean; face_limit: number; /** Tripo exports face +X; the game expects +Z. */ yawOffset?: number };
   assets: AssetSpec[];
 }
 

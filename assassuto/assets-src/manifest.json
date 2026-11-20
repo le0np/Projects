@@ -10,7 +10,8 @@
     "model": "v3.1-20260211",
     "texture_quality": "detailed",
     "pbr": true,
-    "face_limit": 30000
+    "face_limit": 30000,
+    "yawOffset": -1.5708
   },
   "assets": [
     {

@@ -67,7 +67,7 @@ export async function optimizeAll(opts: OptimizeOptions = {}): Promise<RuntimeMa
         log(`skip ${id}: no rigged.glb/base.glb or not in manifest`);
         continue;
       }
-      info = { id, kind: spec.kind, out: spec.out, model, animations: [], targetHeight: spec.targetHeight, yawOffset: spec.yawOffset };
+      info = { id, kind: spec.kind, out: spec.out, model, animations: [], targetHeight: spec.targetHeight, yawOffset: spec.yawOffset ?? manifest.defaults.yawOffset };
     }
     const outDir = join(PUBLIC, info.out);
     mkdirSync(outDir, { recursive: true });
