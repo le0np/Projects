@@ -26,6 +26,11 @@ import { IntroOverlay } from '../ui/IntroOverlay';
 import { MainMenu } from '../ui/MainMenu';
 import { SettingsPanel } from '../ui/SettingsPanel';
 import { Region } from '../world/Region';
+import { CombatDirector } from '../combat/CombatDirector';
+import { attachWeapon, buildWeapon } from '../combat/WeaponModels';
+import { combatConfig } from '../config/combat';
+import { Fx } from '../render/Fx';
+import { CombatHud } from '../ui/CombatHud';
 import { EventBus, type GameEvents } from './EventBus';
 import { FixedLoop } from './FixedLoop';
 import { angleDelta, damp, lerp, smoothstep } from './math';
@@ -82,6 +87,16 @@ export class Game {
   // Intro
   private introT = 0;
   private introLine = -1;
+  // Combat
+  private fx = new Fx();
+  private director: CombatDirector;
+  private combatHud: CombatHud;
+  private hitstopT = 0;
+  private slowmoT = 0;
+  private slowmoScale = 1;
+  private shot: { focus: THREE.Vector3; yaw: number } | null = null;
+  private deathTimer = 0;
+  private weaponShown = '';
 
   constructor(container: HTMLElement) {
     const canvas = document.createElement('canvas');
@@ -110,6 +125,23 @@ export class Game {
     this.intro = new IntroOverlay(container, () => this.finishIntro());
     this.settingsPanel = new SettingsPanel(container, (s) => this.applySettings(s));
     this.credits = new CreditsPanel(container);
+    this.combatHud = new CombatHud(container);
+    this.combatHud.root.hidden = true;
+    this.scene.add(this.fx.group);
+    this.director = new CombatDirector(this.scene, this.bus, this.assets, this.fx, {
+      hitstop: (s) => (this.hitstopT = Math.max(this.hitstopT, s)),
+      slowmo: (s, scale) => {
+        this.slowmoT = Math.max(this.slowmoT, s);
+        this.slowmoScale = scale;
+      },
+      shake: (a) => this.rig?.shake(a),
+      popup: (at, text, kind) => this.combatHud.popup(at, text, kind),
+      cinematic: (shot) => (this.shot = shot),
+    });
+    this.bus.on('playerDied', () => {
+      this.deathTimer = 3.2;
+      this.combatHud.setDefeated(true);
+    });
     this.hud.onPauseAction((a) => {
       if (a === 'resume') this.resume();
       else if (a === 'save') this.saveNow(true);
@@ -207,6 +239,12 @@ export class Game {
     this.echo?.dispose();
     this.echo = null;
     this.previewEchoKey = '';
+    this.director.clear();
+    this.combatHud.clear();
+    this.combatHud.root.hidden = true;
+    this.shot = null;
+    this.deathTimer = 0;
+    this.weaponShown = '';
   }
 
   private setEcho(cfg: EchoConfig): void {
@@ -348,8 +386,10 @@ export class Game {
     const region = this.region!;
     const look: CharacterLook = { element: save.character.element, appearance: save.character.appearance };
     const view = await createPlayerView(look, this.assets);
-    this.player = new Player(view, this.bus);
+    this.player = new Player(view, this.bus, save.equipment.weapon);
     this.scene.add(view.object);
+    this.director.setElement(save.character.element);
+    await this.director.spawnCamp(region);
 
     const toShrine = Math.atan2(region.landmark.x - region.spawn.x, region.landmark.z - region.spawn.z);
     const pos = resolveLoadPosition(save.world.position, region.spawn, (x, z) => region.terrain.heightAt(x, z), region.collision.boundsRadius);
@@ -375,6 +415,7 @@ export class Game {
     this.mode = 'playing';
     this.intro.hide();
     this.hud.root.hidden = false;
+    this.combatHud.root.hidden = false;
     this.hud.setHelpVisible(this.settings.showControls);
     this.setPaused(false);
     this.hadLock = false;
@@ -449,6 +490,7 @@ export class Game {
     return {
       ...this.save,
       world: { regionId: this.region.def.id, position: { x: m.x, y: m.y, z: m.z }, facing: this.player.facing, cameraYaw: this.rig?.yaw ?? 0 },
+      equipment: { ...this.save.equipment, weapon: this.player.weapon.id, unlockedWeapons: [...new Set([...this.save.equipment.unlockedWeapons, 'sword', 'spear'])] },
     };
   }
 
@@ -490,6 +532,10 @@ export class Game {
       this.frameCount = 0;
       this.fpsTimer = 0;
     }
+    // Hitstop and slow motion scale game time; real time keeps the camera and UI smooth.
+    this.hitstopT = Math.max(0, this.hitstopT - realDt);
+    this.slowmoT = Math.max(0, this.slowmoT - realDt);
+    this.time.timeScale = this.hitstopT > 0 ? combatConfig.hitstopScale : this.slowmoT > 0 ? this.slowmoScale : 1;
     const dt = this.paused ? 0 : this.time.advance(realDt);
     if (this.mode === 'playing') this.updatePlaying(dt, realDt);
     else if (this.mode === 'intro') this.updateIntro(realDt);
@@ -514,10 +560,22 @@ export class Game {
       if (mouse.wheel) rig.zoom(mouse.wheel);
       const { steps, alpha } = this.loop.advance(dt);
       for (let i = 0; i < steps; i++) {
-        player.step(this.loop.step, input, rig.forward(), this.region!.collision);
+        const now = this.time.elapsed;
+        const camForward = rig.forward();
+        player.step(this.loop.step, input, { now, camForward, world: this.region!.collision, lockTarget: this.director.lockTarget, targets: this.director.enemies });
+        this.director.step(this.loop.step, now, player, input, camForward, this.region!);
         input.endStep();
       }
+      if (player.weapon.id !== this.weaponShown) {
+        this.weaponShown = player.weapon.id;
+        attachWeapon(player.view.weaponSocket, player.view.source, buildWeapon(player.weapon.id, elements[this.save!.character.element].color));
+      }
       player.render(dt, alpha);
+      this.director.render(dt, alpha, player);
+      if (this.deathTimer > 0) {
+        this.deathTimer -= realDt;
+        if (this.deathTimer <= 0) this.respawnPlayer();
+      }
       this.save!.playTime += dt;
       this.autosaveTimer += dt;
       if (this.autosaveTimer >= AUTOSAVE_INTERVAL) {
@@ -526,8 +584,18 @@ export class Game {
       }
       this.updateEchoFollow(dt);
     } else input.endStep();
+    const lock = this.director.lockTarget;
+    rig.lockTarget = lock ? lock.renderPosition : null;
     rig.update(realDt, player.renderPosition, player.sprinting);
+    if (this.shot) {
+      // Finisher camera: low side angle on both fighters.
+      const cam = this.renderer.camera;
+      const f = this.shot.focus;
+      cam.position.set(f.x + Math.sin(this.shot.yaw) * 4.4, f.y + 0.5, f.z + Math.cos(this.shot.yaw) * 4.4);
+      cam.lookAt(f);
+    }
     this.atmosphere!.follow(player.renderPosition, this.time.realElapsed);
+    this.combatHud.update(realDt, this.time.elapsed, this.renderer.camera, player, this.save!.character.name, this.director.enemies, lock, !!this.director.finisherCandidate(player), this.director.comboCount);
     const m = player.motor;
     this.hud.update(realDt, player.stamina.ratio, player.stamina.exhausted, {
       fps: this.fps,
@@ -563,10 +631,30 @@ export class Game {
     else this.echoPos.lerp(goal, damp(2.5, dt));
     this.echoPos.y = this.region!.terrain.heightAt(this.echoPos.x, this.echoPos.z);
     echo.object.position.copy(this.echoPos);
+    // Step aside (fade) during finisher shots so the Echo never blocks the cinematic camera.
+    echo.presence += ((this.shot ? 0.12 : 1) - echo.presence) * damp(6, dt);
     const moveYaw = Math.atan2(goal.x - this.echoPos.x, goal.z - this.echoPos.z);
     const yaw = this.echoPos.distanceTo(goal) > 0.4 ? moveYaw : player.facing;
     echo.object.rotation.y += angleDelta(echo.object.rotation.y, yaw) * damp(4, dt);
     echo.update(dt);
+  }
+
+  /** Back at the shrine after defeat; the camp resets too. */
+  private respawnPlayer(): void {
+    const player = this.player!;
+    const region = this.region!;
+    player.combatant.revive();
+    player.runner.cancel();
+    player.scripted = false;
+    player.stamina.value = 100;
+    const facing = Math.atan2(region.landmark.x - region.spawn.x, region.landmark.z - region.spawn.z);
+    player.spawn(region.spawn, facing);
+    player.view.stopAction(0);
+    this.rig!.snapBehind(facing);
+    this.director.resetAll();
+    this.combatHud.setDefeated(false);
+    this.shot = null;
+    this.echoPos.copy(region.spawn);
   }
 
   /** Small read-only hook for automated smoke tests. */
@@ -583,6 +671,12 @@ export class Game {
       stamina: this.player?.stamina.value ?? null,
       fps: this.fps,
       hasEcho: !!this.echo,
+      hp: this.player?.combatant.health ?? null,
+      playerState: this.player?.combatant.state ?? null,
+      weapon: this.player?.weapon.id ?? null,
+      enemies: this.director.enemies.map((e) => ({ id: e.id, hp: e.combatant.health, state: e.combatant.state, brain: e.brain, x: e.motor.x, z: e.motor.z })),
+      lock: this.director.lockTarget?.id ?? null,
+      camp: this.region ? { x: this.region.camp.center.x, z: this.region.camp.center.z } : null,
       saveName: this.save?.character.name ?? null,
     };
   }

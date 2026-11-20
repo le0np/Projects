@@ -31,6 +31,9 @@ export class InputManager {
     document.addEventListener('mousemove', this.onMouseMove);
     document.addEventListener('pointerlockchange', this.onLockChange);
     element.addEventListener('wheel', this.onWheel, { passive: false });
+    element.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('mouseup', this.onMouseUp);
+    element.addEventListener('contextmenu', this.onContextMenu);
   }
 
   requestPointerLock(): void {
@@ -77,11 +80,29 @@ export class InputManager {
     document.removeEventListener('mousemove', this.onMouseMove);
     document.removeEventListener('pointerlockchange', this.onLockChange);
     this.element.removeEventListener('wheel', this.onWheel);
+    this.element.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('mouseup', this.onMouseUp);
+    this.element.removeEventListener('contextmenu', this.onContextMenu);
   }
+
+  /** Mouse buttons only count while the pointer is locked, so the click that grabs the mouse never attacks. */
+  private onMouseDown = (e: MouseEvent) => {
+    if (!this.pointerLocked) return;
+    const code = `Mouse${e.button}`;
+    if (e.button === 1) e.preventDefault();
+    this.down.add(code);
+    this.pressedCodes.add(code);
+  };
+
+  private onMouseUp = (e: MouseEvent) => {
+    this.down.delete(`Mouse${e.button}`);
+  };
+
+  private onContextMenu = (e: Event) => e.preventDefault();
 
   private onKeyDown = (e: KeyboardEvent) => {
     if (this.codeToActions.has(e.code)) {
-      if (e.code === 'Space' || e.code.startsWith('Arrow') || e.code === 'F1' || e.code === 'F3') e.preventDefault();
+      if (e.code === 'Space' || e.code === 'Tab' || e.code === 'AltLeft' || e.code.startsWith('Arrow') || e.code === 'F1' || e.code === 'F3') e.preventDefault();
       if (!e.repeat) this.pressedCodes.add(e.code);
     }
     this.down.add(e.code);

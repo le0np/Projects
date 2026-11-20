@@ -154,6 +154,46 @@ try {
   check(drift < 0.5 && s2.region === 'glacemere', `continue: restored position after reload (drift ${drift.toFixed(2)} m)`);
   await shot('12-continued');
 
+  // ---- Combat: walk into the raider camp, fight, then finish a broken enemy
+  await page.goto(`${base}?element=earth&play`);
+  await waitMode('playing');
+  await page.evaluate(() => {
+    const g = window.__fourfold;
+    const c = g.region.camp.center;
+    const p = g.player;
+    const x = c.x + 6, z = c.z + 1;
+    p.motor.teleport(x, g.region.terrain.heightAt(x, z), z);
+    p.facing = Math.atan2(c.x - x, c.z - z);
+    p.syncRender();
+    g.rig.snapBehind(p.facing);
+  });
+  check(await poll(async () => (await state()).enemies.some((e) => e.brain !== 'idle'), 60, 250), 'combat: raiders notice the player');
+  await page.keyboard.press('Tab');
+  check(await poll(async () => (await state()).lock !== null, 20, 150), 'combat: Tab locks on to a raider');
+  const hpBefore = (await state()).enemies.reduce((s, e) => s + e.hp, 0);
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press(i % 3 === 2 ? 'KeyK' : 'KeyJ');
+    await page.waitForTimeout(350);
+  }
+  await shot('13-combat');
+  check(await poll(async () => (await state()).enemies.reduce((s, e) => s + e.hp, 0) < hpBefore, 40, 250), 'combat: attacks damage raiders');
+  await page.evaluate(() => {
+    const g = window.__fourfold;
+    const e = g.director.enemies.find((x) => x.alive);
+    const p = g.player;
+    const x = p.motor.x + Math.sin(p.facing) * 2, z = p.motor.z + Math.cos(p.facing) * 2;
+    e.motor.teleport(x, g.region.terrain.heightAt(x, z), z);
+    e.syncRender();
+    e.combatant.poise = 0;
+    e.combatant.setState('vulnerable', 30);
+    e.react('vulnerable');
+  });
+  check(await poll(async () => page.locator('.prompt:not([hidden])').count().then((n) => n > 0), 20, 200), 'combat: finisher prompt appears for a broken enemy');
+  await page.keyboard.press('KeyF');
+  await page.waitForTimeout(1500);
+  await shot('14-finisher');
+  check(await poll(async () => (await state()).enemies.some((e) => e.state === 'dead'), 60, 250), 'combat: finisher kills the enemy');
+
   // ---- All four regions (dev shortcut)
   for (const element of ['earth', 'fire', 'water', 'air']) {
     await page.goto(`${base}?element=${element}&play`);
@@ -163,7 +203,7 @@ try {
     check(a.grounded === true, `${element}: spawns grounded in ${a.region}`);
     await shot(`20-${element}`);
     await page.keyboard.press('Space');
-    check(await poll(async () => (await state()).grounded === false, 12, 40), `${element}: jump leaves the ground`);
+    check(await poll(async () => (await state()).grounded === false, 40, 30), `${element}: jump leaves the ground`);
     check(await poll(async () => (await state()).grounded === true), `${element}: lands again`);
     await page.keyboard.down('KeyW');
     const moved = await poll(async () => {

@@ -3,6 +3,7 @@ import { echoConnections, echoForms, echoHues, echoMemoryExamples, echoPersonali
 import { elementOrder, elements, type ElementId } from '../config/elements';
 import { regionOrder, regions } from '../config/regions';
 import { defaultAppearance, type Appearance } from '../entities/appearance';
+import { nativeHairFor } from '../config/characters';
 import { defaultEcho, type EchoConfig } from '../save/SaveSchema';
 import { h, hex } from './dom';
 
@@ -225,6 +226,7 @@ export class CharacterCreator {
       this.choice('Body', [{ value: 'feminine', label: 'Feminine' }, { value: 'masculine', label: 'Masculine' }], () => a.presentation, (v) => {
         a.presentation = v;
         a.hairStyle = hairStyles[v][0].id;
+        a.hairColor = nativeHairFor(v, hairColors[0].hex);
       }, true),
       this.slider('Age', ageRange.min, ageRange.max, 1, () => a.age, (v) => (a.age = v), (v) => `${v}`),
       this.slider('Height', heightRange.min, heightRange.max, 0.01, () => a.height, (v) => (a.height = v), (v) => `${Math.round(v * (a.presentation === 'feminine' ? 168 : 178))} cm`),

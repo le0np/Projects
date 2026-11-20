@@ -24,7 +24,7 @@ export const defaultAppearance: Appearance = {
   age: 22,
   skinTone: 0xf1c8a8,
   hairColor: 0x2b2235,
-  hairStyle: 'long',
+  hairStyle: 'bob',
   eyeColor: 0x4a7bd0,
 };
 

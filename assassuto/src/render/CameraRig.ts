@@ -15,6 +15,14 @@ export class CameraRig {
   private initialised = false;
   private fovBoost = 0;
   sensitivity: number = cameraConfig.mouseSensitivity;
+  private shakeAmount = 0;
+  private shakeTime = 0;
+  /** World position the camera should keep in view (lock-on); null when free. */
+  lockTarget: THREE.Vector3 | null = null;
+
+  shake(amount: number): void {
+    this.shakeAmount = Math.min(1, Math.max(this.shakeAmount, amount));
+  }
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
@@ -41,6 +49,15 @@ export class CameraRig {
   }
 
   update(dt: number, target: THREE.Vector3, sprinting: boolean): void {
+    if (this.lockTarget) {
+      // Swing behind the player so both player and target are in view.
+      const want = Math.atan2(target.x - this.lockTarget.x, target.z - this.lockTarget.z);
+      let d = (want - this.yaw) % (Math.PI * 2);
+      if (d > Math.PI) d -= Math.PI * 2;
+      if (d < -Math.PI) d += Math.PI * 2;
+      this.yaw += d * damp(5, dt);
+      this.pitch += (0.32 - this.pitch) * damp(3, dt);
+    }
     const goal = new THREE.Vector3(target.x, target.y + cameraConfig.targetHeight, target.z);
     if (!this.initialised) {
       this.focus.copy(goal);
@@ -71,6 +88,14 @@ export class CameraRig {
 
     this.camera.position.copy(pos);
     this.camera.lookAt(pivot);
+    if (this.shakeAmount > 0.001) {
+      this.shakeTime += dt;
+      const a = this.shakeAmount * this.shakeAmount * 0.12;
+      this.camera.position.x += Math.sin(this.shakeTime * 71) * a;
+      this.camera.position.y += Math.sin(this.shakeTime * 53 + 1.3) * a;
+      this.camera.rotation.z += Math.sin(this.shakeTime * 61 + 2.1) * a * 0.4;
+      this.shakeAmount = Math.max(0, this.shakeAmount - dt * 2.8);
+    }
     const fov = cameraConfig.fov + this.fovBoost;
     if (Math.abs(this.camera.fov - fov) > 0.01) {
       this.camera.fov = fov;

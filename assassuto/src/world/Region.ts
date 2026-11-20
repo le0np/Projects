@@ -15,6 +15,8 @@ export class Region {
   readonly collision: CollisionGrid;
   readonly spawn: THREE.Vector3;
   readonly landmark: THREE.Vector3;
+  /** Raider camp: centre and spawn points for enemies. */
+  readonly camp: { center: THREE.Vector3; spawns: THREE.Vector3[] };
   private windUniform = { time: { value: 0 } };
   private animated: ((t: number) => void)[] = [];
   private disposables: { dispose(): void }[] = [];
@@ -28,9 +30,11 @@ export class Region {
     this.landmark = new THREE.Vector3(def.spawn.x, 0, def.spawn.z - 22);
     this.landmark.y = this.terrain.heightAt(this.landmark.x, this.landmark.z);
 
+    this.camp = this.pickCamp();
     this.buildTerrain();
     if (t.waterLevel !== null) this.buildWater(t.waterLevel);
     this.buildProps();
+    this.buildCamp();
     this.buildGrass();
     this.buildShrine();
   }
@@ -125,6 +129,7 @@ export class Region {
         const dSpawn = Math.hypot(x - this.spawn.x, z - this.spawn.z);
         const dLandmark = Math.hypot(x - this.landmark.x, z - this.landmark.z);
         if (dSpawn < (rule.clearRadius ?? 0) || dLandmark < 10) continue;
+        if (!tpl.floatHeight && Math.hypot(x - this.camp.center.x, z - this.camp.center.z) < 11) continue;
         const h = this.terrain.heightAt(x, z);
         if (!tpl.floatHeight && water !== null && h < water + 0.3 && rule.kind !== 'rock') continue;
         const nh = this.normHeight(h);
@@ -224,6 +229,7 @@ export class Region {
       if (this.terrain.slopeAt(x, z) > 0.55) continue;
       if (this.normHeight(h) > 0.55) continue;
       if (Math.hypot(x - this.landmark.x, z - this.landmark.z) < 7) continue;
+      if (Math.hypot(x - this.camp.center.x, z - this.camp.center.z) < 5) continue;
       dummy.position.set(x, h - 0.04, z);
       dummy.rotation.set(0, r() * Math.PI, 0);
       const s = 0.5 + r() * 0.45;
@@ -238,6 +244,85 @@ export class Region {
     mesh.receiveShadow = true;
     mesh.name = 'grass';
     this.group.add(mesh);
+  }
+
+  /**
+   * Finds a fairly flat, dry spot 34-48 m from the spawn, away from the shrine, for the raider camp.
+   * Deterministic per region seed.
+   */
+  private pickCamp(): { center: THREE.Vector3; spawns: THREE.Vector3[] } {
+    const r = rng(this.def.seed + 4242);
+    const water = this.def.terrain.waterLevel;
+    const shrineDir = Math.atan2(this.landmark.x - this.spawn.x, this.landmark.z - this.spawn.z);
+    let best = { x: this.spawn.x + 40, z: this.spawn.z, score: Infinity };
+    for (let i = 0; i < 160; i++) {
+      const a = shrineDir + Math.PI * 0.5 + (r() - 0.5) * Math.PI * 1.2;
+      const d = 34 + r() * 14;
+      const x = this.spawn.x + Math.sin(a) * d;
+      const z = this.spawn.z + Math.cos(a) * d;
+      const h = this.terrain.heightAt(x, z);
+      if (water !== null && h < water + 0.8) continue;
+      let slope = 0;
+      for (let k = 0; k < 8; k++) slope = Math.max(slope, this.terrain.slopeAt(x + Math.cos(k) * 6, z + Math.sin(k) * 6));
+      const score = slope + this.terrain.slopeAt(x, z) * 2;
+      if (score < best.score) best = { x, z, score };
+    }
+    const center = new THREE.Vector3(best.x, this.terrain.heightAt(best.x, best.z), best.z);
+    const spawns = [0, 1, 2].map((i) => {
+      const a = (i / 3) * Math.PI * 2 + 0.4;
+      const x = center.x + Math.cos(a) * 3.2;
+      const z = center.z + Math.sin(a) * 3.2;
+      return new THREE.Vector3(x, this.terrain.heightAt(x, z), z);
+    });
+    return { center, spawns };
+  }
+
+  /** Tents, crates and a campfire with flickering light. */
+  private buildCamp(): void {
+    const c = this.camp.center;
+    const g = new THREE.Group();
+    g.name = 'camp';
+    const cloth = this.track(toonMaterial({ color: 0x9c6b48, side: THREE.DoubleSide }));
+    const wood = this.track(toonMaterial({ color: 0x5e4433 }));
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 + 1.45;
+      const x = Math.cos(a) * 6.5;
+      const z = Math.sin(a) * 6.5;
+      const tent = new THREE.Mesh(this.track(new THREE.ConeGeometry(1.7, 2.3, 4, 1, true)), cloth);
+      tent.position.set(x, this.terrain.heightAt(c.x + x, c.z + z) - c.y + 1.1, z);
+      tent.rotation.y = -a + Math.PI / 4;
+      tent.castShadow = tent.receiveShadow = true;
+      g.add(tent);
+      this.collision.add({ x: c.x + x, z: c.z + z, radius: 1.4, bottom: c.y - 2, top: c.y + 3 });
+    }
+    for (let i = 0; i < 3; i++) {
+      const crate = new THREE.Mesh(this.track(new THREE.BoxGeometry(0.8, 0.7, 0.8)), wood);
+      const a = i * 2.1 + 0.3;
+      crate.position.set(Math.cos(a) * 4.6, 0.35, Math.sin(a) * 4.6);
+      crate.position.y = this.terrain.heightAt(c.x + crate.position.x, c.z + crate.position.z) - c.y + 0.35;
+      crate.rotation.y = a;
+      crate.castShadow = true;
+      g.add(crate);
+      this.collision.add({ x: c.x + crate.position.x, z: c.z + crate.position.z, radius: 0.55, bottom: c.y - 2, top: c.y + 0.8 });
+    }
+    for (let i = 0; i < 4; i++) {
+      const log = new THREE.Mesh(this.track(new THREE.CylinderGeometry(0.08, 0.08, 0.9, 6)), wood);
+      log.rotation.set(Math.PI / 2 - 0.35, (i / 4) * Math.PI * 2, 0);
+      log.position.y = 0.15;
+      g.add(log);
+    }
+    const flame = new THREE.Mesh(this.track(new THREE.ConeGeometry(0.3, 0.9, 7)), this.track(toonMaterial({ color: 0xffa040, emissive: 0xff7a20, emissiveIntensity: 2.4 })));
+    flame.position.y = 0.5;
+    const light = new THREE.PointLight(0xff9a40, 14, 14, 1.6);
+    light.position.y = 1.1;
+    g.add(flame, light);
+    g.position.copy(c);
+    this.group.add(g);
+    this.animated.push((t) => {
+      const f = 1 + Math.sin(t * 13) * 0.08 + Math.sin(t * 7.3) * 0.06;
+      flame.scale.set(f, 1 + Math.sin(t * 9.1) * 0.15, f);
+      light.intensity = 12 + Math.sin(t * 11) * 2.5;
+    });
   }
 
   /** Placeholder elemental shrine; will be replaced by the Tripo "shrine" asset. */

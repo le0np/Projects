@@ -15,10 +15,25 @@ export interface LocomotionState {
  * A visual character. Implementations: procedural placeholder (no assets) and glTF (Tripo models).
  * Gameplay never depends on which one is active.
  */
+export interface ActionOptions {
+  /** Portion of the clip to play, as fractions of its length. */
+  range?: [number, number];
+  /** Keep the last frame until stopAction (death, knockdown). */
+  hold?: boolean;
+  fade?: number;
+}
+
 export interface CharacterView {
   readonly object: THREE.Object3D;
   readonly source: 'placeholder' | 'gltf';
   update(dt: number, state: LocomotionState): void;
+  /** Plays a one-shot action (attack, hit reaction) over `duration` seconds. Returns false if unavailable. */
+  playAction(clip: string, duration: number, opts?: ActionOptions): boolean;
+  /** Ends the current action and blends back to locomotion. */
+  stopAction(fade?: number): void;
+  hasClip(clip: string): boolean;
+  /** Object that follows the right hand; weapons are parented here. */
+  readonly weaponSocket: THREE.Object3D;
   dispose(): void;
 }
 

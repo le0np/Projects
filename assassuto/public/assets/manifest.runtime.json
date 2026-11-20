@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-20T15:14:59.289Z",
+  "generatedAt": "2026-11-20T15:55:33.655Z",
   "assets": {
     "player_feminine": {
       "id": "player_feminine",
@@ -16,9 +16,87 @@
             "jump",
             "fall"
           ]
+        },
+        {
+          "file": "characters/player_feminine/anims_a0282a1f.glb",
+          "clips": [
+            "slash",
+            "chop",
+            "box_01",
+            "box_02",
+            "front_kick_01"
+          ]
+        },
+        {
+          "file": "characters/player_feminine/anims_d286b3ff.glb",
+          "clips": [
+            "cast_a_spell",
+            "dive",
+            "flip",
+            "hurt",
+            "hit_to_body_01"
+          ]
+        },
+        {
+          "file": "characters/player_feminine/anims_468eeec2.glb",
+          "clips": [
+            "hit_to_head",
+            "fall_down",
+            "hug",
+            "look_around",
+            "victory"
+          ]
         }
       ],
       "targetHeight": 1.68,
+      "yawOffset": -1.5708
+    },
+    "enemy_raider": {
+      "id": "enemy_raider",
+      "kind": "character",
+      "model": "characters/enemy_raider/model.glb",
+      "animations": [
+        {
+          "file": "characters/enemy_raider/anims_9ecf3501.glb",
+          "clips": [
+            "idle",
+            "walk",
+            "run",
+            "slash",
+            "chop"
+          ]
+        },
+        {
+          "file": "characters/enemy_raider/anims_c310d5ce.glb",
+          "clips": [
+            "hurt",
+            "hit_to_body_01",
+            "fall_down",
+            "dive",
+            "angry"
+          ]
+        }
+      ],
+      "targetHeight": 1.75,
+      "yawOffset": -1.5708
+    },
+    "player_masculine": {
+      "id": "player_masculine",
+      "kind": "character",
+      "model": "characters/player_masculine/model.glb",
+      "animations": [
+        {
+          "file": "characters/player_masculine/anims_4bbe8a9c.glb",
+          "clips": [
+            "idle",
+            "walk",
+            "run",
+            "jump",
+            "fall"
+          ]
+        }
+      ],
+      "targetHeight": 1.78,
       "yawOffset": -1.5708
     }
   }

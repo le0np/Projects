@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-Faze 1 i 2 od 8 su gotove. Igra ima glavni izbornik, kreator lika u 6 koraka (izgled, ime, element, Echo, regija, sažetak) s 3D previewom, intro cinematic, kretanje u četiri regije i verzionirano spremanje s nastavkom igre. Ženski lik je pravi Tripo model (prilagodljive visine, građe i boje kose). Muški lik je još proceduralni placeholder. Echo je zasad vizualni duh s osnovnim praćenjem.
+Faze 1–3 od 8 su gotove. Igra ima glavni izbornik, kreator lika u 6 koraka s 3D previewom, intro cinematic, kretanje u četiri regije, verzionirano spremanje i borbu. Borba obuhvaća combo napade, izmicanje, blok i parry s counterom, lock-on, finisher, mač i koplje te Raider kamp s AI-em u svakoj regiji. Oba lika i Raider su Tripo modeli. Echo je zasad vizualni duh s osnovnim praćenjem. Ostalo je 275 Tripo kredita.
 
 ## Napravljeno 20. studenoga 2026.
 
@@ -49,6 +49,27 @@ Faze 1 i 2 od 8 su gotove. Igra ima glavni izbornik, kreator lika u 6 koraka (iz
 - Echo prati igrača bočno u odnosu na kameru (GDD 6.1: ne zaklanja pogled), uz teleport ako zaostane više od 15 m.
 - Sitnice: manji kristal shrinea, muški placeholder s jaknom umjesto suknje, Esc radi i kad preglednik ne otpusti pointer lock.
 
+### Faza 3: borba (20. studenoga 2026.)
+
+**Tripo generiranje** (vlasnik je odobrio muški lik, Raidera i borbene animacije):
+- `player_masculine`: model, rig i 5 animacija kretanja, 105 kredita. Izgleda odlično i stilski prati ženski lik.
+- `enemy_raider`: model, rig i 10 animacija (idle, walk, run, slash, chop, hurt, hit_to_body_01, fall_down, dive, angry), 155 kredita. Proporcije su malo "chibi", ali je to prihvatljivo za neprijatelja.
+- `player_feminine`: borbene animacije. **Greška u skripti**: fingerprint asseta uključivao je cijeli `defaults` iz manifesta, pa je ranije dodani `yawOffset` pokrenuo ponovno generiranje modela i riga. Potrošeno je 255 umjesto ~150 kredita, a ženski lik je sada **novi model** (kosa do ramena, sličan kaput, stilski bliži muškom liku). Prijenos animacija na stari kostur provjeren je i ne radi, jer Tripo retarget ovisi o kosturu (odstupanje do 30° ostaje i nakon korekcije rest poze). Zato je zadržan novi model sa svih 20 animacija. Stari model postoji u gitu (commit `6d4447f`).
+- Popravak: fingerprint (`hashSpec` u `tools/tripo/manifest.ts`) sada uključuje samo polja koja mijenjaju generirani model. Kad se ona promijene, skripta asset preskoči i traži `--regenerate`. Dodan je regresijski test.
+- Kredit: 790 → 275.
+
+**Kod:**
+- `config/combat.ts`: mač (10 napada: L1–L3, H1, HH, LH udarac nogom, LLH lansiranje, zračni napad, counter, finisher) i koplje (veći doseg, uži luk). Tu su i postavke izmicanja, bloka, parryja, staggera, finishera, lock-ona i pomoći pri ciljanju. `config/enemies.ts`: Raider i AI postavke.
+- Čista logika borbe pokrivena testovima: `AttackRunner`, `InputBuffer`, `Combatant`, `resolveHit` i `AttackTokens`. Kuka `preventDeath` je pripremljena za Guardian's Embrace i ne okida na DoT.
+- `Player` s borbom: buffer, chain, stamina po napadu, iskorak, okretanje prema meti, izmicanje s i-frameovima, blok (sporije kretanje, stamina ne regenerira), counter prozor nakon parryja, oružja 1 i 2.
+- `Enemy` s AI-em: lutanje oko kampa, primjećivanje (animacija "angry"), prilaz, kruženje na udaljenosti uz traženje tokena, napad s bljeskom na oštrici prije udarca, reakcije (stagger, rušenje, ranjivost, smrt) i povratak kući uz liječenje.
+- `CombatDirector`: kamp, lock-on, finisher (scripted pozicioniranje, slow-mo, bočna kamera), pogoci u oba smjera (parry, blok, guard break, izmicanje, pogodak, smrt), razdvajanje tijela i obnova kampa. Efekti su iskre, prstenovi, bljesak napada, prsten ranjivosti i ward štit.
+- `CombatHud`: zdravlje igrača i oružje, trake neprijatelja nad glavama, lock reticle, oznaka finishera, brojač udaraca, brojevi štete i ekran poraza. Poraz vraća igrača na shrine i resetira kamp.
+- Igra: hitstop i slow-mo preko `Time.timeScale` (kamera i UI ostaju glatki), Echo se skloni tijekom finishera, a oružje se sprema u save.
+- Kamp Raidera u svakoj regiji: deterministički izbor ravnog mjesta 34–48 m od spawna, sa šatorima, sanducima i logorskom vatrom (svjetlo koje treperi).
+- Mač u ruci Tripo lika: osi kosti šake izmjerene su u igri (+Z naprijed), a smjer oštrice potvrđen je brojčano.
+- Prebojavanje kose generalizirano je na chroma key po modelu (`config/characters.ts`): ženski lik ima tamnoplavu kosu, a muški tamnosmeđu. Za oba je ključna boja izmjerena iz teksela vezanih uz kost glave.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 20. studenoga 2026.:
@@ -56,8 +77,9 @@ Provedeno 20. studenoga 2026.:
 | Provjera | Rezultat |
 | --- | --- |
 | `npx tsc --noEmit` | bez grešaka |
-| `npm test` | 24/24 prolazi (motor 6, save i postavke 9, Tripo klijent i manifest 8, pipeline 1) |
-| `npm run e2e` | sve prolazi: izbornik (Continue onemogućen bez savea, settings, credits) → kreator (preview Tripo lika, boja kose, građa, muško tijelo, odbijeno prazno ime, Water → Glacemere, Echo vuk) → intro s titlovima → igra (Aria u Glacemereu s Echom, kretanje) → pauza i spremanje → izbornik (Continue prikazuje Ariu) → reload → Continue (ista pozicija, odstupanje 0,00 m) → sve 4 regije (spawn, skok, doskok, kretanje), bez console grešaka |
+| `npm test` | 42/42 prolazi (motor 6, save i postavke 9, Tripo klijent, manifest i hash 9, pipeline 1, borba 17) |
+| `npm run e2e` | sve prolazi: izbornik (Continue onemogućen bez savea, settings, credits) → kreator (preview Tripo lika, boja kose, građa, muško tijelo, odbijeno prazno ime, Water → Glacemere, Echo vuk) → intro s titlovima → igra (Aria u Glacemereu s Echom, kretanje) → pauza i spremanje → izbornik (Continue prikazuje Ariu) → reload → Continue (ista pozicija, odstupanje 0,00 m) → borba (Raideri primjećuju igrača, Tab lock-on, napadi smanjuju zdravlje, oznaka finishera, finisher ubija) → sve 4 regije (spawn, skok, doskok, kretanje), bez console grešaka |
+| Borba ručno u pregledniku | Raider nanosi štetu (160 → 146, igrač u staggeru), finisher ubija ranjivog Raidera, oštrica gleda naprijed (izmjereno) |
 | `npm run build` | prolazi |
 | GLB lik u igri | sintetički riggani GLB je prošao `optimizeAll` i animacija pomiče kost. Pravi Tripo `player_feminine` je učitan u igri (`view: gltf`), screenshotovi sprijeda, straga, u trku i skoku ispravni, bez console grešaka |
 | `npm run e2e` s Tripo modelom | sve prolazi |
@@ -70,21 +92,24 @@ Provedeno 20. studenoga 2026.:
 - Tripo nema preset animacije za avian rig, a quadruped ima samo `walk`. Animacije stvorenja i mountova bit će dijelom proceduralne.
 - Kustomizacija frizure s Tripo modelima (zasebni meshevi kose na head boneu) još nije isprobana. Testira se u fazi 2 nakon prvog lika.
 - Headless Chromium sa softverskim GL-om vrti igru na ~12 FPS-a, pa e2e test zbog toga koristi polling. Na pravom GPU-u igra je glatka.
-- Za Tripo ženski lik postoji samo jedna frizura (ona koju je model dobio). Dodatne frizure trebaju zasebne Tripo meshe kose (krediti). Plave oči mogu dobiti malo nijanse boje kose jer su u istoj zoni i slične boje.
-- Muški lik i Echo su proceduralni placeholderi dok se ne generiraju `player_masculine`, `echo_human`, `echo_wolf` i `echo_bird`.
+- Svaki Tripo lik ima samo jednu frizuru (onu koju je model dobio). Dodatne frizure trebaju zasebne Tripo meshe kose (krediti).
+- Muški lik ima samo animacije kretanja. U borbi koristi proceduralne zamjene, pa napadi na njemu izgledaju slabije. Borbene animacije za njega koštaju ~150 kredita.
+- Tripo animacije nisu rađene za mač (slash, chop i boks su udarci bez oružja), pa zamasi nisu savršeno usklađeni s oštricom. Kasnije se mogu dodati animacije u kodu.
+- Echo, oružje i propsi su još proceduralni.
+- Raideri ne blokiraju, a ostali arhetipovi (Archer, Brute) dolaze u fazi 4.
 - Headless e2e sa softverskim GL-om i Tripo modelom vrti se na nekoliko FPS-a, pa test koristi polling. Na pravom GPU-u to nije problem.
 
 ## Sljedeći koraci
 
-1. Uz odobrenje vlasnika potrošiti preostale kredite (790) redom: combat animacije za `player_feminine` (nužno za fazu 3), zatim `player_masculine` i `enemy_raider`. Ostale modele raditi u kodu dok ne bude novih kredita.
-2. Faza 3: combat jezgra (combo graf, hitboxovi, poise i stagger, dodge, block, parry, counter, finisher) i Raider s AI-em.
-3. Faza 4: četiri elementalne sposobnosti, Archer i Brute, discovery na shrineovima, Tripo propsi.
-4. Faza 5: Echo (pametnije praćenje, kontekstualni dijalog, Spirit Ward, Guardian's Embrace). Intro i osnovno praćenje su već napravljeni u fazi 2.
-5. Faza 6: bond sustav i stvorenja, ground mount, flying mount u Sky Trialu.
-6. Faza 7: tutorial, progresija, zvuk i polish. Faza 8: završna provjera.
+1. Uz odobrenje vlasnika potrošiti preostalih 275 kredita, primjerice na borbene animacije za muški lik (~150) ili na Echo modele i oružje.
+2. Faza 4: četiri elementalne sposobnosti, Archer i Brute, discovery na shrineovima, Tripo propsi.
+3. Faza 5: Echo (pametnije praćenje, kontekstualni dijalog, Spirit Ward, Guardian's Embrace). Intro i osnovno praćenje su već napravljeni u fazi 2.
+4. Faza 6: bond sustav i stvorenja, ground mount, flying mount u Sky Trialu.
+5. Faza 7: tutorial, progresija, zvuk i polish. Faza 8: završna provjera.
 
 ## Handoff za novi chat
 
 1. Kod je u `assassuto/`, grana `dev`. Prvo pročitaj ovaj dokument, `README.md` i plan u GDD-u (vlasnik ga je poslao u chatu: "PROJECT FOURFOLD Game Design Document v1.0").
 2. Pokretanje: `npm install && npm run dev`. Testovi: `npm test`, `npm run e2e` (screenshotovi u `tools/e2e/out/`), `npm run build`.
-3. Važne granice: gameplay ne dira Three.js direktno, nego ide preko `CharacterView`, `CollisionWorld` i EventBusa. Sve brojke idu u `src/config/`. Tekst u igri je na engleskom. 3D modeli dolaze samo iz Tripa (bez Quaterniusa ili drugih paketa), preko `assets-src/manifest.json`. Tajne idu samo u `.env`.
+3. Tripo: prije svakog generiranja pokreni `--dry-run`, a stanje kredita provjeri prije i poslije (`--balance`). Nikad ne pokreći `--regenerate` bez dogovora s vlasnikom.
+4. Važne granice: gameplay ne dira Three.js direktno, nego ide preko `CharacterView`, `CollisionWorld` i EventBusa. Sve brojke idu u `src/config/`. Tekst u igri je na engleskom. 3D modeli dolaze samo iz Tripa (bez Quaterniusa ili drugih paketa), preko `assets-src/manifest.json`. Tajne idu samo u `.env`.

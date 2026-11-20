@@ -4,7 +4,7 @@ import { damp, lerp, smoothstep } from '../core/math';
 import type { CharacterLook } from '../entities/appearance';
 import { greyAmount } from '../config/characters';
 import { toonMaterial } from '../render/ToonMaterials';
-import { locomotionRef, type CharacterView, type LocomotionState } from './CharacterView';
+import { locomotionRef, type ActionOptions, type CharacterView, type LocomotionState } from './CharacterView';
 
 type Joint =
   | 'hips' | 'spine' | 'chest' | 'neck' | 'head'
@@ -28,6 +28,49 @@ export class PlaceholderHumanoid implements CharacterView {
   private airW = 0;
   private time = 0;
   private disposables: { dispose(): void }[] = [];
+  readonly weaponSocket = new THREE.Group();
+  private act: { clip: string; t: number; duration: number; hold: boolean } | null = null;
+
+  hasClip(clip: string): boolean {
+    return ['slash', 'chop', 'box_01', 'box_02', 'front_kick_01', 'hurt', 'hit_to_body_01', 'fall_down', 'dive', 'cast_a_spell'].includes(clip);
+  }
+
+  /** Simple procedural one-shots so placeholder characters can still fight. */
+  playAction(clip: string, duration: number, opts: ActionOptions = {}): boolean {
+    this.act = { clip, t: 0, duration, hold: !!opts.hold };
+    return true;
+  }
+
+  stopAction(): void {
+    this.act = null;
+  }
+
+  private applyAction(): void {
+    const a = this.act;
+    if (!a) return;
+    const k = Math.min(1, a.t / a.duration);
+    const j = this.j;
+    const swing = k < 0.35 ? -k / 0.35 : -1 + ((k - 0.35) / 0.65) * 2.4; // wind-up then strike
+    if (a.clip === 'slash' || a.clip === 'chop' || a.clip === 'box_01' || a.clip === 'box_02') {
+      const vertical = a.clip === 'chop';
+      j.shoulderR.rotation.set(vertical ? -1.2 - swing * 1.3 : -1.4, vertical ? 0 : swing * 1.4, vertical ? -0.2 : -0.4);
+      j.elbowR.rotation.set(-0.3, 0, 0);
+      j.chest.rotation.y = (vertical ? 0 : -swing) * 0.5;
+      j.spine.rotation.x = 0.15 + (vertical ? Math.max(0, swing) * 0.25 : 0);
+    } else if (a.clip === 'front_kick_01') {
+      j.thighR.rotation.x = -Math.sin(k * Math.PI) * 1.5;
+      j.kneeR.rotation.x = (1 - Math.sin(k * Math.PI)) * 0.8;
+    } else if (a.clip === 'hurt' || a.clip === 'hit_to_body_01') {
+      j.spine.rotation.x = -Math.sin(k * Math.PI) * 0.35;
+      j.head.rotation.x = -Math.sin(k * Math.PI) * 0.3;
+    } else if (a.clip === 'fall_down') {
+      this.object.children.forEach((c) => (c.rotation.x = -Math.min(1, k * 1.5) * (Math.PI / 2) * 0.95));
+    } else if (a.clip === 'dive') {
+      j.spine.rotation.x = Math.sin(k * Math.PI) * 1.2;
+      j.thighL.rotation.x = j.thighR.rotation.x = -Math.sin(k * Math.PI) * 1.4;
+      j.kneeL.rotation.x = j.kneeR.rotation.x = Math.sin(k * Math.PI) * 1.8;
+    }
+  }
 
   constructor(look: CharacterLook) {
     const a = look.appearance;
@@ -155,9 +198,12 @@ export class PlaceholderHumanoid implements CharacterView {
     const grip = new THREE.Mesh(this.track(new THREE.CylinderGeometry(0.018, 0.018, 0.18, 8)), mats.boot);
     grip.position.y = -0.1;
     sword.add(blade, guard, grip);
-    sword.position.set(0, -0.05, -0.17);
-    sword.rotation.set(0, 0, 0.75);
-    chest.add(sword);
+    // Sword in the right hand, blade pointing forward-up.
+    sword.position.set(0, -0.02, 0);
+    sword.rotation.set(Math.PI / 2, 0, 0);
+    this.j.elbowR.add(this.weaponSocket);
+    this.weaponSocket.position.set(0, -0.28, 0.02);
+    this.weaponSocket.add(sword);
 
     this.object.scale.setScalar(a.height);
     this.object.traverse((o) => {
@@ -197,6 +243,11 @@ export class PlaceholderHumanoid implements CharacterView {
 
   update(dt: number, s: LocomotionState): void {
     this.time += dt;
+    if (this.act) {
+      this.act.t += dt;
+      if (this.act.t >= this.act.duration && !this.act.hold) this.act = null;
+    }
+    if (!this.act || this.act.clip !== 'fall_down') this.object.children.forEach((c) => (c.rotation.x = 0));
     const { walkSpeed, runSpeed, sprintSpeed } = locomotionRef;
     this.moveW += ((s.grounded ? smoothstep(0.1, walkSpeed * 0.6, s.speed) : this.moveW) - this.moveW) * damp(10, dt);
     this.runW += (smoothstep(walkSpeed, runSpeed, s.speed) - this.runW) * damp(6, dt);
@@ -267,6 +318,7 @@ export class PlaceholderHumanoid implements CharacterView {
 
     const bob = (1 - Math.abs(Math.sin(ph))) * lerp(0.025, 0.06, rw) * mw;
     this.j.hips.position.y = this.hipsBaseY - 0.035 * mw * rw + bob - lw * 0.14 + breath * 0.004;
+    this.applyAction();
   }
 
   dispose(): void {

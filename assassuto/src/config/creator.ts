@@ -22,12 +22,8 @@ export const skinTones = [0xf6d5bd, 0xf1c8a8, 0xdcab83, 0xb97f57, 0x8a5a3b, 0x5e
  * ("signature"); extra styles arrive as separate Tripo hair meshes later.
  */
 export const hairStyles: Record<'feminine' | 'masculine', { id: string; label: string }[]> = {
-  feminine: [{ id: 'long', label: 'Long, flowing' }],
-  masculine: [
-    { id: 'short', label: 'Short' },
-    { id: 'long', label: 'Long' },
-    { id: 'ponytail', label: 'Ponytail' },
-  ],
+  feminine: [{ id: 'bob', label: 'Shoulder-length bob' }],
+  masculine: [{ id: 'short', label: 'Short, tousled' }],
 };
 
 export const nameMaxLength = 18;

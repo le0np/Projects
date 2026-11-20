@@ -1,0 +1,126 @@
+import * as THREE from 'three';
+import type { Enemy } from '../entities/Enemy';
+import type { Player } from '../entities/Player';
+import { h } from './dom';
+
+/**
+ * Combat overlay: player health, enemy health bars (projected over heads), lock-on reticle,
+ * finisher prompt, combo counter, floating damage numbers and the defeat screen.
+ */
+export class CombatHud {
+  readonly root: HTMLElement;
+  private hpFill: HTMLElement;
+  private hpText: HTMLElement;
+  private nameEl: HTMLElement;
+  private weaponEl: HTMLElement;
+  private bars = new Map<string, { el: HTMLElement; fill: HTMLElement }>();
+  private reticle: HTMLElement;
+  private prompt: HTMLElement;
+  private combo: HTMLElement;
+  private popups: { el: HTMLElement; pos: THREE.Vector3; t: number }[] = [];
+  private defeat: HTMLElement;
+  private v = new THREE.Vector3();
+
+  constructor(parent: HTMLElement) {
+    this.hpFill = h('div', { class: 'hp-fill' });
+    this.hpText = h('div', { class: 'hp-text' });
+    this.nameEl = h('div', { class: 'hp-name' });
+    this.weaponEl = h('div', { class: 'hp-weapon' });
+    this.reticle = h('div', { class: 'reticle', attrs: { hidden: '' } });
+    this.prompt = h('div', { class: 'prompt', attrs: { hidden: '' } }, h('kbd', { text: 'F' }), h('span', { text: 'Finisher' }));
+    this.combo = h('div', { class: 'combo', attrs: { hidden: '' } });
+    this.defeat = h('div', { class: 'defeat', attrs: { hidden: '' } }, h('div', { class: 'defeat-title', text: 'You have fallen' }), h('div', { class: 'defeat-sub', text: 'Returning to the shrine…' }));
+    this.root = h(
+      'div',
+      { class: 'combat-hud' },
+      h('div', { class: 'hp' }, this.nameEl, h('div', { class: 'hp-bar' }, this.hpFill, this.hpText), this.weaponEl),
+      this.reticle,
+      this.prompt,
+      this.combo,
+      this.defeat,
+    );
+    parent.append(this.root);
+  }
+
+  setDefeated(v: boolean): void {
+    this.defeat.hidden = !v;
+  }
+
+  popup(at: THREE.Vector3, text: string, kind: 'damage' | 'crit' | 'player' | 'info'): void {
+    const el = h('div', { class: `pop ${kind}`, text });
+    this.root.append(el);
+    this.popups.push({ el, pos: at.clone(), t: 0 });
+  }
+
+  private project(p: THREE.Vector3, camera: THREE.Camera, w: number, hgt: number): { x: number; y: number; on: boolean } {
+    this.v.copy(p).project(camera);
+    return { x: (this.v.x * 0.5 + 0.5) * w, y: (-this.v.y * 0.5 + 0.5) * hgt, on: this.v.z < 1 && Math.abs(this.v.x) < 1.2 && Math.abs(this.v.y) < 1.2 };
+  }
+
+  update(dt: number, now: number, camera: THREE.Camera, player: Player, playerName: string, enemies: Enemy[], lock: Enemy | null, finisherReady: boolean, combo: number): void {
+    const w = this.root.clientWidth || window.innerWidth;
+    const hgt = this.root.clientHeight || window.innerHeight;
+    const c = player.combatant;
+    const ratio = c.health / c.opts.maxHealth;
+    this.hpFill.style.transform = `scaleX(${ratio})`;
+    this.hpFill.classList.toggle('low', ratio < 0.3);
+    this.hpText.textContent = `${Math.ceil(c.health)} / ${c.opts.maxHealth}`;
+    this.nameEl.textContent = playerName;
+    this.weaponEl.textContent = `${player.weapon.name}  ·  1 Sword  2 Spear`;
+
+    const seen = new Set<string>();
+    for (const e of enemies) {
+      const show = e.alive && (e === lock || now - e.lastHurt < 5 || e.brain === 'attack' || e.brain === 'circle');
+      if (!show) continue;
+      const p = this.project(this.v.set(e.renderPosition.x, e.renderPosition.y + 2.35, e.renderPosition.z), camera, w, hgt);
+      if (!p.on) continue;
+      seen.add(e.id);
+      let bar = this.bars.get(e.id);
+      if (!bar) {
+        const fill = h('div', { class: 'eb-fill' });
+        const el = h('div', { class: 'enemy-bar' }, h('div', { class: 'eb-name', text: e.def.name }), h('div', { class: 'eb-track' }, fill));
+        this.root.append(el);
+        bar = { el, fill };
+        this.bars.set(e.id, bar);
+      }
+      bar.el.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -100%)`;
+      bar.fill.style.transform = `scaleX(${e.combatant.health / e.def.maxHealth})`;
+      bar.el.classList.toggle('vulnerable', e.combatant.state === 'vulnerable');
+      bar.el.classList.toggle('locked', e === lock);
+    }
+    for (const [id, bar] of this.bars) if (!seen.has(id)) {
+      bar.el.remove();
+      this.bars.delete(id);
+    }
+
+    this.reticle.hidden = true;
+    if (lock) {
+      const p = this.project(this.v.set(lock.renderPosition.x, lock.renderPosition.y + 1.2, lock.renderPosition.z), camera, w, hgt);
+      this.reticle.hidden = !p.on;
+      this.reticle.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%)`;
+    }
+    this.prompt.hidden = !finisherReady;
+    this.combo.hidden = combo < 3;
+    if (combo >= 3) this.combo.textContent = `${combo} HITS`;
+
+    this.popups = this.popups.filter((pp) => {
+      pp.t += dt;
+      const p = this.project(this.v.copy(pp.pos).add(new THREE.Vector3(0, pp.t * 0.9, 0)), camera, w, hgt);
+      pp.el.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -50%)`;
+      pp.el.style.opacity = String(Math.max(0, 1 - Math.max(0, pp.t - 0.6) / 0.5));
+      if (pp.t > 1.1 || !p.on) {
+        pp.el.remove();
+        return false;
+      }
+      return true;
+    });
+  }
+
+  clear(): void {
+    for (const b of this.bars.values()) b.el.remove();
+    this.bars.clear();
+    for (const p of this.popups) p.el.remove();
+    this.popups = [];
+    this.defeat.hidden = true;
+  }
+}

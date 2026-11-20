@@ -16,7 +16,7 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { TripoClient } from './client';
 import { matchClips } from './clips';
-import { animationsOf, chunk, fullPrompt, loadManifest, RETARGET_BATCH, validateManifest, type AssetSpec, type Manifest } from './manifest';
+import { animationsOf, chunk, fullPrompt, hashSpec, loadManifest, RETARGET_BATCH, validateManifest, type AssetSpec, type Manifest } from './manifest';
 
 interface AssetState {
   promptHash: string;
@@ -42,10 +42,6 @@ function loadState(): State {
 }
 function saveState(s: State) {
   writeFileSync(STATE_PATH, JSON.stringify(s, null, 2));
-}
-
-function hashSpec(m: Manifest, a: AssetSpec): string {
-  return createHash('sha1').update(JSON.stringify({ p: fullPrompt(m, a), n: m.style.negative, f: a.face_limit, i: a.image, d: m.defaults })).digest('hex').slice(0, 12);
 }
 
 function selectedAnimations(m: Manifest, a: AssetSpec, mode: string): [string, string][] {
@@ -82,6 +78,7 @@ async function main() {
   const animMode = arg('anims') ?? 'all';
   const dry = arg('dry-run') === 'true';
   const force = arg('force') === 'true';
+  const regenerate = arg('regenerate') === 'true';
   const assets = manifest.assets.filter((a) => (only ? only.includes(a.id) : a.phase <= phase));
   if (assets.length === 0) {
     console.error('No assets selected.');
@@ -112,7 +109,12 @@ async function main() {
     mkdirSync(dir, { recursive: true });
     const hash = hashSpec(manifest, a);
     let st = state[a.id];
-    if (!st || force || st.promptHash !== hash) st = state[a.id] = { promptHash: hash, retarget: {}, files: { animations: [] } };
+    if (st && !st.promptHash.startsWith('v2:')) st.promptHash = hash; // legacy fingerprint: trust existing files
+    if (st && st.promptHash !== hash && !regenerate && !force) {
+      console.warn(`  prompt/settings changed since this asset was generated; skipping. Rerun with --regenerate to pay for a new model.`);
+      continue;
+    }
+    if (!st || force || regenerate) st = state[a.id] = { promptHash: hash, retarget: {}, files: { animations: [] } };
     const save = () => saveState(state);
 
     // 1. Model

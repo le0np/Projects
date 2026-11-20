@@ -31,4 +31,8 @@ export type GameEvents = {
   playerLanded: { fallSpeed: number };
   playerJumped: Record<string, never>;
   assetFallback: { assetId: string; reason: string };
+  hit: { attacker: string; target: string; damage: number };
+  parry: { enemy: string };
+  enemyKilled: { id: string; xp: number };
+  playerDied: Record<string, never>;
 };

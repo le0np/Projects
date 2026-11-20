@@ -1,4 +1,5 @@
 /** Types, loading and validation for assets-src/manifest.json. */
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 export type StyleKey = 'character' | 'creature' | 'object';
@@ -100,3 +101,14 @@ export function validateManifest(m: Manifest): string[] {
   }
   return problems;
 }
+
+/**
+ * Fingerprint of everything that changes the *generated model*. Only these fields may count:
+ * a change elsewhere in the manifest (e.g. yawOffset, targetHeight) must never trigger a paid regeneration.
+ */
+export function hashSpec(m: Manifest, a: AssetSpec): string {
+  const d = m.defaults;
+  const key = { p: fullPrompt(m, a), n: m.style.negative, f: a.face_limit ?? d.face_limit, i: a.image, model: d.model, tq: d.texture_quality, pbr: d.pbr };
+  return 'v2:' + createHash('sha1').update(JSON.stringify(key)).digest('hex').slice(0, 12);
+}
+

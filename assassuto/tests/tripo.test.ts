@@ -77,3 +77,14 @@ describe('manifest', () => {
     expect(matchClips(['Clip0', 'Clip1'], req)).toEqual(['jump', 'jump_down']);
   });
 });
+
+describe('hashSpec', () => {
+  it('ignores fields that do not change the generated model (regression: yawOffset caused a paid regeneration)', async () => {
+    const { hashSpec } = await import('../tools/tripo/manifest');
+    const m = loadManifest();
+    const a = m.assets[0];
+    const h = hashSpec(m, a);
+    expect(hashSpec({ ...m, defaults: { ...m.defaults, yawOffset: 1.23 } }, { ...a, targetHeight: 9, yawOffset: 3 })).toBe(h);
+    expect(hashSpec(m, { ...a, prompt: a.prompt + ' with a hat' })).not.toBe(h);
+  });
+});
