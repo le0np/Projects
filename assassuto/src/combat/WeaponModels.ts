@@ -54,8 +54,13 @@ export const gripPose = {
   placeholder: { position: new THREE.Vector3(0, -0.02, 0), rotation: new THREE.Euler(Math.PI / 2, 0, 0) },
 };
 
-export function attachWeapon(socket: THREE.Object3D, source: 'gltf' | 'placeholder', weapon: THREE.Object3D): void {
+/** Removes whatever weapon the hand holds (unarmed / sheathed). */
+export function detachWeapon(socket: THREE.Object3D): void {
   for (const c of [...socket.children]) if (c.name.startsWith('weapon:') || c.name === 'sword') c.removeFromParent();
+}
+
+export function attachWeapon(socket: THREE.Object3D, source: 'gltf' | 'placeholder', weapon: THREE.Object3D): void {
+  detachWeapon(socket);
   const pose = gripPose[source];
   weapon.position.copy(pose.position);
   weapon.rotation.copy(pose.rotation);

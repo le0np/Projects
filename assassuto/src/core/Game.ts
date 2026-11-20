@@ -27,7 +27,7 @@ import { MainMenu } from '../ui/MainMenu';
 import { SettingsPanel } from '../ui/SettingsPanel';
 import { Region } from '../world/Region';
 import { CombatDirector } from '../combat/CombatDirector';
-import { attachWeapon, buildWeapon } from '../combat/WeaponModels';
+import { attachWeapon, buildWeapon, detachWeapon } from '../combat/WeaponModels';
 import { combatConfig } from '../config/combat';
 import { Fx } from '../render/Fx';
 import { CombatHud } from '../ui/CombatHud';
@@ -490,7 +490,7 @@ export class Game {
     return {
       ...this.save,
       world: { regionId: this.region.def.id, position: { x: m.x, y: m.y, z: m.z }, facing: this.player.facing, cameraYaw: this.rig?.yaw ?? 0 },
-      equipment: { ...this.save.equipment, weapon: this.player.weapon.id, unlockedWeapons: [...new Set([...this.save.equipment.unlockedWeapons, 'sword', 'spear'])] },
+      equipment: { ...this.save.equipment, weapon: this.player.weapon.id, unlockedWeapons: [...new Set([...this.save.equipment.unlockedWeapons, 'sword', 'spear', 'fists'])] },
     };
   }
 
@@ -568,7 +568,8 @@ export class Game {
       }
       if (player.weapon.id !== this.weaponShown) {
         this.weaponShown = player.weapon.id;
-        attachWeapon(player.view.weaponSocket, player.view.source, buildWeapon(player.weapon.id, elements[this.save!.character.element].color));
+        if (player.armed) attachWeapon(player.view.weaponSocket, player.view.source, buildWeapon(player.weapon.id, elements[this.save!.character.element].color));
+        else detachWeapon(player.view.weaponSocket);
       }
       player.render(dt, alpha);
       this.director.render(dt, alpha, player);

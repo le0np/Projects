@@ -25,7 +25,8 @@ export class Hud {
       <div><kbd>Shift</kbd> Sprint &nbsp; <kbd>Ctrl</kbd> Walk</div>
       <div><kbd>Space</kbd> Jump &nbsp; <kbd>C</kbd>/<kbd>Alt</kbd> Dodge</div>
       <div><kbd>LMB</kbd> Light &nbsp; <kbd>RMB</kbd> Heavy &nbsp; <kbd>Q</kbd> Block / parry</div>
-      <div><kbd>Tab</kbd> Lock on &nbsp; <kbd>F</kbd> Finisher &nbsp; <kbd>1</kbd><kbd>2</kbd> Weapon</div>
+      <div><kbd>Tab</kbd> Lock on &nbsp; <kbd>F</kbd> Finisher</div>
+      <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Sword / Spear / Unarmed &nbsp; <kbd>X</kbd> Sheathe</div>
       <div><kbd>H</kbd> Toggle help &nbsp; <kbd>F3</kbd> Debug</div>
       <div><kbd>Esc</kbd> Pause</div>`;
     this.debugEl = el('div', 'debug');

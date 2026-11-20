@@ -66,7 +66,7 @@ export class CombatHud {
     this.hpFill.classList.toggle('low', ratio < 0.3);
     this.hpText.textContent = `${Math.ceil(c.health)} / ${c.opts.maxHealth}`;
     this.nameEl.textContent = playerName;
-    this.weaponEl.textContent = `${player.weapon.name}  ·  1 Sword  2 Spear`;
+    this.weaponEl.textContent = `${player.weapon.name}  ·  1 Sword  2 Spear  3 Unarmed  X Sheathe/Draw`;
 
     const seen = new Set<string>();
     for (const e of enemies) {

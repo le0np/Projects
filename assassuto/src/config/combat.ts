@@ -52,6 +52,10 @@ export interface WeaponDef {
 
 const A = (d: Omit<AttackDef, 'hitstop' | 'shake'> & Partial<Pick<AttackDef, 'hitstop' | 'shake'>>): AttackDef => ({ hitstop: 0.06, shake: 0.15, ...d });
 
+/*
+ * Armed styles only use weapon swings (Tripo `slash` and `chop`, varied by clip range and tempo):
+ * a fighter holding a blade never punches or kicks. Punches and kicks belong to the unarmed style.
+ */
 export const sword: WeaponDef = {
   id: 'sword',
   name: 'Wayfarer Blade',
@@ -61,11 +65,11 @@ export const sword: WeaponDef = {
   finisher: 'sw_finisher',
   attacks: {
     sw_l1: A({ id: 'sw_l1', clip: 'slash', duration: 0.48, clipRange: [0.15, 0.85], hitStart: 0.16, hitEnd: 0.28, comboWindow: [0.18, 0.48], cancelAfter: 0.3, damage: 10, poise: 12, knockback: 2, reach: 2.4, arc: 70, lunge: 0.5, stamina: 6, next: { light: 'sw_l2', heavy: 'sw_lh' } }),
-    sw_l2: A({ id: 'sw_l2', clip: 'box_01', duration: 0.44, clipRange: [0.1, 0.85], hitStart: 0.14, hitEnd: 0.26, comboWindow: [0.16, 0.44], cancelAfter: 0.28, damage: 11, poise: 12, knockback: 2, reach: 2.5, arc: 60, lunge: 0.6, stamina: 6, next: { light: 'sw_l3', heavy: 'sw_llh' } }),
-    sw_l3: A({ id: 'sw_l3', clip: 'slash', duration: 0.6, clipRange: [0.1, 1], hitStart: 0.2, hitEnd: 0.34, comboWindow: [0.24, 0.6], cancelAfter: 0.4, damage: 16, poise: 20, knockback: 4.5, reach: 2.6, arc: 95, lunge: 0.9, stamina: 8, hitstop: 0.08, shake: 0.25, next: { light: 'sw_l1', heavy: 'sw_llh' } }),
+    sw_l2: A({ id: 'sw_l2', clip: 'chop', duration: 0.46, clipRange: [0.25, 0.8], hitStart: 0.15, hitEnd: 0.27, comboWindow: [0.17, 0.46], cancelAfter: 0.3, damage: 11, poise: 12, knockback: 2, reach: 2.4, arc: 55, lunge: 0.6, stamina: 6, next: { light: 'sw_l3', heavy: 'sw_llh' } }),
+    sw_l3: A({ id: 'sw_l3', clip: 'slash', duration: 0.62, clipRange: [0.05, 1], hitStart: 0.22, hitEnd: 0.36, comboWindow: [0.26, 0.62], cancelAfter: 0.42, damage: 16, poise: 20, knockback: 4.5, reach: 2.6, arc: 100, lunge: 0.9, stamina: 8, hitstop: 0.08, shake: 0.25, next: { light: 'sw_l1', heavy: 'sw_llh' } }),
     sw_h1: A({ id: 'sw_h1', clip: 'chop', duration: 0.85, clipRange: [0.1, 0.9], hitStart: 0.38, hitEnd: 0.5, comboWindow: [0.45, 0.85], cancelAfter: 0.55, damage: 24, poise: 35, knockback: 5, reach: 2.6, arc: 55, lunge: 0.7, stamina: 14, hitstop: 0.1, shake: 0.35, next: { heavy: 'sw_hh', light: 'sw_l2' } }),
     sw_hh: A({ id: 'sw_hh', clip: 'chop', duration: 0.95, clipRange: [0.05, 1], hitStart: 0.42, hitEnd: 0.56, comboWindow: [0.6, 0.95], cancelAfter: 0.65, damage: 32, poise: 55, knockback: 7, reach: 2.7, arc: 60, lunge: 1.0, stamina: 16, hitstop: 0.12, shake: 0.45, knockdown: true }),
-    sw_lh: A({ id: 'sw_lh', clip: 'front_kick_01', duration: 0.7, clipRange: [0.1, 0.9], hitStart: 0.26, hitEnd: 0.38, comboWindow: [0.4, 0.7], cancelAfter: 0.45, damage: 14, poise: 40, knockback: 8, reach: 2.2, arc: 50, lunge: 0.6, stamina: 12, hitstop: 0.09, shake: 0.3, next: { light: 'sw_l1' } }),
+    sw_lh: A({ id: 'sw_lh', clip: 'slash', duration: 0.78, clipRange: [0, 1], hitStart: 0.3, hitEnd: 0.46, comboWindow: [0.48, 0.78], cancelAfter: 0.5, damage: 18, poise: 40, knockback: 8, reach: 2.7, arc: 130, lunge: 0.8, stamina: 12, hitstop: 0.09, shake: 0.3, next: { light: 'sw_l1' } }),
     sw_llh: A({ id: 'sw_llh', clip: 'chop', duration: 0.9, clipRange: [0.05, 1], hitStart: 0.36, hitEnd: 0.5, comboWindow: [0.6, 0.9], cancelAfter: 0.6, damage: 28, poise: 60, knockback: 6, launch: 7, reach: 2.7, arc: 80, lunge: 0.9, stamina: 16, hitstop: 0.12, shake: 0.45, knockdown: true }),
     sw_air: A({ id: 'sw_air', clip: 'chop', duration: 0.6, clipRange: [0.15, 0.9], hitStart: 0.18, hitEnd: 0.34, comboWindow: [0.4, 0.6], cancelAfter: 0.4, damage: 18, poise: 30, knockback: 3, reach: 2.6, arc: 90, lunge: 0.4, stamina: 10, hitstop: 0.08, shake: 0.3 }),
     sw_counter: A({ id: 'sw_counter', clip: 'slash', duration: 0.5, clipRange: [0.15, 0.9], hitStart: 0.14, hitEnd: 0.28, comboWindow: [0.3, 0.5], cancelAfter: 0.3, damage: 30, poise: 80, knockback: 6, reach: 2.8, arc: 90, lunge: 1.0, stamina: 0, hitstop: 0.14, shake: 0.4, next: { light: 'sw_l2', heavy: 'sw_lh' } }),
@@ -73,24 +77,57 @@ export const sword: WeaponDef = {
   },
 };
 
-/** Spear: longer reach, narrower arcs, fewer but more deliberate hits (proves weapon variety, GDD 9). */
+/** Spear: longer reach, narrower arcs, fewer but more deliberate swings (proves weapon variety, GDD 9). */
 export const spear: WeaponDef = {
   id: 'spear',
   name: 'Ashwood Spear',
   start: { light: 'sp_l1', heavy: 'sp_h1' },
   air: 'sp_air',
   counter: 'sp_counter',
-  finisher: 'sw_finisher',
+  finisher: 'sp_finisher',
   attacks: {
-    sp_l1: A({ id: 'sp_l1', clip: 'box_01', duration: 0.5, clipRange: [0.1, 0.85], hitStart: 0.18, hitEnd: 0.3, comboWindow: [0.2, 0.5], cancelAfter: 0.32, damage: 11, poise: 10, knockback: 2.5, reach: 3.3, arc: 30, lunge: 0.6, stamina: 7, next: { light: 'sp_l2', heavy: 'sp_h1' } }),
-    sp_l2: A({ id: 'sp_l2', clip: 'box_02', duration: 0.55, clipRange: [0.1, 0.85], hitStart: 0.2, hitEnd: 0.32, comboWindow: [0.24, 0.55], cancelAfter: 0.36, damage: 13, poise: 14, knockback: 3.5, reach: 3.4, arc: 30, lunge: 0.7, stamina: 7, next: { light: 'sp_l1' } }),
-    sp_h1: A({ id: 'sp_h1', clip: 'slash', duration: 0.9, clipRange: [0, 1], hitStart: 0.4, hitEnd: 0.56, comboWindow: [0.5, 0.9], cancelAfter: 0.6, damage: 22, poise: 40, knockback: 6, reach: 3.4, arc: 120, lunge: 0.4, stamina: 15, hitstop: 0.1, shake: 0.35, knockdown: true }),
+    sp_l1: A({ id: 'sp_l1', clip: 'slash', duration: 0.52, clipRange: [0.2, 0.8], hitStart: 0.2, hitEnd: 0.32, comboWindow: [0.22, 0.52], cancelAfter: 0.34, damage: 11, poise: 10, knockback: 2.5, reach: 3.3, arc: 45, lunge: 0.6, stamina: 7, next: { light: 'sp_l2', heavy: 'sp_h1' } }),
+    sp_l2: A({ id: 'sp_l2', clip: 'chop', duration: 0.58, clipRange: [0.25, 0.85], hitStart: 0.22, hitEnd: 0.34, comboWindow: [0.26, 0.58], cancelAfter: 0.38, damage: 13, poise: 14, knockback: 3.5, reach: 3.4, arc: 35, lunge: 0.7, stamina: 7, next: { light: 'sp_l1', heavy: 'sp_h1' } }),
+    sp_h1: A({ id: 'sp_h1', clip: 'slash', duration: 0.9, clipRange: [0, 1], hitStart: 0.4, hitEnd: 0.56, comboWindow: [0.5, 0.9], cancelAfter: 0.6, damage: 22, poise: 40, knockback: 6, reach: 3.4, arc: 130, lunge: 0.4, stamina: 15, hitstop: 0.1, shake: 0.35, knockdown: true }),
     sp_air: A({ id: 'sp_air', clip: 'chop', duration: 0.6, clipRange: [0.15, 0.9], hitStart: 0.2, hitEnd: 0.34, comboWindow: [0.4, 0.6], cancelAfter: 0.4, damage: 16, poise: 25, knockback: 3, reach: 3, arc: 60, lunge: 0.4, stamina: 10 }),
-    sp_counter: A({ id: 'sp_counter', clip: 'box_02', duration: 0.5, clipRange: [0.1, 0.9], hitStart: 0.14, hitEnd: 0.28, comboWindow: [0.3, 0.5], cancelAfter: 0.3, damage: 30, poise: 80, knockback: 7, reach: 3.5, arc: 40, lunge: 1.0, stamina: 0, hitstop: 0.14, shake: 0.4 }),
+    sp_counter: A({ id: 'sp_counter', clip: 'slash', duration: 0.5, clipRange: [0.1, 0.9], hitStart: 0.14, hitEnd: 0.28, comboWindow: [0.3, 0.5], cancelAfter: 0.3, damage: 30, poise: 80, knockback: 7, reach: 3.5, arc: 60, lunge: 1.0, stamina: 0, hitstop: 0.14, shake: 0.4 }),
+    sp_finisher: A({ id: 'sp_finisher', clip: 'chop', duration: 1.4, clipRange: [0, 1], hitStart: 0.8, hitEnd: 0.95, comboWindow: [2, 2], cancelAfter: 1.4, damage: 9999, poise: 999, knockback: 9, launch: 4, reach: 3.6, arc: 120, lunge: 0.6, stamina: 0, hitstop: 0.2, shake: 0.7, knockdown: true }),
   },
 };
 
-export const weapons: Record<string, WeaponDef> = { sword, spear };
+/**
+ * Unarmed: the weapon is put away and the fighter uses fists and kicks. Faster and cheaper,
+ * but shorter reach and less damage.
+ */
+export const fists: WeaponDef = {
+  id: 'fists',
+  name: 'Unarmed',
+  start: { light: 'fi_l1', heavy: 'fi_h1' },
+  air: 'fi_air',
+  counter: 'fi_counter',
+  finisher: 'fi_finisher',
+  attacks: {
+    fi_l1: A({ id: 'fi_l1', clip: 'box_01', duration: 0.36, clipRange: [0.1, 0.8], hitStart: 0.12, hitEnd: 0.2, comboWindow: [0.13, 0.36], cancelAfter: 0.22, damage: 6, poise: 9, knockback: 1.5, reach: 1.7, arc: 55, lunge: 0.35, stamina: 4, hitstop: 0.05, next: { light: 'fi_l2', heavy: 'fi_lh' } }),
+    fi_l2: A({ id: 'fi_l2', clip: 'box_02', duration: 0.38, clipRange: [0.1, 0.8], hitStart: 0.13, hitEnd: 0.22, comboWindow: [0.14, 0.38], cancelAfter: 0.24, damage: 7, poise: 10, knockback: 1.8, reach: 1.7, arc: 55, lunge: 0.4, stamina: 4, hitstop: 0.05, next: { light: 'fi_l3', heavy: 'fi_llh' } }),
+    fi_l3: A({ id: 'fi_l3', clip: 'box_01', duration: 0.5, clipRange: [0, 1], hitStart: 0.18, hitEnd: 0.3, comboWindow: [0.22, 0.5], cancelAfter: 0.34, damage: 11, poise: 18, knockback: 4, reach: 1.8, arc: 60, lunge: 0.6, stamina: 6, hitstop: 0.07, shake: 0.2, next: { light: 'fi_l1', heavy: 'fi_llh' } }),
+    fi_h1: A({ id: 'fi_h1', clip: 'front_kick_01', duration: 0.7, clipRange: [0.1, 0.9], hitStart: 0.28, hitEnd: 0.4, comboWindow: [0.4, 0.7], cancelAfter: 0.45, damage: 15, poise: 32, knockback: 6, reach: 2.0, arc: 50, lunge: 0.5, stamina: 10, hitstop: 0.09, shake: 0.3, next: { heavy: 'fi_hh', light: 'fi_l2' } }),
+    fi_hh: A({ id: 'fi_hh', clip: 'front_kick_01', duration: 0.8, clipRange: [0, 1], hitStart: 0.34, hitEnd: 0.46, comboWindow: [0.5, 0.8], cancelAfter: 0.55, damage: 20, poise: 45, knockback: 8, reach: 2.1, arc: 55, lunge: 0.7, stamina: 12, hitstop: 0.11, shake: 0.4, knockdown: true }),
+    fi_lh: A({ id: 'fi_lh', clip: 'front_kick_01', duration: 0.65, clipRange: [0.1, 0.9], hitStart: 0.24, hitEnd: 0.36, comboWindow: [0.38, 0.65], cancelAfter: 0.42, damage: 13, poise: 38, knockback: 8, reach: 2.0, arc: 50, lunge: 0.6, stamina: 10, hitstop: 0.09, shake: 0.3, next: { light: 'fi_l1' } }),
+    fi_llh: A({ id: 'fi_llh', clip: 'flip', duration: 0.9, clipRange: [0, 1], hitStart: 0.36, hitEnd: 0.5, comboWindow: [0.6, 0.9], cancelAfter: 0.62, damage: 18, poise: 50, knockback: 5, launch: 7, reach: 2.0, arc: 80, lunge: 0.5, stamina: 14, hitstop: 0.11, shake: 0.4, knockdown: true }),
+    fi_air: A({ id: 'fi_air', clip: 'front_kick_01', duration: 0.55, clipRange: [0.1, 0.9], hitStart: 0.18, hitEnd: 0.32, comboWindow: [0.36, 0.55], cancelAfter: 0.36, damage: 12, poise: 25, knockback: 4, reach: 2.0, arc: 80, lunge: 0.4, stamina: 8 }),
+    fi_counter: A({ id: 'fi_counter', clip: 'box_02', duration: 0.45, clipRange: [0.05, 0.9], hitStart: 0.13, hitEnd: 0.24, comboWindow: [0.26, 0.45], cancelAfter: 0.28, damage: 22, poise: 70, knockback: 6, reach: 1.9, arc: 70, lunge: 0.9, stamina: 0, hitstop: 0.13, shake: 0.35, next: { light: 'fi_l2', heavy: 'fi_lh' } }),
+    fi_finisher: A({ id: 'fi_finisher', clip: 'flip', duration: 1.3, clipRange: [0, 1], hitStart: 0.6, hitEnd: 0.8, comboWindow: [2, 2], cancelAfter: 1.3, damage: 9999, poise: 999, knockback: 10, launch: 5, reach: 2.6, arc: 120, lunge: 0.4, stamina: 0, hitstop: 0.2, shake: 0.7, knockdown: true }),
+  },
+};
+
+/** Weapons the player cycles through with keys 1-3; `fists` means the weapon is put away. */
+export const weaponOrder = ['sword', 'spear', 'fists'] as const;
+
+/** Clips that only make sense with a blade in hand / with empty hands. Used to verify the rule in tests. */
+export const armedClips = ['slash', 'chop'];
+export const unarmedClips = ['box_01', 'box_02', 'front_kick_01', 'flip'];
+
+export const weapons: Record<string, WeaponDef> = { sword, spear, fists };
 
 export const combatConfig = {
   inputBuffer: 0.25,

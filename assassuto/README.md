@@ -51,11 +51,12 @@ Bez API ključa: `npm run assets:prompts` napravi `assets-src/TRIPO-PROMPTS.md` 
 - **Pauza** (Esc): Resume, Save game, Settings, Save & quit. **Postavke**: glasnoća (zvuk dolazi kasnije), osjetljivost miša, invertiranje Y osi, kvaliteta grafike (mijenja se odmah), prikaz kontrola.
 - Echo prati igrača sa strane (s obzirom na kameru) i ne zaklanja pogled. Ovo je osnovno praćenje, a puno ponašanje dolazi u fazi 5.
 - **Borba** (GDD 8):
-  - Napadi: lagani (LMB/J) i teški (RMB/K), s combo grafom (L-L-L, L-L-H lansira neprijatelja, L-H udarac nogom, H-H rušenje) i input bufferom od 0,25 s. Napad u zraku, kratki iskorak u napad, pomoć pri ciljanju.
+  - Napadi: lagani (LMB/J) i teški (RMB/K), s combo grafom (L-L-L, L-L-H lansira neprijatelja, L-H široki zamah, H-H rušenje) i input bufferom od 0,25 s. Napad u zraku, kratki iskorak u napad, pomoć pri ciljanju.
+  - **S oružjem lik koristi samo oružje** (zamasi mačem ili kopljem), nikad šake ni noge. **Bez oružja** (tipka 3, ili X za spremanje i vađenje oružja) bori se rukama i nogama: direkt, kroše, udarac nogom i salto-udarac. Taj stil je brži i jeftiniji, ali ima kraći doseg i manju štetu. Promjena oružja usred napada izvrši se čim napad završi.
   - Obrana: izmicanje (C/Alt) s i-frameovima, blok (Q) koji troši staminu i može se slomiti, te perfect parry (Q tik prije udarca) koji usporava vrijeme i otvara counter.
   - Neprijatelji imaju poise: kad se slomi, postaju ranjivi i dobiju zlatni prsten, a F pokreće finisher s kinematografskim kadrom.
   - Lock-on (Tab/srednji klik), hitstop, tresenje kamere, iskre u boji elementa, brojevi štete, brojač udaraca i ward štit pri bloku.
-  - Dva oružja (1 mač, 2 koplje) s drukčijim dosegom, lukom i combom.
+  - Tri stila (1 mač, 2 koplje, 3 bez oružja) s drukčijim dosegom, lukom i combom.
   - Igrač ima zdravlje. Nakon poraza vraća se na shrine, a kamp se resetira.
 - **Raider kamp** u svakoj regiji: šatori, sanduci i logorska vatra, s 3 Raidera (Tripo model). AI ih vodi kroz stanja: lutanje, primjećivanje, prilaz, kruženje i napad, uz najviše jednog napadača odjednom. Napad najavljuju bljeskom na oštrici (znak za parry), reagiraju na stagger, rušenje i ranjivost, a vraćaju se kući ako igrač pobjegne. Kamp se obnavlja kad ga igrač napusti.
 - Četiri regije sa svojim terenom, nebom, paletom, vegetacijom i atmosferom: **Emberreach Canyons** (vatra, jug), **Glacemere Shores** (voda, sjever), **Thornwall Highlands** (zemlja, zapad) i **Galecrest Heights** (zrak, istok). Svaka ima elementalni shrine kao orijentir.
@@ -82,7 +83,8 @@ Bez API ključa: `npm run assets:prompts` napravi `assets-src/TRIPO-PROMPTS.md` 
 | Q (držati) / L | blok, tik prije udarca parry |
 | Tab ili srednji klik | lock-on |
 | F | finisher (kad je neprijatelj "BROKEN") |
-| 1 / 2 | mač / koplje |
+| 1 / 2 / 3 | mač / koplje / bez oružja |
+| X | spremi ili izvadi oružje |
 | H, F3, Esc | pomoć, debug, pauza |
 
 ## Kako je napravljeno

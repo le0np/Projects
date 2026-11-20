@@ -61,15 +61,38 @@ export class Player {
     weaponId = 'sword',
   ) {
     this.runner = new AttackRunner(weapons[weaponId] ?? weapons.sword);
+    if (weaponId !== 'fists' && weapons[weaponId]) this.lastArmed = weaponId;
   }
 
   get weapon(): WeaponDef {
     return this.runner.weapon;
   }
 
+  /** Last real weapon, restored when the player draws again (X). */
+  lastArmed = 'sword';
+
+  get armed(): boolean {
+    return this.weapon.id !== 'fists';
+  }
+
+  /** Weapon change requested mid-attack; applied as soon as the move ends. */
+  private pendingWeapon: string | null = null;
+
   setWeapon(id: string): void {
-    if (!weapons[id] || this.runner.busy) return;
+    if (!weapons[id]) return;
+    if (this.runner.busy) {
+      this.pendingWeapon = id;
+      return;
+    }
+    this.pendingWeapon = null;
+    if (id !== 'fists') this.lastArmed = id;
     this.runner.weapon = weapons[id];
+    this.buffer.clear();
+  }
+
+  /** The weapon the player will hold once any queued change applies (used by the X toggle). */
+  private get intendedWeapon(): string {
+    return this.pendingWeapon ?? this.weapon.id;
   }
 
   spawn(p: THREE.Vector3, facing = 0): void {
@@ -94,6 +117,9 @@ export class Player {
     if (input.wasPressed('attackHeavy')) this.buffer.push('heavy', ctx.now);
     if (input.wasPressed('weapon1')) this.setWeapon('sword');
     if (input.wasPressed('weapon2')) this.setWeapon('spear');
+    if (input.wasPressed('weapon3')) this.setWeapon('fists');
+    if (input.wasPressed('sheathe')) this.setWeapon(this.intendedWeapon === 'fists' ? this.lastArmed : 'fists');
+    if (this.pendingWeapon && !this.runner.busy) this.setWeapon(this.pendingWeapon);
 
     const f = (input.isDown('moveForward') ? 1 : 0) - (input.isDown('moveBack') ? 1 : 0);
     const r = (input.isDown('moveRight') ? 1 : 0) - (input.isDown('moveLeft') ? 1 : 0);

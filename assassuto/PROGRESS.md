@@ -70,6 +70,12 @@ Faze 1–3 od 8 su gotove. Igra ima glavni izbornik, kreator lika u 6 koraka s 3
 - Mač u ruci Tripo lika: osi kosti šake izmjerene su u igri (+Z naprijed), a smjer oštrice potvrđen je brojčano.
 - Prebojavanje kose generalizirano je na chroma key po modelu (`config/characters.ts`): ženski lik ima tamnoplavu kosu, a muški tamnosmeđu. Za oba je ključna boja izmjerena iz teksela vezanih uz kost glave.
 
+### Oružje i borba bez oružja (20. studenoga 2026.)
+
+- Vlasnik je primijetio da lik s mačem udara šakom (jab). Sada vrijedi pravilo: **s oružjem samo oružje**. Mač i koplje koriste isključivo Tripo zamahe (`slash`, `chop`) s različitim dijelovima clipa i tempom, a dotadašnji jab-ovi (`box_01`/`box_02`) i udarac nogom u combu mača zamijenjeni su zamasima. Test `weapon styles` to provjerava za svaki napad.
+- Novi stil **Unarmed** (`fists` u `config/combat.ts`): tipka 3, a X sprema ili vadi zadnje oružje. Oružje se tada skida iz ruke. Napadi su direkt, kroše, udarac nogom, salto-udarac koji lansira, counter šakom i finisher saltom, uz kraći doseg, manju štetu i manji trošak stamine.
+- Promjena oružja usred napada stavlja se u red i izvrši čim napad završi. Oružje se sprema u save (`equipment.weapon`).
+
 ## Zadnja automatizirana provjera
 
 Provedeno 20. studenoga 2026.:
@@ -77,9 +83,9 @@ Provedeno 20. studenoga 2026.:
 | Provjera | Rezultat |
 | --- | --- |
 | `npx tsc --noEmit` | bez grešaka |
-| `npm test` | 42/42 prolazi (motor 6, save i postavke 9, Tripo klijent, manifest i hash 9, pipeline 1, borba 17) |
+| `npm test` | 43/43 prolazi (motor 6, save i postavke 9, Tripo klijent, manifest i hash 9, pipeline 1, borba 18) |
 | `npm run e2e` | sve prolazi: izbornik (Continue onemogućen bez savea, settings, credits) → kreator (preview Tripo lika, boja kose, građa, muško tijelo, odbijeno prazno ime, Water → Glacemere, Echo vuk) → intro s titlovima → igra (Aria u Glacemereu s Echom, kretanje) → pauza i spremanje → izbornik (Continue prikazuje Ariu) → reload → Continue (ista pozicija, odstupanje 0,00 m) → borba (Raideri primjećuju igrača, Tab lock-on, napadi smanjuju zdravlje, oznaka finishera, finisher ubija) → sve 4 regije (spawn, skok, doskok, kretanje), bez console grešaka |
-| Borba ručno u pregledniku | Raider nanosi štetu (160 → 146, igrač u staggeru), finisher ubija ranjivog Raidera, oštrica gleda naprijed (izmjereno) |
+| Borba ručno u pregledniku | Raider nanosi štetu (160 → 146, igrač u staggeru), finisher ubija ranjivog Raidera, oštrica gleda naprijed (izmjereno). Mač koristi samo `slash`/`chop`, a bez oružja `front_kick_01` i bez mača u ruci. X i 1–3 mijenjaju stil, i usred napada. |
 | `npm run build` | prolazi |
 | GLB lik u igri | sintetički riggani GLB je prošao `optimizeAll` i animacija pomiče kost. Pravi Tripo `player_feminine` je učitan u igri (`view: gltf`), screenshotovi sprijeda, straga, u trku i skoku ispravni, bez console grešaka |
 | `npm run e2e` s Tripo modelom | sve prolazi |

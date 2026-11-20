@@ -4,7 +4,7 @@ import { AttackRunner } from '../src/combat/AttackRunner';
 import { Combatant } from '../src/combat/Combatant';
 import { InputBuffer } from '../src/combat/InputBuffer';
 import { inArc, isInFront, resolveHit, type HitInfo } from '../src/combat/resolveHit';
-import { combatConfig, sword, weapons } from '../src/config/combat';
+import { armedClips, combatConfig, sword, unarmedClips, weapons } from '../src/config/combat';
 
 const step = (r: AttackRunner, total: number, dt = 1 / 60) => {
   const ev = { opened: 0, closed: 0, finished: 0 };
@@ -62,6 +62,15 @@ describe('AttackRunner (combo graph)', () => {
         expect(a.hitEnd).toBeLessThanOrEqual(a.duration);
         for (const n of Object.values(a.next ?? {})) expect(w.attacks[n!], `${a.id} -> ${n}`).toBeDefined();
       }
+    }
+  });
+});
+
+describe('weapon styles', () => {
+  it('armed styles only swing the weapon; punches and kicks are unarmed only', () => {
+    for (const w of Object.values(weapons)) {
+      const allowed = w.id === 'fists' ? unarmedClips : armedClips;
+      for (const a of Object.values(w.attacks)) expect(allowed, `${w.id}:${a.id} uses ${a.clip}`).toContain(a.clip);
     }
   });
 });
