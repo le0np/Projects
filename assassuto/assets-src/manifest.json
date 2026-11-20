@@ -1,0 +1,143 @@
+{
+  "$comment": "Single source of truth for every generated 3D asset. tools/tripo/generate.ts reads it; `npm run assets:prompts` turns it into TRIPO-PROMPTS.md for manual use in Tripo Studio.",
+  "style": {
+    "character": "original character design, stylized anime fantasy action RPG art style, expressive face with large eyes, hand-painted cel-shaded textures, clean readable silhouette, full body, standing in A-pose with arms slightly away from the body, facing forward, neutral expression, game-ready",
+    "creature": "original fantasy creature design, stylized anime fantasy action RPG art style, hand-painted cel-shaded textures, memorable silhouette, full body, standing neutral pose, facing forward, game-ready",
+    "object": "stylized anime fantasy action RPG prop, hand-painted cel-shaded textures, clean shapes, single object, game-ready",
+    "negative": "photorealistic, realistic skin pores, low poly, blocky, voxel, multiple characters, base, pedestal, ground plane, text, watermark, logo, blurry"
+  },
+  "defaults": {
+    "model": "v3.1-20260211",
+    "texture_quality": "detailed",
+    "pbr": true,
+    "face_limit": 30000
+  },
+  "assets": [
+    {
+      "id": "player_feminine", "kind": "character", "phase": 1, "style": "character",
+      "prompt": "young woman adventurer, slim athletic build, long dark hair, light travel coat with short cape over a fitted tunic, leather belt with small pouches, fingerless gloves, knee-high boots, no weapon in hands, neutral colours with off-white and deep navy",
+      "face_limit": 40000, "targetHeight": 1.68,
+      "rig": { "type": "biped", "model": "v1.0-20240301", "spec": "tripo" },
+      "animations": {
+        "idle": "preset:biped:idle", "walk": "preset:biped:walk", "run": "preset:biped:run", "jump": "preset:biped:jump", "fall": "preset:biped:fall",
+        "slash": "preset:biped:slash", "chop": "preset:biped:chop", "box_01": "preset:biped:box_01", "box_02": "preset:biped:box_02", "front_kick_01": "preset:biped:front_kick_01",
+        "cast_a_spell": "preset:biped:cast_a_spell", "dive": "preset:biped:dive", "flip": "preset:biped:flip", "hurt": "preset:biped:hurt", "hit_to_body_01": "preset:biped:hit_to_body_01",
+        "hit_to_head": "preset:biped:hit_to_head", "fall_down": "preset:biped:defeat_02", "hug": "preset:biped:hug", "look_around": "preset:biped:look_around", "victory": "preset:biped:victory_celebration"
+      },
+      "phase1Animations": ["idle", "walk", "run", "jump", "fall"],
+      "out": "characters/player_feminine"
+    },
+    {
+      "id": "player_masculine", "kind": "character", "phase": 2, "style": "character",
+      "prompt": "young man adventurer, athletic build, short dark brown hair, light travel coat with short cape over a fitted tunic, leather belt with small pouches, fingerless gloves, knee-high boots, no weapon in hands, neutral colours with off-white and deep navy",
+      "face_limit": 40000, "targetHeight": 1.78,
+      "rig": { "type": "biped", "model": "v1.0-20240301", "spec": "tripo" },
+      "animationsFrom": "player_feminine",
+      "out": "characters/player_masculine"
+    },
+    {
+      "id": "echo_human", "kind": "character", "phase": 5, "style": "character",
+      "prompt": "gentle guardian spirit in human form, flowing long robe and soft shawl, calm kind face, simple elegant clothing in pale white and silver, slightly translucent ethereal look",
+      "face_limit": 30000, "targetHeight": 1.75,
+      "rig": { "type": "biped", "model": "v1.0-20240301", "spec": "tripo" },
+      "animations": { "idle": "preset:biped:idle", "walk": "preset:biped:walk", "run": "preset:biped:run", "hug": "preset:biped:hug", "cast_a_spell": "preset:biped:cast_a_spell", "greet": "preset:biped:greet_01" },
+      "out": "characters/echo_human"
+    },
+    {
+      "id": "echo_wolf", "kind": "creature", "phase": 5, "style": "creature",
+      "prompt": "guardian spirit wolf, large graceful wolf with long flowing mane and tail, pale silver fur with soft glowing markings, kind eyes",
+      "face_limit": 25000, "targetHeight": 1.1,
+      "rig": { "type": "quadruped", "model": "v2.5-20260210" },
+      "animations": { "walk": "preset:quadruped:walk" },
+      "out": "creatures/echo_wolf"
+    },
+    {
+      "id": "echo_bird", "kind": "creature", "phase": 5, "style": "creature",
+      "prompt": "guardian spirit bird, large elegant crane-like bird with long flowing tail feathers, pale white and silver plumage with soft glowing markings, wings folded",
+      "face_limit": 20000, "targetHeight": 1.3,
+      "rig": { "type": "avian", "model": "v2.5-20260210" },
+      "out": "creatures/echo_bird"
+    },
+    {
+      "id": "enemy_raider", "kind": "character", "phase": 3, "style": "character",
+      "prompt": "masked bandit raider, lean build, patched leather armour with rough cloth hood, half mask, bracers, worn boots, muted brown and rust colours, menacing stance",
+      "face_limit": 25000, "targetHeight": 1.75,
+      "rig": { "type": "biped", "model": "v1.0-20240301", "spec": "tripo" },
+      "animations": {
+        "idle": "preset:biped:idle", "walk": "preset:biped:walk", "run": "preset:biped:run", "slash": "preset:biped:slash", "chop": "preset:biped:chop",
+        "hurt": "preset:biped:hurt", "hit_to_body_01": "preset:biped:hit_to_body_01", "fall_down": "preset:biped:defeat_02", "dive": "preset:biped:dive", "angry": "preset:biped:angry_01"
+      },
+      "out": "characters/enemy_raider"
+    },
+    {
+      "id": "enemy_archer", "kind": "character", "phase": 4, "style": "character",
+      "prompt": "hooded raider archer, slim build, light leather armour, quiver on back, long scarf, muted green and brown colours, no bow in hands",
+      "face_limit": 25000, "targetHeight": 1.72,
+      "rig": { "type": "biped", "model": "v1.0-20240301", "spec": "tripo" },
+      "animations": { "idle": "preset:biped:idle", "walk": "preset:biped:walk", "run": "preset:biped:run", "shoot": "preset:biped:shoot", "hurt": "preset:biped:hurt", "fall_down": "preset:biped:defeat_02" },
+      "out": "characters/enemy_archer"
+    },
+    {
+      "id": "enemy_brute", "kind": "character", "phase": 4, "style": "character",
+      "prompt": "huge armoured brute, very broad heavy build, thick plate pauldrons and spiked gauntlets, horned iron helmet, dark iron and deep red colours",
+      "face_limit": 30000, "targetHeight": 2.35,
+      "rig": { "type": "biped", "model": "v1.0-20240301", "spec": "tripo" },
+      "animations": { "idle": "preset:biped:idle", "walk": "preset:biped:walk", "chop": "preset:biped:chop", "lift_heavy": "preset:biped:lift_heavy", "hurt": "preset:biped:hurt", "fall_down": "preset:biped:defeat_02", "angry": "preset:biped:angry_02" },
+      "out": "characters/enemy_brute"
+    },
+    {
+      "id": "creature_emberfox", "kind": "creature", "phase": 6, "style": "creature",
+      "prompt": "small fire fox creature with three fluffy tails tipped with ember-like glow, orange and cream fur, curious big eyes",
+      "face_limit": 15000, "targetHeight": 0.6,
+      "rig": { "type": "quadruped", "model": "v2.5-20260210" },
+      "animations": { "walk": "preset:quadruped:walk" },
+      "out": "creatures/emberfox"
+    },
+    {
+      "id": "creature_tidecrane", "kind": "creature", "phase": 6, "style": "creature",
+      "prompt": "graceful water heron creature with flowing fin-like feathers, deep blue and teal plumage with white accents, long legs, timid posture",
+      "face_limit": 15000, "targetHeight": 1.2,
+      "rig": { "type": "avian", "model": "v2.5-20260210" },
+      "out": "creatures/tidecrane"
+    },
+    {
+      "id": "creature_mossback", "kind": "creature", "phase": 6, "style": "creature",
+      "prompt": "gentle earth tortoise-like creature with a mossy rock shell, small ferns and flowers growing on the shell, sturdy legs, calm protective look",
+      "face_limit": 18000, "targetHeight": 0.9,
+      "rig": { "type": "quadruped", "model": "v2.5-20260210" },
+      "animations": { "walk": "preset:quadruped:walk" },
+      "out": "creatures/mossback"
+    },
+    {
+      "id": "creature_zephyrhare", "kind": "creature", "phase": 6, "style": "creature",
+      "prompt": "light air hare creature with long ribbon-like ears and wispy tail, pale mint and white fur, playful pose",
+      "face_limit": 15000, "targetHeight": 0.5,
+      "rig": { "type": "quadruped", "model": "v2.5-20260210" },
+      "animations": { "walk": "preset:quadruped:walk" },
+      "out": "creatures/zephyrhare"
+    },
+    {
+      "id": "mount_dunemane", "kind": "mount", "phase": 6, "style": "creature",
+      "prompt": "large rideable wolf-like beast mount with a thick sandy mane, muscular legs, simple leather saddle and reins, tan and dark brown fur",
+      "face_limit": 30000, "targetHeight": 1.8,
+      "rig": { "type": "quadruped", "model": "v2.5-20260210" },
+      "animations": { "walk": "preset:quadruped:walk" },
+      "out": "mounts/dunemane"
+    },
+    {
+      "id": "mount_skywing", "kind": "mount", "phase": 6, "style": "creature",
+      "prompt": "large rideable griffin-like flying mount with feathered head and wings, lion-like body, saddle on its back, white and sky-blue feathers with gold accents, wings folded",
+      "face_limit": 35000, "targetHeight": 2.2,
+      "rig": { "type": "quadruped", "model": "v2.5-20260210" },
+      "animations": { "walk": "preset:quadruped:walk" },
+      "out": "mounts/skywing"
+    },
+    { "id": "weapon_sword", "kind": "weapon", "phase": 3, "style": "object", "prompt": "elegant one-handed fantasy sword, slim slightly curved blade, ornate silver guard with a small inset gem, wrapped leather grip, lying straight vertical", "face_limit": 6000, "targetHeight": 0.95, "out": "weapons/sword" },
+    { "id": "weapon_spear", "kind": "weapon", "phase": 3, "style": "object", "prompt": "fantasy spear, long wooden shaft with metal bands, leaf-shaped steel spearhead, small cloth ribbon under the head, straight vertical", "face_limit": 6000, "targetHeight": 2.0, "out": "weapons/spear" },
+    { "id": "prop_shrine", "kind": "prop", "phase": 4, "style": "object", "prompt": "ancient elemental shrine, circular stone platform with six carved standing stones around a floating crystal pedestal, weathered stone with soft moss", "face_limit": 30000, "targetHeight": 4.5, "out": "props/shrine" },
+    { "id": "prop_fire_brazier", "kind": "prop", "phase": 4, "style": "object", "prompt": "volcanic basalt brazier with glowing ember cracks, carved flame motifs", "face_limit": 8000, "targetHeight": 1.4, "out": "props/fire_brazier" },
+    { "id": "prop_water_lantern", "kind": "prop", "phase": 4, "style": "object", "prompt": "frosted stone lantern with icy blue glass and wave carvings, snow on top", "face_limit": 8000, "targetHeight": 1.6, "out": "props/water_lantern" },
+    { "id": "prop_earth_monolith", "kind": "prop", "phase": 4, "style": "object", "prompt": "mossy carved earth monolith with ancient spiral runes, roots wrapped around the base", "face_limit": 10000, "targetHeight": 3.5, "out": "props/earth_monolith" },
+    { "id": "prop_air_windchime", "kind": "prop", "phase": 4, "style": "object", "prompt": "tall wooden wind chime post with hanging crystal chimes and long fluttering ribbons", "face_limit": 8000, "targetHeight": 3.0, "out": "props/air_windchime" }
+  ]
+}
