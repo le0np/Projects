@@ -29,7 +29,13 @@ export class Hud {
     this.debugEl = el('div', 'debug');
     this.debugEl.hidden = true;
     this.pauseEl = el('div', 'pause');
-    this.pauseEl.innerHTML = `<div class="pause-card"><div class="pause-title">Paused</div><div class="pause-hint">Click to resume</div><button class="btn ghost" data-action="menu">Back to title</button></div>`;
+    this.pauseEl.innerHTML = `<div class="pause-card"><div class="pause-title">Paused</div>
+      <nav class="menu-list">
+        <button class="menu-item" data-action="resume"><span>Resume</span></button>
+        <button class="menu-item" data-action="save"><span>Save game</span></button>
+        <button class="menu-item" data-action="settings"><span>Settings</span></button>
+        <button class="menu-item" data-action="menu"><span>Save &amp; quit to main menu</span></button>
+      </nav></div>`;
     this.pauseEl.hidden = true;
     this.noticeEl = el('div', 'notice');
     this.noticeEl.hidden = true;
@@ -37,11 +43,15 @@ export class Hud {
     parent.append(this.root);
   }
 
-  onPauseAction(handler: (action: 'resume' | 'menu') => void): void {
+  onPauseAction(handler: (action: 'resume' | 'save' | 'settings' | 'menu') => void): void {
     this.pauseEl.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      handler(target.dataset.action === 'menu' ? 'menu' : 'resume');
+      const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-action]');
+      if (btn) handler(btn.dataset.action as 'resume' | 'save' | 'settings' | 'menu');
     });
+  }
+
+  setHelpVisible(v: boolean): void {
+    this.helpEl.classList.toggle('hidden', !v);
   }
 
   showBanner(title: string, subtitle: string): void {

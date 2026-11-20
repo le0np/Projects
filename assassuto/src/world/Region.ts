@@ -260,10 +260,10 @@ export class Region {
       this.collision.add({ x: this.landmark.x + pillar.position.x, z: this.landmark.z + pillar.position.z, radius: 0.55, bottom: this.landmark.y - 1, top: this.landmark.y + 4.5 });
     }
     const core = new THREE.Mesh(
-      this.track(new THREE.OctahedronGeometry(0.9, 0)),
-      this.track(toonMaterial({ color: el.color, emissive: el.glow, emissiveIntensity: 2.2 })),
+      this.track(new THREE.OctahedronGeometry(0.55, 0)),
+      this.track(toonMaterial({ color: el.color, emissive: el.glow, emissiveIntensity: 1.25 })),
     );
-    core.position.y = 2.8;
+    core.position.y = 3.1;
     g.add(core);
     const light = new THREE.PointLight(el.glow, 18, 16, 1.6);
     light.position.y = 2.8;
@@ -271,7 +271,7 @@ export class Region {
     g.position.copy(this.landmark);
     this.group.add(g);
     this.animated.push((t) => {
-      core.position.y = 2.8 + Math.sin(t * 1.3) * 0.25;
+      core.position.y = 3.1 + Math.sin(t * 1.3) * 0.2;
       core.rotation.y = t * 0.6;
     });
   }

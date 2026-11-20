@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-Faza 1 od 8 je gotova. Igra se pokreće u browseru, a igrač u stiliziranom 3D-u bira jednu od četiri regije i u njoj se kreće (trčanje, sprint, skok, kamera iza ramena). Ženski lik je pravi Tripo model s rigom i animacijama idle, walk, run, jump i fall. Muški lik je još proceduralni placeholder.
+Faze 1 i 2 od 8 su gotove. Igra ima glavni izbornik, kreator lika u 6 koraka (izgled, ime, element, Echo, regija, sažetak) s 3D previewom, intro cinematic, kretanje u četiri regije i verzionirano spremanje s nastavkom igre. Ženski lik je pravi Tripo model (prilagodljive visine, građe i boje kose). Muški lik je još proceduralni placeholder. Echo je zasad vizualni duh s osnovnim praćenjem.
 
 ## Napravljeno 20. studenoga 2026.
 
@@ -36,6 +36,19 @@ Faza 1 od 8 je gotova. Igra se pokreće u browseru, a igrač u stiliziranom 3D-u
 - Optimizacija: 9,9 MB → 0,66 MB model + 0,24 MB animacije.
 - Ispravak: Tripo izvozi modele okrenute prema +X, a igra očekuje +Z. Zato je u manifestu dodan `defaults.yawOffset = -π/2` za sve Tripo modele.
 
+### Faza 2: izbornik, kreator lika, Echo, save (20. studenoga 2026.)
+
+- Vlasnik je odobrio fazu 2. Krediti se nisu trošili (790 ostaje), a pitanje o daljnjem generiranju je još otvoreno.
+- **Save sustav** (`src/save/`): `SaveData` v1 sadrži sve iz GDD 14 (lik, Echo, tutorial, pozicija, progresija, oprema i oružja, stvorenja i bond, mount, cooldowni, otkrića, zastavice). Sekcije za kasnije faze već postoje pa se format samo nadograđuje. Uz to idu `sanitizeSave`, lanac migracija, `SaveBackend` (localStorage, memorija za testove), meta podaci (tutorial jednom završen) i postavke kao zaseban ključ. `resolveLoadPosition` vraća igrača na sigurnu poziciju.
+- **Glavni izbornik** s potvrdom prije prepisivanja postojećeg savea, **Settings** (primjena odmah, kvaliteta bez reloada) i **Credits**.
+- **Kreator lika** (`ui/CharacterCreator.ts`) sa 6 koraka i validacijom imena (slova, razmaci, apostrof, crtica, 2–18 znakova). Promjene se odmah vide u previewu: lik stoji na platou shrinea odabrane regije, a promjena elementa ili regije mijenja svijet iza njega.
+- **Prilagodba Tripo lika** (`GltfCharacter.applyAppearance`): visina preko skaliranja modela, građa preko kostiju trupa i udova (animacije nemaju scale trake pa to ostaje sačuvano), boja kose shaderom s maskom iz skin weighta i plave boje teksela, te sijeda kosa iznad 45 godina. Toon materijal zamjenjuje metalni PBR. Teksture likova su 2k zbog bliskih kadrova (model 0,9 MB).
+- **Echo** (`entities/EchoView.ts`): spirit materijal (fresnel, aditivno, bloom) i čestice. Oblici su čovjek (placeholder humanoid bez mača), vuk i ptica (proceduralni, `SpiritCreatures.ts`), a boja se bira. Replike za intro ovise o osobnosti (`config/echo.ts`).
+- **Intro cinematic**: kamera od širokog kadra do igrača, Echo se materijalizira, titlovi s imenima i upisanim sjećanjem, letterbox. Preskače se.
+- **Pauza** sa spremanjem, autosave svake minute te spremanje pri izlasku u izbornik i zatvaranju taba.
+- Echo prati igrača bočno u odnosu na kameru (GDD 6.1: ne zaklanja pogled), uz teleport ako zaostane više od 15 m.
+- Sitnice: manji kristal shrinea, muški placeholder s jaknom umjesto suknje, Esc radi i kad preglednik ne otpusti pointer lock.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 20. studenoga 2026.:
@@ -43,9 +56,9 @@ Provedeno 20. studenoga 2026.:
 | Provjera | Rezultat |
 | --- | --- |
 | `npx tsc --noEmit` | bez grešaka |
-| `npm test` | 15/15 prolazi (motor 6, Tripo klijent i manifest 8, pipeline 1) |
-| `npm run e2e` | sve prolazi: naslovni ekran i 4 regije (spawn na tlu, skok i doskok, kretanje, potrošnja stamine), bez console grešaka |
-| `npm run build` | prolazi, JS 700 kB (187 kB gzip) |
+| `npm test` | 24/24 prolazi (motor 6, save i postavke 9, Tripo klijent i manifest 8, pipeline 1) |
+| `npm run e2e` | sve prolazi: izbornik (Continue onemogućen bez savea, settings, credits) → kreator (preview Tripo lika, boja kose, građa, muško tijelo, odbijeno prazno ime, Water → Glacemere, Echo vuk) → intro s titlovima → igra (Aria u Glacemereu s Echom, kretanje) → pauza i spremanje → izbornik (Continue prikazuje Ariu) → reload → Continue (ista pozicija, odstupanje 0,00 m) → sve 4 regije (spawn, skok, doskok, kretanje), bez console grešaka |
+| `npm run build` | prolazi |
 | GLB lik u igri | sintetički riggani GLB je prošao `optimizeAll` i animacija pomiče kost. Pravi Tripo `player_feminine` je učitan u igri (`view: gltf`), screenshotovi sprijeda, straga, u trku i skoku ispravni, bez console grešaka |
 | `npm run e2e` s Tripo modelom | sve prolazi |
 | `assets:generate --dry-run` | svi asseti ~1730 kredita (gornja procjena), prvi test ~105 kredita |
@@ -57,17 +70,18 @@ Provedeno 20. studenoga 2026.:
 - Tripo nema preset animacije za avian rig, a quadruped ima samo `walk`. Animacije stvorenja i mountova bit će dijelom proceduralne.
 - Kustomizacija frizure s Tripo modelima (zasebni meshevi kose na head boneu) još nije isprobana. Testira se u fazi 2 nakon prvog lika.
 - Headless Chromium sa softverskim GL-om vrti igru na ~12 FPS-a, pa e2e test zbog toga koristi polling. Na pravom GPU-u igra je glatka.
-- Naslovni ekran je privremen (faza 2 donosi pravi glavni izbornik i kreator lika).
+- Za Tripo ženski lik postoji samo jedna frizura (ona koju je model dobio). Dodatne frizure trebaju zasebne Tripo meshe kose (krediti). Plave oči mogu dobiti malo nijanse boje kose jer su u istoj zoni i slične boje.
+- Muški lik i Echo su proceduralni placeholderi dok se ne generiraju `player_masculine`, `echo_human`, `echo_wolf` i `echo_bird`.
+- Headless e2e sa softverskim GL-om i Tripo modelom vrti se na nekoliko FPS-a, pa test koristi polling. Na pravom GPU-u to nije problem.
 
 ## Sljedeći koraci
 
-1. Uz odobrenje vlasnika potrošiti preostale kredite (790) redom: combat animacije za `player_feminine`, zatim `player_masculine` i `enemy_raider`. Ostale modele raditi u kodu dok ne bude novih kredita.
-2. Faza 2: glavni izbornik (New Game, Continue, Settings, Credits), kreator lika u 6 koraka s live 3D previewom, Echo upitnik, verzionirani save (localStorage).
-3. Faza 3: combat jezgra (combo graf, hitboxovi, poise i stagger, dodge, block, parry, counter, finisher) i Raider s AI-em.
-4. Faza 4: četiri elementalne sposobnosti, Archer i Brute, discovery na shrineovima, Tripo propsi.
-5. Faza 5: Echo (praćenje, dijalog po osobnosti, Spirit Ward, Guardian's Embrace) i intro.
-6. Faza 6: bond sustav i stvorenja, ground mount, flying mount u Sky Trialu.
-7. Faza 7: tutorial, progresija, zvuk i polish. Faza 8: završna provjera.
+1. Uz odobrenje vlasnika potrošiti preostale kredite (790) redom: combat animacije za `player_feminine` (nužno za fazu 3), zatim `player_masculine` i `enemy_raider`. Ostale modele raditi u kodu dok ne bude novih kredita.
+2. Faza 3: combat jezgra (combo graf, hitboxovi, poise i stagger, dodge, block, parry, counter, finisher) i Raider s AI-em.
+3. Faza 4: četiri elementalne sposobnosti, Archer i Brute, discovery na shrineovima, Tripo propsi.
+4. Faza 5: Echo (pametnije praćenje, kontekstualni dijalog, Spirit Ward, Guardian's Embrace). Intro i osnovno praćenje su već napravljeni u fazi 2.
+5. Faza 6: bond sustav i stvorenja, ground mount, flying mount u Sky Trialu.
+6. Faza 7: tutorial, progresija, zvuk i polish. Faza 8: završna provjera.
 
 ## Handoff za novi chat
 

@@ -17,7 +17,7 @@ export class Renderer {
 
   constructor(
     readonly canvas: HTMLCanvasElement,
-    quality: Quality = 'high',
+    public quality: Quality = 'high',
   ) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality === 'high' ? 2 : 1));
@@ -38,6 +38,22 @@ export class Renderer {
 
     this.resize();
     window.addEventListener('resize', this.resize);
+  }
+
+  /** Applies a quality preset at runtime (pixel ratio, shadows, bloom). */
+  setQuality(q: Quality, scene?: THREE.Scene): void {
+    this.quality = q;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, q === 'high' ? 2 : q === 'medium' ? 1.25 : 1));
+    const shadows = q !== 'low';
+    if (this.renderer.shadowMap.enabled !== shadows) {
+      this.renderer.shadowMap.enabled = shadows;
+      scene?.traverse((o) => {
+        const m = (o as THREE.Mesh).material;
+        if (m) (Array.isArray(m) ? m : [m]).forEach((x) => (x.needsUpdate = true));
+      });
+    }
+    this.bloom.enabled = q !== 'low';
+    this.resize();
   }
 
   set exposure(v: number) {

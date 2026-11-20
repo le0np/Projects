@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { elements } from '../config/elements';
 import { damp, lerp, smoothstep } from '../core/math';
 import type { CharacterLook } from '../entities/appearance';
+import { greyAmount } from '../config/characters';
 import { toonMaterial } from '../render/ToonMaterials';
 import { locomotionRef, type CharacterView, type LocomotionState } from './CharacterView';
 
@@ -38,7 +39,7 @@ export class PlaceholderHumanoid implements CharacterView {
       cloth: this.track(toonMaterial({ color: 0x3b4566, rim: { color: 0x9fb0e0, strength: 0.18 } })),
       clothLight: this.track(toonMaterial({ color: 0xe9e1d2 })),
       accent: this.track(toonMaterial({ color: el.color, emissive: el.color, emissiveIntensity: 0.15 })),
-      hair: this.track(toonMaterial({ color: a.hairColor, rim: { color: 0xffffff, strength: 0.18, power: 2.5 } })),
+      hair: this.track(toonMaterial({ color: new THREE.Color(a.hairColor).lerp(new THREE.Color(0xb9bcc6), greyAmount(a.age)), rim: { color: 0xffffff, strength: 0.18, power: 2.5 } })),
       boot: this.track(toonMaterial({ color: 0x3a2a24 })),
       eye: this.track(toonMaterial({ color: a.eyeColor, emissive: a.eyeColor, emissiveIntensity: 0.25 })),
       metal: this.track(new THREE.MeshStandardMaterial({ color: 0xd8dde6, metalness: 0.9, roughness: 0.25 })),
@@ -73,8 +74,11 @@ export class PlaceholderHumanoid implements CharacterView {
     pelvis.scale.set((fem ? 1.12 : 1.0) * bulk, 0.75, 0.8 * bulk);
     hips.add(pelvis);
     // Coat tail: an open flared cylinder hanging from the waist.
-    const tailGeo = this.track(new THREE.CylinderGeometry(0.17 * bulk, 0.27 * bulk, 0.42, 16, 1, true));
-    tailGeo.translate(0, -0.2, 0);
+    // Feminine: flared coat skirt; masculine: short straight jacket hem.
+    const tailGeo = fem
+      ? this.track(new THREE.CylinderGeometry(0.17 * bulk, 0.27 * bulk, 0.42, 16, 1, true))
+      : this.track(new THREE.CylinderGeometry(0.18 * bulk, 0.2 * bulk, 0.2, 16, 1, true));
+    tailGeo.translate(0, fem ? -0.2 : -0.08, 0);
     const tail = new THREE.Mesh(tailGeo, this.track(toonMaterial({ color: 0x3b4566, side: THREE.DoubleSide })));
     hips.add(tail);
     const belt = new THREE.Mesh(this.track(new THREE.TorusGeometry(0.165 * bulk, 0.025, 8, 24)), mats.accent);
@@ -85,7 +89,7 @@ export class PlaceholderHumanoid implements CharacterView {
     const spine = joint('spine', hips, 0, 0.08, 0);
     const chest = joint('chest', spine, 0, 0.22, 0);
     const torso = new THREE.Mesh(this.track(new THREE.CapsuleGeometry(0.15, 0.22, 6, 16)), mats.cloth);
-    torso.scale.set(w * bulk * 1.08, 1, 0.78 * bulk);
+    torso.scale.set(w * bulk * (fem ? 1.08 : 1.22), 1, 0.78 * bulk);
     torso.position.y = -0.05;
     chest.add(torso);
     const collar = new THREE.Mesh(this.track(new THREE.CylinderGeometry(0.1, 0.16, 0.12, 16)), mats.clothLight);
@@ -144,6 +148,7 @@ export class PlaceholderHumanoid implements CharacterView {
 
     // Sword carried on the back (weapons system arrives in phase 3).
     const sword = new THREE.Group();
+    sword.name = 'sword';
     const blade = new THREE.Mesh(this.track(new THREE.BoxGeometry(0.05, 0.85, 0.012)), mats.metal);
     blade.position.y = 0.45;
     const guard = new THREE.Mesh(this.track(new THREE.BoxGeometry(0.2, 0.035, 0.04)), mats.accent);

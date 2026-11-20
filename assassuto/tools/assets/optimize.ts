@@ -80,7 +80,8 @@ export async function optimizeAll(opts: OptimizeOptions = {}): Promise<RuntimeMa
       prune(),
       weld(),
       resample(),
-      textureCompress({ encoder: sharp, targetFormat: 'webp', resize: [MAX_TEXTURE, MAX_TEXTURE] }),
+      // Characters are seen up close (creator, cutscenes), so they keep 2k textures.
+      textureCompress({ encoder: sharp, targetFormat: 'webp', resize: info.kind === 'character' ? [MAX_TEXTURE * 2, MAX_TEXTURE * 2] : [MAX_TEXTURE, MAX_TEXTURE] }),
       meshopt({ encoder: MeshoptEncoder, level: 'medium' }),
     );
     await io.write(join(outDir, 'model.glb'), doc);
