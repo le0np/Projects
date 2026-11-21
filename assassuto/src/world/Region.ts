@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { RegionDef } from '../config/regions';
 import { elements } from '../config/elements';
+import { discoveryConfig, waystoneId, waystoneNames } from '../config/discovery';
 import { rng, smoothstep } from '../core/math';
 import { addWind, keepNormalOnBackFaces, toonMaterial } from '../render/ToonMaterials';
 import { CollisionGrid } from './CollisionGrid';
@@ -15,8 +16,13 @@ export class Region {
   readonly collision: CollisionGrid;
   readonly spawn: THREE.Vector3;
   readonly landmark: THREE.Vector3;
-  /** Raider camp: centre and spawn points for enemies. */
+  /** Raider camp: centre and spawn points for enemies (order matches `campRoster`). */
   readonly camp: { center: THREE.Vector3; spawns: THREE.Vector3[] };
+  /** Discoverable elemental waystones. */
+  readonly waystones: Waystone[] = [];
+  private shrineCore: THREE.Mesh | null = null;
+  private shrineLight: THREE.PointLight | null = null;
+  private shrineBeam: THREE.Mesh | null = null;
   private windUniform = { time: { value: 0 } };
   private animated: ((t: number) => void)[] = [];
   private disposables: { dispose(): void }[] = [];
@@ -31,12 +37,21 @@ export class Region {
     this.landmark.y = this.terrain.heightAt(this.landmark.x, this.landmark.z);
 
     this.camp = this.pickCamp();
+    this.pickWaystones();
     this.buildTerrain();
     if (t.waterLevel !== null) this.buildWater(t.waterLevel);
     this.buildProps();
     this.buildCamp();
     this.buildGrass();
     this.buildShrine();
+    for (const w of this.waystones) this.buildWaystone(w);
+  }
+
+  /** Shrine glows brighter and sends up a beam once the player has attuned to it. */
+  setAttuned(v: boolean): void {
+    if (this.shrineBeam) this.shrineBeam.visible = v;
+    if (this.shrineCore) (this.shrineCore.material as THREE.MeshToonMaterial).emissiveIntensity = v ? 1.6 : 0.55;
+    if (this.shrineLight) this.shrineLight.intensity = v ? 22 : 8;
   }
 
   /** 0 at water level (or terrain minimum), 1 at the highest peak. */
@@ -130,6 +145,7 @@ export class Region {
         const dLandmark = Math.hypot(x - this.landmark.x, z - this.landmark.z);
         if (dSpawn < (rule.clearRadius ?? 0) || dLandmark < 10) continue;
         if (!tpl.floatHeight && Math.hypot(x - this.camp.center.x, z - this.camp.center.z) < 11) continue;
+        if (!tpl.floatHeight && this.waystones.some((w) => Math.hypot(x - w.pos.x, z - w.pos.z) < 8)) continue;
         const h = this.terrain.heightAt(x, z);
         if (!tpl.floatHeight && water !== null && h < water + 0.3 && rule.kind !== 'rock') continue;
         const nh = this.normHeight(h);
@@ -230,6 +246,7 @@ export class Region {
       if (this.normHeight(h) > 0.55) continue;
       if (Math.hypot(x - this.landmark.x, z - this.landmark.z) < 7) continue;
       if (Math.hypot(x - this.camp.center.x, z - this.camp.center.z) < 5) continue;
+      if (this.waystones.some((w) => Math.hypot(x - w.pos.x, z - w.pos.z) < 1.6)) continue;
       dummy.position.set(x, h - 0.04, z);
       dummy.rotation.set(0, r() * Math.PI, 0);
       const s = 0.5 + r() * 0.45;
@@ -268,10 +285,17 @@ export class Region {
       if (score < best.score) best = { x, z, score };
     }
     const center = new THREE.Vector3(best.x, this.terrain.heightAt(best.x, best.z), best.z);
-    const spawns = [0, 1, 2].map((i) => {
-      const a = (i / 3) * Math.PI * 2 + 0.4;
-      const x = center.x + Math.cos(a) * 3.2;
-      const z = center.z + Math.sin(a) * 3.2;
+    // Two raiders around the fire, an archer at the edge facing the spawn side, the brute by the fire.
+    const toSpawn = Math.atan2(this.spawn.z - center.z, this.spawn.x - center.x);
+    const slots: [number, number][] = [
+      [0.4, 3.2],
+      [0.4 + (Math.PI * 2) / 3, 3.2],
+      [toSpawn + Math.PI + 0.5, 9.5],
+      [0.4 + (Math.PI * 4) / 3, 2.2],
+    ];
+    const spawns = slots.map(([a, d]) => {
+      const x = center.x + Math.cos(a) * d;
+      const z = center.z + Math.sin(a) * d;
       return new THREE.Vector3(x, this.terrain.heightAt(x, z), z);
     });
     return { center, spawns };
@@ -325,6 +349,127 @@ export class Region {
     });
   }
 
+  /** Deterministic waystone spots: flat, dry, spread around the spawn, away from the camp and the shrine. */
+  private pickWaystones(): void {
+    const r = rng(this.def.seed + 777);
+    const water = this.def.terrain.waterLevel;
+    const [dMin, dMax] = discoveryConfig.waystoneDistance;
+    const names = waystoneNames[this.def.element];
+    const n = discoveryConfig.waystonesPerRegion;
+    for (let i = 0; i < n; i++) {
+      let best: { x: number; z: number; score: number } | null = null;
+      for (let k = 0; k < 120; k++) {
+        // Each waystone gets its own sector so they spread out.
+        const a = ((i + r()) / n) * Math.PI * 2;
+        const d = dMin + r() * (dMax - dMin);
+        const x = this.spawn.x + Math.cos(a) * d;
+        const z = this.spawn.z + Math.sin(a) * d;
+        if (Math.hypot(x, z) > this.collision.boundsRadius - 8) continue;
+        const h = this.terrain.heightAt(x, z);
+        if (water !== null && h < water + 0.8) continue;
+        if (Math.hypot(x - this.camp.center.x, z - this.camp.center.z) < 16) continue;
+        if (Math.hypot(x - this.landmark.x, z - this.landmark.z) < 14) continue;
+        const score = this.terrain.slopeAt(x, z) + Math.abs(this.normHeight(h) - 0.25) * 0.5;
+        if (!best || score < best.score) best = { x, z, score };
+      }
+      if (!best) continue;
+      const pos = new THREE.Vector3(best.x, this.terrain.heightAt(best.x, best.z), best.z);
+      this.waystones.push({ id: waystoneId(this.def.id, i), name: names.names[i % names.names.length], kind: names.kind, pos, lit: false, setLit: () => {} });
+    }
+  }
+
+  /** Procedural element-themed waystone (stand-in for the Tripo props in the manifest). Dim until lit. */
+  private buildWaystone(w: Waystone): void {
+    const el = elements[this.def.element];
+    const g = new THREE.Group();
+    g.name = `waystone:${w.id}`;
+    g.position.copy(w.pos);
+    const stone = this.track(toonMaterial({ color: this.def.palette.rock }));
+    const dark = this.track(toonMaterial({ color: 0x3a3430 }));
+    const wood = this.track(toonMaterial({ color: this.def.palette.trunk }));
+    const glowMat = this.track(toonMaterial({ color: el.color, emissive: el.glow, emissiveIntensity: 0.15 }));
+    const add = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, cast = true) => {
+      const m = new THREE.Mesh(this.track(geo), mat);
+      m.position.set(x, y, z);
+      m.castShadow = cast;
+      m.receiveShadow = true;
+      g.add(m);
+      return m;
+    };
+    const swing: THREE.Object3D[] = [];
+    let flame: THREE.Mesh | null = null;
+    let colliderH = 1.4;
+    switch (this.def.element) {
+      case 'fire': {
+        add(new THREE.CylinderGeometry(0.28, 0.4, 0.9, 7), dark, 0, 0.45, 0);
+        add(new THREE.CylinderGeometry(0.62, 0.3, 0.38, 9), dark, 0, 1.05, 0);
+        add(new THREE.SphereGeometry(0.46, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.6), glowMat, 0, 1.08, 0, false);
+        flame = add(new THREE.ConeGeometry(0.32, 0.95, 7), this.track(toonMaterial({ color: 0xffb050, emissive: el.glow, emissiveIntensity: 2.4 })), 0, 1.6, 0, false);
+        colliderH = 1.3;
+        break;
+      }
+      case 'water': {
+        add(new THREE.BoxGeometry(0.5, 0.9, 0.5), stone, 0, 0.45, 0);
+        add(new THREE.BoxGeometry(0.62, 0.55, 0.62), glowMat, 0, 1.2, 0, false);
+        const roof = add(new THREE.ConeGeometry(0.62, 0.42, 4), stone, 0, 1.68, 0);
+        roof.rotation.y = Math.PI / 4;
+        add(new THREE.ConeGeometry(0.5, 0.2, 4), this.track(toonMaterial({ color: 0xf2f6fa })), 0, 1.86, 0).rotation.y = Math.PI / 4;
+        colliderH = 1.9;
+        break;
+      }
+      case 'earth': {
+        const mono = add(new THREE.BoxGeometry(0.9, 3.2, 0.55, 1, 4, 1), stone, 0, 1.6, 0);
+        mono.rotation.y = 0.3;
+        for (let i = 0; i < 3; i++) {
+          const rune = add(new THREE.TorusGeometry(0.16 - i * 0.03, 0.03, 5, 16), glowMat, 0, 0.9 + i * 0.75, 0, false);
+          rune.position.set(Math.sin(0.3) * 0.29, 0.9 + i * 0.75, Math.cos(0.3) * 0.29);
+          rune.rotation.y = 0.3;
+        }
+        for (let i = 0; i < 4; i++) add(new THREE.TorusGeometry(0.62, 0.06, 5, 10, Math.PI * 0.7), wood, 0, 0.1 + i * 0.12, 0).rotation.set(Math.PI / 2, 0, i * 1.6);
+        colliderH = 3.2;
+        break;
+      }
+      case 'air': {
+        add(new THREE.CylinderGeometry(0.07, 0.09, 3.0, 6), wood, 0, 1.5, 0);
+        add(new THREE.BoxGeometry(1.3, 0.08, 0.08), wood, 0, 2.85, 0);
+        for (let i = 0; i < 5; i++) {
+          const x = -0.55 + i * 0.275;
+          const pivot = new THREE.Group();
+          pivot.position.set(x, 2.8, 0);
+          const chime = new THREE.Mesh(this.track(new THREE.CylinderGeometry(0.035, 0.035, 0.4 + (i % 3) * 0.12, 6)), glowMat);
+          chime.position.y = -0.3 - (i % 3) * 0.06;
+          pivot.add(chime);
+          const ribbon = new THREE.Mesh(this.track(new THREE.PlaneGeometry(0.06, 0.9)), this.track(toonMaterial({ color: el.color, side: THREE.DoubleSide })));
+          ribbon.position.set(0.05, -0.75, 0);
+          pivot.add(ribbon);
+          g.add(pivot);
+          swing.push(pivot);
+        }
+        colliderH = 3;
+        break;
+      }
+    }
+    const halo = new THREE.Mesh(this.track(new THREE.RingGeometry(0.9, 1.15, 40)), this.track(new THREE.MeshBasicMaterial({ color: el.glow, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })));
+    halo.rotation.x = -Math.PI / 2;
+    halo.position.y = 0.06;
+    g.add(halo);
+    if (flame) flame.visible = false;
+    this.collision.add({ x: w.pos.x, z: w.pos.z, radius: 0.55, bottom: w.pos.y - 1, top: w.pos.y + colliderH });
+    this.group.add(g);
+    w.setLit = (lit: boolean) => {
+      w.lit = lit;
+      glowMat.emissiveIntensity = lit ? 1.8 : 0.15;
+      if (flame) flame.visible = lit;
+      (halo.material as THREE.MeshBasicMaterial).opacity = lit ? 0.55 : 0;
+    };
+    const seed = w.pos.x * 0.37;
+    this.animated.push((t) => {
+      for (const [i, p] of swing.entries()) p.rotation.z = Math.sin(t * 2.2 + i * 0.9 + seed) * 0.18;
+      if (flame?.visible) flame.scale.set(1 + Math.sin(t * 12) * 0.08, 1 + Math.sin(t * 9) * 0.15, 1 + Math.sin(t * 12) * 0.08);
+      if (w.lit) halo.scale.setScalar(1 + Math.sin(t * 2 + seed) * 0.06);
+    });
+  }
+
   /** Placeholder elemental shrine; will be replaced by the Tripo "shrine" asset. */
   private buildShrine(): void {
     const el = elements[this.def.element];
@@ -353,6 +498,17 @@ export class Region {
     const light = new THREE.PointLight(el.glow, 18, 16, 1.6);
     light.position.y = 2.8;
     g.add(light);
+    // Beam of light shown once attuned: a landmark visible from across the region.
+    const beam = new THREE.Mesh(
+      this.track(new THREE.CylinderGeometry(0.35, 0.6, 60, 16, 1, true)),
+      this.track(new THREE.MeshBasicMaterial({ color: el.glow, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })),
+    );
+    beam.position.y = 33;
+    beam.visible = false;
+    g.add(beam);
+    this.shrineCore = core;
+    this.shrineLight = light;
+    this.shrineBeam = beam;
     g.position.copy(this.landmark);
     this.group.add(g);
     this.animated.push((t) => {
@@ -360,6 +516,15 @@ export class Region {
       core.rotation.y = t * 0.6;
     });
   }
+}
+
+export interface Waystone {
+  id: string;
+  name: string;
+  kind: string;
+  pos: THREE.Vector3;
+  lit: boolean;
+  setLit(lit: boolean): void;
 }
 
 function mergeSimple(list: THREE.BufferGeometry[]): THREE.BufferGeometry {

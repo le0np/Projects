@@ -171,6 +171,16 @@ export class GltfCharacter implements CharacterView {
     }
   }
 
+  /** Multiplies every material colour (enemy variants share one model). Materials are per-instance copies. */
+  setTint(color: number): void {
+    const c = new THREE.Color(color);
+    this.model.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) (m as THREE.MeshToonMaterial).color?.multiply(c);
+    });
+  }
+
   /** Per-vertex weight of the "hair-capable" bones, so recolouring never touches legs, gloves or boots. */
   private addHairMask(mesh: THREE.SkinnedMesh, bones: string[]): void {
     const geo = mesh.geometry;

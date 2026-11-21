@@ -20,6 +20,10 @@ export class Combatant {
   /** Seconds of invulnerability left (dodge i-frames, after Guardian's Embrace, etc.). */
   invulnerable = 0;
   blocking = false;
+  /** Multiplier on damage taken (Stone Aegis). */
+  damageTaken = 1;
+  /** Temporary super armour: hits never stagger or knock down (Stone Aegis). */
+  armored = false;
   /** Game time when block was last pressed; used for the perfect-parry window. */
   blockPressedAt = -Infinity;
   /** Attack instances that already hit this combatant. */

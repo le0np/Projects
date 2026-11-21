@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import type { CharacterView, LocomotionState } from '../animation/CharacterView';
 import { AttackTokens } from '../ai/AttackTokens';
 import { Combatant } from '../combat/Combatant';
+import { StatusEffects } from '../combat/Status';
 import { aiConfig, type EnemyAttackDef, type EnemyDef } from '../config/enemies';
 import { angleDelta, damp } from '../core/math';
 import { CharacterMotor, type CollisionWorld } from '../physics/CharacterMotor';
 import type { Targetable } from './Player';
 
-export type BrainState = 'idle' | 'alert' | 'approach' | 'circle' | 'attack' | 'return';
+export type BrainState = 'idle' | 'alert' | 'approach' | 'circle' | 'attack' | 'retreat' | 'return';
 
 let nextEnemy = 1;
 let nextSwing = 1_000_000;
@@ -16,6 +17,8 @@ export interface EnemyContext {
   now: number;
   player: { x: number; z: number; alive: boolean };
   tokens: AttackTokens;
+  /** Separate tokens for ranged attackers. */
+  shooters: AttackTokens;
   world: CollisionWorld;
 }
 
@@ -30,7 +33,12 @@ export class Enemy implements Targetable {
   readonly combatant: Combatant;
   facing = 0;
   brain: BrainState = 'idle';
-  attack: { def: EnemyAttackDef; t: number; instance: number } | null = null;
+  attack: { def: EnemyAttackDef; t: number; instance: number; fired: boolean } | null = null;
+  readonly status = new StatusEffects();
+  /** Seconds left of an evasive roll (archers), and its direction. */
+  private rollT = 0;
+  private rollDir = { x: 0, z: 0 };
+  private rollCooldown = 0;
   private cooldown = 1;
   private stateT = 0;
   private circleDir = Math.random() < 0.5 ? 1 : -1;
@@ -73,7 +81,19 @@ export class Enemy implements Targetable {
 
   get hitActive(): boolean {
     const a = this.attack;
-    return !!a && a.t >= a.def.hitStart && a.t <= a.def.hitEnd;
+    return !!a && !a.def.projectile && a.t >= a.def.hitStart && a.t <= a.def.hitEnd;
+  }
+
+  /** A ranged attack whose arrow should be released now (the director spawns it and marks it fired). */
+  get readyToFire(): boolean {
+    const a = this.attack;
+    return !!a && !!a.def.projectile && !a.fired && a.t >= a.def.hitStart;
+  }
+
+  /** Point the area attack lands on. */
+  aoeCenter(): { x: number; z: number } {
+    const r = (this.attack?.def.reach ?? 0) * 0.6;
+    return { x: this.motor.x + Math.sin(this.facing) * r, z: this.motor.z + Math.cos(this.facing) * r };
   }
 
   /** Called by the combat system when this enemy is hit/staggered, to play a reaction. */
@@ -106,8 +126,11 @@ export class Enemy implements Targetable {
       this.reaction = null;
       this.view.stopAction(0.25);
     }
-    this.cooldown -= dt;
+    // Soaked enemies move and swing slower.
+    const speedK = this.status.speed;
+    this.cooldown -= dt * speedK;
     this.stateT += dt;
+    this.rollCooldown -= dt;
 
     const p = ctx.player;
     const dx = p.x - this.motor.x;
@@ -120,11 +143,20 @@ export class Enemy implements Targetable {
     let speed = 0;
     let face: number | null = null;
 
+    const tokens = this.def.role === 'ranged' ? ctx.shooters : ctx.tokens;
     if (!c.free || this.finishing) {
-      ctx.tokens.release(this.id);
+      tokens.release(this.id);
+      this.rollT = 0;
+    } else if (this.rollT > 0) {
+      // Evasive roll away from the player.
+      this.rollT -= dt;
+      moveX = this.rollDir.x;
+      moveZ = this.rollDir.z;
+      speed = 9 * Math.max(0.2, this.rollT / 0.5);
+      if (this.rollT <= 0) this.setBrain('circle');
     } else if (this.attack) {
       const a = this.attack;
-      a.t += dt;
+      a.t += dt * speedK;
       face = a.t < a.def.hitStart - 0.15 ? toPlayer : null; // commits to the swing just before it lands
       if (a.t < a.def.hitStart) {
         moveX = Math.sin(this.facing);
@@ -132,7 +164,7 @@ export class Enemy implements Targetable {
         speed = (a.def.lunge / a.def.hitStart) * (dist > 1.2 ? 1 : 0);
       }
       if (a.t >= a.def.duration) {
-        this.cancelAttack(ctx.tokens);
+        this.cancelAttack(tokens);
         this.view.stopAction(0.2);
         this.cooldown = this.def.attackCooldown[0] + Math.random() * (this.def.attackCooldown[1] - this.def.attackCooldown[0]);
         this.setBrain('circle');
@@ -169,7 +201,7 @@ export class Enemy implements Targetable {
         case 'approach':
           face = toPlayer;
           if (!p.alive || fromHome > 32) this.setBrain('return');
-          else if (dist > this.def.circleRange[1]) {
+          else if (dist > (this.def.role === 'ranged' ? this.def.attackRange - 2 : this.def.circleRange[1])) {
             moveX = dx / dist;
             moveZ = dz / dist;
             speed = this.def.runSpeed;
@@ -181,9 +213,20 @@ export class Enemy implements Targetable {
             this.setBrain('return');
             break;
           }
-          if (dist > this.def.circleRange[1] + 1.5) {
+          const ranged = this.def.role === 'ranged';
+          if (dist > (ranged ? this.def.attackRange : this.def.circleRange[1] + 1.5)) {
             this.setBrain('approach');
             break;
+          }
+          if (ranged && dist < (this.def.retreatRange ?? 0)) {
+            if (this.rollCooldown <= 0) {
+              // Too close: roll away, then keep backing off.
+              this.rollT = 0.5;
+              this.rollCooldown = 4;
+              this.rollDir = { x: -dx / dist, z: -dz / dist };
+              this.view.playAction('dive', 0.55, { range: [0.05, 0.75] });
+              break;
+            }
           }
           // Strafe around the player, keeping preferred distance.
           const [near, far] = this.def.circleRange;
@@ -196,8 +239,9 @@ export class Enemy implements Targetable {
           moveX /= l;
           moveZ /= l;
           speed = this.def.walkSpeed;
+          if (ranged && dist < near) speed = this.def.runSpeed * 0.7;
           if (this.stateT > 2.5 && Math.random() < dt * 0.5) this.circleDir *= -1;
-          if (this.cooldown <= 0 && ctx.tokens.request(this.id, ctx.now)) {
+          if (this.cooldown <= 0 && tokens.request(this.id, ctx.now)) {
             if (dist <= this.def.attackRange + 0.4) this.startAttack();
             else {
               // Close in for the attack.
@@ -228,7 +272,7 @@ export class Enemy implements Targetable {
     }
     if (face !== null) this.facing += angleDelta(this.facing, face) * damp(8, dt);
     this.prev.copy(this.curr);
-    this.motor.step(dt, { moveX, moveZ, speed, jump: false }, ctx.world);
+    this.motor.step(dt, { moveX, moveZ, speed: speed * speedK, jump: false }, ctx.world);
     this.syncCurr();
   }
 
@@ -236,8 +280,10 @@ export class Enemy implements Targetable {
     const total = this.def.attacks.reduce((s, a) => s + a.weight, 0);
     let r = Math.random() * total;
     const def = this.def.attacks.find((a) => (r -= a.weight) <= 0) ?? this.def.attacks[0];
-    this.attack = { def, t: 0, instance: nextSwing++ };
-    this.view.playAction(def.clip, def.duration, { range: def.clipRange, fade: 0.1 });
+    this.attack = { def, t: 0, instance: nextSwing++, fired: false };
+    // Bows draw over the wind-up and hold until release; melee swings play over the whole move.
+    const animTime = def.projectile ? def.hitStart : def.duration;
+    this.view.playAction(def.clip, animTime / this.status.speed, { range: def.clipRange, fade: 0.1, hold: !!def.projectile });
     this.setBrain('attack');
   }
 
@@ -272,6 +318,8 @@ export class Enemy implements Targetable {
     this.finishing = false;
     this.reaction = null;
     this.deadTime = 0;
+    this.rollT = 0;
+    this.status.clear();
     this.view.stopAction(0);
     this.view.object.visible = true;
     this.motor.teleport(this.home.x, this.home.y, this.home.z);

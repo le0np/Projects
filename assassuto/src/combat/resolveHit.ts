@@ -63,37 +63,39 @@ export function resolveHit(target: Combatant, hit: HitInfo, ctx: DefenderContext
     return { outcome: { result: 'blocked', damage: 0, guardBroken: true }, staminaCost: ctx.stamina };
   }
 
-  const lethal = target.health - hit.damage <= 0;
+  const damage = Math.max(1, Math.round(hit.damage * target.damageTaken));
+  const lethal = target.health - damage <= 0;
   const direct = hit.kind === 'melee' || hit.kind === 'projectile';
   if (lethal && direct && ctx.preventDeath?.(hit)) {
     return { outcome: { result: 'hit', damage: 0, staggered: false, knockedDown: false, vulnerable: false, killed: false, lethal: true }, staminaCost: 0 };
   }
 
-  target.health = Math.max(0, target.health - hit.damage);
+  target.health = Math.max(0, target.health - damage);
   if (target.health <= 0) {
     target.setState('dead');
-    return { outcome: { result: 'hit', damage: hit.damage, staggered: false, knockedDown: true, vulnerable: false, killed: true, lethal: true }, staminaCost: 0 };
+    return { outcome: { result: 'hit', damage, staggered: false, knockedDown: true, vulnerable: false, killed: true, lethal: true }, staminaCost: 0 };
   }
 
   let staggered = false;
   let knockedDown = false;
   let vulnerable = false;
-  if (target.state !== 'vulnerable') {
+  const armored = !!target.opts.superArmor || target.armored;
+  if (target.state !== 'vulnerable' && !(target.armored && hit.kind !== 'environment')) {
     target.poise -= hit.poise;
     if (target.poise <= 0) {
       target.poise = 0;
       // Poise broken: the target is open to a finisher.
       target.setState('vulnerable', cfg.stagger.vulnerableDuration);
       vulnerable = true;
-    } else if (hit.knockdown && !target.opts.superArmor) {
+    } else if (hit.knockdown && !armored) {
       target.setState('knockdown', cfg.stagger.knockdownDuration);
       knockedDown = true;
-    } else if (!target.opts.superArmor && hit.poise >= target.opts.maxPoise * 0.25) {
+    } else if (!armored && hit.poise >= target.opts.maxPoise * 0.25 && hit.kind !== 'dot') {
       target.setState('staggered', cfg.stagger.duration);
       staggered = true;
     }
   }
-  return { outcome: { result: 'hit', damage: hit.damage, staggered, knockedDown, vulnerable, killed: false, lethal: false }, staminaCost: 0 };
+  return { outcome: { result: 'hit', damage, staggered, knockedDown, vulnerable, killed: false, lethal: false }, staminaCost: 0 };
 }
 
 /** Melee arc test on the ground plane: is the target inside reach and the attacker's facing cone? */

@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-Faze 1–3 od 8 su gotove. Igra ima glavni izbornik, kreator lika u 6 koraka s 3D previewom, intro cinematic, kretanje u četiri regije, verzionirano spremanje i borbu. Borba obuhvaća combo napade, izmicanje, blok i parry s counterom, lock-on, finisher, mač i koplje te Raider kamp s AI-em u svakoj regiji. Oba lika i Raider su Tripo modeli. Echo je zasad vizualni duh s osnovnim praćenjem. Ostalo je 275 Tripo kredita.
+Faze 1–4 od 8 su gotove. Igra ima glavni izbornik, kreator lika u 6 koraka s 3D previewom, intro cinematic, kretanje u četiri regije, verzionirano spremanje i borbu. Borba obuhvaća combo napade, izmicanje, blok i parry s counterom, lock-on, finisher, mač, koplje i borbu bez oružja. Faza 4 je dodala četiri elementalne sposobnosti, Archera i Brutea uz Raidere u kampu, shrineove (attune, odmor, putovanje među regijama) i 3 waystonea po regiji. Oba lika i Raider su Tripo modeli. Archer i Brute koriste Raiderov model. Echo je zasad vizualni duh s osnovnim praćenjem. Ostalo je 275 Tripo kredita, a vlasnik ih zasad čuva: sve se testira sa ženskim likom.
 
 ## Napravljeno 20. studenoga 2026.
 
@@ -76,46 +76,74 @@ Faze 1–3 od 8 su gotove. Igra ima glavni izbornik, kreator lika u 6 koraka s 3
 - Novi stil **Unarmed** (`fists` u `config/combat.ts`): tipka 3, a X sprema ili vadi zadnje oružje. Oružje se tada skida iz ruke. Napadi su direkt, kroše, udarac nogom, salto-udarac koji lansira, counter šakom i finisher saltom, uz kraći doseg, manju štetu i manji trošak stamine.
 - Promjena oružja usred napada stavlja se u red i izvrši čim napad završi. Oružje se sprema u save (`equipment.weapon`).
 
+### Faza 4: sposobnosti, Archer i Brute, otkrića (20. studenoga 2026.)
+
+**Odluke:**
+- Vlasnik: **krediti se čuvaju**, a sve se testira sa ženskim likom. Zato nema novih Tripo modela. Archer i Brute koriste Raiderov model s drugim proporcijama, bojom (tint materijala), širinom i proceduralnim oružjem. Shrine propsi i waystoneovi su proceduralni.
+- GDD nije u repou, pa su detalji sposobnosti izvedeni iz opisa elemenata u kreatoru: vatra je eksplozivna, voda kontrolira, zemlja brani, zrak je pokretljivost. Sve brojke su u `config/abilities.ts`.
+- Putovanje među regijama ide preko shrinea (Journey), jer bez njega ostali elementi ne bi bili dostupni. Igrač stiže na spawn ciljne regije. Spremaju se save, cooldowni i otkrića.
+
+**Sposobnosti** (R baca, V mijenja, HUD dolje desno s cooldownom):
+- Ember Burst (radijus 4,8 m, rušenje, gorenje 5 dps / 4 s), Tidal Surge (stožac 9 m, odbacivanje, usporenje 50 % / 5 s, prekida napade, ispire strijele), Stone Aegis (udarni val i 7 s oklopa: pola štete, bez staggera i rušenja), Gale Step (nalet 9 m s i-frameovima, reže i podiže, radi i u zraku).
+- Affinity početnog elementa: ×1,2 šteta, ×0,8 cooldown. Cooldowni se spremaju kao `ability.<element>` u `SaveData.cooldowns`, a odabrani element u `equipment.ability`. Format je samo nadograđen, pa nije trebala migracija (sanitizer daje zadanu vrijednost).
+- `Combatant` je dobio `damageTaken` i `armored`. `resolveHit` ih koristi, a DoT više nikad ne uzrokuje stagger.
+- Efekti (`render/AbilityFx.ts`): vatrena kupola i plameni jezici, val, kameni krhotine oko igrača, tragovi naleta, crveni krug upozorenja i strijele.
+
+**Neprijatelji:**
+- `EnemyDef` ima `role`, `look`, `knockbackTaken` i `radius`, a napad `projectile`, `aoe` i `unblockable`.
+- Archer: AI drži razmak, ima posebne tokene za strijelce (najviše jedan puca odjednom), kotrlja se unazad kad mu igrač priđe (cooldown 4 s) i puca s predviđanjem kretanja. Parry vraća strijelu (×2 šteta, oznaka "RETURNED").
+- Brute: super armor, 20 % knockbacka, sweep i neblokirajući slam u području (crveni bljesak i krug na tlu).
+- Soaked status usporava i kretanje i napade. Burning ispušta iskre.
+- Kamp ima 4 mjesta: dva Raidera oko vatre, Archer na rubu prema spawnu i Brute uz vatru.
+
+**Otkrića:**
+- `config/discovery.ts` sadrži id-ove `shrine:<regija>` i `waystone:<regija>:<i>` te imena waystoneova po elementu.
+- Shrine (E unutar 6,5 m) otvara `ShrinePanel` koji pauzira simulaciju i otpušta pointer lock. Attune bilježi otkriće, uči element (ako je nov odmah ga odabere) i pali svjetlosni stup. Rest liječi, puni sposobnosti i sprema. Journey nudi sve 4 regije.
+- Waystoneovi: deterministički raspoređeni po sektorima, 26–66 m od spawna, dalje od kampa i shrinea, na suhom i ravnom terenu, s čistinom bez drveća. Pale se kad im igrač priđe (3,2 m), uz banner i liječenje.
+
+**Ostalo:**
+- e2e: `findChromium` sada pretražuje i `PLAYWRIGHT_BROWSERS_PATH` (u ovom okruženju je Chromium u `/opt/pw-browsers`).
+- `tools/scratch/` (u `.gitignore`) služi za jednokratne skripte za screenshotove.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 20. studenoga 2026.:
+Provedeno 20. studenoga 2026. (nakon faze 4):
 
 | Provjera | Rezultat |
 | --- | --- |
 | `npx tsc --noEmit` | bez grešaka |
-| `npm test` | 43/43 prolazi (motor 6, save i postavke 9, Tripo klijent, manifest i hash 9, pipeline 1, borba 18) |
-| `npm run e2e` | sve prolazi: izbornik (Continue onemogućen bez savea, settings, credits) → kreator (preview Tripo lika, boja kose, građa, muško tijelo, odbijeno prazno ime, Water → Glacemere, Echo vuk) → intro s titlovima → igra (Aria u Glacemereu s Echom, kretanje) → pauza i spremanje → izbornik (Continue prikazuje Ariu) → reload → Continue (ista pozicija, odstupanje 0,00 m) → borba (Raideri primjećuju igrača, Tab lock-on, napadi smanjuju zdravlje, oznaka finishera, finisher ubija) → sve 4 regije (spawn, skok, doskok, kretanje), bez console grešaka |
-| Borba ručno u pregledniku | Raider nanosi štetu (160 → 146, igrač u staggeru), finisher ubija ranjivog Raidera, oštrica gleda naprijed (izmjereno). Mač koristi samo `slash`/`chop`, a bez oružja `front_kick_01` i bez mača u ruci. X i 1–3 mijenjaju stil, i usred napada. |
+| `npm test` | 59/59 prolazi (motor 6, save i postavke 9, Tripo 9, pipeline 1, borba 18, faza 4: 16 za sposobnosti, status, strijele, aegis i super armor, AI Archera, usporenje i save sposobnosti) |
+| `npm run e2e` | 46/46 prolazi: izbornik → kreator → intro → igra → save/continue (odstupanje 0,00 m) → borba i finisher → kamp ima Raidere, Archera i Brutea → R podiže Stone Aegis i pokreće cooldown → Archer puca → Brute napada → prompt kraj shrinea, E otvara shrine, attune bilježi otkriće → waystone se pali → putovanje u Emberreach, attune uči Ember Burst, V mijenja element, otkrića ostaju sačuvana → sve 4 regije, bez console grešaka |
+| Ručno u pregledniku (Playwright skripte) | Sve četiri sposobnosti pogađaju neprijatelje (šteta, rušenje, usporenje, nalet od 9 m). Efekti su vidljivi, strijela pogađa igrača (160 → 148), Brute nanosi štetu, shrine panel i putovanje rade, waystoneovi su vidljivi u sve 4 regije (upaljeni i neupaljeni) |
 | `npm run build` | prolazi |
-| GLB lik u igri | sintetički riggani GLB je prošao `optimizeAll` i animacija pomiče kost. Pravi Tripo `player_feminine` je učitan u igri (`view: gltf`), screenshotovi sprijeda, straga, u trku i skoku ispravni, bez console grešaka |
-| `npm run e2e` s Tripo modelom | sve prolazi |
-| `assets:generate --dry-run` | svi asseti ~1730 kredita (gornja procjena), prvi test ~105 kredita |
+
+Usput uočeno i popravljeno: Gale Step nije pomicao igrača (ograničenje ubrzanja u motoru), a Archerova strijela mogla je prekinuti finisher (finisher je sada nedodirljiv). Uz to se gubio pritisak na F ako je igrača u tom trenutku pogodio neprijatelj. F sada ima buffer od 0,4 s (`combatConfig.finisher.buffer`), a e2e ponavlja F dok je oznaka vidljiva.
 
 ## Poznata ograničenja
 
-- Generiran je samo `player_feminine` i to samo s 5 locomotion animacija. Combat animacije (slash, chop, box, kick, cast_a_spell, hug, hit reakcije…) još nisu retargetirane.
-- Kosa i odjeća Tripo modela su prilično sjajni zbog PBR materijala. Materijal treba ugoditi prema toon izgledu u fazi 2 ili 7.
+- Archer i Brute koriste Raiderov Tripo model i animacije. Napinjanje luka je početak `chop` clipa, pa ne izgleda kao pravo gađanje lukom. Luk je u desnoj ruci, a Archer nema tobolac.
+- Muški lik ima samo animacije kretanja. U borbi i pri bacanju sposobnosti koristi proceduralne zamjene, pa izgleda slabije. Borbene animacije za njega koštaju ~150 kredita (krediti se čuvaju, testira se sa ženskim likom).
+- Tripo animacije nisu rađene za mač (slash i chop su udarci bez oružja), pa zamasi nisu savršeno usklađeni s oštricom.
+- Echo, oružje, shrine i waystoneovi su proceduralni (Tripo propsi iz manifesta nisu generirani).
+- Regije nisu povezane u jedan svijet. Putuje se preko shrinea, uz učitavanje regije.
+- Kamera ne izbjegava drveće (samo teren), pa je ponekad zaklanja deblo. Oko waystoneova je zato čistina od 8 m.
 - Tripo nema preset animacije za avian rig, a quadruped ima samo `walk`. Animacije stvorenja i mountova bit će dijelom proceduralne.
-- Kustomizacija frizure s Tripo modelima (zasebni meshevi kose na head boneu) još nije isprobana. Testira se u fazi 2 nakon prvog lika.
-- Headless Chromium sa softverskim GL-om vrti igru na ~12 FPS-a, pa e2e test zbog toga koristi polling. Na pravom GPU-u igra je glatka.
-- Svaki Tripo lik ima samo jednu frizuru (onu koju je model dobio). Dodatne frizure trebaju zasebne Tripo meshe kose (krediti).
-- Muški lik ima samo animacije kretanja. U borbi koristi proceduralne zamjene, pa napadi na njemu izgledaju slabije. Borbene animacije za njega koštaju ~150 kredita.
-- Tripo animacije nisu rađene za mač (slash, chop i boks su udarci bez oružja), pa zamasi nisu savršeno usklađeni s oštricom. Kasnije se mogu dodati animacije u kodu.
-- Echo, oružje i propsi su još proceduralni.
-- Raideri ne blokiraju, a ostali arhetipovi (Archer, Brute) dolaze u fazi 4.
-- Headless e2e sa softverskim GL-om i Tripo modelom vrti se na nekoliko FPS-a, pa test koristi polling. Na pravom GPU-u to nije problem.
+- Svaki Tripo lik ima samo jednu frizuru. Dodatne frizure trebaju zasebne Tripo meshe kose (krediti).
+- Headless Chromium sa softverskim GL-om vrti igru na nekoliko FPS-a, pa e2e koristi polling i traje nekoliko minuta. Na pravom GPU-u igra je glatka.
+- XP od neprijatelja i otkrića se još ne troši (progresija je u fazi 7).
 
 ## Sljedeći koraci
 
-1. Uz odobrenje vlasnika potrošiti preostalih 275 kredita, primjerice na borbene animacije za muški lik (~150) ili na Echo modele i oružje.
-2. Faza 4: četiri elementalne sposobnosti, Archer i Brute, discovery na shrineovima, Tripo propsi.
-3. Faza 5: Echo (pametnije praćenje, kontekstualni dijalog, Spirit Ward, Guardian's Embrace). Intro i osnovno praćenje su već napravljeni u fazi 2.
-4. Faza 6: bond sustav i stvorenja, ground mount, flying mount u Sky Trialu.
-5. Faza 7: tutorial, progresija, zvuk i polish. Faza 8: završna provjera.
+1. Vlasnik isproba fazu 4: osjećaj sposobnosti (brojke su u `config/abilities.ts`), težinu Archera i Brutea, raspored waystoneova.
+2. Faza 5: Echo (pametnije praćenje, kontekstualni dijalog, Spirit Ward, Guardian's Embrace preko kuke `preventDeath`). Echo može komentirati otkrića (događaji `discovered` i `elementUnlocked` već postoje).
+3. Faza 6: bond sustav i stvorenja, ground mount, flying mount u Sky Trialu.
+4. Faza 7: tutorial, progresija (XP iz `enemyKilled` i otkrića), zvuk i polish. Faza 8: završna provjera.
+5. Kad se krediti odobre: `enemy_archer` i `enemy_brute` (promijeniti `assetId`), Tripo propsi i borbene animacije za muški lik.
 
 ## Handoff za novi chat
 
 1. Kod je u `assassuto/`, grana `dev`. Prvo pročitaj ovaj dokument, `README.md` i plan u GDD-u (vlasnik ga je poslao u chatu: "PROJECT FOURFOLD Game Design Document v1.0").
 2. Pokretanje: `npm install && npm run dev`. Testovi: `npm test`, `npm run e2e` (screenshotovi u `tools/e2e/out/`), `npm run build`.
 3. Tripo: prije svakog generiranja pokreni `--dry-run`, a stanje kredita provjeri prije i poslije (`--balance`). Nikad ne pokreći `--regenerate` bez dogovora s vlasnikom.
-4. Važne granice: gameplay ne dira Three.js direktno, nego ide preko `CharacterView`, `CollisionWorld` i EventBusa. Sve brojke idu u `src/config/`. Tekst u igri je na engleskom. 3D modeli dolaze samo iz Tripa (bez Quaterniusa ili drugih paketa), preko `assets-src/manifest.json`. Tajne idu samo u `.env`.
+4. Faza 4: sposobnosti su u `config/abilities.ts` i `combat/Abilities.ts`, a efekte primjenjuje `CombatDirector.applyAbility`. Neprijatelji su u `config/enemies.ts` (`campRoster` određuje sastav kampa), a otkrića u `config/discovery.ts` i `Game.updateDiscovery`.
+5. Važne granice: gameplay ne dira Three.js direktno, nego ide preko `CharacterView`, `CollisionWorld` i EventBusa. Sve brojke idu u `src/config/`. Tekst u igri je na engleskom. 3D modeli dolaze samo iz Tripa (bez Quaterniusa ili drugih paketa), preko `assets-src/manifest.json`. Tajne idu samo u `.env`.

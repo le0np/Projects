@@ -31,6 +31,9 @@ import { attachWeapon, buildWeapon, detachWeapon } from '../combat/WeaponModels'
 import { combatConfig } from '../config/combat';
 import { Fx } from '../render/Fx';
 import { CombatHud } from '../ui/CombatHud';
+import { ShrinePanel } from '../ui/ShrinePanel';
+import { abilities } from '../config/abilities';
+import { discoveryConfig, shrineId } from '../config/discovery';
 import { EventBus, type GameEvents } from './EventBus';
 import { FixedLoop } from './FixedLoop';
 import { angleDelta, damp, lerp, smoothstep } from './math';
@@ -97,6 +100,9 @@ export class Game {
   private shot: { focus: THREE.Vector3; yaw: number } | null = null;
   private deathTimer = 0;
   private weaponShown = '';
+  // Discovery
+  private shrinePanel: ShrinePanel;
+  private traveling = false;
 
   constructor(container: HTMLElement) {
     const canvas = document.createElement('canvas');
@@ -126,6 +132,12 @@ export class Game {
     this.settingsPanel = new SettingsPanel(container, (s) => this.applySettings(s));
     this.credits = new CreditsPanel(container);
     this.combatHud = new CombatHud(container);
+    this.shrinePanel = new ShrinePanel(container, {
+      attune: () => this.attune(),
+      rest: () => this.rest(),
+      travel: (id) => void this.travel(id),
+      close: () => this.closeShrine(),
+    });
     this.combatHud.root.hidden = true;
     this.scene.add(this.fx.group);
     this.director = new CombatDirector(this.scene, this.bus, this.assets, this.fx, {
@@ -157,7 +169,7 @@ export class Game {
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === canvas;
       if (locked) this.hadLock = true;
-      else if (this.mode === 'playing' && this.hadLock && !this.paused) {
+      else if (this.mode === 'playing' && this.hadLock && !this.paused && !this.shrinePanel.isOpen) {
         this.setPaused(true);
         this.lockPauseAt = performance.now();
       }
@@ -167,7 +179,8 @@ export class Game {
         // Browsers usually swallow Esc to release pointer lock (which pauses via pointerlockchange);
         // ignore an Esc that arrives right after that so it does not instantly unpause.
         if (performance.now() - this.lockPauseAt < 400) return;
-        if (this.settingsPanel.isOpen) this.settingsPanel.close();
+        if (this.shrinePanel.isOpen) this.closeShrine();
+        else if (this.settingsPanel.isOpen) this.settingsPanel.close();
         else if (this.paused) this.resume();
         else {
           this.setPaused(true);
@@ -245,6 +258,8 @@ export class Game {
     this.shot = null;
     this.deathTimer = 0;
     this.weaponShown = '';
+    this.shrinePanel.close();
+    this.hud.setInteract(null);
   }
 
   private setEcho(cfg: EchoConfig): void {
@@ -386,8 +401,11 @@ export class Game {
     const region = this.region!;
     const look: CharacterLook = { element: save.character.element, appearance: save.character.appearance };
     const view = await createPlayerView(look, this.assets);
-    this.player = new Player(view, this.bus, save.equipment.weapon);
+    this.player = new Player(view, this.bus, save.equipment.weapon, save.character.element, save.progression.unlockedElements, save.equipment.ability);
+    this.player.abilities.loadCooldowns(save.cooldowns);
     this.scene.add(view.object);
+    region.setAttuned(save.discoveries.includes(shrineId(region.def.id)));
+    for (const w of region.waystones) w.setLit(save.discoveries.includes(w.id));
     this.director.setElement(save.character.element);
     await this.director.spawnCamp(region);
 
@@ -490,7 +508,14 @@ export class Game {
     return {
       ...this.save,
       world: { regionId: this.region.def.id, position: { x: m.x, y: m.y, z: m.z }, facing: this.player.facing, cameraYaw: this.rig?.yaw ?? 0 },
-      equipment: { ...this.save.equipment, weapon: this.player.weapon.id, unlockedWeapons: [...new Set([...this.save.equipment.unlockedWeapons, 'sword', 'spear', 'fists'])] },
+      equipment: {
+        ...this.save.equipment,
+        weapon: this.player.weapon.id,
+        unlockedWeapons: [...new Set([...this.save.equipment.unlockedWeapons, 'sword', 'spear', 'fists'])],
+        ability: this.player.abilities.selected,
+      },
+      progression: { ...this.save.progression, unlockedElements: this.player.abilities.list },
+      cooldowns: { ...this.save.cooldowns, ...this.player.abilities.toSave() },
     };
   }
 
@@ -536,7 +561,7 @@ export class Game {
     this.hitstopT = Math.max(0, this.hitstopT - realDt);
     this.slowmoT = Math.max(0, this.slowmoT - realDt);
     this.time.timeScale = this.hitstopT > 0 ? combatConfig.hitstopScale : this.slowmoT > 0 ? this.slowmoScale : 1;
-    const dt = this.paused ? 0 : this.time.advance(realDt);
+    const dt = this.paused || this.shrinePanel.isOpen ? 0 : this.time.advance(realDt);
     if (this.mode === 'playing') this.updatePlaying(dt, realDt);
     else if (this.mode === 'intro') this.updateIntro(realDt);
     else if (this.mode === 'creator') this.updateCreator(realDt);
@@ -555,7 +580,8 @@ export class Game {
     }
     if (input.wasPressed('toggleDebug')) this.hud.toggleDebug();
     const mouse = input.consumeMouse();
-    if (!this.paused) {
+    if (!this.paused && !this.shrinePanel.isOpen) {
+      this.updateDiscovery(input.wasPressed('interact'));
       rig.rotate(mouse.dx, this.settings.invertY ? -mouse.dy : mouse.dy);
       if (mouse.wheel) rig.zoom(mouse.wheel);
       const { steps, alpha } = this.loop.advance(dt);
@@ -640,12 +666,126 @@ export class Game {
     echo.update(dt);
   }
 
+  // ---------------------------------------------------------------- discovery: shrines and waystones
+
+  /** Shows the shrine prompt, opens the shrine on E and lights waystones the player walks up to. */
+  private updateDiscovery(interact: boolean): void {
+    const player = this.player!;
+    const region = this.region!;
+    if (!player.combatant.alive || this.deathTimer > 0) {
+      this.hud.setInteract(null);
+      return;
+    }
+    const p = player.motor;
+    const nearShrine = Math.hypot(p.x - region.landmark.x, p.z - region.landmark.z) < discoveryConfig.shrineRadius;
+    const el = elements[region.def.element];
+    this.hud.setInteract(nearShrine ? `Shrine of ${el.name}` : null);
+    if (nearShrine && interact) this.openShrine();
+    for (const w of region.waystones) {
+      if (w.lit || Math.hypot(p.x - w.pos.x, p.z - w.pos.z) > discoveryConfig.waystoneRadius) continue;
+      w.setLit(true);
+      this.discover(w.id, w.name);
+      // A waystone restores the traveller.
+      player.combatant.heal(player.combatant.opts.maxHealth);
+      player.abilities.resetCooldowns();
+      player.stamina.value = 100;
+      this.fx.ring(w.pos.clone(), el.glow, 5, 0.9);
+      this.fx.burst(w.pos.clone().add(new THREE.Vector3(0, 1.5, 0)), el.glow, 50, 6);
+      const lit = region.waystones.filter((x) => x.lit).length;
+      this.hud.showBanner(w.name, `${w.kind} lit · ${lit} / ${region.waystones.length}`);
+      toast(this.ui, 'Health and abilities restored');
+      this.saveNow(false);
+    }
+  }
+
+  private discover(id: string, name: string): void {
+    if (!this.save || this.save.discoveries.includes(id)) return;
+    this.save.discoveries.push(id);
+    this.bus.emit('discovered', { id, name });
+  }
+
+  private shrineView() {
+    const region = this.region!;
+    const save = this.save!;
+    return {
+      regionId: region.def.id,
+      attuned: save.discoveries.includes(shrineId(region.def.id)),
+      unlocked: this.player!.abilities.list,
+      attunedRegions: Object.keys(regions).filter((id) => save.discoveries.includes(shrineId(id))),
+      waystones: region.waystones.map((w) => ({ name: w.name, lit: w.lit })),
+    };
+  }
+
+  private openShrine(): void {
+    this.hud.setInteract(null);
+    this.input.exitPointerLock();
+    this.shrinePanel.open(this.shrineView());
+  }
+
+  private closeShrine(): void {
+    this.shrinePanel.close();
+    this.input.requestPointerLock();
+  }
+
+  /** First visit: the shrine is discovered and its element's ability is learned. */
+  private attune(): void {
+    const region = this.region!;
+    const player = this.player!;
+    const el = region.def.element;
+    this.discover(shrineId(region.def.id), regions[region.def.id].name);
+    region.setAttuned(true);
+    const learned = player.abilities.unlock(el);
+    if (learned) {
+      player.abilities.selected = el;
+      this.bus.emit('elementUnlocked', { element: el });
+      toast(this.ui, `${abilities[el].name} learned — R to cast, V to switch element`, 4200);
+    } else toast(this.ui, 'Shrine attuned');
+    const at = region.landmark.clone();
+    this.fx.ring(at, elements[el].glow, 12, 1.4);
+    this.fx.burst(at.clone().add(new THREE.Vector3(0, 3, 0)), elements[el].glow, 120, 9);
+    this.saveNow(false);
+    this.closeShrine();
+    this.hud.showBanner(learned ? abilities[el].name : regions[region.def.id].name, learned ? `${elements[el].name} attunement` : 'Shrine attuned');
+  }
+
+  private rest(): void {
+    const player = this.player!;
+    player.combatant.heal(player.combatant.opts.maxHealth);
+    player.abilities.resetCooldowns();
+    player.stamina.value = 100;
+    this.saveNow(false);
+    toast(this.ui, 'You rest at the shrine. Health and abilities restored.');
+    this.closeShrine();
+  }
+
+  /** Shrine travel: save, then load the destination region at its spawn (beside its shrine). */
+  private async travel(regionId: string): Promise<void> {
+    if (this.traveling || !this.region || regionId === this.region.def.id || !(regionId in regions)) return;
+    const data = this.captureSave();
+    if (!data) return;
+    this.traveling = true;
+    this.shrinePanel.close();
+    data.world = { regionId, position: { x: NaN, y: NaN, z: NaN }, facing: 0, cameraYaw: 0 };
+    try {
+      this.saves.save(data);
+    } catch {
+      /* storage unavailable: travel anyway, the in-memory save is kept */
+    }
+    this.save = data;
+    try {
+      await this.enterWorld(data, false);
+    } finally {
+      this.traveling = false;
+    }
+  }
+
   /** Back at the shrine after defeat; the camp resets too. */
   private respawnPlayer(): void {
     const player = this.player!;
     const region = this.region!;
     player.combatant.revive();
-    player.runner.cancel();
+    player.interrupt();
+    player.endAegis();
     player.scripted = false;
     player.stamina.value = 100;
     const facing = Math.atan2(region.landmark.x - region.spawn.x, region.landmark.z - region.spawn.z);
@@ -679,6 +819,11 @@ export class Game {
       lock: this.director.lockTarget?.id ?? null,
       camp: this.region ? { x: this.region.camp.center.x, z: this.region.camp.center.z } : null,
       saveName: this.save?.character.name ?? null,
+      enemyTypes: this.director.enemies.map((e) => e.def.id),
+      ability: this.player ? { selected: this.player.abilities.selected, unlocked: this.player.abilities.list, cooldowns: this.player.abilities.toSave(), aegis: this.player.aegisT, casting: !!this.player.cast } : null,
+      projectiles: this.director.projectiles.list.filter((p) => !p.dead).length,
+      discoveries: this.save?.discoveries ?? [],
+      shrineOpen: this.shrinePanel.isOpen,
     };
   }
 }

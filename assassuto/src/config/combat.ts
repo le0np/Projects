@@ -151,7 +151,7 @@ export const combatConfig = {
     counterWindow: 1.0,
   },
   stagger: { duration: 0.55, knockdownDuration: 1.6, vulnerableDuration: 2.6 },
-  finisher: { range: 3.2, slowmoScale: 0.35 },
+  finisher: { range: 3.2, slowmoScale: 0.35, buffer: 0.4 },
   lockOn: { range: 22, breakRange: 30 },
   aimAssist: { range: 4.5, arc: 70 },
   hitstopScale: 0.04,

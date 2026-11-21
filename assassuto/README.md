@@ -1,8 +1,8 @@
 # Project Fourfold
 
-Third-person fantasy akcijski RPG za desktop browser, smješten u svijet četiri elementa (vatra, voda, zemlja, zrak). Igrač stvara lika, bira element i Echo duha čuvara, pa kreće u avanturu u jednoj od četiri regije. Projekt se radi po GDD-u u fazama. Gotove su **faze 1–3 od 8** prvog igrivog vertical slicea.
+Third-person fantasy akcijski RPG za desktop browser, smješten u svijet četiri elementa (vatra, voda, zemlja, zrak). Igrač stvara lika, bira element i Echo duha čuvara, pa kreće u avanturu u jednoj od četiri regije. Projekt se radi po GDD-u u fazama. Gotove su **faze 1–4 od 8** prvog igrivog vertical slicea.
 
-**Status:** 🚧 u izradi (faza 3/8: borba, combo, izmicanje, blok/parry, finisher, Raider AI)
+**Status:** 🚧 u izradi (faza 4/8: elementalne sposobnosti, Archer i Brute, shrineovi, otkrića i putovanje među regijama)
 
 ## Pokretanje
 
@@ -15,8 +15,8 @@ npm run dev          # igra na http://localhost:5173
 Ostale naredbe:
 
 ```bash
-npm test             # jedinični testovi (Vitest): fizika, save sustav, Tripo klijent, manifest, pipeline asseta
-npm run e2e          # Playwright: izbornik → kreator → intro → igra → spremi → nastavi + sve 4 regije; screenshotovi u tools/e2e/out/
+npm test             # jedinični testovi (Vitest): fizika, save, Tripo, pipeline, borba, sposobnosti, strijele, AI
+npm run e2e          # Playwright: izbornik → kreator → intro → igra → save/continue → borba → sposobnost, Archer, Brute → shrine, waystone, putovanje → sve 4 regije; screenshotovi u tools/e2e/out/
 npm run build        # provjera tipova + produkcijski build u dist/
 ```
 
@@ -58,7 +58,22 @@ Bez API ključa: `npm run assets:prompts` napravi `assets-src/TRIPO-PROMPTS.md` 
   - Lock-on (Tab/srednji klik), hitstop, tresenje kamere, iskre u boji elementa, brojevi štete, brojač udaraca i ward štit pri bloku.
   - Tri stila (1 mač, 2 koplje, 3 bez oružja) s drukčijim dosegom, lukom i combom.
   - Igrač ima zdravlje. Nakon poraza vraća se na shrine, a kamp se resetira.
-- **Raider kamp** u svakoj regiji: šatori, sanduci i logorska vatra, s 3 Raidera (Tripo model). AI ih vodi kroz stanja: lutanje, primjećivanje, prilaz, kruženje i napad, uz najviše jednog napadača odjednom. Napad najavljuju bljeskom na oštrici (znak za parry), reagiraju na stagger, rušenje i ranjivost, a vraćaju se kući ako igrač pobjegne. Kamp se obnavlja kad ga igrač napusti.
+- **Elementalne sposobnosti** (GDD 7). R baca odabranu sposobnost, a V mijenja element. Početni element je otključan od početka i ima "affinity": 20 % više štete i 20 % kraći cooldown. Ostali se otključavaju na shrineu svoje regije.
+  - **Ember Burst** (vatra): eksplozija oko igrača ruši neprijatelje i pali ih (šteta kroz vrijeme).
+  - **Tidal Surge** (voda): val u stošcu ispred igrača odbacuje neprijatelje, prekida im napade, usporava ih na pola brzine i ispire strijele u letu.
+  - **Stone Aegis** (zemlja): udarni val i kameni oklop na 7 s. Dok traje, igrač prima pola štete i ne može se zateturati ni srušiti.
+  - **Gale Step** (zrak): nalet od 9 m kroz neprijatelje, nedodirljiv za vrijeme naleta. Pogođene reže i podiže u zrak. Radi i u skoku.
+  - Cooldowni se prikazuju u HUD-u (dolje desno) i spremaju u save kao preostalo vrijeme igre.
+- **Tri vrste neprijatelja** (GDD 10), svi na Tripo modelu Raidera, pa nisu trebali dodatni krediti:
+  - **Dune Raider**: uravnotežen borac s mačem.
+  - **Raider Archer**: drži 8–15 m razmaka i puca strijele najavljene bljeskom. Strijela se može blokirati ili izbjeći, a perfect parry je vraća strijelcu s dvostrukom štetom. Kad mu igrač priđe, otkotrlja se unazad. Lako se slomi.
+  - **Ironhide Brute**: velik, spor, ima super armor (udarci ga ne prekidaju) i jedva se pomiče od udaraca. Udarac o tlo je **neblokirajući**: najavljuje ga crveni bljesak i crveni krug na tlu, pa ga treba izbjeći.
+- **Shrine** u svakoj regiji (E kad si blizu):
+  - **Attune** bilježi otkriće i uči sposobnost elementa te regije. Nakon toga iz shrinea kreće svjetlosni stup vidljiv preko cijele regije.
+  - **Rest** vraća zdravlje, staminu i sposobnosti te sprema igru.
+  - **Journey** vodi u bilo koju od četiri regije. Igrač stiže na spawn kraj tamošnjeg shrinea.
+- **Waystoneovi**: u svakoj regiji su 3 elementalna obilježja (Ember Brazier, Frost Lantern, Rune Monolith, Wind Chime), raštrkana 26–66 m od spawna. Kad im igrač priđe, upale se, jednom vrate zdravlje i sposobnosti, pokažu natpis i spreme se kao otkriće.
+- **Raider kamp** u svakoj regiji: šatori, sanduci i logorska vatra, s dva Raidera, Archerom i Bruteom. AI ih vodi kroz stanja: lutanje, primjećivanje, prilaz, kruženje i napad. Odjednom napada najviše jedan borac izbliza i jedan strijelac. Napad najavljuju bljeskom na oštrici (znak za parry), reagiraju na stagger, rušenje i ranjivost, a vraćaju se kući ako igrač pobjegne. Kamp se obnavlja kad ga igrač napusti.
 - Četiri regije sa svojim terenom, nebom, paletom, vegetacijom i atmosferom: **Emberreach Canyons** (vatra, jug), **Glacemere Shores** (voda, sjever), **Thornwall Highlands** (zemlja, zapad) i **Galecrest Heights** (zrak, istok). Svaka ima elementalni shrine kao orijentir.
 - Kretanje u trećem licu: hodanje, trčanje, sprint sa staminom, skok s buffer-om i coyote time-om, kolizija s drvećem i kamenjem, ograničenje strmine.
 - Kamera iza ramena: miš (pointer lock), zoom kotačićem, izbjegavanje terena, FOV efekt pri sprintu.
@@ -85,6 +100,9 @@ Bez API ključa: `npm run assets:prompts` napravi `assets-src/TRIPO-PROMPTS.md` 
 | F | finisher (kad je neprijatelj "BROKEN") |
 | 1 / 2 / 3 | mač / koplje / bez oružja |
 | X | spremi ili izvadi oružje |
+| R | elementalna sposobnost |
+| V | promjena elementa |
+| E | shrine (attune, odmor, putovanje) |
 | H, F3, Esc | pomoć, debug, pauza |
 
 ## Kako je napravljeno
@@ -97,6 +115,11 @@ Bez API ključa: `npm run assets:prompts` napravi `assets-src/TRIPO-PROMPTS.md` 
 - **Kosa na Tripo modelu**: Tripo daje jedan mesh s jednom teksturom, a kosa dijeli tamnoplavu boju s čarapama i rukavicama. Zato prebojavanje traži oba uvjeta: težinu kostiju glave i trupa (preko vertex atributa iz skin weighta) i plavu boju teksela. Tako se noge, rukavice i čizme ne diraju. Postavke su u `config/characters.ts`.
 - **Toon sjenčanje Tripo modela**: PBR materijal (metalness 1) zamijenjen je toon materijalom s istom teksturom i normal mapom, da lik vizualno pripada stiliziranom svijetu.
 - **Borba je čista logika odvojena od prikaza**: `AttackRunner` (combo graf, hit prozori, cancel točke), `Combatant` (zdravlje, poise, stanja), `resolveHit` (i-frameovi, parry, blok, guard break, stagger, rušenje, ranjivost, smrt i kuka `preventDeath` za Guardian's Embrace) i `AttackTokens` (red napadača) pokriveni su testovima. Sve brojke su u `config/combat.ts` i `config/enemies.ts`. Animacije se vremenski skaliraju na trajanje iz konfiguracije, pa izgled ne mijenja balans.
+- **Sposobnosti su podatak, a ne kod po elementu**: `config/abilities.ts` drži sve brojke, a `combat/Abilities.ts` (otključano, odabrano, cooldowni, affinity) i `combat/Status.ts` (gorenje i usporenje) čista su logika pokrivena testovima. Igrač samo javi da je sposobnost aktivirana (`abilityEvent`), a `CombatDirector` je primijeni na svijet. Tako gameplay i efekti ostaju odvojeni.
+- **Strijele** (`combat/Projectiles.ts`) lete s gravitacijom i pod-koracima, pa brza strijela ne može proletjeti kroz tijelo. Pogađaju samo suprotnu stranu, a parry ih prebaci na stranu igrača.
+- **Archer i Brute bez novih Tripo kredita** (odluka vlasnika: krediti se čuvaju). Oba koriste Raiderov model i animacije, uz drugu visinu, širinu, boju i proceduralno oružje (luk, buzdovan). Napinjanje luka koristi početak `chop` clipa, a izmicanje `dive`. Kad se jednom generiraju `enemy_archer` i `enemy_brute`, dovoljno je promijeniti `assetId` u `config/enemies.ts`.
+- **Putovanje među regijama ide preko shrinea.** Svijet je zasad četiri zasebne regije, a ne jedna povezana mapa. Bez putovanja se ostali elementi ne bi mogli otkriti, a ovo je najjednostavnije rješenje koje to omogućuje.
+- **Shrine propsi i waystoneovi su proceduralni** dok se ne generiraju Tripo propsi iz manifesta (`prop_shrine`, `prop_fire_brazier`…).
 - **Mač u ruci**: na Tripo kosturu `R_Hand` ima +Y niz prste i +Z prema naprijed. Oštrica je zato zakrenuta na +Z (`gripPose` u `combat/WeaponModels.ts`), što je izmjereno u igri. Oružje je zasad proceduralno dok se ne generiraju Tripo `weapon_sword` i `weapon_spear`.
 - **Teren, nebo, trava i drveće su proceduralni** (shaderi i instancing), a ne Tripo, jer to daje veće i lakše svjetove. Tripo služi za likove, stvorenja, oružje i ključne propse.
 - Fontovi Cinzel i Nunito Sans dolaze s Google Fontsa. Bez mreže igra koristi sistemske fontove.
@@ -108,18 +131,18 @@ assassuto/
 ├── index.html
 ├── src/
 │   ├── core/        Game (orkestracija), FixedLoop, EventBus, Time, math
-│   ├── config/      player, camera, elements, regions, creator, echo, characters — sve podesive vrijednosti
+│   ├── config/      player, camera, elements, regions, creator, echo, characters, combat, enemies, abilities, discovery — sve podesive vrijednosti
 │   ├── input/       InputManager, akcije i tipke
 │   ├── physics/     CharacterMotor (kapsula, skok, kolizije, strmina)
-│   ├── world/       Heightfield, Region (teren, voda, propsi, trava, shrine), CollisionGrid, noise
-│   ├── render/      Renderer (post-processing), CameraRig (lock-on, shake), Atmosphere, SkyDome, ToonMaterials, SpiritMaterial, Fx
+│   ├── world/       Heightfield, Region (teren, voda, propsi, trava, shrine, waystoneovi, kamp), CollisionGrid, noise
+│   ├── render/      Renderer (post-processing), CameraRig (lock-on, shake), Atmosphere, SkyDome, ToonMaterials, SpiritMaterial, Fx, AbilityFx
 │   ├── animation/   CharacterView, PlaceholderHumanoid, GltfCharacter, characterFactory, SpiritCreatures
 │   ├── entities/    Player, Enemy (+ AI), Stamina, Appearance, EchoView
 │   ├── assets/      AssetRegistry, runtime manifest
-│   ├── combat/      AttackRunner, Combatant, resolveHit, InputBuffer, CombatDirector, WeaponModels
+│   ├── combat/      AttackRunner, Combatant, resolveHit, InputBuffer, CombatDirector, WeaponModels, Abilities, Status, Projectiles
 │   ├── ai/          AttackTokens
 │   ├── save/        SaveSchema (+ sanitizacija), SaveManager (migracije, backend), Settings, restore
-│   └── ui/          MainMenu, CharacterCreator, IntroOverlay, SettingsPanel, CreditsPanel, Hud, CombatHud
+│   └── ui/          MainMenu, CharacterCreator, IntroOverlay, SettingsPanel, CreditsPanel, Hud, CombatHud (+ traka sposobnosti), ShrinePanel
 ├── assets-src/
 │   ├── manifest.json        svi Tripo asseti: promptovi, rig, animacije
 │   └── TRIPO-PROMPTS.md     generirani promptovi za ručni rad u Tripo Studiju
@@ -133,4 +156,4 @@ assassuto/
 
 ## Moguća poboljšanja
 
-Plan faza 4–8 nalazi se u [`PROGRESS.md`](PROGRESS.md): elementalne sposobnosti i nove vrste neprijatelja, Echo i Guardian's Embrace, stvorenja i mountovi, tutorial, progresija i zvuk.
+Plan faza 5–8 nalazi se u [`PROGRESS.md`](PROGRESS.md): Echo i Guardian's Embrace, stvorenja i mountovi, tutorial, progresija i zvuk.

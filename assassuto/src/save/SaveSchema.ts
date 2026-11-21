@@ -38,7 +38,8 @@ export interface SaveData {
   world: { regionId: string; position: { x: number; y: number; z: number }; facing: number; cameraYaw: number };
   tutorial: { completedSteps: string[]; completed: boolean };
   progression: { level: number; xp: number; skillPoints: number; weaponMastery: Record<string, number>; unlockedElements: ElementId[] };
-  equipment: { weapon: string; unlockedWeapons: string[] };
+  /** `ability` is the selected elemental ability (by element). */
+  equipment: { weapon: string; unlockedWeapons: string[]; ability: ElementId };
   creatures: Record<string, CreatureBond>;
   mount: { selected: string | null };
   /** Remaining seconds of game time (not wall-clock), so cooldowns survive save/load exactly. */
@@ -67,7 +68,7 @@ export function newSave(character: SaveData['character'], echo: EchoConfig, regi
     world: { regionId, position: { x: NaN, y: NaN, z: NaN }, facing: 0, cameraYaw: 0 },
     tutorial: { completedSteps: [], completed: false },
     progression: { level: 1, xp: 0, skillPoints: 0, weaponMastery: { sword: 0 }, unlockedElements: [character.element] },
-    equipment: { weapon: 'sword', unlockedWeapons: ['sword'] },
+    equipment: { weapon: 'sword', unlockedWeapons: ['sword'], ability: character.element },
     creatures: {},
     mount: { selected: null },
     cooldowns: { guardianEmbrace: 0, spiritWard: 0 },
@@ -139,6 +140,7 @@ export function sanitizeSave(raw: unknown): SaveData {
   for (const [k, v] of Object.entries(obj(r.cooldowns))) cooldowns[k.slice(0, 48)] = num(v, 0, 0, 86400);
   const mastery: Record<string, number> = {};
   for (const [k, v] of Object.entries(obj(pr.weaponMastery))) mastery[k.slice(0, 32)] = num(v, 0, 0, 1e6);
+  const unlockedElements = [...new Set([element, ...strList(pr.unlockedElements).filter((x): x is ElementId => elementIds.includes(x as ElementId))])];
   return {
     ...base,
     savedAt: str(r.savedAt, base.savedAt, 40),
@@ -155,9 +157,14 @@ export function sanitizeSave(raw: unknown): SaveData {
       xp: num(pr.xp, 0, 0, 1e9),
       skillPoints: Math.round(num(pr.skillPoints, 0, 0, 999)),
       weaponMastery: { ...base.progression.weaponMastery, ...mastery },
-      unlockedElements: [...new Set([element, ...strList(pr.unlockedElements).filter((x): x is ElementId => elementIds.includes(x as ElementId))])],
+      unlockedElements,
     },
-    equipment: { weapon: str(eq.weapon, 'sword', 32), unlockedWeapons: strList(eq.unlockedWeapons, 50).length ? strList(eq.unlockedWeapons, 50) : ['sword'] },
+    equipment: {
+      weapon: str(eq.weapon, 'sword', 32),
+      unlockedWeapons: strList(eq.unlockedWeapons, 50).length ? strList(eq.unlockedWeapons, 50) : ['sword'],
+      // Only an unlocked element can be selected (older saves have none: falls back to the character's element).
+      ability: oneOf(eq.ability, unlockedElements, element),
+    },
     creatures,
     mount: { selected: typeof obj(r.mount).selected === 'string' ? (obj(r.mount).selected as string).slice(0, 48) : null },
     cooldowns,

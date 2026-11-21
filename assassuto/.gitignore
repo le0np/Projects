@@ -4,3 +4,4 @@ dist/
 assets-src/incoming/
 assets-src/.tripo-state.json
 tools/e2e/out/
+tools/scratch/

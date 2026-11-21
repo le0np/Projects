@@ -164,3 +164,36 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--gold); }
 .defeat-title { font: 700 52px var(--font-display); }
 .defeat-sub { color: var(--ink-dim); margin-top: 8px; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Elemental abilities */
+.abilities { position: absolute; right: 24px; bottom: 22px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.ab-row { display: flex; gap: 10px; align-items: flex-end; }
+.ab-slot { position: relative; width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--el); background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--el) 55%, #000), rgba(8,10,18,.85)); display: grid; place-items: center; box-shadow: 0 4px 14px rgba(0,0,0,.45); transition: transform .15s, box-shadow .2s, opacity .2s; }
+.ab-slot.selected { transform: scale(1.18); box-shadow: 0 0 0 2px var(--gold-strong), 0 0 18px var(--glow); }
+.ab-slot.ready.selected { animation: abReady 1.6s ease-in-out infinite alternate; }
+.ab-slot.locked { opacity: .35; filter: grayscale(.9); border-style: dashed; }
+.ab-slot.locked .ab-icon::after { content: '🔒'; position: absolute; right: -6px; bottom: -6px; font-size: 14px; }
+.ab-slot.active { box-shadow: 0 0 0 2px var(--glow), 0 0 26px var(--glow); }
+.ab-slot.denied { animation: abDenied .3s ease; }
+.ab-icon { position: relative; display: grid; color: #fff; filter: drop-shadow(0 0 6px var(--glow)); }
+.ab-cd { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(rgba(6,8,14,.78) calc(var(--cd, 0) * 360deg), transparent 0); }
+.ab-time { position: absolute; inset: 0; display: grid; place-items: center; font: 800 17px var(--font-ui); text-shadow: 0 1px 4px #000; }
+.ab-name { font: 700 14px var(--font-display); letter-spacing: .1em; color: var(--gold-strong); text-shadow: 0 2px 8px rgba(0,0,0,.7); margin-top: 6px; }
+.ab-keys { font-size: 12px; color: var(--ink-dim); text-shadow: 0 1px 4px rgba(0,0,0,.7); }
+@keyframes abReady { from { box-shadow: 0 0 0 2px var(--gold-strong), 0 0 10px var(--glow); } to { box-shadow: 0 0 0 2px var(--gold-strong), 0 0 26px var(--glow); } }
+@keyframes abDenied { 0%, 100% { translate: 0; } 25% { translate: -5px; } 75% { translate: 5px; } }
+
+/* Interaction prompt and shrine panel */
+.interact { position: absolute; left: 50%; bottom: 28%; transform: translateX(-50%); padding: 8px 16px; border-radius: 999px; background: var(--panel-strong); border: 1px solid var(--line); font: 600 15px var(--font-ui); display: flex; gap: 8px; align-items: center; text-shadow: 0 1px 3px #000; }
+.shrine-card { width: min(520px, calc(100% - 32px)); }
+.shrine-sub { font: 500 13px var(--font-display); letter-spacing: .35em; color: var(--gold); margin-bottom: 4px; }
+.shrine-status { margin: 0 0 14px; color: var(--ink-dim); line-height: 1.5; }
+.shrine-status strong { color: var(--ink); }
+.shrine-actions { display: flex; flex-direction: column; gap: 8px; }
+.shrine-actions .btn { text-align: left; }
+.shrine-travel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+.shrine-travel .btn { padding: 10px 14px; font-size: 14px; border-radius: 12px; text-align: left; }
+.shrine-travel .btn small { display: block; font-weight: 400; color: var(--ink-dim); }
+.shrine-travel .btn:disabled { opacity: .45; cursor: default; }
+.shrine-h { font: 700 12px var(--font-display); letter-spacing: .25em; color: var(--gold); margin: 16px 0 4px; }
+.shrine-discoveries { font-size: 13px; color: var(--ink-dim); line-height: 1.7; }

@@ -35,4 +35,7 @@ export type GameEvents = {
   parry: { enemy: string };
   enemyKilled: { id: string; xp: number };
   playerDied: Record<string, never>;
+  abilityCast: { element: string };
+  discovered: { id: string; name: string };
+  elementUnlocked: { element: string };
 };

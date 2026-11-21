@@ -3,6 +3,7 @@ export type Action =
   | 'moveForward' | 'moveBack' | 'moveLeft' | 'moveRight'
   | 'sprint' | 'walk' | 'jump'
   | 'attackLight' | 'attackHeavy' | 'block' | 'dodge' | 'lockOn' | 'finisher' | 'weapon1' | 'weapon2' | 'weapon3' | 'sheathe'
+  | 'ability' | 'cycleAbility' | 'interact'
   | 'toggleHelp' | 'toggleDebug' | 'pause';
 
 /** Mouse buttons use the codes Mouse0 (left), Mouse1 (middle), Mouse2 (right). */
@@ -24,6 +25,9 @@ export const defaultBindings: Record<Action, string[]> = {
   weapon2: ['Digit2'],
   weapon3: ['Digit3'],
   sheathe: ['KeyX'],
+  ability: ['KeyR'],
+  cycleAbility: ['KeyV'],
+  interact: ['KeyE'],
   toggleHelp: ['F1', 'KeyH'],
   toggleDebug: ['F3'],
   pause: ['Escape'],

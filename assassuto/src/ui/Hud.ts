@@ -8,6 +8,7 @@ export class Hud {
   private debugEl: HTMLElement;
   private pauseEl: HTMLElement;
   private noticeEl: HTMLElement;
+  private interactEl: HTMLElement;
   private bannerTimer = 0;
   private staminaVisible = 0;
 
@@ -27,6 +28,7 @@ export class Hud {
       <div><kbd>LMB</kbd> Light &nbsp; <kbd>RMB</kbd> Heavy &nbsp; <kbd>Q</kbd> Block / parry</div>
       <div><kbd>Tab</kbd> Lock on &nbsp; <kbd>F</kbd> Finisher</div>
       <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Sword / Spear / Unarmed &nbsp; <kbd>X</kbd> Sheathe</div>
+      <div><kbd>R</kbd> Elemental ability &nbsp; <kbd>V</kbd> Switch element &nbsp; <kbd>E</kbd> Interact</div>
       <div><kbd>H</kbd> Toggle help &nbsp; <kbd>F3</kbd> Debug</div>
       <div><kbd>Esc</kbd> Pause</div>`;
     this.debugEl = el('div', 'debug');
@@ -42,7 +44,9 @@ export class Hud {
     this.pauseEl.hidden = true;
     this.noticeEl = el('div', 'notice');
     this.noticeEl.hidden = true;
-    this.root.append(this.staminaEl, this.bannerEl, this.helpEl, this.debugEl, this.noticeEl, this.pauseEl);
+    this.interactEl = el('div', 'interact');
+    this.interactEl.hidden = true;
+    this.root.append(this.interactEl, this.staminaEl, this.bannerEl, this.helpEl, this.debugEl, this.noticeEl, this.pauseEl);
     parent.append(this.root);
   }
 
@@ -61,6 +65,15 @@ export class Hud {
     this.bannerEl.innerHTML = `<div class="banner-sub">${subtitle}</div><div class="banner-title">${title}</div>`;
     this.bannerEl.classList.add('visible');
     this.bannerTimer = 4.5;
+  }
+
+  /** "E  Shrine of Fire" style prompt; null hides it. */
+  setInteract(text: string | null): void {
+    this.interactEl.hidden = !text;
+    if (text && this.interactEl.dataset.text !== text) {
+      this.interactEl.dataset.text = text;
+      this.interactEl.replaceChildren(Object.assign(document.createElement('kbd'), { textContent: 'E' }), document.createTextNode(text));
+    }
   }
 
   notice(text: string | null): void {

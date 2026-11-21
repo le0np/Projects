@@ -14,12 +14,13 @@ function findChromium() {
   const def = chromium.executablePath();
   if (existsSync(def)) return undefined;
   // Fall back to any Chromium already downloaded by another Playwright version.
-  const cache = join(homedir(), '.cache', 'ms-playwright');
-  if (!existsSync(cache)) return undefined;
-  for (const dir of readdirSync(cache).filter((d) => /^chromium-\d+$/.test(d)).sort().reverse()) {
-    for (const sub of ['chrome-linux64/chrome', 'chrome-linux/chrome']) {
-      const p = join(cache, dir, sub);
-      if (existsSync(p)) return p;
+  for (const cache of [process.env.PLAYWRIGHT_BROWSERS_PATH, join(homedir(), '.cache', 'ms-playwright')]) {
+    if (!cache || !existsSync(cache)) continue;
+    for (const dir of readdirSync(cache).filter((d) => /^chromium-\d+$/.test(d)).sort().reverse()) {
+      for (const sub of ['chrome-linux64/chrome', 'chrome-linux/chrome']) {
+        const p = join(cache, dir, sub);
+        if (existsSync(p)) return p;
+      }
     }
   }
   return undefined;
@@ -189,10 +190,116 @@ try {
     e.react('vulnerable');
   });
   check(await poll(async () => page.locator('.prompt:not([hidden])').count().then((n) => n > 0), 20, 200), 'combat: finisher prompt appears for a broken enemy');
-  await page.keyboard.press('KeyF');
-  await page.waitForTimeout(1500);
+  // Other enemies (archer arrows, the brute) can stagger the player; keep pressing F while the prompt shows.
+  let finished = false;
+  for (let i = 0; i < 8 && !finished; i++) {
+    await page.keyboard.press('KeyF');
+    finished = await poll(async () => (await state()).enemies.some((e) => e.state === 'dead'), 12, 250);
+  }
   await shot('14-finisher');
-  check(await poll(async () => (await state()).enemies.some((e) => e.state === 'dead'), 60, 250), 'combat: finisher kills the enemy');
+  check(finished, 'combat: finisher kills the enemy');
+
+  // ---- Phase 4: camp roster, elemental ability, archer arrows, brute slam
+  const roster = (await state()).enemyTypes;
+  check(['raider', 'archer', 'brute'].every((t) => roster.includes(t)), `camp: raiders, an archer and a brute (${roster.join(', ')})`);
+  await page.evaluate(() => {
+    const g = window.__fourfold;
+    g.player.combatant.revive();
+    for (const e of g.director.enemies) e.reset();
+  });
+  // Let the finisher cinematic end before casting.
+  await poll(() => page.evaluate(() => !window.__fourfold.player.busy && !window.__fourfold.player.scripted && window.__fourfold.player.motor.grounded), 60, 200);
+  await page.keyboard.press('KeyR');
+  check(await poll(async () => (await state()).ability.aegis > 0, 40, 150), 'ability: R raises Stone Aegis (earth)');
+  check((await state()).ability.cooldowns['ability.earth'] > 0, 'ability: cooldown starts');
+  await shot('15-stone-aegis');
+  await page.evaluate(() => {
+    const g = window.__fourfold;
+    const ar = g.director.enemies.find((e) => e.def.id === 'archer');
+    for (const e of g.director.enemies) if (e !== ar) { e.combatant.setState('dead'); e.deadTime = 10; }
+    const p = g.player;
+    const x = ar.motor.x + 9, z = ar.motor.z + 7;
+    p.motor.teleport(x, g.region.terrain.heightAt(x, z), z);
+    p.facing = Math.atan2(ar.motor.x - x, ar.motor.z - z);
+    p.syncRender();
+    g.rig.snapBehind(p.facing);
+  });
+  check(await poll(async () => (await state()).projectiles > 0, 80, 150), 'archer: looses an arrow at the player');
+  await shot('16-archer-arrow');
+  await page.evaluate(() => {
+    const g = window.__fourfold;
+    for (const e of g.director.enemies) e.reset();
+    const br = g.director.enemies.find((e) => e.def.id === 'brute');
+    for (const e of g.director.enemies) if (e !== br) { e.combatant.setState('dead'); e.deadTime = 10; }
+    const p = g.player;
+    p.combatant.revive();
+    const x = br.motor.x + 3.5, z = br.motor.z + 1.5;
+    p.motor.teleport(x, g.region.terrain.heightAt(x, z), z);
+    p.syncRender();
+  });
+  check(
+    await poll(() => page.evaluate(() => window.__fourfold.director.enemies.some((e) => e.def.id === 'brute' && e.attack)), 100, 150),
+    'brute: attacks when the player is close',
+  );
+  await shot('17-brute');
+
+  // ---- Phase 4: shrine attunement, waystone discovery, travel to another region
+  await page.evaluate(() => {
+    const g = window.__fourfold;
+    for (const e of g.director.enemies) e.reset();
+    const p = g.player;
+    p.combatant.revive();
+    const r = g.region;
+    const x = r.landmark.x + 3.5, z = r.landmark.z + 3;
+    p.motor.teleport(x, r.terrain.heightAt(x, z) + 0.7, z);
+    p.syncRender();
+  });
+  check(await poll(async () => (await page.locator('.interact:not([hidden])').count()) > 0, 30, 150), 'shrine: interaction prompt near the shrine');
+  await page.keyboard.press('KeyE');
+  check(await poll(async () => (await state()).shrineOpen, 20, 150), 'shrine: E opens the shrine');
+  await shot('18-shrine');
+  await page.click('[data-shrine=attune]');
+  check(await poll(async () => (await state()).discoveries.includes('shrine:thornwall'), 20, 150), 'shrine: attuning records the discovery');
+  await page.evaluate(() => {
+    const g = window.__fourfold;
+    const w = g.region.waystones[0];
+    const p = g.player;
+    const x = w.pos.x + 1.5, z = w.pos.z + 1.5;
+    p.motor.teleport(x, g.region.terrain.heightAt(x, z), z);
+    p.syncRender();
+  });
+  check(await poll(async () => (await state()).discoveries.some((d) => d.startsWith('waystone:thornwall')), 30, 150), 'waystone: walking up to it lights it');
+  await shot('19-waystone');
+  await page.evaluate(() => {
+    const g = window.__fourfold;
+    const r = g.region;
+    const p = g.player;
+    const x = r.landmark.x + 3.5, z = r.landmark.z + 3;
+    p.motor.teleport(x, r.terrain.heightAt(x, z) + 0.7, z);
+    p.syncRender();
+  });
+  await poll(async () => (await page.locator('.interact:not([hidden])').count()) > 0, 30, 150);
+  await page.keyboard.press('KeyE');
+  await poll(async () => (await state()).shrineOpen, 20, 150);
+  await page.click('[data-travel=emberreach]');
+  await page.waitForFunction(() => window.__fourfold.debugState().region === 'emberreach' && window.__fourfold.debugState().mode === 'playing', null, { timeout: 60000 });
+  await page.evaluate(() => {
+    const g = window.__fourfold;
+    const r = g.region;
+    const p = g.player;
+    const x = r.landmark.x + 3.5, z = r.landmark.z + 3;
+    p.motor.teleport(x, r.terrain.heightAt(x, z) + 0.7, z);
+    p.syncRender();
+  });
+  await poll(async () => (await page.locator('.interact:not([hidden])').count()) > 0, 30, 150);
+  await page.keyboard.press('KeyE');
+  await poll(async () => (await state()).shrineOpen, 20, 150);
+  await page.click('[data-shrine=attune]');
+  const af = await state();
+  check(af.ability.unlocked.includes('fire') && af.ability.selected === 'fire', 'travel: Emberreach shrine teaches Ember Burst');
+  await page.keyboard.press('KeyV');
+  check(await poll(async () => (await state()).ability.selected === 'earth', 20, 150), 'ability: V switches element');
+  check(af.discoveries.includes('shrine:thornwall') && af.discoveries.some((d) => d.startsWith('waystone:')), 'travel: discoveries survive the journey');
 
   // ---- All four regions (dev shortcut)
   for (const element of ['earth', 'fire', 'water', 'air']) {

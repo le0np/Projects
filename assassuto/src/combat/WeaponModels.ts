@@ -11,7 +11,30 @@ export function buildWeapon(id: string, accent: number, dark = false): THREE.Gro
   const metal = new THREE.MeshStandardMaterial({ color: dark ? 0x8a8f99 : 0xdfe6ef, metalness: 0.85, roughness: 0.28 });
   const trim = toonMaterial({ color: accent, emissive: accent, emissiveIntensity: 0.25 });
   const wrap = toonMaterial({ color: dark ? 0x2a1d18 : 0x3b2a22 });
-  if (id === 'spear') {
+  if (id === 'bow') {
+    // Limbs span the weapon's local Z (vertical in the hand), bulging forward along +Y; the grip is at the origin.
+    const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, -0.2, -0.62), new THREE.Vector3(0, 0.2, 0), new THREE.Vector3(0, -0.2, 0.62));
+    const limb = new THREE.Mesh(new THREE.TubeGeometry(curve, 16, 0.018, 6), wrap);
+    const string = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 1.24, 4), toonMaterial({ color: 0xe8e2d0 }));
+    string.rotation.x = Math.PI / 2;
+    string.position.y = -0.2;
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.14, 8), trim);
+    grip.rotation.x = Math.PI / 2;
+    g.add(limb, string, grip);
+  } else if (id === 'club') {
+    const haft = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 1.0, 8), wrap);
+    haft.position.y = 0.35;
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.36, 8), metal);
+    head.position.y = 0.9;
+    g.add(haft, head);
+    for (let i = 0; i < 6; i++) {
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.12, 5), metal);
+      const a = (i / 6) * Math.PI * 2;
+      spike.position.set(Math.cos(a) * 0.13, 0.9, Math.sin(a) * 0.13);
+      spike.rotation.set(0, -a, -Math.PI / 2);
+      g.add(spike);
+    }
+  } else if (id === 'spear') {
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 1.9, 8), wrap);
     shaft.position.y = 0.55;
     const head = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.32, 4), metal);
