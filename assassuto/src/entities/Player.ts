@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import type { CharacterView, LocomotionState } from '../animation/CharacterView';
 import { AttackRunner, type AttackPlan } from '../combat/AttackRunner';
-import { AbilityState } from '../combat/Abilities';
+import { AbilityState, type Imbue } from '../combat/Abilities';
+import { mobilityConfig } from '../config/skills';
 import { Combatant } from '../combat/Combatant';
 import type { AnyAbilityDef } from '../config/abilities';
 import type { ElementId } from '../config/elements';
@@ -35,6 +36,8 @@ export interface PlayerStepContext {
 export interface AbilityEvent {
   def: AnyAbilityDef;
   damageScale: number;
+  /** Radius / range / distance multiplier from the skill level. */
+  area: number;
   x: number;
   y: number;
   z: number;
@@ -75,13 +78,24 @@ export class Player {
   scripted = false;
   readonly abilities: AbilityState;
   /** Current ability cast (wind-up, effect, recovery). */
-  cast: { def: AnyAbilityDef; t: number; fired: boolean; damageScale: number; instance: number } | null = null;
+  cast: { def: AnyAbilityDef; t: number; fired: boolean; damageScale: number; area: number; instance: number } | null = null;
   /** Gale Step in progress. */
   dash: { t: number; dir: { x: number; z: number }; instance: number } | null = null;
   /** Seconds left of Stone Aegis. */
   aegisT = 0;
   /** Effect to apply this step (consumed by the combat director). */
   abilityEvent: AbilityEvent | null = null;
+  /** Air jumps used since leaving the ground. */
+  private airJumpsUsed = 0;
+  /** Game time Space went down for a high-jump charge, or -1. */
+  private chargeStart = -1;
+  private highJumpPending = false;
+  private lastNow = 0;
+  /** Last air/high jump, for the burst effect under the feet. */
+  jumpBurst: { kind: 'air' | 'high'; at: number } | null = null;
+  /** Set on the step Z coats the weapon (consumed by effects). */
+  imbueEvent: Imbue | null = null;
+  imbueFailed: { reason: 'locked' | 'cooldown'; at: number } | null = null;
   /** Last failed cast attempt, for HUD feedback. */
   castFailed: { reason: 'locked' | 'cooldown'; at: number } | null = null;
 
@@ -92,8 +106,9 @@ export class Player {
     element: ElementId = 'earth',
     unlocked: ElementId[] = [element],
     selected?: ElementId,
+    skillLevels: Partial<Record<ElementId, number>> = {},
   ) {
-    this.abilities = new AbilityState(element, unlocked, selected);
+    this.abilities = new AbilityState(element, unlocked, selected, skillLevels);
     this.runner = new AttackRunner(weapons[weaponId] ?? weapons.sword);
     if (weaponId !== 'fists' && weapons[weaponId]) this.lastArmed = weaponId;
   }
@@ -174,7 +189,7 @@ export class Player {
     }
     this.runner.cancel();
     this.buffer.clear();
-    this.cast = { def: r.def, t: 0, fired: false, damageScale: r.damageScale, instance: nextCast++ };
+    this.cast = { def: r.def, t: 0, fired: false, damageScale: r.damageScale, area: r.area, instance: nextCast++ };
     // Aim: lock target, else movement direction, else where the camera looks.
     const t = ctx.lockTarget?.alive ? ctx.lockTarget.position() : null;
     if (t) this.facing = Math.atan2(t.x - this.motor.x, t.z - this.motor.z);
@@ -193,7 +208,7 @@ export class Player {
     const d = cast.def;
     if (!cast.fired && cast.t >= d.castTime) {
       cast.fired = true;
-      this.abilityEvent = { def: d, damageScale: cast.damageScale, x: this.motor.x, y: this.motor.y, z: this.motor.z, facing: this.facing, instance: cast.instance };
+      this.abilityEvent = { def: d, damageScale: cast.damageScale, area: cast.area, x: this.motor.x, y: this.motor.y, z: this.motor.z, facing: this.facing, instance: cast.instance };
       if (d.kind === 'dash') this.dash = { t: 0, dir: { x: Math.sin(this.facing), z: Math.cos(this.facing) }, instance: cast.instance };
       if (d.kind === 'aegis') {
         this.aegisT = d.duration;
@@ -211,6 +226,7 @@ export class Player {
   /** Fixed-step logic. */
   step(dt: number, input: InputManager, ctx: PlayerStepContext): void {
     const cfg = playerConfig;
+    this.lastNow = ctx.now;
     const c = this.combatant;
     c.tick(dt);
     this.dodgeCooldown = Math.max(0, this.dodgeCooldown - dt);
@@ -231,6 +247,14 @@ export class Player {
       if (this.aegisT <= 0) this.endAegis();
     }
     if (input.wasPressed('cycleAbility')) this.abilities.cycle();
+    this.imbueEvent = null;
+    if (input.wasPressed('imbue') && c.free && !this.scripted) {
+      const r = this.abilities.tryImbue();
+      if (r.ok) {
+        this.imbueEvent = r.imbue;
+        this.bus.emit('weaponImbued', { element: r.imbue.element });
+      } else this.imbueFailed = { reason: r.reason, at: ctx.now };
+    }
 
     const f = (input.isDown('moveForward') ? 1 : 0) - (input.isDown('moveBack') ? 1 : 0);
     const r = (input.isDown('moveRight') ? 1 : 0) - (input.isDown('moveLeft') ? 1 : 0);
@@ -332,7 +356,7 @@ export class Player {
     if (this.dash) {
       const d = this.cast?.def;
       const dashTime = d?.kind === 'dash' ? d.dashTime : 0.28;
-      const distance = d?.kind === 'dash' ? d.distance : 8;
+      const distance = (d?.kind === 'dash' ? d.distance : 8) * (this.cast?.area ?? 1);
       this.dash.t += dt;
       c.invulnerable = Math.max(c.invulnerable, dt * 1.5);
       moveX = this.dash.dir.x;
@@ -374,20 +398,28 @@ export class Player {
       speed = input.isDown('walk') || c.blocking ? cfg.walkSpeed : this.sprinting ? cfg.sprintSpeed : cfg.runSpeed;
       moveX = mx;
       moveZ = mz;
-      jump = input.wasPressed('jump');
+      jump = this.jumpInput(input, ctx.now);
       if (jump && this.motor.grounded && !this.stamina.spend(cfg.stamina.jumpCost)) jump = false;
+    }
+    if (this.motor.grounded) {
+      this.airJumpsUsed = 0;
+      // A high jump keeps its burst until it leaves the ground.
     }
 
     this.stamina.tick(dt, this.sprinting, c.blocking);
     this.prev.copy(this.curr);
     const events = this.motor.step(dt, { moveX, moveZ, speed, jump }, ctx.world);
     for (const e of events) {
-      if (e.type === 'jumped') this.bus.emit('playerJumped', {});
+      if (e.type === 'jumped') {
+        if (this.highJumpPending) this.motor.vy = mobilityConfig.highJumpVelocity;
+        this.bus.emit('playerJumped', {});
+      }
       else {
         this.landing = Math.min(1, Math.max(this.landing, (e.fallSpeed - 6) / 14));
         this.bus.emit('playerLanded', { fallSpeed: e.fallSpeed });
       }
     }
+    this.highJumpPending = false;
     this.curr.set(this.motor.x, this.motor.y, this.motor.z);
 
     // ---- facing
@@ -426,6 +458,44 @@ export class Player {
     this.counterUntil = -Infinity;
     // Several enemies can swing in a row: a successful parry re-arms the next one immediately.
     this.parryLockUntil = -Infinity;
+  }
+
+  /**
+   * Jump input with the mobility skill: Space in the air is a double (or triple) jump; with high jump
+   * unlocked, holding Space on the ground charges a jump on a cushion of compressed air (released to fire),
+   * while a quick tap still jumps normally on release.
+   */
+  private jumpInput(input: InputManager, now: number): boolean {
+    const mob = this.abilities.mobility;
+    const m = mobilityConfig;
+    if (!this.motor.grounded) {
+      this.chargeStart = -1;
+      if (input.wasPressed('jump') && this.airJumpsUsed < mob.airJumps && this.motor.vy < m.airJumpVelocity * 0.6 && this.stamina.spend(m.airJumpStamina)) {
+        this.airJumpsUsed++;
+        this.motor.vy = m.airJumpVelocity;
+        this.jumpBurst = { kind: 'air', at: now };
+        this.bus.emit('playerJumped', {});
+        return false;
+      }
+      return input.wasPressed('jump');
+    }
+    if (!mob.highJump) return input.wasPressed('jump');
+    if (input.wasPressed('jump')) this.chargeStart = now;
+    if (this.chargeStart < 0) return false;
+    const held = now - this.chargeStart;
+    if (input.isDown('jump')) return false;
+    // Released.
+    this.chargeStart = -1;
+    if (held >= m.highJumpCharge && this.stamina.spend(m.highJumpStamina)) {
+      this.highJumpPending = true;
+      this.jumpBurst = { kind: 'high', at: now };
+    }
+    return true;
+  }
+
+  /** 0..1 while a high jump is charging (HUD / effects). */
+  get highJumpCharge(): number {
+    return this.chargeStart < 0 || !this.motor.grounded ? 0 : Math.min(1, (this.lastNow - this.chargeStart) / mobilityConfig.highJumpCharge);
   }
 
   private turnTowards(target: number, dt: number, rate: number): void {

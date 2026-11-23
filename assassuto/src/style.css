@@ -194,6 +194,12 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--gold); }
 .shrine-travel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
 .shrine-travel .btn { padding: 10px 14px; font-size: 14px; border-radius: 12px; text-align: left; }
 .shrine-travel .btn small { display: block; font-weight: 400; color: var(--ink-dim); }
+.shrine-skills { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+.shrine-skill { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); }
+.shrine-skill.locked { opacity: 0.55; }
+.shrine-skill small { color: var(--ink-dim); }
+.shrine-skill .skill-pips { color: var(--accent, #ffd27a); letter-spacing: 2px; }
+.shrine-skill .btn { padding: 6px 10px; font-size: 13px; border-radius: 10px; }
 .shrine-travel .btn:disabled { opacity: .45; cursor: default; }
 .shrine-h { font: 700 12px var(--font-display); letter-spacing: .25em; color: var(--gold); margin: 16px 0 4px; }
 .shrine-discoveries { font-size: 13px; color: var(--ink-dim); line-height: 1.7; }

@@ -117,7 +117,7 @@ export const abilities: Record<ElementId, AnyAbilityDef> = {
     kind: 'dash',
     element: 'air',
     name: 'Gale Step',
-    description: 'Become the wind: dash straight through enemies, untouchable, cutting and lifting them.',
+    description: 'Part of the Wind mobility skill (with double jump and high jump): dash straight through enemies, untouchable, cutting and lifting them. Works in the air.',
     cooldown: 5,
     castTime: 0.05,
     recovery: 0.34,

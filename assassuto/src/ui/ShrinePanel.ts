@@ -1,6 +1,7 @@
 import { abilities } from '../config/abilities';
 import { elements, type ElementId } from '../config/elements';
 import { regions } from '../config/regions';
+import { MAX_SKILL_LEVEL, skills } from '../config/skills';
 import { h } from './dom';
 
 export interface ShrineView {
@@ -11,9 +12,12 @@ export interface ShrineView {
   /** Ids of discovered shrines, by region. */
   attunedRegions: string[];
   waystones: { name: string; lit: boolean }[];
+  skillPoints: number;
+  skills: { element: ElementId; unlocked: boolean; level: number; cost: number | null }[];
 }
 
 export interface ShrineHandlers {
+  upgrade(el: ElementId): void;
   attune(): void;
   rest(): void;
   travel(regionId: string): void;
@@ -86,11 +90,37 @@ export class ShrinePanel {
       ...v.waystones.map((w) => h('div', { text: `${w.lit ? '◆' : '◇'} ${w.lit ? w.name : 'Unlit waystone'}` })),
     );
 
+    // Skills: each element has 5 levels, bought with skill points from experience and discoveries.
+    const skillList = h('div', { class: 'shrine-skills' });
+    for (const sk of v.skills) {
+      const def = skills[sk.element];
+      const pips = '●'.repeat(sk.level) + '○'.repeat(MAX_SKILL_LEVEL - sk.level);
+      const next = sk.level < MAX_SKILL_LEVEL ? def.levels[sk.level].note : 'Mastered';
+      const btn = h('button', {
+        class: 'btn ghost',
+        attrs: { 'data-skill': sk.element },
+        text: !sk.unlocked ? 'Locked' : sk.cost === null ? 'Max' : `Level up · ${sk.cost} pt`,
+        on: { click: () => this.handlers.upgrade(sk.element) },
+      });
+      btn.disabled = !sk.unlocked || sk.cost === null || sk.cost > v.skillPoints;
+      skillList.append(
+        h(
+          'div',
+          { class: `shrine-skill${sk.unlocked ? '' : ' locked'}` },
+          h('div', { class: 'skill-head' }, h('strong', { text: def.name }), h('span', { class: 'skill-pips', text: ` ${pips}` })),
+          h('small', { text: sk.unlocked ? `Next: ${next}` : `Attune at the ${elements[sk.element].name.toLowerCase()} shrine to unlock` }),
+          btn,
+        ),
+      );
+    }
+
     this.card.replaceChildren(
       h('div', { class: 'shrine-sub', text: `Shrine of ${el.name}` }),
       h('h2', { text: region.name }),
       status,
       actions,
+      h('div', { class: 'shrine-h', text: `Skills · ${v.skillPoints} point${v.skillPoints === 1 ? '' : 's'}` }),
+      skillList,
       h('div', { class: 'shrine-h', text: 'Journey' }),
       travel,
       h('div', { class: 'shrine-h', text: `Waystones ${lit} / ${v.waystones.length}` }),

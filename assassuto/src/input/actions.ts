@@ -2,7 +2,7 @@
 export type Action =
   | 'moveForward' | 'moveBack' | 'moveLeft' | 'moveRight'
   | 'sprint' | 'walk' | 'jump'
-  | 'attackLight' | 'attackHeavy' | 'block' | 'dodge' | 'lockOn' | 'finisher' | 'weapon1' | 'weapon2' | 'weapon3' | 'sheathe' | 'throwWeapon'
+  | 'attackLight' | 'attackHeavy' | 'block' | 'dodge' | 'lockOn' | 'finisher' | 'weapon1' | 'weapon2' | 'weapon3' | 'sheathe' | 'throwWeapon' | 'imbue'
   | 'ability' | 'cycleAbility' | 'interact'
   | 'toggleHelp' | 'toggleDebug' | 'pause';
 
@@ -26,6 +26,7 @@ export const defaultBindings: Record<Action, string[]> = {
   weapon3: ['Digit3'],
   sheathe: ['KeyX'],
   throwWeapon: ['KeyG'],
+  imbue: ['KeyZ'],
   ability: ['KeyR'],
   cycleAbility: ['KeyV'],
   interact: ['KeyE'],

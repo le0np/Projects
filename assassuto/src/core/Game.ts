@@ -5,7 +5,7 @@ import type { CharacterView } from '../animation/CharacterView';
 import { GltfCharacter } from '../animation/GltfCharacter';
 import { cameraConfig } from '../config/camera';
 import { echoIntroLines } from '../config/echo';
-import { elements } from '../config/elements';
+import { elementOrder, elements, type ElementId } from '../config/elements';
 import { regions } from '../config/regions';
 import type { CharacterLook } from '../entities/appearance';
 import { EchoView } from '../entities/EchoView';
@@ -33,6 +33,8 @@ import { Fx } from '../render/Fx';
 import { CombatHud } from '../ui/CombatHud';
 import { ShrinePanel } from '../ui/ShrinePanel';
 import { abilities } from '../config/abilities';
+import { progressionConfig, skills } from '../config/skills';
+import { gainXp } from '../entities/Progression';
 import { discoveryConfig, shrineId } from '../config/discovery';
 import { EventBus, type GameEvents } from './EventBus';
 import { FixedLoop } from './FixedLoop';
@@ -133,6 +135,7 @@ export class Game {
     this.credits = new CreditsPanel(container);
     this.combatHud = new CombatHud(container);
     this.shrinePanel = new ShrinePanel(container, {
+      upgrade: (el) => this.upgradeSkill(el),
       attune: () => this.attune(),
       rest: () => this.rest(),
       travel: (id) => void this.travel(id),
@@ -149,6 +152,11 @@ export class Game {
       shake: (a) => this.rig?.shake(a),
       popup: (at, text, kind) => this.combatHud.popup(at, text, kind),
       cinematic: (shot) => (this.shot = shot),
+    });
+    this.bus.on('enemyKilled', ({ xp }) => {
+      if (!this.save) return;
+      const gained = gainXp(this.save.progression, xp);
+      if (gained > 0) toast(this.ui, `Skill point earned (${this.save.progression.skillPoints} unspent) — spend it at a shrine`, 3600);
     });
     this.bus.on('playerDied', () => {
       this.deathTimer = 3.2;
@@ -401,7 +409,7 @@ export class Game {
     const region = this.region!;
     const look: CharacterLook = { element: save.character.element, appearance: save.character.appearance };
     const view = await createPlayerView(look, this.assets);
-    this.player = new Player(view, this.bus, save.equipment.weapon, save.character.element, save.progression.unlockedElements, save.equipment.ability);
+    this.player = new Player(view, this.bus, save.equipment.weapon, save.character.element, save.progression.unlockedElements, save.equipment.ability, save.progression.skills);
     this.player.abilities.loadCooldowns(save.cooldowns);
     this.scene.add(view.object);
     region.setAttuned(save.discoveries.includes(shrineId(region.def.id)));
@@ -514,7 +522,7 @@ export class Game {
         unlockedWeapons: [...new Set([...this.save.equipment.unlockedWeapons, 'sword', 'spear', 'fists'])],
         ability: this.player.abilities.selected,
       },
-      progression: { ...this.save.progression, unlockedElements: this.player.abilities.list },
+      progression: { ...this.save.progression, unlockedElements: this.player.abilities.list, skills: this.player.abilities.levelsToSave() },
       cooldowns: { ...this.save.cooldowns, ...this.player.abilities.toSave() },
     };
   }
@@ -714,6 +722,13 @@ export class Game {
       unlocked: this.player!.abilities.list,
       attunedRegions: Object.keys(regions).filter((id) => save.discoveries.includes(shrineId(id))),
       waystones: region.waystones.map((w) => ({ name: w.name, lit: w.lit })),
+      skillPoints: save.progression.skillPoints,
+      skills: elementOrder.map((el) => ({
+        element: el,
+        unlocked: this.player!.abilities.unlocked.has(el),
+        level: this.player!.abilities.level(el),
+        cost: this.player!.abilities.upgradeCost(el),
+      })),
     };
   }
 
@@ -721,6 +736,18 @@ export class Game {
     this.hud.setInteract(null);
     this.input.exitPointerLock();
     this.shrinePanel.open(this.shrineView());
+  }
+
+  /** Spends skill points on the next level of an elemental skill (shrine panel). */
+  private upgradeSkill(el: ElementId): void {
+    const save = this.save!;
+    const spent = this.player!.abilities.upgrade(el, save.progression.skillPoints);
+    if (!spent) return;
+    save.progression.skillPoints -= spent;
+    const lvl = this.player!.abilities.level(el);
+    toast(this.ui, `${skills[el].name} reached level ${lvl}: ${skills[el].levels[lvl - 1].note}`, 3600);
+    this.saveNow(false);
+    this.shrinePanel.render(this.shrineView());
   }
 
   private closeShrine(): void {
@@ -735,6 +762,7 @@ export class Game {
     const el = region.def.element;
     this.discover(shrineId(region.def.id), regions[region.def.id].name);
     region.setAttuned(true);
+    this.save!.progression.skillPoints += progressionConfig.shrinePoints;
     const learned = player.abilities.unlock(el);
     if (learned) {
       player.abilities.selected = el;

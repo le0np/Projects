@@ -15,6 +15,8 @@ import type { AbilityEvent, Player } from '../entities/Player';
 import { AbilityFx } from '../render/AbilityFx';
 import { aimVelocity, Projectiles, type CapsuleTarget } from './Projectiles';
 import { ThrownSpear } from './ThrownSpear';
+import type { Imbue } from './Abilities';
+import { imbueConfig } from '../config/skills';
 import type { InputManager } from '../input/InputManager';
 import type { Fx } from '../render/Fx';
 import type { Region } from '../world/Region';
@@ -63,6 +65,9 @@ export class CombatDirector {
   private group = new THREE.Group();
   private glintTex = makeGlintTexture();
   private element: ElementId = 'earth';
+  private tmpV = new THREE.Vector3();
+  private lastJumpBurst = -1;
+  private lastImbue: Imbue | null = null;
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -335,11 +340,13 @@ export class CombatDirector {
     if (!atk || !player.runner.hitActive) return;
     const def = atk.def;
     if (def.release !== undefined) return;
+    const imbue = player.abilities.imbue;
+    const im = imbueMods(imbue);
     const isFinisher = def.id === player.weapon.finisher;
     for (const e of this.enemies) {
       if (!e.alive || e.combatant.alreadyHitBy(atk.instance)) continue;
       if (isFinisher && this.finisher?.enemy !== e) continue;
-      if (!inArc({ x: player.motor.x, z: player.motor.z, facing: player.facing }, { x: e.motor.x, z: e.motor.z, radius: e.def.radius }, def.reach, def.arc)) continue;
+      if (!inArc({ x: player.motor.x, z: player.motor.z, facing: player.facing }, { x: e.motor.x, z: e.motor.z, radius: e.def.radius }, def.reach + im.reach, def.arc)) continue;
       // The last move of a combo string lands harder.
       const ender = atk.ender ? combatConfig.comboEnder : null;
       // A parry counter finishes off ordinary enemies that are already hurt.
@@ -347,16 +354,17 @@ export class CombatDirector {
       const execute = isCounter && !e.def.superArmor && e.combatant.health <= e.def.maxHealth * combatConfig.block.counterExecute;
       const hit: HitInfo = {
         instance: atk.instance,
-        damage: execute ? e.combatant.health : Math.round(def.damage * (ender?.damage ?? 1)),
-        poise: def.poise * (ender?.poise ?? 1),
-        knockback: isFinisher ? def.knockback / Math.max(0.2, e.def.knockbackTaken) : def.knockback * (ender?.knockback ?? 1),
+        damage: execute ? e.combatant.health : Math.round(def.damage * (ender?.damage ?? 1) * im.damage),
+        poise: def.poise * (ender?.poise ?? 1) * im.poise,
+        knockback: isFinisher ? def.knockback / Math.max(0.2, e.def.knockbackTaken) : def.knockback * (ender?.knockback ?? 1) * im.knockback,
         launch: def.launch,
         knockdown: def.knockdown,
         kind: 'melee',
         unblockable: isFinisher,
       };
       const label = isFinisher ? 'FINISHER' : execute ? 'COUNTER KILL' : isCounter ? 'COUNTER' : undefined;
-      const landed = this.hitEnemy(e, hit, player.motor, now, { sparks: isFinisher || execute ? 80 : 14, hitstop: def.hitstop, shake: def.shake, label });
+      const landed = this.hitEnemy(e, hit, player.motor, now, { sparks: isFinisher || execute ? 80 : 14, hitstop: def.hitstop, shake: def.shake, label, color: imbue ? elements[imbue.element].glow : undefined });
+      if (landed) this.applyImbue(e, imbue);
       if (landed && isFinisher) this.fx.ring(new THREE.Vector3(e.motor.x, e.motor.y, e.motor.z), elements[this.element].glow, 7, 0.8);
     }
   }
@@ -365,33 +373,34 @@ export class CombatDirector {
 
   private applyAbility(ev: AbilityEvent, now: number): void {
     const def: AnyAbilityDef = ev.def;
+    const area = ev.area;
     const el = elements[def.element];
     const at = new THREE.Vector3(ev.x, ev.y, ev.z);
     const base = { instance: ev.instance, damage: Math.round(def.damage * ev.damageScale), poise: def.poise, knockback: def.knockback, launch: def.launch, knockdown: def.knockdown, kind: 'melee' as const };
     switch (def.kind) {
       case 'burst': {
-        this.abilityFx.fireBurst(at, def.radius, el.color, el.glow);
+        this.abilityFx.fireBurst(at, def.radius * area, el.color, el.glow);
         this.fx.burst(at.clone().add(new THREE.Vector3(0, 1, 0)), el.glow, 70, 10);
         this.feedback.shake(0.45);
         for (const e of this.enemies) {
-          if (!e.alive || Math.hypot(e.motor.x - ev.x, e.motor.z - ev.z) - e.def.radius > def.radius) continue;
+          if (!e.alive || Math.hypot(e.motor.x - ev.x, e.motor.z - ev.z) - e.def.radius * area > def.radius * area) continue;
           if (this.hitEnemy(e, base, ev, now, { color: el.glow, sparks: 20 })) e.status.burn(def.burn.dps * ev.damageScale, def.burn.duration);
         }
         this.feedback.hitstop(0.07);
         break;
       }
       case 'wave': {
-        this.abilityFx.wave(at, ev.facing, def.range, def.arc, el.glow);
+        this.abilityFx.wave(at, ev.facing, def.range * area, def.arc, el.glow);
         this.feedback.shake(0.3);
         for (const e of this.enemies) {
-          if (!e.alive || !inArc({ x: ev.x, z: ev.z, facing: ev.facing }, { x: e.motor.x, z: e.motor.z, radius: e.def.radius }, def.range, def.arc)) continue;
+          if (!e.alive || !inArc({ x: ev.x, z: ev.z, facing: ev.facing }, { x: e.motor.x, z: e.motor.z, radius: e.def.radius * area }, def.range * area, def.arc)) continue;
           if (this.hitEnemy(e, base, ev, now, { color: el.glow })) e.status.soak(def.soak.slow, def.soak.duration);
           e.cancelAttack(e.def.role === 'ranged' ? this.shooters : this.tokens);
         }
         // Washes incoming arrows away.
         for (const p of this.projectiles.list) {
           if (p.team !== 'enemy' || p.dead) continue;
-          if (inArc({ x: ev.x, z: ev.z, facing: ev.facing }, { x: p.x, z: p.z, radius: 0.3 }, def.range, def.arc + 10)) {
+          if (inArc({ x: ev.x, z: ev.z, facing: ev.facing }, { x: p.x, z: p.z, radius: 0.3 }, def.range * area, def.arc + 10)) {
             p.dead = true;
             this.fx.burst(new THREE.Vector3(p.x, p.y, p.z), el.glow, 8, 4);
           }
@@ -399,17 +408,17 @@ export class CombatDirector {
         break;
       }
       case 'aegis': {
-        this.abilityFx.shockwave(at, def.radius, el.glow);
+        this.abilityFx.shockwave(at, def.radius * area, el.glow);
         this.fx.burst(at.clone().add(new THREE.Vector3(0, 0.3, 0)), 0xb89a6a, 40, 7);
         this.feedback.shake(0.5);
         for (const e of this.enemies) {
-          if (!e.alive || Math.hypot(e.motor.x - ev.x, e.motor.z - ev.z) - e.def.radius > def.radius) continue;
+          if (!e.alive || Math.hypot(e.motor.x - ev.x, e.motor.z - ev.z) - e.def.radius * area > def.radius * area) continue;
           this.hitEnemy(e, base, ev, now, { color: el.glow });
         }
         break;
       }
       case 'dash':
-        this.abilityFx.gale(at, ev.facing, def.distance, el.glow);
+        this.abilityFx.gale(at, ev.facing, def.distance * area, el.glow);
         this.fx.burst(at.clone().add(new THREE.Vector3(0, 1, 0)), el.glow, 24, 6);
         break;
     }
@@ -421,7 +430,7 @@ export class CombatDirector {
     if (!dash) return;
     const def = abilities.air;
     if (def.kind !== 'dash') return;
-    const scale = player.abilities.affinity === 'air' ? 1.2 : 1;
+    const scale = player.cast?.damageScale ?? 1;
     for (const e of this.enemies) {
       if (!e.alive || e.combatant.alreadyHitBy(dash.instance)) continue;
       if (Math.hypot(e.motor.x - player.motor.x, e.motor.z - player.motor.z) > def.hitRadius + e.def.radius) continue;
@@ -443,6 +452,16 @@ export class CombatDirector {
       const dmg = e.status.tick(dt);
       if (dmg > 0) this.hitEnemy(e, { instance: nextDot++, damage: dmg, poise: 0, knockback: 0, kind: 'dot' }, e.motor, now, { color: elements.fire.glow, combo: false });
     }
+  }
+
+  // ------------------------------------------------------------------ weapon imbue (Z)
+
+  /** Status effects of an imbued weapon on a hit enemy. */
+  private applyImbue(e: Enemy, imbue: Imbue | null): void {
+    if (!imbue || !e.alive) return;
+    const p = imbue.power;
+    if (imbue.element === 'fire') e.status.burn(imbueConfig.fire.burnDps * p, imbueConfig.fire.burnTime);
+    else if (imbue.element === 'water') e.status.soak(Math.max(0.3, 1 - (1 - imbueConfig.water.slow) * p), imbueConfig.water.soakTime);
   }
 
   // ------------------------------------------------------------------ thrown spear
@@ -478,7 +497,10 @@ export class CombatDirector {
       const e = struck && this.enemies.find((x) => x.id === struck.id);
       if (e) {
         const from = { x: e.motor.x - this.spear.dir.x, z: e.motor.z - this.spear.dir.z };
-        this.hitEnemy(e, { instance: this.spear.instance, damage: cfg.damage, poise: cfg.poise, knockback: cfg.knockback, kind: 'projectile' }, from, now, { label: undefined, hitstop: 0.1, shake: 0.3, sparks: 24 });
+        const imbue = player.abilities.imbue;
+        const im = imbueMods(imbue);
+        const hit: HitInfo = { instance: this.spear.instance, damage: Math.round(cfg.damage * im.damage), poise: cfg.poise * im.poise, knockback: cfg.knockback * im.knockback, kind: 'projectile' };
+        if (this.hitEnemy(e, hit, from, now, { hitstop: 0.1, shake: 0.3, sparks: 24, color: imbue ? elements[imbue.element].glow : undefined })) this.applyImbue(e, imbue);
       } else if ((this.spear.state as string) === 'grounded') this.fx.burst(new THREE.Vector3(this.spear.x, this.spear.y + 0.1, this.spear.z), 0xc8b89a, 10, 3);
     }
     // Pick up: walk over it, or press E nearby.
@@ -716,6 +738,31 @@ export class CombatDirector {
       (this.ward.material as THREE.MeshBasicMaterial).opacity = (blocking ? 0.22 : 0) + this.wardFlash * 0.5;
     }
     this.abilityFx.syncArrows(this.projectiles.list);
+    // Imbued weapon: embers / droplets / grit / wisps streaming from the hand.
+    const imbue = player.abilities.imbue;
+    if (imbue && player.combatant.alive) {
+      const glow = elements[imbue.element].glow;
+      player.view.weaponSocket.getWorldPosition(this.tmpV);
+      if (Math.random() < dt * 40) this.fx.burst(this.tmpV.clone(), glow, 2, 1.2);
+      if (player.armed) {
+        // Along the weapon too.
+        const tip = this.tmpV.clone().add(new THREE.Vector3(0, 0.6, 0).applyQuaternion(player.view.weaponSocket.getWorldQuaternion(new THREE.Quaternion())));
+        if (Math.random() < dt * 30) this.fx.burst(tip, glow, 2, 1);
+      }
+    }
+    if (imbue && imbue !== this.lastImbue) {
+      player.view.weaponSocket.getWorldPosition(this.tmpV);
+      this.fx.burst(this.tmpV.clone(), elements[imbue.element].glow, 40, 5);
+      this.fx.ring(new THREE.Vector3(player.renderPosition.x, player.renderPosition.y + 0.05, player.renderPosition.z), elements[imbue.element].glow, 2.2, 0.4);
+    }
+    this.lastImbue = imbue;
+    const jb = player.jumpBurst;
+    if (jb && jb.at !== this.lastJumpBurst) {
+      this.lastJumpBurst = jb.at;
+      const at = new THREE.Vector3(player.renderPosition.x, player.renderPosition.y + 0.05, player.renderPosition.z);
+      this.abilityFx.shockwave(at, jb.kind === 'high' ? 2.6 : 1.6, elements.air.glow);
+      this.fx.burst(at, elements.air.glow, jb.kind === 'high' ? 36 : 18, jb.kind === 'high' ? 6 : 4);
+    }
     // The thrown spear: along its flight, then stuck in the ground at the angle it landed.
     const sp = this.spear;
     this.spearMesh.visible = sp.state !== 'held';
@@ -758,4 +805,18 @@ function makeGlintTexture(): THREE.Texture {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
+}
+
+/** Hit multipliers from an imbued weapon: fire burns harder, earth crushes poise, air gusts further. */
+export function imbueMods(imbue: Imbue | null): { damage: number; poise: number; knockback: number; reach: number } {
+  const out = { damage: 1, poise: 1, knockback: 1, reach: 0 };
+  if (!imbue) return out;
+  const p = imbue.power;
+  if (imbue.element === 'fire') out.damage = 1 + (imbueConfig.fire.damage - 1) * p;
+  if (imbue.element === 'earth') out.poise = 1 + (imbueConfig.earth.poise - 1) * p;
+  if (imbue.element === 'air') {
+    out.knockback = 1 + (imbueConfig.air.knockback - 1) * p;
+    out.reach = imbueConfig.air.reach;
+  }
+  return out;
 }

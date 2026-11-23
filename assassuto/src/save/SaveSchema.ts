@@ -37,7 +37,15 @@ export interface SaveData {
   echo: EchoConfig;
   world: { regionId: string; position: { x: number; y: number; z: number }; facing: number; cameraYaw: number };
   tutorial: { completedSteps: string[]; completed: boolean };
-  progression: { level: number; xp: number; skillPoints: number; weaponMastery: Record<string, number>; unlockedElements: ElementId[] };
+  progression: {
+    level: number;
+    xp: number;
+    skillPoints: number;
+    weaponMastery: Record<string, number>;
+    unlockedElements: ElementId[];
+    /** Elemental skill levels 1-5 (air is the mobility skill). */
+    skills: Record<ElementId, number>;
+  };
   /** `ability` is the selected elemental ability (by element). */
   equipment: { weapon: string; unlockedWeapons: string[]; ability: ElementId };
   creatures: Record<string, CreatureBond>;
@@ -67,7 +75,7 @@ export function newSave(character: SaveData['character'], echo: EchoConfig, regi
     echo,
     world: { regionId, position: { x: NaN, y: NaN, z: NaN }, facing: 0, cameraYaw: 0 },
     tutorial: { completedSteps: [], completed: false },
-    progression: { level: 1, xp: 0, skillPoints: 0, weaponMastery: { sword: 0 }, unlockedElements: [character.element] },
+    progression: { level: 1, xp: 0, skillPoints: 0, weaponMastery: { sword: 0 }, unlockedElements: [character.element], skills: { fire: 1, water: 1, earth: 1, air: 1 } },
     equipment: { weapon: 'sword', unlockedWeapons: ['sword'], ability: character.element },
     creatures: {},
     mount: { selected: null },
@@ -158,6 +166,8 @@ export function sanitizeSave(raw: unknown): SaveData {
       skillPoints: Math.round(num(pr.skillPoints, 0, 0, 999)),
       weaponMastery: { ...base.progression.weaponMastery, ...mastery },
       unlockedElements,
+      // Older saves have no skill levels: everything starts at level 1.
+      skills: Object.fromEntries(elementIds.map((e) => [e, Math.round(num(obj(pr.skills)[e], 1, 1, 5))])) as Record<ElementId, number>,
     },
     equipment: {
       weapon: str(eq.weapon, 'sword', 32),

@@ -146,7 +146,10 @@ export class CombatHud {
       slot.el.title = unlocked ? abilities[id].name : 'Attune at this element\'s shrine to unlock';
     }
     const sel = abilities[ab.selected];
-    this.abilityName.textContent = sel.name;
+    // Ability name with its skill level, and the weapon imbue (Z) state.
+    const im = ab.imbue;
+    const imbueText = im ? `${imbueNames[im.element]} ${Math.ceil(im.remaining)}s` : ab.imbueCooldown > 0 ? `Z ${Math.ceil(ab.imbueCooldown)}s` : `Z ${imbueNames[ab.selected]}`;
+    this.abilityName.textContent = `${sel.name} · Lv ${ab.level(ab.selected)}  ·  ${imbueText}`;
     const fail = player.castFailed;
     if (fail && fail.at !== this.lastFail) {
       this.lastFail = fail.at;
@@ -165,6 +168,8 @@ export class CombatHud {
     this.defeat.hidden = true;
   }
 }
+
+const imbueNames: Record<string, string> = { fire: 'Flame Weapon', water: 'Frost Weapon', earth: 'Stone Weapon', air: 'Gust Weapon' };
 
 /** Inline SVG icons for the ability slots (constant markup, no user text). */
 const abilityPaths: Record<string, string> = {

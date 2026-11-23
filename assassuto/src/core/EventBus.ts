@@ -37,6 +37,7 @@ export type GameEvents = {
   playerDied: Record<string, never>;
   abilityCast: { element: string };
   spearPickedUp: Record<string, never>;
+  weaponImbued: { element: string };
   discovered: { id: string; name: string };
   elementUnlocked: { element: string };
 };
