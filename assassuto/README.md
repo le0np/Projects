@@ -2,7 +2,7 @@
 
 Third-person fantasy akcijski RPG za desktop browser, smješten u svijet četiri elementa (vatra, voda, zemlja, zrak). Igrač stvara lika, bira element i Echo duha čuvara, pa kreće u avanturu u jednoj od četiri regije. Projekt se radi po GDD-u u fazama. Gotove su **faze 1–4 od 8** prvog igrivog vertical slicea.
 
-**Status:** 🚧 u izradi (faza 4/8: elementalne sposobnosti, Archer i Brute, shrineovi, otkrića i putovanje među regijama)
+**Status:** 🚧 u izradi (faza 4/8 i proširenje borbe: kombinacije, parry, bacanje koplja, mobilnost, element na oružju, razine vještina)
 
 ## Pokretanje
 
@@ -51,18 +51,23 @@ Bez API ključa: `npm run assets:prompts` napravi `assets-src/TRIPO-PROMPTS.md` 
 - **Pauza** (Esc): Resume, Save game, Settings, Save & quit. **Postavke**: glasnoća (zvuk dolazi kasnije), osjetljivost miša, invertiranje Y osi, kvaliteta grafike (mijenja se odmah), prikaz kontrola.
 - Echo prati igrača sa strane (s obzirom na kameru) i ne zaklanja pogled. Ovo je osnovno praćenje, a puno ponašanje dolazi u fazi 5.
 - **Borba** (GDD 8):
-  - Napadi: lagani (LMB/J) i teški (RMB/K), s combo grafom (L-L-L, L-L-H lansira neprijatelja, L-H široki zamah, H-H rušenje) i input bufferom od 0,25 s. Napad u zraku, kratki iskorak u napad, pomoć pri ciljanju.
-  - **S oružjem lik koristi samo oružje** (zamasi mačem ili kopljem), nikad šake ni noge. **Bez oružja** (tipka 3, ili X za spremanje i vađenje oružja) bori se rukama i nogama: direkt, kroše, udarac nogom i salto-udarac. Taj stil je brži i jeftiniji, ali ima kraći doseg i manju štetu. Promjena oružja usred napada izvrši se čim napad završi.
-  - Obrana: izmicanje (C/Alt) s i-frameovima, blok (Q) koji troši staminu i može se slomiti, te perfect parry (Q tik prije udarca) koji usporava vrijeme i otvara counter.
+  - **Tri stila na tipkama 1, 2 i 3**: 1 je uvijek borba bez oružja, 2 mač, 3 koplje. X sprema ili vadi zadnje oružje. Promjena oružja usred napada izvrši se čim napad završi.
+  - **Nasumične kombinacije**: svaki stil ima 5 kombinacija na LMB (J) i 5 na RMB (K). Prvi pritisak bira kombinaciju nasumično (nikad istu dvaput zaredom), a svaki sljedeći pritisak u combo prozoru igra idući udarac. Pritisak druge tipke usred kombinacije nastavlja se u kombinaciju te tipke. Zadnji udarac kombinacije udara jače. Input buffer je 0,25 s, uz napad u zraku, iskorak u napad i pomoć pri ciljanju.
+  - **Bez oružja** LMB su udarci rukama (direkt lijevom i desnom, kroše, aperkat), a RMB udarci nogama (prednji udarac, koljeno, roundhouse lijevom i desnom, okretni udarac, salto-udarac). Brže je i jeftinije, ali ima kraći doseg i manju štetu.
+  - **S oružjem lik koristi samo oružje**, nikad šake ni noge. Mač: dijagonalni rezovi s obje strane, uzlazni rez, široki zamah, udarac odozgo, ubod, okret i lansiranje. Koplje: ubodi, brzi ubodi, široki zamasi, udarac odozgo, okret i dugi iskorak.
+  - **Bacanje koplja (G)**: koplje leti prema meti (lock-on ili najbliži neprijatelj ispred), pogađa prvog na putu i zabija se u tlo. Dok je bačeno, lik se bori rukama. Podiže se prolaskom preko njega ili s E u blizini, i tada se vraća u ruku.
+  - **Obrana**: izmicanje (C/Alt) s i-frameovima. **Držanje Q** je blok koji troši staminu i može se slomiti. **Pritisak Q tik prije udarca** (0,2 s) je parry, čak i kao kratki tap: udarac se odbija, vrijeme uspori, a lik **sam uzvrati** counter udarcem (u stilu Assassin's Creeda). Ranjene obične neprijatelje (35 % zdravlja ili manje) counter odmah ubija. Promašen pritisak zaključa parry na 0,5 s, pa lupanje po Q ne pomaže. Strijele se parryjem vraćaju strijelcu.
+  - Nove kretnje nastaju bez novih Tripo animacija: postojeći clipovi se zrcale (desni direkt iz lijevog), režu na dijelove, puštaju unatrag (uzlazni rez) i dobivaju sloj rotacija kostiju (aperkat, kroše, koljeno, ubod), u `config/moves.ts`.
   - Neprijatelji imaju poise: kad se slomi, postaju ranjivi i dobiju zlatni prsten, a F pokreće finisher s kinematografskim kadrom.
   - Lock-on (Tab/srednji klik), hitstop, tresenje kamere, iskre u boji elementa, brojevi štete, brojač udaraca i ward štit pri bloku.
-  - Tri stila (1 mač, 2 koplje, 3 bez oružja) s drukčijim dosegom, lukom i combom.
   - Igrač ima zdravlje. Nakon poraza vraća se na shrine, a kamp se resetira.
 - **Elementalne sposobnosti** (GDD 7). R baca odabranu sposobnost, a V mijenja element. Početni element je otključan od početka i ima "affinity": 20 % više štete i 20 % kraći cooldown. Ostali se otključavaju na shrineu svoje regije.
   - **Ember Burst** (vatra): eksplozija oko igrača ruši neprijatelje i pali ih (šteta kroz vrijeme).
   - **Tidal Surge** (voda): val u stošcu ispred igrača odbacuje neprijatelje, prekida im napade, usporava ih na pola brzine i ispire strijele u letu.
   - **Stone Aegis** (zemlja): udarni val i kameni oklop na 7 s. Dok traje, igrač prima pola štete i ne može se zateturati ni srušiti.
-  - **Gale Step** (zrak): nalet od 9 m kroz neprijatelje, nedodirljiv za vrijeme naleta. Pogođene reže i podiže u zrak. Radi i u skoku.
+  - **Wind** (zrak) je vještina mobilnosti: **dupli skok** (Space u zraku), **visoki skok** na jastuku zraka (drži Space na tlu, pusti), i **Gale Step** (R): nalet od 9 m kroz neprijatelje, nedodirljiv za vrijeme naleta. Pogođene reže i podiže u zrak. Radi i u skoku.
+  - **Element na oružju (Z)**: odabrani element obavije oružje (ili šake) na 8–16 s. Vatra pali, voda usporava, zemlja lomi poise, a zrak jače odbacuje i produži doseg. Vrijedi i za bačeno koplje.
+  - **Razine vještina**: svaka elementalna vještina ima 5 razina koje jačaju sposobnost i element na oružju (šteta, doseg, cooldown, trajanje). Wind po razinama dodaje visoki skok, duži Gale Step, trostruki skok i dva Gale Stepa zaredom. Bodovi se dobivaju iskustvom od neprijatelja (1 bod na 100 XP) i attuneom shrinea, a troše se na shrineu (razina 2 košta 1 bod, 3 košta 2, 4 košta 3, 5 košta 4).
   - Cooldowni se prikazuju u HUD-u (dolje desno) i spremaju u save kao preostalo vrijeme igre.
 - **Tri vrste neprijatelja** (GDD 10), svi na Tripo modelu Raidera, pa nisu trebali dodatni krediti:
   - **Dune Raider**: uravnotežen borac s mačem.

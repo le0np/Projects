@@ -163,6 +163,7 @@ export class CombatDirector {
 
   resetAll(): void {
     for (const e of this.enemies) e.reset();
+    this.spear.pickUp();
     this.projectiles.clear();
     this.lockTarget = null;
     this.finisher = null;

@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-Faze 1–4 od 8 su gotove. Igra ima glavni izbornik, kreator lika u 6 koraka s 3D previewom, intro cinematic, kretanje u četiri regije, verzionirano spremanje i borbu. Borba obuhvaća combo napade, izmicanje, blok i parry s counterom, lock-on, finisher, mač, koplje i borbu bez oružja. Faza 4 je dodala četiri elementalne sposobnosti, Archera i Brutea uz Raidere u kampu, shrineove (attune, odmor, putovanje među regijama) i 3 waystonea po regiji. Oba lika i Raider su Tripo modeli. Archer i Brute koriste Raiderov model. Echo je zasad vizualni duh s osnovnim praćenjem. Ostalo je 275 Tripo kredita, a vlasnik ih zasad čuva: sve se testira sa ženskim likom.
+Faze 1–4 od 8 su gotove, uz proširenje borbe (kombinacije, parry po tajmingu, bacanje koplja, mobilnost, element na oružju, razine vještina). Igra ima glavni izbornik, kreator lika u 6 koraka s 3D previewom, intro cinematic, kretanje u četiri regije, verzionirano spremanje i borbu. Borba obuhvaća combo napade, izmicanje, blok i parry s counterom, lock-on, finisher, mač, koplje i borbu bez oružja. Faza 4 je dodala četiri elementalne sposobnosti, Archera i Brutea uz Raidere u kampu, shrineove (attune, odmor, putovanje među regijama) i 3 waystonea po regiji. Oba lika i Raider su Tripo modeli. Archer i Brute koriste Raiderov model. Echo je zasad vizualni duh s osnovnim praćenjem. Ostalo je 275 Tripo kredita, a vlasnik ih zasad čuva: sve se testira sa ženskim likom.
 
 ## Napravljeno 20. studenoga 2026.
 
@@ -105,19 +105,36 @@ Faze 1–4 od 8 su gotove. Igra ima glavni izbornik, kreator lika u 6 koraka s 3
 - e2e: `findChromium` sada pretražuje i `PLAYWRIGHT_BROWSERS_PATH` (u ovom okruženju je Chromium u `/opt/pw-browsers`).
 - `tools/scratch/` (u `.gitignore`) služi za jednokratne skripte za screenshotove.
 
+## Napravljeno 23. studenoga 2026.
+
+### Proširenje borbe
+
+**Zahtjev vlasnika:** 1 je uvijek borba bez oružja, 2 mač, 3 koplje. Bez oružja LMB daje direkte, krošee i aperkate, a RMB udarce nogama, složene u oko 5 kombinacija koje lik bira nasumično. Isto vrijedi za mač i koplje, a koplje se može baciti i podići. Blok i parry se razlikuju po tajmingu (Q tik prije udarca je parry s uzvratom, kao u Assassin's Creedu). Prva zračna vještina je mobilnost: dupli skok, visoki skok guranjem zraka i Gale Step pod istom vještinom. Elementi se mogu primijeniti na oružje, a svaka vještina ima 3–5 razina.
+
+**Odluke:**
+- Animacije: vlasnik je odabrao **kod i zrcaljenje, bez trošenja Tripo kredita** (ostaje 275). Tripo nema aperkat ni pravi roundhouse, a `slash` i `chop` su isti clip.
+- `animation/clipTools.ts`: `mirrorClip` zrcali clip preko sagitalne ravnine u prostoru modela, s korekcijom rest poze (ne ovisi o osima kostiju L/R). Provjereno brojčano: zrcaljeni desni direkt prati lijevi unutar par centimetara. Pose overlay sloj rotira kosti u okviru lika (pitch, yaw, roll) s krivuljama bell, ramp i hold, a ključ `aim` okreće šaku tako da oružje gleda u zadanom smjeru (ubodi). Raspon clipa može ići unatrag (uzlazni rez).
+- `config/moves.ts`: popis zrcaljenih clipova i overlaya (kroše, aperkat, koljeno, prednji udarac, roundhouse, široki zamah, udarac odozgo, okret, ubod, bacanje). `stance` je kopija idle clipa za udarce sastavljene samo od overlaya.
+- Kombinacije su u `WeaponDef.combos` (5 po tipki po stilu). `AttackRunner` bira kombinaciju nasumično, nikad istu dvaput zaredom, a `resolve` ne mijenja stanje (isti pritisak daje isti rezultat dok ne krene). Zadnji udarac kombinacije ima ×1,3 štete, ×1,4 poisea i ×1,3 odbacivanja (`combatConfig.comboEnder`).
+- Parry: `resolveHit` gleda samo vrijeme pritiska (prozor 0,2 s), ne i držanje. Promašeni pritisak zaključa parry na 0,5 s, a uspješan ga odmah otključa (više napadača zaredom). Nakon parryja `Player.autoCounter` sam pokreće counter prema napadaču. Counter ubija obične neprijatelje na 35 % zdravlja ili manje (Brute nije obuhvaćen).
+- Bacanje koplja: `combat/ThrownSpear.ts` (čista logika, gravitacija, pogodak u kapsulu, zabijanje u tlo). Aim ide na lock-on, pa na najbližeg neprijatelja u stošcu od 25°, pa ravno. Koplje se vraća u ruku pri podizanju, porazu i promjeni regije.
+- Vještine: `config/skills.ts` (5 razina po elementu, mobilnost po razinama, cijene, element na oružju). Zrak je vještina **Wind (mobility)**. `AbilityState` čuva razine, naboje Gale Stepa i imbue. Bodovi: 1 po 100 XP (`entities/Progression.ts`) i 1 za attune shrinea. Troše se u novom odjeljku Skills u shrine panelu.
+- Save: `progression.skills` (razine 1–5) i `cooldowns.imbue`. Format je samo nadograđen, a stariji saveovi dobivaju razinu 1 (sanitizer).
+- Nove tipke: G baca koplje, Z element na oružju. Pomoć u HUD-u je osvježena.
+
+**Provjera izgleda:** skripta `tools/scratch/moves.mjs` (nije u gitu) renderira svaki udarac u tri trenutka. Pregledani su direkti, kroše, aperkat, koljeno, prednji udarac, roundhousei, okretni udarac, salto, svi udarci mačem i kopljem. Ubodi su prvo držali oružje uspravno, pa je dodan `aim` ključ. Udarac odozgo se previše savijao pa je ublažen.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 20. studenoga 2026. (nakon faze 4):
+Provedeno 23. studenoga 2026. (nakon proširenja borbe):
 
 | Provjera | Rezultat |
 | --- | --- |
 | `npx tsc --noEmit` | bez grešaka |
-| `npm test` | 59/59 prolazi (motor 6, save i postavke 9, Tripo 9, pipeline 1, borba 18, faza 4: 16 za sposobnosti, status, strijele, aegis i super armor, AI Archera, usporenje i save sposobnosti) |
-| `npm run e2e` | 46/46 prolazi: izbornik → kreator → intro → igra → save/continue (odstupanje 0,00 m) → borba i finisher → kamp ima Raidere, Archera i Brutea → R podiže Stone Aegis i pokreće cooldown → Archer puca → Brute napada → prompt kraj shrinea, E otvara shrine, attune bilježi otkriće → waystone se pali → putovanje u Emberreach, attune uči Ember Burst, V mijenja element, otkrića ostaju sačuvana → sve 4 regije, bez console grešaka |
-| Ručno u pregledniku (Playwright skripte) | Sve četiri sposobnosti pogađaju neprijatelje (šteta, rušenje, usporenje, nalet od 9 m). Efekti su vidljivi, strijela pogađa igrača (160 → 148), Brute nanosi štetu, shrine panel i putovanje rade, waystoneovi su vidljivi u sve 4 regije (upaljeni i neupaljeni) |
+| `npm test` | 85/85 prolazi (novo: nasumične kombinacije bez ponavljanja, svaki stil ima 5 kombinacija po tipki, LMB bez oružja su udarci rukama a RMB nogama, tipke 1/2/3, parry po tajmingu i zaključavanje pri lupanju po Q, automatski counter, let i podizanje koplja, razine vještina, Gale Step s dva naboja, element na oružju, dupli i visoki skok, XP i bodovi, save razina) |
+| `npm run e2e` | 59 provjera prolazi. Nove: 1 bez oružja, LMB daje udarce rukama, RMB udarce nogama, 2 mač, 3 koplje, G baca koplje (lik ostaje bez oružja), koplje se zabija u tlo i podiže prolaskom, parry tik prije udarca s automatskim counterom koji pogađa napadača, prerani Q ne parryja, Z daje element na oružju, dupli skok. Provjera kretanja ("player moved") je u ovom okruženju padala jer softverski GL vrti igru na oko 10 FPS-a, pa igra ide sporije od stvarnog vremena (isto se događa i na grani `dev`: 2,8 m za 3 s). Test sada drži tipke dok se lik ne pomakne više od 4 m. |
+| Ručno (Playwright skripta) | Svaki udarac renderiran u tri trenutka: direkti, kroše, aperkat, koljeno, prednji udarac, roundhousei, okretni udarac, salto te svi udarci mačem i kopljem |
 | `npm run build` | prolazi |
-
-Usput uočeno i popravljeno: Gale Step nije pomicao igrača (ograničenje ubrzanja u motoru), a Archerova strijela mogla je prekinuti finisher (finisher je sada nedodirljiv). Uz to se gubio pritisak na F ako je igrača u tom trenutku pogodio neprijatelj. F sada ima buffer od 0,4 s (`combatConfig.finisher.buffer`), a e2e ponavlja F dok je oznaka vidljiva.
 
 ## Poznata ograničenja
 
@@ -131,14 +148,21 @@ Usput uočeno i popravljeno: Gale Step nije pomicao igrača (ograničenje ubrzan
 - Svaki Tripo lik ima samo jednu frizuru. Dodatne frizure trebaju zasebne Tripo meshe kose (krediti).
 - Headless Chromium sa softverskim GL-om vrti igru na nekoliko FPS-a, pa e2e koristi polling i traje nekoliko minuta. Na pravom GPU-u igra je glatka.
 - XP od neprijatelja i otkrića se još ne troši (progresija je u fazi 7).
+- Nove kretnje su sastavljene od postojećih Tripo clipova (zrcaljenje, dijelovi, overlay kostiju), pa nisu glatke kao pravi mocap. Najslabiji su kroše (ruka ne ide u pravi luk) i udarci mačem, jer je osnovni `slash` nizak, dvoručni rez. Overlayi se lako mijenjaju u `config/moves.ts`.
+- Muški lik nema borbene clipove, pa za njega kombinacije padaju na proceduralne zamjene.
+- Neprijatelji ne koriste nove kombinacije (i dalje imaju svoja dva zamaha).
+- Bacanje koplja nema posebnu animaciju bacanja (overlay na dijelu `slash` clipa). Strijele i luk za igrača još ne postoje, pa element na strijelama (led, vatra) čeka luk.
+- Element na oružju kod vode samo usporava, a kod zemlje lomi poise. Vizualno se prikazuje česticama iz šake i oštrice, ne bojom samog oružja.
 
 ## Sljedeći koraci
 
-1. Vlasnik isproba fazu 4: osjećaj sposobnosti (brojke su u `config/abilities.ts`), težinu Archera i Brutea, raspored waystoneova.
-2. Faza 5: Echo (pametnije praćenje, kontekstualni dijalog, Spirit Ward, Guardian's Embrace preko kuke `preventDeath`). Echo može komentirati otkrića (događaji `discovered` i `elementUnlocked` već postoje).
-3. Faza 6: bond sustav i stvorenja, ground mount, flying mount u Sky Trialu.
-4. Faza 7: tutorial, progresija (XP iz `enemyKilled` i otkrića), zvuk i polish. Faza 8: završna provjera.
-5. Kad se krediti odobre: `enemy_archer` i `enemy_brute` (promijeniti `assetId`), Tripo propsi i borbene animacije za muški lik.
+1. Vlasnik isproba proširenje borbe: osjećaj kombinacija (brojke su u `config/combat.ts`, izgled u `config/moves.ts`), tajming parryja (`combatConfig.block.parryWindow`), bacanje koplja, dupli i visoki skok (`config/skills.ts`) i razine vještina na shrineu.
+2. Ako neki udarac izgleda loše, prilagoditi overlay ili dodati Tripo clipove `box_03` i `front_kick_02` (oko 20–30 kredita, samo uz dogovor).
+3. Luk za igrača, pa element na strijelama (zaleđena, zapaljena).
+4. Faza 5: Echo (pametnije praćenje, kontekstualni dijalog, Spirit Ward, Guardian's Embrace preko kuke `preventDeath`).
+5. Faza 6: bond sustav i stvorenja, ground mount, flying mount u Sky Trialu.
+6. Faza 7: tutorial, ostatak progresije (XP već daje bodove vještina), zvuk i polish. Faza 8: završna provjera.
+7. Kad se krediti odobre: `enemy_archer` i `enemy_brute` (promijeniti `assetId`), Tripo propsi i borbene animacije za muški lik.
 
 ## Handoff za novi chat
 
@@ -146,4 +170,5 @@ Usput uočeno i popravljeno: Gale Step nije pomicao igrača (ograničenje ubrzan
 2. Pokretanje: `npm install && npm run dev`. Testovi: `npm test`, `npm run e2e` (screenshotovi u `tools/e2e/out/`), `npm run build`.
 3. Tripo: prije svakog generiranja pokreni `--dry-run`, a stanje kredita provjeri prije i poslije (`--balance`). Nikad ne pokreći `--regenerate` bez dogovora s vlasnikom.
 4. Faza 4: sposobnosti su u `config/abilities.ts` i `combat/Abilities.ts`, a efekte primjenjuje `CombatDirector.applyAbility`. Neprijatelji su u `config/enemies.ts` (`campRoster` određuje sastav kampa), a otkrića u `config/discovery.ts` i `Game.updateDiscovery`.
-5. Važne granice: gameplay ne dira Three.js direktno, nego ide preko `CharacterView`, `CollisionWorld` i EventBusa. Sve brojke idu u `src/config/`. Tekst u igri je na engleskom. 3D modeli dolaze samo iz Tripa (bez Quaterniusa ili drugih paketa), preko `assets-src/manifest.json`. Tajne idu samo u `.env`.
+5. Proširenje borbe: kombinacije su u `WeaponDef.combos`, a nove kretnje u `config/moves.ts` (overlayi) i `animation/clipTools.ts` (zrcaljenje, overlay, `aim`). Vještine i razine su u `config/skills.ts` i `combat/Abilities.ts`, bacanje koplja u `combat/ThrownSpear.ts` i `CombatDirector.stepSpear`.
+6. Važne granice: gameplay ne dira Three.js direktno, nego ide preko `CharacterView`, `CollisionWorld` i EventBusa. Sve brojke idu u `src/config/`. Tekst u igri je na engleskom. 3D modeli dolaze samo iz Tripa (bez Quaterniusa ili drugih paketa), preko `assets-src/manifest.json`. Tajne idu samo u `.env`.

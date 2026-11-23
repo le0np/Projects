@@ -126,6 +126,8 @@ try {
   await page.keyboard.down('KeyW');
   await page.keyboard.down('ShiftLeft');
   await page.waitForTimeout(3000);
+  // Slow software rendering (about 10 fps here) runs game time behind real time: keep running a bit longer if needed.
+  await poll(async () => { const s = await state(); return Math.hypot(s.position.x - s0.position.x, s.position.z - s0.position.z) > 4; }, 25, 200);
   await page.keyboard.up('ShiftLeft');
   await page.keyboard.up('KeyW');
   await page.waitForTimeout(600);
@@ -198,6 +200,89 @@ try {
   }
   await shot('14-finisher');
   check(finished, 'combat: finisher kills the enemy');
+
+  // ---- Combat expansion: weapons on 1/2/3, randomised combos, spear throw, timed parry, imbue, wind mobility
+  await poll(() => page.evaluate(() => !window.__fourfold.player.busy && !window.__fourfold.player.scripted), 60, 200);
+  await page.evaluate(() => {
+    const g = window.__fourfold;
+    for (const e of g.director.enemies) { e.combatant.setState('dead'); e.deadTime = 10; }
+    g.player.combatant.revive();
+  });
+  await page.keyboard.press('Digit1');
+  check(await poll(async () => (await state()).weapon === 'fists', 20, 150), 'weapons: 1 is unarmed');
+  const seen = new Set();
+  for (let i = 0; i < 10; i++) {
+    await page.keyboard.press('KeyJ');
+    await poll(async () => { const a = (await state()).attack; if (a) seen.add(a); return !!a; }, 10, 60);
+    await poll(async () => (await state()).attack === null, 30, 100);
+  }
+  check([...seen].some((a) => /fi_(jab|cross|hook|upper)/.test(a)), `weapons: LMB unarmed throws punches (${[...seen].join(', ')})`);
+  await page.keyboard.press('KeyK');
+  let kick = null;
+  await poll(async () => { kick = (await state()).attack; return !!kick; }, 20, 60);
+  check(!!kick && /fi_(push|knee|round|spin|flip)/.test(kick), `weapons: RMB unarmed kicks (${kick})`);
+  await shot('15a-kick');
+  await poll(async () => (await state()).attack === null, 40, 100);
+  await page.keyboard.press('Digit2');
+  check(await poll(async () => (await state()).weapon === 'sword', 20, 150), 'weapons: 2 is the sword');
+  await page.keyboard.press('Digit3');
+  check(await poll(async () => (await state()).weapon === 'spear', 20, 150), 'weapons: 3 is the spear');
+
+  // Spear throw (G), lands, is picked up by walking to it.
+  await page.keyboard.press('KeyG');
+  check(await poll(async () => (await state()).spear.away, 40, 100), 'spear: G throws it (weapon leaves the hand)');
+  check((await state()).weapon === 'fists', 'spear: fighting unarmed while it is away');
+  check(await poll(async () => (await state()).spear.state === 'grounded', 60, 100), 'spear: sticks in the ground');
+  await shot('15b-spear-thrown');
+  await page.evaluate(() => {
+    const g = window.__fourfold; const sp = g.director.spear; const p = g.player;
+    p.motor.teleport(sp.x + 0.5, g.region.terrain.heightAt(sp.x + 0.5, sp.z), sp.z);
+    p.syncRender();
+  });
+  check(await poll(async () => { const s = await state(); return !s.spear.away && s.weapon === 'spear'; }, 40, 100), 'spear: walking over it picks it up and re-equips it');
+
+  // Timed parry: Q just before a raider's hit parries and the player counters on their own.
+  const parry = await page.evaluate(() => {
+    const g = window.__fourfold;
+    const p = g.player;
+    const e = g.director.enemies.find((x) => x.def.id === 'raider');
+    e.reset();
+    const x = p.motor.x + Math.sin(p.facing) * 1.6, z = p.motor.z + Math.cos(p.facing) * 1.6;
+    e.motor.teleport(x, g.region.terrain.heightAt(x, z), z);
+    e.facing = p.facing + Math.PI;
+    e.syncRender();
+    const now = g.time.elapsed;
+    p.combatant.blockPressedAt = now - 0.05;
+    const res = g.director.damagePlayer(p, { instance: 990001, damage: 20, poise: 20, knockback: 3, kind: 'melee' }, e.motor, now, e);
+    return { res, attack: p.runner.current?.def.id ?? null, enemy: e.id, max: e.def.maxHealth };
+  });
+  check(parry.res === 'parried' && parry.attack === 'sp_counter', `parry: tapped Q just before the hit parries and counters (${parry.res}, ${parry.attack})`);
+  check(await poll(async () => (await state()).enemies.some((e) => e.id === parry.enemy && e.hp < parry.max), 60, 100), 'parry: the counter strikes the attacker');
+  const late = await page.evaluate(() => {
+    const g = window.__fourfold;
+    const p = g.player;
+    const e = g.director.enemies.find((x) => x.def.id === 'raider' && x.alive);
+    p.runner.cancel();
+    const now = g.time.elapsed;
+    p.combatant.blockPressedAt = now - 1;
+    return g.director.damagePlayer(p, { instance: 990002, damage: 5, poise: 1, knockback: 0, kind: 'melee' }, e.motor, now, e);
+  });
+  check(late === 'hit', `parry: pressing Q too early does not parry (${late})`);
+  await page.evaluate(() => { const g = window.__fourfold; for (const e of g.director.enemies) { e.combatant.setState('dead'); e.deadTime = 10; } g.player.combatant.revive(); });
+
+  // Weapon imbue (Z) with the starting element.
+  await poll(() => page.evaluate(() => !window.__fourfold.player.busy), 40, 100);
+  await page.keyboard.press('KeyZ');
+  check(await poll(async () => (await state()).imbue === 'earth', 20, 150), 'imbue: Z coats the weapon in earth');
+  await shot('15c-imbue');
+
+  // Wind mobility: with air unlocked, Space in the air jumps again.
+  await page.evaluate(() => window.__fourfold.player.abilities.unlock('air'));
+  await page.keyboard.press('Space');
+  await poll(async () => { const s = await state(); return !s.grounded && s.vy < 4; }, 60, 30);
+  await page.keyboard.press('Space');
+  check(await poll(async () => (await state()).jumpBurst === 'air', 30, 60), 'mobility: double jump in the air');
+  await poll(async () => (await state()).grounded, 60, 100);
 
   // ---- Phase 4: camp roster, elemental ability, archer arrows, brute slam
   const roster = (await state()).enemyTypes;
