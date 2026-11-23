@@ -208,8 +208,15 @@ export const combatConfig = {
     damageFactor: 0.2,
     /** Stamina lost per blocked point of damage. */
     staminaPerDamage: 1.1,
-    /** Pressing block this close before a hit lands is a perfect parry. */
-    parryWindow: 0.16,
+    /**
+     * Pressing block (Q) this close before a hit lands is a perfect parry: the attack is deflected and the
+     * fighter counter-attacks on their own. Holding block earlier only blocks.
+     */
+    parryWindow: 0.2,
+    /** A press that parries nothing locks parrying for this long, so mashing Q does not work. */
+    parryCooldown: 0.5,
+    /** The automatic counter kills ordinary enemies at or below this share of their health. */
+    counterExecute: 0.35,
     parrySlowmo: 0.35,
     parrySlowmoScale: 0.25,
     /** After a parry, a light attack within this time becomes a counter. */

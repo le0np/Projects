@@ -6,6 +6,7 @@ import { InputBuffer } from '../src/combat/InputBuffer';
 import { inArc, isInFront, resolveHit, type HitInfo } from '../src/combat/resolveHit';
 import { armedClips, combatConfig, fists, sword, unarmedClips, weaponOrder, weapons } from '../src/config/combat';
 import { rng } from '../src/core/math';
+import { makePlayer } from './fixtures/playerHarness';
 
 const step = (r: AttackRunner, total: number, dt = 1 / 60) => {
   const ev = { opened: 0, closed: 0, finished: 0 };
@@ -164,7 +165,23 @@ describe('resolveHit', () => {
     expect(t.health).toBe(100);
   });
 
-  it('a block pressed within the parry window is a perfect parry; later is a block that costs stamina', () => {
+  it('timing decides: a press just before the hit parries even as a tap; holding earlier only blocks', () => {
+    const t = fighter();
+    // Tap: not holding block when the hit lands, but pressed inside the window.
+    t.blocking = false;
+    t.blockPressedAt = 10 - combatConfig.block.parryWindow / 2;
+    expect(resolveHit(t, hit(30), { now: 10, stamina: 100, fromFront: true }).outcome.result).toBe('parried');
+    // Tap too early, not holding: the hit lands.
+    t.blockPressedAt = 9;
+    expect(resolveHit(t, hit(31), { now: 10, stamina: 100, fromFront: true }).outcome.result).toBe('hit');
+    t.health = 100;
+    // Parry never works from behind or against unblockable attacks.
+    t.blockPressedAt = 20;
+    expect(resolveHit(t, hit(32), { now: 20.05, stamina: 100, fromFront: false }).outcome.result).toBe('hit');
+    expect(resolveHit(t, hit(33, { unblockable: true }), { now: 20.05, stamina: 100, fromFront: true }).outcome.result).toBe('hit');
+  });
+
+  it('a held block pressed within the parry window also parries; later it is a block that costs stamina', () => {
     const t = fighter();
     t.blocking = true;
     t.blockPressedAt = 10 - combatConfig.block.parryWindow / 2;
@@ -249,5 +266,41 @@ describe('AttackTokens', () => {
     t.release('a');
     expect(t.request('b', 0.6)).toBe(true);
     expect(t.request('c', 3)).toBe(true); // b expired
+  });
+});
+
+describe('Player parry and automatic counter', () => {
+  it('mashing Q does not parry: a press that parries nothing locks parrying briefly', () => {
+    const h = makePlayer('sword');
+    h.input.press('block');
+    h.step();
+    const first = h.p.combatant.blockPressedAt;
+    expect(first).toBeCloseTo(h.now, 5);
+    h.step(6);
+    h.input.press('block');
+    h.step();
+    expect(h.p.combatant.blockPressedAt).toBe(first); // locked
+    h.step(Math.ceil(combatConfig.block.parryCooldown * 60));
+    h.input.press('block');
+    h.step();
+    expect(h.p.combatant.blockPressedAt).toBeGreaterThan(first);
+  });
+
+  it('a parry makes the fighter counter-attack the attacker on their own', () => {
+    const h = makePlayer('fists');
+    h.p.autoCounter({ x: 0, z: 2 });
+    expect(h.p.runner.current?.def.id).toBe('fi_counter');
+    expect(h.p.facing).toBeCloseTo(0, 5);
+    expect(h.view.played.at(-1)).toBe(fists.attacks.fi_counter.clip);
+    expect(h.p.parryLockUntil).toBe(-Infinity);
+  });
+
+  it('keys 1, 2 and 3 select unarmed, sword and spear', () => {
+    const h = makePlayer('sword');
+    for (const [key, id] of [['weapon1', 'fists'], ['weapon2', 'sword'], ['weapon3', 'spear']] as const) {
+      h.input.press(key);
+      h.step();
+      expect(h.p.weapon.id).toBe(id);
+    }
   });
 });

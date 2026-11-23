@@ -329,9 +329,12 @@ export class CombatDirector {
       if (!inArc({ x: player.motor.x, z: player.motor.z, facing: player.facing }, { x: e.motor.x, z: e.motor.z, radius: e.def.radius }, def.reach, def.arc)) continue;
       // The last move of a combo string lands harder.
       const ender = atk.ender ? combatConfig.comboEnder : null;
+      // A parry counter finishes off ordinary enemies that are already hurt.
+      const isCounter = def.id === player.weapon.counter;
+      const execute = isCounter && !e.def.superArmor && e.combatant.health <= e.def.maxHealth * combatConfig.block.counterExecute;
       const hit: HitInfo = {
         instance: atk.instance,
-        damage: Math.round(def.damage * (ender?.damage ?? 1)),
+        damage: execute ? e.combatant.health : Math.round(def.damage * (ender?.damage ?? 1)),
         poise: def.poise * (ender?.poise ?? 1),
         knockback: isFinisher ? def.knockback / Math.max(0.2, e.def.knockbackTaken) : def.knockback * (ender?.knockback ?? 1),
         launch: def.launch,
@@ -339,7 +342,8 @@ export class CombatDirector {
         kind: 'melee',
         unblockable: isFinisher,
       };
-      const landed = this.hitEnemy(e, hit, player.motor, now, { sparks: isFinisher ? 80 : 14, hitstop: def.hitstop, shake: def.shake, label: isFinisher ? 'FINISHER' : undefined });
+      const label = isFinisher ? 'FINISHER' : execute ? 'COUNTER KILL' : isCounter ? 'COUNTER' : undefined;
+      const landed = this.hitEnemy(e, hit, player.motor, now, { sparks: isFinisher || execute ? 80 : 14, hitstop: def.hitstop, shake: def.shake, label });
       if (landed && isFinisher) this.fx.ring(new THREE.Vector3(e.motor.x, e.motor.y, e.motor.z), elements[this.element].glow, 7, 0.8);
     }
   }
@@ -526,13 +530,15 @@ export class CombatDirector {
           attacker.combatant.setState('staggered', attacker.def.superArmor ? 0.8 : 1.2);
           attacker.combatant.poise = Math.max(0, attacker.combatant.poise - attacker.def.maxPoise * 0.5);
           attacker.react('parried');
-        }
-        player.counterUntil = now + combatConfig.block.counterWindow;
+          // Assassin's-Creed-style answer: the player strikes back on their own.
+          if (player.combatant.free && !player.scripted) player.autoCounter(attacker.motor);
+        } else player.counterUntil = now + combatConfig.block.counterWindow;
+        player.parryLockUntil = -Infinity;
         this.fx.burst(at.clone().addScaledVector(push, -0.6), 0xffe2a0, 40, 9);
         this.fx.ring(new THREE.Vector3(player.motor.x, player.motor.y, player.motor.z), 0xffe2a0, 3, 0.35);
         this.feedback.slowmo(combatConfig.block.parrySlowmo, combatConfig.block.parrySlowmoScale);
         this.feedback.shake(0.35);
-        this.feedback.popup(at, hit.kind === 'projectile' ? 'DEFLECT' : 'PARRY — counter!', 'info');
+        this.feedback.popup(at, hit.kind === 'projectile' ? 'DEFLECT' : 'PARRY', 'info');
         this.wardFlash = 1;
         if (attacker) this.bus.emit('parry', { enemy: attacker.id });
         break;

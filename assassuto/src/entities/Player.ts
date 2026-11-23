@@ -65,6 +65,8 @@ export class Player {
   private dodgeCooldown = 0;
   /** Game time until which a light attack becomes a counter (after a perfect parry). */
   counterUntil = -Infinity;
+  /** Parry presses before this time are ignored (anti-mash). */
+  parryLockUntil = -Infinity;
   private landing = 0;
   private prev = new THREE.Vector3();
   private curr = new THREE.Vector3();
@@ -245,7 +247,18 @@ export class Player {
     if (canAct && !this.cast && input.wasPressed('dodge') && this.dodgeT < 0 && this.dodgeCooldown <= 0 && this.runner.cancelable && this.motor.grounded) {
       if (this.stamina.spend(combatConfig.dodge.stamina)) this.startDodge(moving ? { x: mx, z: mz } : { x: -Math.sin(this.facing), z: -Math.cos(this.facing) });
     }
-    if (input.wasPressed('block')) c.blockPressedAt = ctx.now;
+    if (input.wasPressed('block')) {
+      // A parry attempt only counts when the fighter is free to react, and failed attempts lock it briefly.
+      const ready = canAct && !this.cast && this.dodgeT < 0 && this.runner.cancelable && ctx.now >= this.parryLockUntil;
+      if (ready) {
+        c.blockPressedAt = ctx.now;
+        this.parryLockUntil = ctx.now + combatConfig.block.parryCooldown;
+        if (this.runner.busy) {
+          this.runner.cancel();
+          this.view.stopAction(0.08);
+        }
+      }
+    }
     c.blocking = canAct && !this.cast && input.isDown('block') && this.dodgeT < 0 && this.runner.cancelable && this.motor.grounded;
     if (c.blocking && this.runner.busy) {
       this.runner.cancel();
@@ -354,6 +367,23 @@ export class Player {
       const t = ctx.lockTarget.position();
       this.turnTowards(Math.atan2(t.x - this.motor.x, t.z - this.motor.z), dt, 1.4);
     }
+  }
+
+  /**
+   * Perfect parry: the fighter answers on their own with the weapon's counter move, aimed at the attacker.
+   * A light attack right after chains into a combo.
+   */
+  autoCounter(target: { x: number; z: number }): void {
+    this.runner.cancel();
+    this.buffer.clear();
+    this.dodgeT = -1;
+    this.combatant.blocking = false;
+    this.facing = Math.atan2(target.x - this.motor.x, target.z - this.motor.z);
+    const atk = this.runner.start(this.weapon.counter);
+    this.view.playAction(atk.def.clip, atk.def.duration, { range: atk.def.clipRange, fade: 0.04, overlay: atk.def.overlay });
+    this.counterUntil = -Infinity;
+    // Several enemies can swing in a row: a successful parry re-arms the next one immediately.
+    this.parryLockUntil = -Infinity;
   }
 
   private turnTowards(target: number, dt: number, rate: number): void {

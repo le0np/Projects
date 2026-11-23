@@ -46,10 +46,12 @@ export function resolveHit(target: Combatant, hit: HitInfo, ctx: DefenderContext
   target.markHit(hit.instance);
   if (target.invulnerable > 0 && hit.kind !== 'environment') return { outcome: { result: 'evaded' }, staminaCost: 0 };
 
-  const defending = target.blocking && ctx.fromFront && !hit.unblockable && target.free;
-  if (defending && hit.kind !== 'dot' && ctx.now - target.blockPressedAt <= cfg.block.parryWindow) {
+  // Perfect parry: block pressed (tapped or held) just before the hit lands. Timing matters, holding does not.
+  const canDefend = ctx.fromFront && !hit.unblockable && target.free && hit.kind !== 'dot';
+  if (canDefend && ctx.now - target.blockPressedAt <= cfg.block.parryWindow && ctx.now >= target.blockPressedAt) {
     return { outcome: { result: 'parried' }, staminaCost: 0 };
   }
+  const defending = target.blocking && canDefend;
   if (defending) {
     const cost = hit.damage * cfg.block.staminaPerDamage;
     if (ctx.stamina >= cost) {
