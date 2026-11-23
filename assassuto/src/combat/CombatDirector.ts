@@ -210,7 +210,7 @@ export class CombatDirector {
     const atk = player.runner.start(player.weapon.finisher);
     // The finisher is a cinematic: arrows or other enemies cannot interrupt it.
     player.combatant.invulnerable = Math.max(player.combatant.invulnerable, atk.def.duration + 0.3);
-    player.view.playAction(atk.def.clip, atk.def.duration, { range: atk.def.clipRange });
+    player.view.playAction(atk.def.clip, atk.def.duration, { range: atk.def.clipRange, overlay: atk.def.overlay });
     this.feedback.slowmo(atk.def.duration * 0.9, combatConfig.finisher.slowmoScale);
     const mid = new THREE.Vector3((player.motor.x + enemy.motor.x) / 2, player.motor.y + 1.1, (player.motor.z + enemy.motor.z) / 2);
     this.feedback.cinematic({ focus: mid, yaw: player.facing + Math.PI / 2 });
@@ -327,7 +327,18 @@ export class CombatDirector {
       if (!e.alive || e.combatant.alreadyHitBy(atk.instance)) continue;
       if (isFinisher && this.finisher?.enemy !== e) continue;
       if (!inArc({ x: player.motor.x, z: player.motor.z, facing: player.facing }, { x: e.motor.x, z: e.motor.z, radius: e.def.radius }, def.reach, def.arc)) continue;
-      const hit: HitInfo = { instance: atk.instance, damage: def.damage, poise: def.poise, knockback: isFinisher ? def.knockback / Math.max(0.2, e.def.knockbackTaken) : def.knockback, launch: def.launch, knockdown: def.knockdown, kind: 'melee', unblockable: isFinisher };
+      // The last move of a combo string lands harder.
+      const ender = atk.ender ? combatConfig.comboEnder : null;
+      const hit: HitInfo = {
+        instance: atk.instance,
+        damage: Math.round(def.damage * (ender?.damage ?? 1)),
+        poise: def.poise * (ender?.poise ?? 1),
+        knockback: isFinisher ? def.knockback / Math.max(0.2, e.def.knockbackTaken) : def.knockback * (ender?.knockback ?? 1),
+        launch: def.launch,
+        knockdown: def.knockdown,
+        kind: 'melee',
+        unblockable: isFinisher,
+      };
       const landed = this.hitEnemy(e, hit, player.motor, now, { sparks: isFinisher ? 80 : 14, hitstop: def.hitstop, shake: def.shake, label: isFinisher ? 'FINISHER' : undefined });
       if (landed && isFinisher) this.fx.ring(new THREE.Vector3(e.motor.x, e.motor.y, e.motor.z), elements[this.element].glow, 7, 0.8);
     }

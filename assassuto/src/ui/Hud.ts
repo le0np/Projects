@@ -27,7 +27,7 @@ export class Hud {
       <div><kbd>Space</kbd> Jump &nbsp; <kbd>C</kbd>/<kbd>Alt</kbd> Dodge</div>
       <div><kbd>LMB</kbd> Light &nbsp; <kbd>RMB</kbd> Heavy &nbsp; <kbd>Q</kbd> Block / parry</div>
       <div><kbd>Tab</kbd> Lock on &nbsp; <kbd>F</kbd> Finisher</div>
-      <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Sword / Spear / Unarmed &nbsp; <kbd>X</kbd> Sheathe</div>
+      <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Unarmed / Sword / Spear &nbsp; <kbd>X</kbd> Sheathe</div>
       <div><kbd>R</kbd> Elemental ability &nbsp; <kbd>V</kbd> Switch element &nbsp; <kbd>E</kbd> Interact</div>
       <div><kbd>H</kbd> Toggle help &nbsp; <kbd>F3</kbd> Debug</div>
       <div><kbd>Esc</kbd> Pause</div>`;

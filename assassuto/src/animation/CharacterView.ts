@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import type { PoseOverlay } from './clipTools';
 
 /** Everything a view needs to animate locomotion. Produced by gameplay, consumed by rendering. */
 export interface LocomotionState {
@@ -21,6 +22,8 @@ export interface ActionOptions {
   /** Keep the last frame until stopAction (death, knockdown). */
   hold?: boolean;
   fade?: number;
+  /** Bone rotations layered on top of the clip (moves built from existing clips). */
+  overlay?: PoseOverlay;
 }
 
 export interface CharacterView {

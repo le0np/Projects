@@ -6,7 +6,12 @@ import { damp, smoothstep } from '../core/math';
 import { addRim, toonGradient } from '../render/ToonMaterials';
 import { buildScales, greyAmount, type CharacterModelConfig } from '../config/characters';
 import type { Appearance } from '../entities/appearance';
+import { applyOverlay, sortOverlay, withMirroredClips, type PoseOverlay } from './clipTools';
+import { mirroredClips } from '../config/moves';
 import { locomotionRef, type ActionOptions, type CharacterView, type LocomotionState } from './CharacterView';
+
+/** Where a held weapon points, in the R_Hand bone frame (see WeaponModels.gripPose: weapon +Y). */
+const WEAPON_AXIS = new THREE.Vector3(0, 1, 0).applyEuler(new THREE.Euler(Math.PI / 2, 0.4, 0, 'YXZ'));
 
 /** Logical locomotion states mapped onto clip names, in order of preference. */
 const CLIP_CANDIDATES: Record<string, string[]> = {
@@ -83,7 +88,16 @@ export class GltfCharacter implements CharacterView {
     this.object.add(model);
 
     this.mixer = new THREE.AnimationMixer(model);
-    this.clips = clips;
+    // Mirrored copies (right jab from the left jab, ...) are built once per model and shared.
+    this.clips = withMirroredClips(clips, () => SkeletonUtils.clone(gltf.scene), mirroredClips);
+    // A neutral guard pose for moves built entirely from overlays (knee, push kick). It must be its own
+    // clip object: the idle clip already drives the looping locomotion action.
+    const idle = this.clips.get('idle');
+    if (idle && !this.clips.has('stance')) {
+      const stance = idle.clone();
+      stance.name = 'stance';
+      this.clips.set('stance', stance);
+    }
     // Right-hand socket for weapons. Its scale cancels the model's scale so weapons keep real-world size.
     const hand = this.bones.get('R_Hand');
     if (hand) hand.add(this.weaponSocket);
@@ -109,6 +123,8 @@ export class GltfCharacter implements CharacterView {
   private actionEnd = 0;
   private actionHold = false;
   private actionTime = 0;
+  private overlay: PoseOverlay | null = null;
+  private overlayCache = new WeakMap<PoseOverlay, PoseOverlay>();
 
   private fitSocket(): void {
     this.object.updateMatrixWorld(true);
@@ -131,6 +147,7 @@ export class GltfCharacter implements CharacterView {
     act.reset();
     act.setLoop(THREE.LoopOnce, 1);
     act.clampWhenFinished = true;
+    // A reversed range (a > b) plays the segment backwards: a downward cut becomes a rising one.
     act.time = a * c.duration;
     act.timeScale = ((b - a) * c.duration) / Math.max(0.05, duration);
     act.setEffectiveWeight(1).fadeIn(fade).play();
@@ -142,10 +159,18 @@ export class GltfCharacter implements CharacterView {
     this.actionTime = 0;
     this.actionEnd = duration;
     this.actionHold = !!opts.hold;
+    this.overlay = opts.overlay?.length ? this.sorted(opts.overlay) : null;
     return true;
   }
 
+  private sorted(o: PoseOverlay): PoseOverlay {
+    let s = this.overlayCache.get(o);
+    if (!s) this.overlayCache.set(o, (s = sortOverlay(o, this.bones)));
+    return s;
+  }
+
   stopAction(fade = 0.18): void {
+    this.overlay = null;
     if (!this.action) return;
     this.action.fadeOut(fade);
     this.action = null;
@@ -247,6 +272,7 @@ export class GltfCharacter implements CharacterView {
       if (this.actionTime >= this.actionEnd && !this.actionHold) this.stopAction();
       else {
         this.mixer.update(dt);
+        if (this.overlay) applyOverlay(this.model, this.bones, this.overlay, Math.min(1, this.actionTime / Math.max(1e-3, this.actionEnd)), 1, WEAPON_AXIS);
         return;
       }
     }

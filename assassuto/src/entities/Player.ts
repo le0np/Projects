@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { CharacterView, LocomotionState } from '../animation/CharacterView';
-import { AttackRunner } from '../combat/AttackRunner';
+import { AttackRunner, type AttackPlan } from '../combat/AttackRunner';
 import { AbilityState } from '../combat/Abilities';
 import { Combatant } from '../combat/Combatant';
 import type { AnyAbilityDef } from '../config/abilities';
@@ -204,9 +204,9 @@ export class Player {
     this.dodgeCooldown = Math.max(0, this.dodgeCooldown - dt);
     if (input.wasPressed('attackLight')) this.buffer.push('light', ctx.now);
     if (input.wasPressed('attackHeavy')) this.buffer.push('heavy', ctx.now);
-    if (input.wasPressed('weapon1')) this.setWeapon('sword');
-    if (input.wasPressed('weapon2')) this.setWeapon('spear');
-    if (input.wasPressed('weapon3')) this.setWeapon('fists');
+    if (input.wasPressed('weapon1')) this.setWeapon('fists');
+    if (input.wasPressed('weapon2')) this.setWeapon('sword');
+    if (input.wasPressed('weapon3')) this.setWeapon('spear');
     if (input.wasPressed('sheathe')) this.setWeapon(this.intendedWeapon === 'fists' ? this.lastArmed : 'fists');
     if (this.pendingWeapon && !this.runner.busy) this.setWeapon(this.pendingWeapon);
     this.abilities.tick(dt);
@@ -258,11 +258,11 @@ export class Player {
       const counterReady = ctx.now <= this.counterUntil;
       const picked = this.buffer.consume(ctx.now, (i) => this.runner.resolve(i, { airborne, counterReady }) !== null);
       if (picked) {
-        const id = this.runner.resolve(picked, { airborne, counterReady })!;
-        const def = this.weapon.attacks[id];
+        const plan = this.runner.resolve(picked, { airborne, counterReady })!;
+        const def = this.weapon.attacks[plan.id];
         if (this.stamina.spend(def.stamina) || def.stamina === 0) {
-          if (id === this.weapon.counter) this.counterUntil = -Infinity;
-          this.beginAttack(id, ctx, moving ? Math.atan2(mx, mz) : null);
+          if (plan.id === this.weapon.counter) this.counterUntil = -Infinity;
+          this.beginAttack(plan, ctx, moving ? Math.atan2(mx, mz) : null);
         }
       }
     }
@@ -370,14 +370,14 @@ export class Player {
   }
 
   /** Starts an attack, snapping to the lock target or the best aim-assist target. */
-  beginAttack(id: string, ctx: PlayerStepContext, inputYaw: number | null): void {
-    const atk = this.runner.start(id);
+  beginAttack(plan: string | AttackPlan, ctx: PlayerStepContext, inputYaw: number | null): void {
+    const atk = this.runner.start(plan);
     const target = ctx.lockTarget?.alive ? ctx.lockTarget : this.aimAssist(ctx.targets, inputYaw ?? this.facing);
     if (target) {
       const p = target.position();
       this.facing = Math.atan2(p.x - this.motor.x, p.z - this.motor.z);
     } else if (inputYaw !== null) this.facing = inputYaw;
-    this.view.playAction(atk.def.clip, atk.def.duration, { range: atk.def.clipRange, fade: 0.06 });
+    this.view.playAction(atk.def.clip, atk.def.duration, { range: atk.def.clipRange, fade: 0.06, overlay: atk.def.overlay });
   }
 
   private aimAssist(targets: Targetable[], yaw: number): Targetable | null {

@@ -50,22 +50,24 @@ export class PlaceholderHumanoid implements CharacterView {
     if (!a) return;
     const k = Math.min(1, a.t / a.duration);
     const j = this.j;
+    // Mirrored clips and overlay-built kicks fall back to the base clip's procedural motion.
+    const clip = a.clip === 'stance' ? 'front_kick_01' : a.clip.replace(/_m$/, '');
     const swing = k < 0.35 ? -k / 0.35 : -1 + ((k - 0.35) / 0.65) * 2.4; // wind-up then strike
-    if (a.clip === 'slash' || a.clip === 'chop' || a.clip === 'box_01' || a.clip === 'box_02') {
-      const vertical = a.clip === 'chop';
+    if (clip === 'slash' || clip === 'chop' || clip === 'box_01' || clip === 'box_02') {
+      const vertical = clip === 'chop';
       j.shoulderR.rotation.set(vertical ? -1.2 - swing * 1.3 : -1.4, vertical ? 0 : swing * 1.4, vertical ? -0.2 : -0.4);
       j.elbowR.rotation.set(-0.3, 0, 0);
       j.chest.rotation.y = (vertical ? 0 : -swing) * 0.5;
       j.spine.rotation.x = 0.15 + (vertical ? Math.max(0, swing) * 0.25 : 0);
-    } else if (a.clip === 'front_kick_01') {
+    } else if (clip === 'front_kick_01') {
       j.thighR.rotation.x = -Math.sin(k * Math.PI) * 1.5;
       j.kneeR.rotation.x = (1 - Math.sin(k * Math.PI)) * 0.8;
-    } else if (a.clip === 'hurt' || a.clip === 'hit_to_body_01') {
+    } else if (clip === 'hurt' || clip === 'hit_to_body_01') {
       j.spine.rotation.x = -Math.sin(k * Math.PI) * 0.35;
       j.head.rotation.x = -Math.sin(k * Math.PI) * 0.3;
-    } else if (a.clip === 'fall_down') {
+    } else if (clip === 'fall_down') {
       this.object.children.forEach((c) => (c.rotation.x = -Math.min(1, k * 1.5) * (Math.PI / 2) * 0.95));
-    } else if (a.clip === 'dive') {
+    } else if (clip === 'dive') {
       j.spine.rotation.x = Math.sin(k * Math.PI) * 1.2;
       j.thighL.rotation.x = j.thighR.rotation.x = -Math.sin(k * Math.PI) * 1.4;
       j.kneeL.rotation.x = j.kneeR.rotation.x = Math.sin(k * Math.PI) * 1.8;

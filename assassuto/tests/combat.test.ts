@@ -4,7 +4,8 @@ import { AttackRunner } from '../src/combat/AttackRunner';
 import { Combatant } from '../src/combat/Combatant';
 import { InputBuffer } from '../src/combat/InputBuffer';
 import { inArc, isInFront, resolveHit, type HitInfo } from '../src/combat/resolveHit';
-import { armedClips, combatConfig, sword, unarmedClips, weapons } from '../src/config/combat';
+import { armedClips, combatConfig, fists, sword, unarmedClips, weaponOrder, weapons } from '../src/config/combat';
+import { rng } from '../src/core/math';
 
 const step = (r: AttackRunner, total: number, dt = 1 / 60) => {
   const ev = { opened: 0, closed: 0, finished: 0 };
@@ -17,52 +18,107 @@ const step = (r: AttackRunner, total: number, dt = 1 / 60) => {
   return ev;
 };
 
-describe('AttackRunner (combo graph)', () => {
-  it('starts L1 from neutral, H1 for heavy, air attack in the air and counter after a parry', () => {
-    const r = new AttackRunner(sword);
-    expect(r.resolve('light', { airborne: false, counterReady: false })).toBe('sw_l1');
-    expect(r.resolve('heavy', { airborne: false, counterReady: false })).toBe('sw_h1');
-    expect(r.resolve('light', { airborne: true, counterReady: false })).toBe('sw_air');
-    expect(r.resolve('light', { airborne: false, counterReady: true })).toBe('sw_counter');
+const neutral = { airborne: false, counterReady: false };
+
+describe('AttackRunner (randomised combo strings)', () => {
+  it('starts a combo string from neutral, the air attack in the air and the counter after a parry', () => {
+    const r = new AttackRunner(sword, rng(1));
+    const l = r.resolve('light', neutral)!;
+    expect(sword.combos.light.map((c) => c[0])).toContain(l.id);
+    expect(l.combo?.index).toBe(0);
+    expect(sword.combos.heavy.map((c) => c[0])).toContain(r.resolve('heavy', neutral)!.id);
+    expect(r.resolve('light', { airborne: true, counterReady: false })!.id).toBe('sw_air');
+    expect(r.resolve('light', { airborne: false, counterReady: true })!.id).toBe('sw_counter');
   });
 
-  it('chains only inside the combo window: L -> L -> L and L -> L -> H', () => {
-    const r = new AttackRunner(sword);
-    r.start('sw_l1');
-    step(r, 0.05);
-    expect(r.resolve('light', { airborne: false, counterReady: false })).toBeNull(); // too early
-    step(r, 0.15);
-    expect(r.resolve('light', { airborne: false, counterReady: false })).toBe('sw_l2');
-    r.start('sw_l2');
+  it('resolve does not change state; the same press resolves the same way until it starts', () => {
+    const r = new AttackRunner(fists, rng(7));
+    const a = r.resolve('light', neutral)!;
+    for (let i = 0; i < 5; i++) expect(r.resolve('light', neutral)).toEqual(a);
+  });
+
+  it('walks a string press by press, only inside the combo window', () => {
+    const r = new AttackRunner(fists, rng(3));
+    const first = r.resolve('light', neutral)!;
+    const moves = first.combo!.moves;
+    r.start(first);
+    step(r, 0.02);
+    expect(r.resolve('light', neutral)).toBeNull(); // too early
+    for (let i = 1; i < moves.length; i++) {
+      const def = fists.attacks[moves[i - 1]];
+      step(r, def.comboWindow[0] - r.current!.t + 0.01);
+      const next = r.resolve('light', neutral)!;
+      expect(next.id).toBe(moves[i]);
+      r.start(next);
+    }
+    expect(r.current!.ender).toBe(true);
+    expect(r.chain).toBe(moves.length);
+  });
+
+  it('never picks the same string twice in a row, and uses every string over time', () => {
+    for (const w of Object.values(weapons)) {
+      for (const input of ['light', 'heavy'] as const) {
+        const r = new AttackRunner(w, rng(11));
+        const seen = new Set<number>();
+        let last = -1;
+        for (let i = 0; i < 60; i++) {
+          const p = r.resolve(input, neutral)!;
+          expect(p.combo!.pick, `${w.id} ${input}`).not.toBe(last);
+          last = p.combo!.pick;
+          seen.add(last);
+          r.start(p);
+          r.cancel();
+        }
+        expect(seen.size, `${w.id} ${input}`).toBe(w.combos[input].length);
+      }
+    }
+  });
+
+  it('the other button mid-string chains into one of its strings', () => {
+    const r = new AttackRunner(fists, rng(5));
+    r.start(r.resolve('light', neutral)!);
     step(r, 0.2);
-    expect(r.resolve('heavy', { airborne: false, counterReady: false })).toBe('sw_llh');
-    expect(r.chain).toBe(2);
+    const k = r.resolve('heavy', neutral)!;
+    expect(fists.combos.heavy.map((c) => c[0])).toContain(k.id);
   });
 
   it('opens and closes the hit window exactly once and finishes after its duration', () => {
     const r = new AttackRunner(sword);
-    r.start('sw_h1');
-    const ev = step(r, sword.attacks.sw_h1.duration + 0.05);
+    r.start('sw_over');
+    const ev = step(r, sword.attacks.sw_over.duration + 0.05);
     expect(ev).toEqual({ opened: 1, closed: 1, finished: 1 });
     expect(r.busy).toBe(false);
   });
 
   it('gives every swing a unique instance id', () => {
     const r = new AttackRunner(sword);
-    const a = r.start('sw_l1').instance;
-    const b = r.start('sw_l2').instance;
+    const a = r.start('sw_diag_l').instance;
+    const b = r.start('sw_diag_r').instance;
     expect(a).not.toBe(b);
   });
 
-  it('every attack referenced by a weapon exists and has sane timings', () => {
+  it('every weapon has five strings per button, all moves exist and have sane timings', () => {
     for (const w of Object.values(weapons)) {
-      for (const id of [w.start.light, w.start.heavy, w.air, w.counter]) expect(w.attacks[id], `${w.id}:${id}`).toBeDefined();
+      for (const input of ['light', 'heavy'] as const) {
+        expect(w.combos[input].length, `${w.id} ${input}`).toBeGreaterThanOrEqual(5);
+        for (const c of w.combos[input]) for (const id of c) expect(w.attacks[id], `${w.id}:${id}`).toBeDefined();
+      }
+      for (const id of [w.air, w.counter, w.finisher]) expect(w.attacks[id], `${w.id}:${id}`).toBeDefined();
       for (const a of Object.values(w.attacks)) {
         expect(a.hitStart).toBeLessThan(a.hitEnd);
         expect(a.hitEnd).toBeLessThanOrEqual(a.duration);
-        for (const n of Object.values(a.next ?? {})) expect(w.attacks[n!], `${a.id} -> ${n}`).toBeDefined();
+        if (a.id !== w.finisher) expect(a.comboWindow[0]).toBeLessThanOrEqual(a.duration);
       }
     }
+  });
+
+  it('unarmed: LMB strings are punches (jabs, crosses, hooks, uppercuts), RMB strings are kicks', () => {
+    const punch = new Set(fists.combos.light.flat());
+    const kick = new Set(fists.combos.heavy.flat());
+    for (const id of punch) expect(fists.attacks[id].clip, id).toMatch(/^box_0[12](_m)?$/);
+    for (const id of kick) expect(['front_kick_01', 'front_kick_01_m', 'flip', 'stance'], id).toContain(fists.attacks[id].clip);
+    const ids = [...punch].join(' ');
+    for (const kind of ['jab', 'cross', 'hook', 'upper']) expect(ids).toContain(kind);
   });
 });
 
@@ -72,6 +128,10 @@ describe('weapon styles', () => {
       const allowed = w.id === 'fists' ? unarmedClips : armedClips;
       for (const a of Object.values(w.attacks)) expect(allowed, `${w.id}:${a.id} uses ${a.clip}`).toContain(a.clip);
     }
+  });
+
+  it('keys 1-3 are unarmed, sword, spear', () => {
+    expect(weaponOrder).toEqual(['fists', 'sword', 'spear']);
   });
 });
 
