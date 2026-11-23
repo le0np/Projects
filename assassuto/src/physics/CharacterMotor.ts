@@ -40,6 +40,8 @@ export class CharacterMotor {
   vy = 0;
   vz = 0;
   grounded = true;
+  /** Multiplier on gravity (wind skill falls slower). */
+  gravityScale = 1;
   private airTime = 0;
   private jumpBufferTimer = 0;
   private jumpedThisAir = false;
@@ -93,7 +95,7 @@ export class CharacterMotor {
     }
 
     if (!this.grounded) {
-      this.vy = Math.max(this.vy - cfg.gravity * dt, -cfg.maxFallSpeed);
+      this.vy = Math.max(this.vy - cfg.gravity * this.gravityScale * dt, -cfg.maxFallSpeed);
       this.airTime += dt;
     }
 

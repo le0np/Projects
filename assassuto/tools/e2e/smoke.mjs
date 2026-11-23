@@ -284,6 +284,22 @@ try {
   check(await poll(async () => (await state()).jumpBurst === 'air', 30, 60), 'mobility: double jump in the air');
   await poll(async () => (await state()).grounded, 60, 100);
 
+  // Elemental skills: the coat shows on the HUD, C is the element's dodge, R with wind is Gale Rush.
+  check(/Stone Weapon \d+s/.test(await page.locator('.imbue-text').textContent()), 'imbue: HUD shows the coat and its time');
+  await poll(() => page.evaluate(() => !window.__fourfold.player.busy && window.__fourfold.player.motor.grounded), 40, 100);
+  const y0 = (await state()).position.y;
+  await page.keyboard.press('KeyC');
+  check(await poll(async () => (await state()).edodge === 'earth', 20, 40), 'element dodge: C with earth raises a Rock Pillar');
+  check(await poll(async () => (await state()).position.y > y0 + 1.5, 30, 60), 'element dodge: the pillar launches the player');
+  await poll(async () => (await state()).grounded, 80, 100);
+  await page.evaluate(() => { window.__fourfold.player.abilities.selected = 'air'; });
+  await poll(() => page.evaluate(() => !window.__fourfold.player.busy), 40, 100);
+  const r0 = (await state()).position;
+  await page.keyboard.press('KeyR');
+  check(await poll(async () => { const s = await state(); return Math.hypot(s.position.x - r0.x, s.position.z - r0.z) > 4; }, 40, 60), 'Gale Rush: R with wind dashes forward');
+  await poll(() => page.evaluate(() => !window.__fourfold.player.busy), 40, 100);
+  await page.evaluate(() => { window.__fourfold.player.abilities.selected = 'earth'; });
+
   // ---- Phase 4: camp roster, elemental ability, archer arrows, brute slam
   const roster = (await state()).enemyTypes;
   check(['raider', 'archer', 'brute'].every((t) => roster.includes(t)), `camp: raiders, an archer and a brute (${roster.join(', ')})`);

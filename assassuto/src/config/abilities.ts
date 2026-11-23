@@ -1,4 +1,6 @@
+import type { PoseOverlay } from '../animation/clipTools';
 import type { ElementId } from './elements';
+import { poses } from './moves';
 
 /**
  * Elemental abilities (GDD 7): one per element. The starting element is unlocked from the beginning;
@@ -17,6 +19,8 @@ export interface AbilityDef {
   recovery: number;
   clip: string;
   clipRange?: [number, number];
+  /** Bone rotations layered on the clip. */
+  overlay?: PoseOverlay;
   damage: number;
   poise: number;
   knockback: number;
@@ -113,19 +117,20 @@ export const abilities: Record<ElementId, AnyAbilityDef> = {
     damageTaken: 0.5,
   },
   air: {
-    id: 'galeStep',
+    id: 'galeRush',
     kind: 'dash',
     element: 'air',
-    name: 'Gale Step',
-    description: 'Part of the Wind mobility skill (with double jump and high jump): dash straight through enemies, untouchable, cutting and lifting them. Works in the air.',
+    name: 'Gale Rush',
+    description: 'Part of the Wind mobility skill: a lunge on the wind straight through enemies, untouchable, throwing them aside, ending in a spin strike. Two charges. Works in the air.',
     cooldown: 5,
     castTime: 0.05,
-    recovery: 0.34,
-    clip: 'dive',
-    clipRange: [0.05, 0.7],
+    /** Dash plus the closing spin strike. */
+    recovery: 0.68,
+    clip: 'stance',
+    overlay: poses.galeLunge,
     damage: 12,
     poise: 28,
-    knockback: 3,
+    knockback: 5,
     launch: 6,
     distance: 9,
     dashTime: 0.28,

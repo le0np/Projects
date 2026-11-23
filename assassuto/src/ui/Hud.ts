@@ -24,12 +24,12 @@ export class Hud {
       <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</div>
       <div><kbd>Mouse</kbd> Camera &nbsp; <kbd>Wheel</kbd> Zoom</div>
       <div><kbd>Shift</kbd> Sprint &nbsp; <kbd>Ctrl</kbd> Walk</div>
-      <div><kbd>Space</kbd> Jump (again in the air with Wind) &nbsp; <kbd>C</kbd>/<kbd>Alt</kbd> Dodge</div>
+      <div><kbd>Space</kbd> Jump (Wind: again in the air, hold to glide) &nbsp; <kbd>C</kbd>/<kbd>Alt</kbd> Dodge (element move)</div>
       <div><kbd>LMB</kbd> Punch / light &nbsp; <kbd>RMB</kbd> Kick / heavy</div>
       <div><kbd>Q</kbd> Hold to block, tap right before a hit to parry</div>
       <div><kbd>Tab</kbd> Lock on &nbsp; <kbd>F</kbd> Finisher</div>
       <div><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Unarmed / Sword / Spear &nbsp; <kbd>X</kbd> Sheathe &nbsp; <kbd>G</kbd> Throw spear</div>
-      <div><kbd>R</kbd> Elemental ability &nbsp; <kbd>Z</kbd> Imbue weapon &nbsp; <kbd>V</kbd> Switch element</div>
+      <div><kbd>R</kbd> Elemental ability &nbsp; <kbd>Z</kbd> Imbue weapon (again at Lv 5: fuse) &nbsp; <kbd>V</kbd> Switch element</div>
       <div><kbd>E</kbd> Interact</div>
       <div><kbd>H</kbd> Toggle help &nbsp; <kbd>F3</kbd> Debug</div>
       <div><kbd>Esc</kbd> Pause</div>`;

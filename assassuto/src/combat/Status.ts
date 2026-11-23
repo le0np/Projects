@@ -1,14 +1,19 @@
 import { abilityConfig } from '../config/abilities';
 
 /**
- * Elemental status effects on a combatant: burning (damage over time) and soaked (slowed movement
- * and attacks). Pure logic: `tick` returns how much burn damage lands this step.
+ * Elemental status effects on a combatant: burning (damage over time), soaked (slowed movement and
+ * attacks), chilled (frost-weapon hits stacking up) and frozen (encased in ice, cannot act).
+ * Pure logic: `tick` returns how much burn damage lands this step.
  */
 export class StatusEffects {
   burnTime = 0;
   burnDps = 0;
   soakTime = 0;
   soakSlow = 1;
+  /** Frost hits taken recently; at the threshold the target freezes. */
+  chill = 0;
+  private chillTime = 0;
+  frozenTime = 0;
   private burnAcc = 0;
   private burnTimer = 0;
 
@@ -20,6 +25,30 @@ export class StatusEffects {
   soak(slow: number, duration: number): void {
     this.soakSlow = Math.min(this.soakTime > 0 ? this.soakSlow : 1, slow);
     this.soakTime = Math.max(this.soakTime, duration);
+  }
+
+  /**
+   * A frost-weapon hit: adds a chill stack (they fade after `memory` seconds without a new one).
+   * Returns true when this hit freezes the target.
+   */
+  addChill(threshold: number, freezeTime: number, memory = 4): boolean {
+    if (this.frozen) return false;
+    this.chill++;
+    this.chillTime = memory;
+    if (this.chill < threshold) return false;
+    this.chill = 0;
+    this.frozenTime = freezeTime;
+    return true;
+  }
+
+  get frozen(): boolean {
+    return this.frozenTime > 0;
+  }
+
+  /** Ends the freeze (shattered). */
+  thaw(): void {
+    this.frozenTime = 0;
+    this.chill = 0;
   }
 
   /** Multiplier for movement and attack speed. */
@@ -50,11 +79,17 @@ export class StatusEffects {
       }
     }
     if (this.soakTime > 0) this.soakTime = Math.max(0, this.soakTime - dt);
+    if (this.frozenTime > 0) this.frozenTime = Math.max(0, this.frozenTime - dt);
+    if (this.chillTime > 0) {
+      this.chillTime -= dt;
+      if (this.chillTime <= 0) this.chill = 0;
+    }
     return damage;
   }
 
   clear(): void {
     this.burnTime = this.soakTime = this.burnAcc = this.burnTimer = 0;
+    this.chill = this.chillTime = this.frozenTime = 0;
     this.soakSlow = 1;
   }
 }

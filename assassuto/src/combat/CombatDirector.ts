@@ -16,7 +16,9 @@ import { AbilityFx } from '../render/AbilityFx';
 import { aimVelocity, Projectiles, type CapsuleTarget } from './Projectiles';
 import { ThrownSpear } from './ThrownSpear';
 import type { Imbue } from './Abilities';
-import { imbueConfig } from '../config/skills';
+import { galeRush, imbueConfig } from '../config/skills';
+import { imbueElements, spearImbue, weaponHitMods, type WeaponHitMods } from './imbueEffects';
+import { ImbueVisuals } from '../render/ImbueVisuals';
 import type { InputManager } from '../input/InputManager';
 import type { Fx } from '../render/Fx';
 import type { Region } from '../world/Region';
@@ -68,6 +70,14 @@ export class CombatDirector {
   private tmpV = new THREE.Vector3();
   private lastJumpBurst = -1;
   private lastImbue: Imbue | null = null;
+  private lastImbueSecond: string | null = null;
+  readonly imbueFx = new ImbueVisuals();
+  /** Attack instances that already exploded / extended the imbue (once per swing). */
+  private explodedBy = new Set<number>();
+  private extendedBy = -1;
+  private iceGeo = new THREE.IcosahedronGeometry(1, 1);
+  private iceMat = new THREE.MeshStandardMaterial({ color: 0xbfe8ff, transparent: true, opacity: 0.55, roughness: 0.15, metalness: 0.1, emissive: 0x2a6a9a, emissiveIntensity: 0.5, flatShading: true, depthWrite: false });
+  private ice = new Map<string, THREE.Mesh>();
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -77,7 +87,7 @@ export class CombatDirector {
     private readonly feedback: CombatFeedback,
   ) {
     scene.add(this.group);
-    this.group.add(this.abilityFx.group);
+    this.group.add(this.abilityFx.group, this.imbueFx.group);
     this.ward = new THREE.Mesh(
       new THREE.SphereGeometry(0.95, 24, 12, -Math.PI / 2.4, Math.PI / 1.2, Math.PI * 0.18, Math.PI * 0.62),
       new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
@@ -117,6 +127,10 @@ export class CombatDirector {
       ring.visible = false;
       this.group.add(glint, ring);
       this.markers.set(e.id, { glint, ring });
+      const shell = new THREE.Mesh(this.iceGeo, this.iceMat);
+      shell.visible = false;
+      this.group.add(shell);
+      this.ice.set(e.id, shell);
     }
   }
 
@@ -152,6 +166,9 @@ export class CombatDirector {
       m.ring.removeFromParent();
     }
     this.markers.clear();
+    for (const m of this.ice.values()) m.removeFromParent();
+    this.ice.clear();
+    this.imbueFx.clear();
     this.lockTarget = null;
     this.finisher = null;
     this.projectiles.clear();
@@ -253,6 +270,9 @@ export class CombatDirector {
     for (const e of this.enemies) e.step(dt, { now, player: { x: player.motor.x, z: player.motor.z, alive: pAlive }, tokens: this.tokens, shooters: this.shooters, world: region.collision });
 
     if (player.abilityEvent) this.applyAbility(player.abilityEvent, now);
+    if (player.rushSpinEvent) this.rushSpin(player, now);
+    if (player.dodgeEvent) this.elementDodge(player, now);
+    this.slideHits(player, now);
     this.dashHits(player, now);
     this.playerHits(player, now);
     this.statusTicks(dt, now);
@@ -342,8 +362,11 @@ export class CombatDirector {
     const def = atk.def;
     if (def.release !== undefined) return;
     const imbue = player.abilities.imbue;
-    const im = imbueMods(imbue);
     const isFinisher = def.id === player.weapon.finisher;
+    // Heavy attacks, combo enders and finishers carry the element's signature effect.
+    const heavy = atk.input === 'heavy' || atk.ender || isFinisher;
+    const im = weaponHitMods(imbue, heavy);
+    const glow = imbue ? elements[imbue.element].glow : undefined;
     for (const e of this.enemies) {
       if (!e.alive || e.combatant.alreadyHitBy(atk.instance)) continue;
       if (isFinisher && this.finisher?.enemy !== e) continue;
@@ -353,20 +376,71 @@ export class CombatDirector {
       // A parry counter finishes off ordinary enemies that are already hurt.
       const isCounter = def.id === player.weapon.counter;
       const execute = isCounter && !e.def.superArmor && e.combatant.health <= e.def.maxHealth * combatConfig.block.counterExecute;
+      // Frost: a heavy blow shatters a frozen enemy.
+      const shatter = e.status.frozen && im.shatter > 1;
+      if (shatter) e.thaw();
       const hit: HitInfo = {
         instance: atk.instance,
-        damage: execute ? e.combatant.health : Math.round(def.damage * (ender?.damage ?? 1) * im.damage),
-        poise: def.poise * (ender?.poise ?? 1) * im.poise,
+        damage: execute ? e.combatant.health : Math.round(def.damage * (ender?.damage ?? 1) * im.damage * (shatter ? im.shatter : 1)),
+        poise: def.poise * (ender?.poise ?? 1) * im.poise * (shatter ? 2 : 1),
         knockback: isFinisher ? def.knockback / Math.max(0.2, e.def.knockbackTaken) : def.knockback * (ender?.knockback ?? 1) * im.knockback,
         launch: def.launch,
-        knockdown: def.knockdown,
+        knockdown: def.knockdown || im.knockdown,
         kind: 'melee',
         unblockable: isFinisher,
       };
-      const label = isFinisher ? 'FINISHER' : execute ? 'COUNTER KILL' : isCounter ? 'COUNTER' : undefined;
-      const landed = this.hitEnemy(e, hit, player.motor, now, { sparks: isFinisher || execute ? 80 : 14, hitstop: def.hitstop, shake: def.shake, label, color: imbue ? elements[imbue.element].glow : undefined });
-      if (landed) this.applyImbue(e, imbue);
-      if (landed && isFinisher) this.fx.ring(new THREE.Vector3(e.motor.x, e.motor.y, e.motor.z), elements[this.element].glow, 7, 0.8);
+      const label = isFinisher ? 'FINISHER' : execute ? 'COUNTER KILL' : shatter ? 'SHATTER' : isCounter ? 'COUNTER' : undefined;
+      const landed = this.hitEnemy(e, hit, player.motor, now, { sparks: isFinisher || execute ? 80 : 14, hitstop: shatter ? 0.12 : def.hitstop, shake: shatter ? 0.45 : def.shake, label, color: glow });
+      if (shatter) this.abilityFx.iceShards(new THREE.Vector3(e.motor.x, e.motor.y + 1, e.motor.z), elements.water.glow);
+      if (!landed) continue;
+      this.applyImbue(e, im);
+      if (isFinisher) this.fx.ring(new THREE.Vector3(e.motor.x, e.motor.y, e.motor.z), elements[this.element].glow, 7, 0.8);
+      if (im.explode && !this.explodedBy.has(atk.instance)) {
+        this.explodedBy.add(atk.instance);
+        if (this.explodedBy.size > 32) this.explodedBy = new Set([...this.explodedBy].slice(-16));
+        this.explode({ x: e.motor.x, y: e.motor.y, z: e.motor.z }, imbue!.power, now);
+      }
+      // A clean combo ender keeps the coat burning longer.
+      if (atk.ender && imbue && this.extendedBy !== atk.instance) {
+        this.extendedBy = atk.instance;
+        this.extendImbue(player, imbueConfig.extendCombo);
+      }
+    }
+  }
+
+  private extendImbue(player: Player, seconds: number): void {
+    const added = player.abilities.extendImbue(seconds);
+    if (added >= 0.5) this.feedback.popup(new THREE.Vector3(player.motor.x, player.motor.y + 2.1, player.motor.z), `+${Math.round(added)}s`, 'info');
+  }
+
+  /** Fire coat: a heavy hit bursts into a small explosion that hurts everyone around. */
+  private explode(at: { x: number; y: number; z: number }, power: number, now: number): void {
+    const c = imbueConfig.fire.explosion;
+    const r = c.radius * (0.85 + 0.15 * power);
+    const p = new THREE.Vector3(at.x, at.y, at.z);
+    this.abilityFx.fireBurst(p, r, elements.fire.color, elements.fire.glow);
+    this.fx.burst(p.clone().add(new THREE.Vector3(0, 1, 0)), elements.fire.glow, 40, 8);
+    this.feedback.shake(0.35);
+    const instance = nextDot++;
+    for (const e of this.enemies) {
+      if (!e.alive || Math.hypot(e.motor.x - at.x, e.motor.z - at.z) - e.def.radius > r) continue;
+      const hit: HitInfo = { instance, damage: Math.round(c.damage * power), poise: 20, knockback: c.knockback, launch: 2, kind: 'melee' };
+      if (this.hitEnemy(e, hit, at, now, { color: elements.fire.glow, sparks: 10, combo: false })) e.status.burn(imbueConfig.fire.burnDps * power, imbueConfig.fire.burnTime);
+    }
+  }
+
+  /** Earth coat: where the thrown spear lands, stone spikes burst from the ground. */
+  private stoneSpike(at: { x: number; y: number; z: number }, power: number, now: number): void {
+    const c = imbueConfig.earth.spike;
+    const p = new THREE.Vector3(at.x, at.y, at.z);
+    this.abilityFx.stoneSpikes(p, c.radius);
+    this.abilityFx.shockwave(p, c.radius, elements.earth.glow);
+    this.fx.burst(p.clone().add(new THREE.Vector3(0, 0.4, 0)), 0xb89a6a, 30, 7);
+    this.feedback.shake(0.4);
+    const instance = nextDot++;
+    for (const e of this.enemies) {
+      if (!e.alive || Math.hypot(e.motor.x - at.x, e.motor.z - at.z) - e.def.radius > c.radius) continue;
+      this.hitEnemy(e, { instance, damage: Math.round(c.damage * power), poise: 40, knockback: 4, launch: c.launch, knockdown: true, kind: 'melee' }, at, now, { color: elements.earth.glow, sparks: 12, combo: false });
     }
   }
 
@@ -425,7 +499,7 @@ export class CombatDirector {
     }
   }
 
-  /** Gale Step cuts every enemy the dash passes through. */
+  /** Gale Rush throws aside every enemy the dash passes through. */
   private dashHits(player: Player, now: number): void {
     const dash = player.dash;
     if (!dash) return;
@@ -457,12 +531,74 @@ export class CombatDirector {
 
   // ------------------------------------------------------------------ weapon imbue (Z)
 
-  /** Status effects of an imbued weapon on a hit enemy. */
-  private applyImbue(e: Enemy, imbue: Imbue | null): void {
-    if (!imbue || !e.alive) return;
-    const p = imbue.power;
-    if (imbue.element === 'fire') e.status.burn(imbueConfig.fire.burnDps * p, imbueConfig.fire.burnTime);
-    else if (imbue.element === 'water') e.status.soak(Math.max(0.3, 1 - (1 - imbueConfig.water.slow) * p), imbueConfig.water.soakTime);
+  /** Status effects of an imbued weapon on a hit enemy: burn, soak, chill stacks and freezing. */
+  private applyImbue(e: Enemy, im: WeaponHitMods): void {
+    if (!e.alive) return;
+    if (im.burn) e.status.burn(im.burn.dps, im.burn.time);
+    if (im.soak) e.status.soak(im.soak.slow, im.soak.time);
+    if (im.chill && e.status.addChill(imbueConfig.water.freezeHits, imbueConfig.water.freezeTime)) {
+      e.freeze(imbueConfig.water.freezeTime, e.def.role === 'ranged' ? this.shooters : this.tokens);
+      const at = new THREE.Vector3(e.motor.x, e.motor.y + 1.6 * e.def.look.scale, e.motor.z);
+      this.feedback.popup(at, 'FROZEN', 'info');
+      this.fx.burst(at, elements.water.glow, 24, 4);
+    }
+  }
+
+  // ------------------------------------------------------------------ Gale Rush spin, element dodges
+
+  /** Gale Rush brakes in a spin strike around the player. */
+  private rushSpin(player: Player, now: number): void {
+    const ev = player.rushSpinEvent!;
+    const r = galeRush.endSpinRadius * ev.area;
+    const at = new THREE.Vector3(ev.x, ev.y, ev.z);
+    this.abilityFx.shockwave(at, r, elements.air.glow);
+    this.fx.burst(at.clone().add(new THREE.Vector3(0, 1, 0)), elements.air.glow, 30, 7);
+    for (const e of this.enemies) {
+      if (!e.alive || Math.hypot(e.motor.x - ev.x, e.motor.z - ev.z) - e.def.radius > r) continue;
+      this.hitEnemy(e, { instance: ev.instance, damage: Math.round(galeRush.endSpinDamage * ev.damageScale), poise: 25, knockback: 7, launch: 2, kind: 'melee' }, ev, now, { color: elements.air.glow, hitstop: 0.05, shake: 0.2 });
+    }
+  }
+
+  /** Start of Blast Hop (explosion where you stood) or Rock Pillar (shockwave and a rising column). */
+  private elementDodge(player: Player, now: number): void {
+    const ev = player.dodgeEvent!;
+    const d = ev.def;
+    const at = new THREE.Vector3(ev.x, ev.y, ev.z);
+    const r = d.radius * ev.area;
+    if (ev.el === 'fire') {
+      this.abilityFx.fireBurst(at, r, elements.fire.color, elements.fire.glow);
+      this.fx.burst(at.clone().add(new THREE.Vector3(0, 0.6, 0)), elements.fire.glow, 40, 8);
+      this.feedback.shake(0.3);
+    } else if (ev.el === 'earth') {
+      this.abilityFx.pillar(at, 2.6);
+      this.abilityFx.shockwave(at, r, elements.earth.glow);
+      this.fx.burst(at.clone().add(new THREE.Vector3(0, 0.3, 0)), 0xb89a6a, 36, 7);
+      this.feedback.shake(0.45);
+    } else {
+      this.fx.ring(at.clone().add(new THREE.Vector3(0, 0.05, 0)), elements.water.glow, 2, 0.35);
+      return;
+    }
+    for (const e of this.enemies) {
+      if (!e.alive || Math.hypot(e.motor.x - ev.x, e.motor.z - ev.z) - e.def.radius > r) continue;
+      const hit: HitInfo = { instance: ev.instance, damage: Math.round(d.damage * ev.damageScale), poise: 30, knockback: d.knockback, launch: d.launch, knockdown: ev.el === 'earth', kind: 'melee' };
+      if (this.hitEnemy(e, hit, ev, now, { color: elements[ev.el].glow, sparks: 16, combo: false }) && ev.el === 'fire') e.status.burn(imbueConfig.fire.burnDps, imbueConfig.fire.burnTime);
+    }
+  }
+
+  /** Ice Slide trips everything it slides through: a small hit, soaked and chilled. */
+  private slideHits(player: Player, now: number): void {
+    const ed = player.edodge;
+    if (!ed || ed.el !== 'water') return;
+    const d = ed.def;
+    for (const e of this.enemies) {
+      if (!e.alive || e.combatant.alreadyHitBy(ed.instance)) continue;
+      if (Math.hypot(e.motor.x - player.motor.x, e.motor.z - player.motor.z) > d.radius * ed.area + e.def.radius) continue;
+      const side = { x: player.motor.x - ed.dir.x, z: player.motor.z - ed.dir.z };
+      if (this.hitEnemy(e, { instance: ed.instance, damage: Math.round(d.damage * ed.damageScale), poise: 30, knockback: d.knockback, kind: 'melee' }, side, now, { color: elements.water.glow, sparks: 10, combo: false })) {
+        e.status.soak(imbueConfig.water.slow, d.soak);
+        this.applyImbue(e, { ...weaponHitMods(null), chill: true });
+      }
+    }
   }
 
   // ------------------------------------------------------------------ thrown spear
@@ -488,7 +624,9 @@ export class CombatDirector {
       const to = target
         ? { x: target.motor.x, y: target.motor.y + 1.1 * target.def.look.scale, z: target.motor.z }
         : { x: ev.x + Math.sin(ev.facing) * 20, y: ev.y + 1.2, z: ev.z + Math.cos(ev.facing) * 20 };
-      this.spear.throwFrom(ev, aimVelocity(ev, to, cfg.speed, cfg.gravity), nextDot++);
+      const sp = spearImbue(player.abilities.imbue);
+      this.spear.throwFrom(ev, aimVelocity(ev, to, cfg.speed, cfg.gravity), nextDot++, sp.returns ? imbueConfig.air.spearReturn.delay : null);
+      this.spearSpike = sp.spike;
       this.fx.burst(new THREE.Vector3(ev.x, ev.y, ev.z), elements[this.element].glow, 10, 4);
     }
     if (this.spear.state === 'flying') {
@@ -496,13 +634,35 @@ export class CombatDirector {
       for (const e of this.enemies) if (e.alive) targets.push({ id: e.id, team: 'enemy', x: e.motor.x, y: e.motor.y, z: e.motor.z, radius: e.def.radius + 0.15, height: 1.8 * e.def.look.scale });
       const struck = this.spear.step(dt, this.groundAt, targets);
       const e = struck && this.enemies.find((x) => x.id === struck.id);
-      if (e) {
-        const from = { x: e.motor.x - this.spear.dir.x, z: e.motor.z - this.spear.dir.z };
-        const imbue = player.abilities.imbue;
-        const im = imbueMods(imbue);
-        const hit: HitInfo = { instance: this.spear.instance, damage: Math.round(cfg.damage * im.damage), poise: cfg.poise * im.poise, knockback: cfg.knockback * im.knockback, kind: 'projectile' };
-        if (this.hitEnemy(e, hit, from, now, { hitstop: 0.1, shake: 0.3, sparks: 24, color: imbue ? elements[imbue.element].glow : undefined })) this.applyImbue(e, imbue);
-      } else if ((this.spear.state as string) === 'grounded') this.fx.burst(new THREE.Vector3(this.spear.x, this.spear.y + 0.1, this.spear.z), 0xc8b89a, 10, 3);
+      const imbue = player.abilities.imbue;
+      if (e) this.spearHit(e, player, now, 1);
+      else if ((this.spear.state as string) === 'grounded') this.fx.burst(new THREE.Vector3(this.spear.x, this.spear.y + 0.1, this.spear.z), 0xc8b89a, 10, 3);
+      if ((this.spear.state as string) === 'grounded') {
+        // Impact: stone spikes (earth coat) or a blast (fire coat) where it lands.
+        const at = { x: this.spear.x, y: this.spear.y, z: this.spear.z };
+        if (this.spearSpike) this.stoneSpike(at, imbue?.power ?? 1, now);
+        if (imbueElements(imbue).includes('fire')) this.explode(at, imbue!.power, now);
+        this.spearSpike = false;
+      }
+    }
+    // Wind coat: the spear flies back to the hand, cutting what it passes.
+    if (this.spear.returns) {
+      const targets: CapsuleTarget[] = [];
+      for (const e of this.enemies) if (e.alive) targets.push({ id: e.id, team: 'enemy', x: e.motor.x, y: e.motor.y, z: e.motor.z, radius: e.def.radius + 0.15, height: 1.8 * e.def.look.scale });
+      const r = this.spear.stepReturn(dt, { x: player.motor.x, y: player.motor.y + 1.3, z: player.motor.z }, imbueConfig.air.spearReturn.speed, targets);
+      if (r.event === 'began') {
+        this.spear.instance = nextDot++;
+        this.fx.burst(new THREE.Vector3(this.spear.x, this.spear.y, this.spear.z), elements.air.glow, 16, 4);
+      }
+      for (const t of r.struck) {
+        const e = this.enemies.find((x) => x.id === t.id);
+        if (e && !e.combatant.alreadyHitBy(this.spear.instance)) this.spearHit(e, player, now, 0.6);
+      }
+      if (r.event === 'caught') {
+        player.spearReturned();
+        this.fx.burst(new THREE.Vector3(player.motor.x, player.motor.y + 1.3, player.motor.z), elements.air.glow, 20, 4);
+        this.bus.emit('spearPickedUp', {});
+      }
     }
     // Pick up: walk over it, or press E nearby.
     if (player.spearAway && this.spear.state === 'held') player.spearReturned();
@@ -514,6 +674,18 @@ export class CombatDirector {
         this.bus.emit('spearPickedUp', {});
       }
     }
+  }
+
+  private spearSpike = false;
+
+  /** The thrown (or returning) spear strikes an enemy. */
+  private spearHit(e: Enemy, player: Player, now: number, scale: number): void {
+    const cfg = combatConfig.spearThrow;
+    const from = { x: e.motor.x - this.spear.dir.x, z: e.motor.z - this.spear.dir.z };
+    const imbue = player.abilities.imbue;
+    const im = weaponHitMods(imbue, scale >= 1);
+    const hit: HitInfo = { instance: this.spear.instance, damage: Math.round(cfg.damage * im.damage * scale), poise: cfg.poise * im.poise * scale, knockback: cfg.knockback * im.knockback, kind: 'projectile' };
+    if (this.hitEnemy(e, hit, from, now, { hitstop: 0.1, shake: 0.3, sparks: 24, color: imbue ? elements[imbue.element].glow : undefined })) this.applyImbue(e, { ...im, explode: false });
   }
 
   /** Is the thrown spear lying within reach of E? (HUD prompt) */
@@ -623,6 +795,8 @@ export class CombatDirector {
           if (player.combatant.free && !player.scripted) player.autoCounter(attacker.motor);
         } else player.counterUntil = now + combatConfig.block.counterWindow;
         player.parryLockUntil = -Infinity;
+        // A perfect parry feeds the weapon coat.
+        this.extendImbue(player, imbueConfig.extendParry);
         this.fx.burst(at.clone().addScaledVector(push, -0.6), 0xffe2a0, 40, 9);
         this.fx.ring(new THREE.Vector3(player.motor.x, player.motor.y, player.motor.z), 0xffe2a0, 3, 0.35);
         this.feedback.slowmo(combatConfig.block.parrySlowmo, combatConfig.block.parrySlowmoScale);
@@ -723,6 +897,17 @@ export class CombatDirector {
         const k = (e.attack!.t - (e.attack!.def.hitStart - 0.32)) / 0.32;
         m.glint.scale.setScalar(0.4 + Math.sin(k * Math.PI) * 0.9);
       }
+      const shell = this.ice.get(e.id);
+      if (shell) {
+        shell.visible = e.alive && e.status.frozen;
+        if (shell.visible) {
+          const s = e.def.look.scale;
+          shell.position.set(e.renderPosition.x, e.renderPosition.y + 0.95 * s, e.renderPosition.z);
+          shell.scale.set((e.def.radius + 0.35) * e.def.look.width, 1.05 * s, (e.def.radius + 0.35) * e.def.look.width);
+        }
+      }
+      // Chill stacks: frost motes.
+      if (e.alive && e.status.chill > 0 && Math.random() < dt * 6 * e.status.chill) this.fx.burst(new THREE.Vector3(e.renderPosition.x, e.renderPosition.y + 0.5 + Math.random(), e.renderPosition.z), 0xcfefff, 2, 0.8);
       m.ring.visible = e.alive && e.combatant.state === 'vulnerable';
       if (m.ring.visible) {
         m.ring.position.set(e.renderPosition.x, e.renderPosition.y + 2.05 * e.def.look.scale, e.renderPosition.z);
@@ -739,24 +924,42 @@ export class CombatDirector {
       (this.ward.material as THREE.MeshBasicMaterial).opacity = (blocking ? 0.22 : 0) + this.wardFlash * 0.5;
     }
     this.abilityFx.syncArrows(this.projectiles.list);
-    // Imbued weapon: embers / droplets / grit / wisps streaming from the hand.
+    // Imbued weapon: glowing blade, aura, swing trail, and embers / droplets / grit / wisps from the hand.
     const imbue = player.abilities.imbue;
-    if (imbue && player.combatant.alive) {
-      const glow = elements[imbue.element].glow;
+    const els = player.combatant.alive ? imbueElements(imbue) : [];
+    const colors = els.map((el) => elements[el].glow);
+    this.imbueFx.update(dt, this.time, player.view.weaponSocket, player.weapon.id, colors, !!player.runner.current);
+    if (colors.length) {
+      const glow = colors[Math.random() < 0.5 ? 0 : colors.length - 1];
       player.view.weaponSocket.getWorldPosition(this.tmpV);
       if (Math.random() < dt * 40) this.fx.burst(this.tmpV.clone(), glow, 2, 1.2);
       if (player.armed) {
-        // Along the weapon too.
-        const tip = this.tmpV.clone().add(new THREE.Vector3(0, 0.6, 0).applyQuaternion(player.view.weaponSocket.getWorldQuaternion(new THREE.Quaternion())));
-        if (Math.random() < dt * 30) this.fx.burst(tip, glow, 2, 1);
+        const tip = this.tmpV.clone().add(new THREE.Vector3(0, player.weapon.id === 'spear' ? 1.6 : 0.8, 0).applyQuaternion(player.view.weaponSocket.getWorldQuaternion(new THREE.Quaternion())));
+        if (Math.random() < dt * 30) this.fx.burst(tip, glow, 3, 1.4);
       }
     }
-    if (imbue && imbue !== this.lastImbue) {
+    // Z gesture: a streak of the element running from the guard to the tip.
+    if (player.gestureT > 0 && colors.length) {
+      const k = 1 - player.gestureT / imbueConfig.gestureTime;
+      const span = player.weapon.id === 'spear' ? 1.8 : player.weapon.id === 'sword' ? 0.9 : 0.15;
+      const p = new THREE.Vector3(0, span * Math.min(1, k * 1.4), 0).applyQuaternion(player.view.weaponSocket.getWorldQuaternion(new THREE.Quaternion())).add(player.view.weaponSocket.getWorldPosition(this.tmpV));
+      this.fx.burst(p, colors[colors.length - 1], 3, 1.5);
+    }
+    if (imbue && (imbue !== this.lastImbue || imbue.second !== this.lastImbueSecond)) {
       player.view.weaponSocket.getWorldPosition(this.tmpV);
-      this.fx.burst(this.tmpV.clone(), elements[imbue.element].glow, 40, 5);
-      this.fx.ring(new THREE.Vector3(player.renderPosition.x, player.renderPosition.y + 0.05, player.renderPosition.z), elements[imbue.element].glow, 2.2, 0.4);
+      for (const c of colors) this.fx.burst(this.tmpV.clone(), c, 40, 5);
+      this.fx.ring(new THREE.Vector3(player.renderPosition.x, player.renderPosition.y + 0.05, player.renderPosition.z), colors[colors.length - 1], imbue.second ? 3.4 : 2.2, 0.45);
     }
     this.lastImbue = imbue;
+    this.lastImbueSecond = imbue?.second ?? null;
+    // Wind trail behind Gale Rush, wisps while gliding, frost behind Ice Slide.
+    const feet = new THREE.Vector3(player.renderPosition.x, player.renderPosition.y, player.renderPosition.z);
+    if (player.dash) {
+      this.fx.burst(feet.clone().add(new THREE.Vector3(0, 0.4 + Math.random() * 1.2, 0)), elements.air.glow, 4, 2.5);
+      this.fx.burst(feet.clone().add(new THREE.Vector3(0, 1, 0)), 0xffffff, 2, 1.5);
+    }
+    if (player.gliding && Math.random() < dt * 25) this.fx.burst(feet.clone().add(new THREE.Vector3((Math.random() - 0.5) * 1.4, 0.9, (Math.random() - 0.5) * 0.6)), elements.air.glow, 2, 1.2);
+    if (player.edodge?.el === 'water' && Math.random() < dt * 30) this.abilityFx.iceTrail(feet, elements.water.glow);
     const jb = player.jumpBurst;
     if (jb && jb.at !== this.lastJumpBurst) {
       this.lastJumpBurst = jb.at;
@@ -806,18 +1009,4 @@ function makeGlintTexture(): THREE.Texture {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
-}
-
-/** Hit multipliers from an imbued weapon: fire burns harder, earth crushes poise, air gusts further. */
-export function imbueMods(imbue: Imbue | null): { damage: number; poise: number; knockback: number; reach: number } {
-  const out = { damage: 1, poise: 1, knockback: 1, reach: 0 };
-  if (!imbue) return out;
-  const p = imbue.power;
-  if (imbue.element === 'fire') out.damage = 1 + (imbueConfig.fire.damage - 1) * p;
-  if (imbue.element === 'earth') out.poise = 1 + (imbueConfig.earth.poise - 1) * p;
-  if (imbue.element === 'air') {
-    out.knockback = 1 + (imbueConfig.air.knockback - 1) * p;
-    out.reach = imbueConfig.air.reach;
-  }
-  return out;
 }

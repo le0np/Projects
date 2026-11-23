@@ -2,10 +2,11 @@ import type { CapsuleTarget } from './Projectiles';
 
 /**
  * The player's spear once thrown (G): flies with gravity, strikes the first enemy in its path, sticks in
- * the ground where it lands and waits to be picked up (walk over it or press E). Pure logic.
+ * the ground where it lands and waits to be picked up (walk over it or press E). Thrown with a wind coat
+ * it comes back on its own after a moment, like a boomerang, cutting what it passes. Pure logic.
  */
 export class ThrownSpear {
-  state: 'held' | 'flying' | 'grounded' = 'held';
+  state: 'held' | 'flying' | 'grounded' | 'returning' = 'held';
   x = 0;
   y = 0;
   z = 0;
@@ -16,17 +17,67 @@ export class ThrownSpear {
   dir = { x: 0, y: 0, z: 1 };
   instance = 0;
   private age = 0;
+  /** Seconds before a wind-coated spear flies back (null = it stays where it lands). */
+  private returnDelay: number | null = null;
+  private returnT = 0;
 
   constructor(
     readonly opts: { gravity: number; life: number } = { gravity: 9, life: 2.5 },
   ) {}
 
-  throwFrom(from: { x: number; y: number; z: number }, v: { vx: number; vy: number; vz: number }, instance: number): void {
+  throwFrom(from: { x: number; y: number; z: number }, v: { vx: number; vy: number; vz: number }, instance: number, returnDelay: number | null = null): void {
     Object.assign(this, from, v);
     this.instance = instance;
     this.state = 'flying';
     this.age = 0;
+    this.returnDelay = returnDelay;
+    this.returnT = returnDelay ?? 0;
     this.updateDir();
+  }
+
+  /** Will this spear come back on its own? */
+  get returns(): boolean {
+    return this.returnDelay !== null;
+  }
+
+  /**
+   * Boomerang flight back to `to` (the thrower's chest). Counts down the delay once the spear has
+   * landed or struck, then homes in. Returns 'began' on the step it lifts off, 'caught' when it
+   * reaches the hand, and the targets it passes through on the way.
+   */
+  stepReturn(dt: number, to: { x: number; y: number; z: number }, speed: number, targets: CapsuleTarget[]): { event: 'began' | 'caught' | null; struck: CapsuleTarget[] } {
+    const struck: CapsuleTarget[] = [];
+    if (this.returnDelay === null) return { event: null, struck };
+    if (this.state === 'grounded') {
+      this.returnT -= dt;
+      if (this.returnT > 0) return { event: null, struck };
+      this.state = 'returning';
+      this.y += 0.6;
+      return { event: 'began', struck };
+    }
+    if (this.state !== 'returning') return { event: null, struck };
+    const dx = to.x - this.x;
+    const dy = to.y - this.y;
+    const dz = to.z - this.z;
+    const d = Math.hypot(dx, dy, dz);
+    const stepLen = speed * dt;
+    if (d <= Math.max(0.8, stepLen)) {
+      this.pickUp();
+      return { event: 'caught', struck };
+    }
+    this.vx = (dx / d) * speed;
+    this.vy = (dy / d) * speed;
+    this.vz = (dz / d) * speed;
+    this.x += (dx / d) * stepLen;
+    this.y += (dy / d) * stepLen;
+    this.z += (dz / d) * stepLen;
+    this.updateDir();
+    for (const t of targets) {
+      if (t.team === 'player') continue;
+      if (this.y < t.y - 0.3 || this.y > t.y + t.height) continue;
+      if (Math.hypot(this.x - t.x, this.z - t.z) <= t.radius + 0.2) struck.push(t);
+    }
+    return { event: null, struck };
   }
 
   private updateDir(): void {
@@ -81,5 +132,6 @@ export class ThrownSpear {
 
   pickUp(): void {
     this.state = 'held';
+    this.returnDelay = null;
   }
 }

@@ -35,6 +35,9 @@ describe('AbilityState', () => {
     expect(a.tryCast('fire').ok).toBe(true);
     const air = a.tryCast('air');
     expect(air.ok && air.damageScale).toBe(1);
+    // Gale Rush has two charges: the cooldown starts with the second.
+    expect(a.cooldownOf('air')).toBe(0);
+    a.tryCast('air');
     expect(a.cooldownOf('air')).toBeCloseTo(abilities.air.cooldown);
   });
 

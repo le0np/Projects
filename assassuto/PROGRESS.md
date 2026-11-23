@@ -4,7 +4,7 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
-Faze 1–4 od 8 su gotove, uz proširenje borbe (kombinacije, parry po tajmingu, bacanje koplja, mobilnost, element na oružju, razine vještina). Igra ima glavni izbornik, kreator lika u 6 koraka s 3D previewom, intro cinematic, kretanje u četiri regije, verzionirano spremanje i borbu. Borba obuhvaća combo napade, izmicanje, blok i parry s counterom, lock-on, finisher, mač, koplje i borbu bez oružja. Faza 4 je dodala četiri elementalne sposobnosti, Archera i Brutea uz Raidere u kampu, shrineove (attune, odmor, putovanje među regijama) i 3 waystonea po regiji. Oba lika i Raider su Tripo modeli. Archer i Brute koriste Raiderov model. Echo je zasad vizualni duh s osnovnim praćenjem. Ostalo je 275 Tripo kredita, a vlasnik ih zasad čuva: sve se testira sa ženskim likom.
+Faze 1–4 od 8 su gotove, uz proširenje borbe (kombinacije, parry po tajmingu, bacanje koplja, mobilnost, element na oružju, razine vještina) i razradu elementalnih vještina (lebdenje, Gale Rush, elementalna izmicanja, zaleđivanje, eksplozije, kameni šiljci, koplje bumerang, spajanje elemenata). Igra ima glavni izbornik, kreator lika u 6 koraka s 3D previewom, intro cinematic, kretanje u četiri regije, verzionirano spremanje i borbu. Borba obuhvaća combo napade, izmicanje, blok i parry s counterom, lock-on, finisher, mač, koplje i borbu bez oružja. Faza 4 je dodala četiri elementalne sposobnosti, Archera i Brutea uz Raidere u kampu, shrineove (attune, odmor, putovanje među regijama) i 3 waystonea po regiji. Oba lika i Raider su Tripo modeli. Archer i Brute koriste Raiderov model. Echo je zasad vizualni duh s osnovnim praćenjem. Ostalo je 275 Tripo kredita, a vlasnik ih zasad čuva: sve se testira sa ženskim likom.
 
 ## Napravljeno 20. studenoga 2026.
 
@@ -124,16 +124,66 @@ Faze 1–4 od 8 su gotove, uz proširenje borbe (kombinacije, parry po tajmingu,
 
 **Provjera izgleda:** skripta `tools/scratch/moves.mjs` (nije u gitu) renderira svaki udarac u tri trenutka. Pregledani su direkti, kroše, aperkat, koljeno, prednji udarac, roundhousei, okretni udarac, salto, svi udarci mačem i kopljem. Ubodi su prvo držali oružje uspravno, pa je dodan `aim` ključ. Udarac odozgo se previše savijao pa je ublažen.
 
+### Razrada elementalnih vještina
+
+**Zahtjev vlasnika:** dupli skok, Z i Gale Rush (R) nisu bili dobro animirani ni podešeni. Dupli skok ne smije ići u cooldown, a pojačanje oružja treba trajati duže i izgledati bolje. Vlasnik je odobrio cijeli prijedlog ("Sve je dobro. kreni na posao"): razrada po elementima, mobilnost po elementu, duže i ljepše pojačanje oružja, spajanje dvaju elemenata na razini 5 i nove animacije. Pravila: rad na `dev`, 0 Tripo kredita.
+
+**Odluke:**
+- **Zrak**:
+  - Dupli i trostruki skok su besplatni (bez stamine i cooldowna) i pune se pri doskoku, a pri svakom lik napravi salto (overlay `airFlip`).
+  - Lebdenje od razine 3: Space treba pritisnuti u zraku (držanje od prvog skoka se ne broji, da ne lebdi slučajno). Lebdi se 1,2 / 2 / 2,5 s po skoku, a brzina pada je 1,6 m/s.
+  - S vjetrom je gravitacija ×0,88 (`CharacterMotor.gravityScale`).
+  - Gale Step je preimenovan u **Gale Rush**: 2 naboja (3 na razini 5), poza iskoraka (`galeLunge`), trag vjetra, jače odbacivanje (5) i okretni udarac na kraju (`rushSpin`, AOE 2,8 m, 14 štete).
+- **Element na oružju (Z)**:
+  - Traje 20/23/26/28/30 s po razini. Cooldown od 10 s kreće tek kad element nestane, a Z dok element traje vraća razlog `active`.
+  - Parry dodaje 4 s, a zadnji udarac kombinacije 3 s (jednom po zamahu). Ukupno vrijeme je ograničeno na 1,5× trajanja.
+  - Gesta: ruka preko oštrice (overlay `imbueSweep`, 0,55 s), uz čestice koje putuju od drška do vrha. Za to vrijeme lik ne napada, a blok, izmicanje i parry gestu prekidaju.
+  - Izgled je u `render/ImbueVisuals.ts`:
+    - Oštrica svijetli u boji elementa (emissive materijala).
+    - Oko oštrice je pulsirajući aditivni rukav, a u šaci bez oružja svjetleća kugla.
+    - Trag zamaha je traka između drška i vrha. Bez elementa je slab i bijel.
+    - Pri spoju se dvije boje izmjenjuju.
+  - HUD ima zasebni red za element: naziv ili ime spoja, preostale sekunde i traku u boji elementa (gradijent za spoj). Pokazuje i ponudu spoja te koje izmicanje C trenutno radi.
+  - Logika učinaka je u čistom modulu `combat/imbueEffects.ts` (`weaponHitMods`, `spearImbue`, `imbueLabel`). "Teški" su RMB napadi, zadnji udarci kombinacije, finisher i pogodak bačenim kopljem: oni pokreću potpis elementa.
+- **Vatra**:
+  - Teški udarac izazove eksploziju (2,8 m, 12 štete × snaga, pali), jednom po zamahu.
+  - Pala koplja eksplodiraju na mjestu pada.
+  - **Blast Hop** (C): eksplozija na mjestu i salto unatrag (`backHop`), 9 m/s unatrag i 7 m/s gore.
+- **Voda/led**:
+  - Svaki udarac dodaje hladnoću (`StatusEffects.addChill`, nestaje nakon 4 s bez udarca). Na 3 udarca neprijatelj se zaledi na 2,6 s: ne miče se, ne napada, animacija stoji, a oko njega je ledena ljuska.
+  - Teški udarac zaleđenog ga razbije: ×2,5 štete, ×2 poisea, krhotine, natpis SHATTER.
+  - **Ice Slide** (C): klizanje od oko 8 m, nedodirljiv cijelim putem, ledeni trag. Neprijatelje na putu sapliće, smoči i ohladi. Tijelo se pri klizanju spusti 0,42 m (`Player.render`), jer overlay kostiju ne može spustiti kukove.
+- **Zemlja**:
+  - Napadi su ×0,88 sporiji (`Player.attackSpeed`: runner i animacija), poise ×1,6, a teški i zadnji udarci ruše.
+  - Bačeno koplje na mjestu pada podiže kamene šiljke (2,6 m, 18 štete, izbacuje u zrak).
+  - **Rock Pillar** (C): kameni stup i udarni val (ruši) izbace lika 15 m/s uvis.
+- **Spajanje na razini 5**: Z s drugim elementom dok element traje, ako je bilo koji od njih na razini 5. `Imbue.second` nosi drugi element, a `weaponHitMods` primjenjuje oba. Imena su u `imbueConfig.fusions`.
+- **Elementalna izmicanja**: C s odabranom vatrom, vodom ili zemljom (vlastiti cooldown po elementu, skraćuje se razinom). Dok traje cooldown, C je obično kolutanje. Zrak zadržava kolutanje.
+- **Koplje bumerang**: `ThrownSpear` ima stanje `returning`. Nakon pada ili pogotka čeka 0,75 s, pa leti natrag brzinom 26 m/s, pogađa sve na putu (60 % štete) i hvata se u ruku.
+- Sve nove brojke su u `config/skills.ts` (`mobilityConfig`, `imbueConfig`, `elementDodge`, `galeRush`), a poze u `config/moves.ts`.
+
+**Provjera izgleda:**
+- `tools/scratch/poses.mjs` renderira nove poze: salto, salto unatrag, iskorak, okretni udarac, gestu, klizanje, stup i lebdenje.
+- `tools/scratch/glow.mjs` prikazuje oružje s elementom usred zamaha (vatra, voda, zemlja + zrak, šake).
+- `tools/scratch/elements.mjs` vrti igru i provjerava:
+  - zaleđivanje nakon udaraca i razbijanje teškim udarcem
+  - spajanje vatre i vode (Steam Blade na HUD-u)
+  - sva tri izmicanja
+  - Gale Rush
+  - koplje s vjetrom koje se vraća u ruku
+
+Sve je prošlo.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 23. studenoga 2026. (nakon proširenja borbe):
+Provedeno 23. studenoga 2026. (nakon razrade elementalnih vještina):
 
 | Provjera | Rezultat |
 | --- | --- |
 | `npx tsc --noEmit` | bez grešaka |
-| `npm test` | 85/85 prolazi (novo: nasumične kombinacije bez ponavljanja, svaki stil ima 5 kombinacija po tipki, LMB bez oružja su udarci rukama a RMB nogama, tipke 1/2/3, parry po tajmingu i zaključavanje pri lupanju po Q, automatski counter, let i podizanje koplja, razine vještina, Gale Step s dva naboja, element na oružju, dupli i visoki skok, XP i bodovi, save razina) |
-| `npm run e2e` | 60/60 prolazi. Nove: 1 bez oružja, LMB daje udarce rukama, RMB udarce nogama, 2 mač, 3 koplje, G baca koplje (lik ostaje bez oružja), koplje se zabija u tlo i podiže prolaskom, parry tik prije udarca s automatskim counterom koji pogađa napadača, prerani Q ne parryja, Z daje element na oružju, dupli skok. Provjera kretanja ("player moved") je u ovom okruženju padala jer softverski GL vrti igru na oko 10 FPS-a, pa igra ide sporije od stvarnog vremena (isto se događa i na grani `dev`: 2,8 m za 3 s). Test sada drži tipke dok se lik ne pomakne više od 4 m (zadnji prolaz: 5,8 m). |
-| Ručno (Playwright skripta) | Svaki udarac renderiran u tri trenutka: direkti, kroše, aperkat, koljeno, prednji udarac, roundhousei, okretni udarac, salto te svi udarci mačem i kopljem |
+| `npm test` | 102/102 prolazi. Novo u `tests/elements.test.ts`: produljenje elementa i granica od 1,5×, spajanje na razini 5 (Flame Vortex), potpisi elemenata na teškim udarcima, gesta blokira napad, zemlja usporava zamahe, hladnoća i zaleđivanje, zaleđeni neprijatelj stoji, koplje se vraća (i ne vraća bez vjetra), besplatni dupli skok koji se puni pri doskoku, salto, lebdenje, Gale Rush s okretnim udarcem, Blast Hop, Ice Slide, Rock Pillar, zrak zadržava kolutanje. Postojeći testovi prilagođeni (dva naboja Gale Rusha, cooldown nakon isteka elementa). |
+| `npm run e2e` | 64/64 prolazi. Novo: HUD pokazuje element i vrijeme, C sa zemljom podiže Rock Pillar i izbaci lika, R s vjetrom je Gale Rush. Prvi pokušaj je prekinut jer je izmjena teksta pomoći tijekom testa okinula reload dev servera. Ponovljeni prolaz je prošao. |
+| Ručno (Playwright skripte u `tools/scratch/`) | Nove poze, oružje s elementom usred zamaha, te u igri: zaleđivanje, razbijanje, spajanje, sva tri izmicanja, Gale Rush i koplje koje se vraća |
 | `npm run build` | prolazi |
 
 ## Poznata ograničenja
@@ -152,17 +202,22 @@ Provedeno 23. studenoga 2026. (nakon proširenja borbe):
 - Muški lik nema borbene clipove, pa za njega kombinacije padaju na proceduralne zamjene.
 - Neprijatelji ne koriste nove kombinacije (i dalje imaju svoja dva zamaha).
 - Bacanje koplja nema posebnu animaciju bacanja (overlay na dijelu `slash` clipa). Strijele i luk za igrača još ne postoje, pa element na strijelama (led, vatra) čeka luk.
-- Element na oružju kod vode samo usporava, a kod zemlje lomi poise. Vizualno se prikazuje česticama iz šake i oštrice, ne bojom samog oružja.
+- Nove poze (salto, iskorak, gesta, klizanje, stup, lebdenje) su overlayi na idle clipu, pa nemaju zamah pravog mocapa. Gesta preko oštrice je približna: lijeva ruka prelazi preko oštrice, ali je ne dodiruje točno.
+- Ledena ljuska je jednostavan prozirni ikosaedar oko neprijatelja, a ne led koji prati oblik tijela.
+- Spajanje elemenata zbraja učinke oba elementa. Spojevi nemaju posebne efekte (npr. Flame Vortex nema vlastiti vrtlog vatre), samo ime i izmjenu boja.
+- Neprijatelji ne koriste elemente ni izmicanja.
 
 ## Sljedeći koraci
 
-1. Vlasnik isproba proširenje borbe: osjećaj kombinacija (brojke su u `config/combat.ts`, izgled u `config/moves.ts`), tajming parryja (`combatConfig.block.parryWindow`), bacanje koplja, dupli i visoki skok (`config/skills.ts`) i razine vještina na shrineu.
-2. Ako neki udarac izgleda loše, prilagoditi overlay ili dodati Tripo clipove `box_03` i `front_kick_02` (oko 20–30 kredita, samo uz dogovor).
-3. Luk za igrača, pa element na strijelama (zaleđena, zapaljena).
-4. Faza 5: Echo (pametnije praćenje, kontekstualni dijalog, Spirit Ward, Guardian's Embrace preko kuke `preventDeath`).
-5. Faza 6: bond sustav i stvorenja, ground mount, flying mount u Sky Trialu.
-6. Faza 7: tutorial, ostatak progresije (XP već daje bodove vještina), zvuk i polish. Faza 8: završna provjera.
-7. Kad se krediti odobre: `enemy_archer` i `enemy_brute` (promijeniti `assetId`), Tripo propsi i borbene animacije za muški lik.
+1. Vlasnik isproba razradu vještina: osjećaj duplog skoka i lebdenja (`mobilityConfig`), Gale Rush, elementalna izmicanja (`elementDodge`), trajanje i izgled elementa na oružju (`imbueConfig`, `render/ImbueVisuals.ts`) te spajanje na razini 5. Za brzo isprobavanje razina: u konzoli `__fourfold.player.abilities.upgrade('fire', 99)` (ponoviti do razine 5).
+2. Posebni efekti za spojeve (npr. vrtlog plamena za Flame Vortex, para za Steam Blade).
+3. Vlasnik isproba proširenje borbe: osjećaj kombinacija (brojke su u `config/combat.ts`, izgled u `config/moves.ts`), tajming parryja (`combatConfig.block.parryWindow`), bacanje koplja, dupli i visoki skok (`config/skills.ts`) i razine vještina na shrineu.
+4. Ako neki udarac izgleda loše, prilagoditi overlay ili dodati Tripo clipove `box_03` i `front_kick_02` (oko 20–30 kredita, samo uz dogovor).
+5. Luk za igrača, pa element na strijelama (zaleđena, zapaljena).
+6. Faza 5: Echo (pametnije praćenje, kontekstualni dijalog, Spirit Ward, Guardian's Embrace preko kuke `preventDeath`).
+7. Faza 6: bond sustav i stvorenja, ground mount, flying mount u Sky Trialu.
+8. Faza 7: tutorial, ostatak progresije (XP već daje bodove vještina), zvuk i polish. Faza 8: završna provjera.
+9. Kad se krediti odobre: `enemy_archer` i `enemy_brute` (promijeniti `assetId`), Tripo propsi i borbene animacije za muški lik.
 
 ## Handoff za novi chat
 
@@ -171,4 +226,5 @@ Provedeno 23. studenoga 2026. (nakon proširenja borbe):
 3. Tripo: prije svakog generiranja pokreni `--dry-run`, a stanje kredita provjeri prije i poslije (`--balance`). Nikad ne pokreći `--regenerate` bez dogovora s vlasnikom.
 4. Faza 4: sposobnosti su u `config/abilities.ts` i `combat/Abilities.ts`, a efekte primjenjuje `CombatDirector.applyAbility`. Neprijatelji su u `config/enemies.ts` (`campRoster` određuje sastav kampa), a otkrića u `config/discovery.ts` i `Game.updateDiscovery`.
 5. Proširenje borbe: kombinacije su u `WeaponDef.combos`, a nove kretnje u `config/moves.ts` (overlayi) i `animation/clipTools.ts` (zrcaljenje, overlay, `aim`). Vještine i razine su u `config/skills.ts` i `combat/Abilities.ts`, bacanje koplja u `combat/ThrownSpear.ts` i `CombatDirector.stepSpear`.
-6. Važne granice: gameplay ne dira Three.js direktno, nego ide preko `CharacterView`, `CollisionWorld` i EventBusa. Sve brojke idu u `src/config/`. Tekst u igri je na engleskom. 3D modeli dolaze samo iz Tripa (bez Quaterniusa ili drugih paketa), preko `assets-src/manifest.json`. Tajne idu samo u `.env`.
+6. Elementalne vještine: brojke su u `config/skills.ts`. Učinke elementa na udarce računa `combat/imbueEffects.ts`, a primjenjuje ih `CombatDirector` (`playerHits`, `applyImbue`, `explode`, `stoneSpike`, `rushSpin`, `elementDodge`, `slideHits`). Izmicanja i lebdenje su u `Player` (`startElementDodge`, `stepGlide`), zaleđivanje u `Status.ts` i `Enemy.freeze`, a izgled oružja u `render/ImbueVisuals.ts`.
+7. Važne granice: gameplay ne dira Three.js direktno, nego ide preko `CharacterView`, `CollisionWorld` i EventBusa. Sve brojke idu u `src/config/`. Tekst u igri je na engleskom. 3D modeli dolaze samo iz Tripa (bez Quaterniusa ili drugih paketa), preko `assets-src/manifest.json`. Tajne idu samo u `.env`.

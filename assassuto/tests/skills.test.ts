@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AbilityState } from '../src/combat/Abilities';
-import { imbueMods } from '../src/combat/CombatDirector';
+import { weaponHitMods } from '../src/combat/imbueEffects';
 import { abilities } from '../src/config/abilities';
 import { imbueConfig, levelCost, MAX_SKILL_LEVEL, mobilityConfig, skills } from '../src/config/skills';
 import { gainXp } from '../src/entities/Progression';
@@ -35,8 +35,8 @@ describe('skill levels', () => {
     expect(b.area).toBeGreaterThan(a.area);
   });
 
-  it('mobility (air) level 5 gives two Gale Steps before the cooldown', () => {
-    const a = new AbilityState('air', ['air'], 'air', { air: 5 });
+  it('Gale Rush has two charges before the cooldown, three at level 5', () => {
+    const a = new AbilityState('air', ['air'], 'air');
     expect(a.tryCast().ok).toBe(true);
     expect(a.cooldownOf('air')).toBe(0);
     expect(a.tryCast().ok).toBe(true);
@@ -45,6 +45,8 @@ describe('skill levels', () => {
     a.tick(abilities.air.cooldown);
     expect(a.tryCast().ok).toBe(true);
     expect(a.tryCast().ok).toBe(true);
+    const b = new AbilityState('air', ['air'], 'air', { air: 5 });
+    expect([b.tryCast().ok, b.tryCast().ok, b.tryCast().ok, b.tryCast().ok]).toEqual([true, true, true, false]);
   });
 
   it('mobility needs the air element; level 2 adds the high jump, level 4 a third jump', () => {
@@ -60,26 +62,31 @@ describe('skill levels', () => {
 });
 
 describe('weapon imbue (Z)', () => {
-  it('coats the weapon in the selected element for a while, then goes on cooldown', () => {
+  it('coats the weapon for 20-30 s by level; the cooldown starts when it wears off', () => {
+    expect(skills.fire.levels.map((l) => l.imbueDuration)).toEqual([20, 23, 26, 28, 30]);
     const a = new AbilityState('fire', ['fire', 'water'], 'water', { water: 3 });
     const r = a.tryImbue();
     expect(r.ok && r.imbue.element).toBe('water');
     expect(a.imbue?.duration).toBe(skills.water.levels[2].imbueDuration);
-    expect(a.tryImbue().ok).toBe(false);
+    const again = a.tryImbue();
+    expect(!again.ok && again.reason).toBe('active');
     a.tick(a.imbue!.duration + 0.1);
     expect(a.imbue).toBeNull();
+    expect(a.imbueCooldown).toBeCloseTo(imbueConfig.cooldown, 5);
+    const cd = a.tryImbue();
+    expect(!cd.ok && cd.reason).toBe('cooldown');
     a.tick(imbueConfig.cooldown);
     expect(a.tryImbue().ok).toBe(true);
   });
 
   it('locked elements cannot be imbued; each element changes hits differently', () => {
     expect(new AbilityState('fire').tryImbue('earth').ok).toBe(false);
-    const m = (element: 'fire' | 'water' | 'earth' | 'air') => imbueMods({ element, remaining: 5, duration: 5, power: 1 });
+    const m = (element: 'fire' | 'water' | 'earth' | 'air') => weaponHitMods({ element, second: null, remaining: 5, duration: 5, power: 1 });
     expect(m('fire').damage).toBeGreaterThan(1);
     expect(m('earth').poise).toBeGreaterThan(1);
     expect(m('air').knockback).toBeGreaterThan(1);
     expect(m('air').reach).toBeGreaterThan(0);
-    expect(imbueMods(null)).toEqual({ damage: 1, poise: 1, knockback: 1, reach: 0 });
+    expect(weaponHitMods(null)).toMatchObject({ damage: 1, poise: 1, knockback: 1, reach: 0, speed: 1, explode: false, chill: false });
   });
 
   it('Z on the player starts the imbue', () => {

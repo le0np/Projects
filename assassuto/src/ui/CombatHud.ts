@@ -4,6 +4,8 @@ import type { Player } from '../entities/Player';
 import { abilities } from '../config/abilities';
 import { elementOrder, elements } from '../config/elements';
 import { h, hex } from './dom';
+import { imbueLabel, imbueNames } from '../combat/imbueEffects';
+import { elementDodge, fusionName } from '../config/skills';
 
 /**
  * Combat overlay: player health, enemy health bars (projected over heads), lock-on reticle,
@@ -24,6 +26,10 @@ export class CombatHud {
   private v = new THREE.Vector3();
   private abilitySlots = new Map<string, { el: HTMLElement; cd: HTMLElement; time: HTMLElement }>();
   private abilityName: HTMLElement;
+  private imbueEl: HTMLElement;
+  private imbueText: HTMLElement;
+  private imbueFill: HTMLElement;
+  private dodgeEl: HTMLElement;
   private lastFail = 0;
 
   constructor(parent: HTMLElement) {
@@ -43,10 +49,14 @@ export class CombatHud {
       return slot;
     });
     this.abilityName = h('div', { class: 'ab-name' });
+    this.imbueText = h('span', { class: 'imbue-text' });
+    this.imbueFill = h('div', { class: 'imbue-fill' });
+    this.imbueEl = h('div', { class: 'imbue' }, h('kbd', { text: 'Z' }), this.imbueText, h('div', { class: 'imbue-bar' }, this.imbueFill));
+    this.dodgeEl = h('span', { class: 'ab-dodge' });
     this.root = h(
       'div',
       { class: 'combat-hud' },
-      h('div', { class: 'abilities' }, h('div', { class: 'ab-row' }, ...slots), this.abilityName, h('div', { class: 'ab-keys' }, h('kbd', { text: 'R' }), 'cast ', h('kbd', { text: 'V' }), 'switch')),
+      h('div', { class: 'abilities' }, h('div', { class: 'ab-row' }, ...slots), this.abilityName, this.imbueEl, h('div', { class: 'ab-keys' }, h('kbd', { text: 'R' }), 'cast ', h('kbd', { text: 'V' }), 'switch ', this.dodgeEl)),
       h('div', { class: 'hp' }, this.nameEl, h('div', { class: 'hp-bar' }, this.hpFill, this.hpText), this.weaponEl),
       this.reticle,
       this.prompt,
@@ -147,9 +157,24 @@ export class CombatHud {
     }
     const sel = abilities[ab.selected];
     // Ability name with its skill level, and the weapon imbue (Z) state.
+    this.abilityName.textContent = `${sel.name} · Lv ${ab.level(ab.selected)}`;
+    // Weapon coat (Z): name and time left in the element's colours; hints a fusion when one is possible.
     const im = ab.imbue;
-    const imbueText = im ? `${imbueNames[im.element]} ${Math.ceil(im.remaining)}s` : ab.imbueCooldown > 0 ? `Z ${Math.ceil(ab.imbueCooldown)}s` : `Z ${imbueNames[ab.selected]}`;
-    this.abilityName.textContent = `${sel.name} · Lv ${ab.level(ab.selected)}  ·  ${imbueText}`;
+    const c1 = hex(elements[im?.element ?? ab.selected].glow);
+    const c2 = hex(elements[im?.second ?? im?.element ?? ab.selected].glow);
+    this.imbueEl.style.setProperty('--c1', c1);
+    this.imbueEl.style.setProperty('--c2', c2);
+    this.imbueEl.classList.toggle('on', !!im);
+    this.imbueEl.classList.toggle('fused', !!im?.second);
+    let text: string;
+    if (im) text = `${imbueLabel(im)} ${Math.ceil(im.remaining)}s${ab.canFuse() ? ` · Z fuse ${fusionName(im.element, ab.selected) ?? ''}` : ''}`;
+    else if (ab.imbueCooldown > 0) text = `${imbueNames[ab.selected]} in ${Math.ceil(ab.imbueCooldown)}s`;
+    else text = imbueNames[ab.selected];
+    this.imbueText.textContent = text;
+    this.imbueFill.style.width = im ? `${Math.min(100, (im.remaining / im.duration) * 100)}%` : '0%';
+    const dodge = ab.selected !== 'air' ? elementDodge[ab.selected] : null;
+    const dcd = ab.dodgeCooldownOf(ab.selected);
+    this.dodgeEl.replaceChildren(h('kbd', { text: 'C' }), dodge ? `${dodge.name}${dcd > 0 ? ` ${Math.ceil(dcd)}s` : ''}` : 'roll');
     const fail = player.castFailed;
     if (fail && fail.at !== this.lastFail) {
       this.lastFail = fail.at;
@@ -169,7 +194,6 @@ export class CombatHud {
   }
 }
 
-const imbueNames: Record<string, string> = { fire: 'Flame Weapon', water: 'Frost Weapon', earth: 'Stone Weapon', air: 'Gust Weapon' };
 
 /** Inline SVG icons for the ability slots (constant markup, no user text). */
 const abilityPaths: Record<string, string> = {

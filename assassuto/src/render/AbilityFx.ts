@@ -94,7 +94,7 @@ export class AbilityFx {
     });
   }
 
-  /** Gale Step: fading streaks along the dash line. */
+  /** Gale Rush: fading streaks along the dash line. */
   gale(from: THREE.Vector3, yaw: number, distance: number, color: number): void {
     for (let i = 0; i < 5; i++) {
       const streak = new THREE.Mesh(new THREE.PlaneGeometry(0.06, distance), additive(color, 0.7));
@@ -103,6 +103,61 @@ export class AbilityFx {
       streak.position.set(from.x + Math.sin(yaw) * distance * 0.5 + Math.cos(yaw) * side, from.y + 0.5 + (i % 3) * 0.35, from.z + Math.cos(yaw) * distance * 0.5 - Math.sin(yaw) * side);
       this.add(streak, 0.45 + i * 0.04, (k) => ((streak.material as THREE.MeshBasicMaterial).opacity = 0.7 * (1 - k)));
     }
+  }
+
+  /** Stone spike(s) bursting from the ground (earth spear impact) and sinking back. */
+  stoneSpikes(at: THREE.Vector3, radius: number): void {
+    const rock = new THREE.MeshStandardMaterial({ color: 0x8f7d5c, roughness: 0.95, flatShading: true, emissive: 0x2a1c0a });
+    const n = 7;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + i * 0.7;
+      const r = i === 0 ? 0 : radius * (0.35 + 0.4 * ((i * 37) % 10) / 10);
+      const h = i === 0 ? 2.2 : 0.9 + ((i * 53) % 10) / 12;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(i === 0 ? 0.45 : 0.25, h, 5), rock.clone());
+      const x = at.x + Math.cos(a) * r;
+      const z = at.z + Math.sin(a) * r;
+      spike.rotation.set((Math.cos(a) * r) / 6, 0, (-Math.sin(a) * r) / 6);
+      this.add(spike, 1.1, (k) => {
+        // Shoot up fast, hold, then sink.
+        const up = k < 0.15 ? k / 0.15 : k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1;
+        spike.position.set(x, at.y - h / 2 + h * up * 0.95, z);
+      });
+    }
+  }
+
+  /** Rock Pillar: a stone column shoves up under the player, then crumbles. */
+  pillar(at: THREE.Vector3, height: number): void {
+    const rock = new THREE.MeshStandardMaterial({ color: 0x9a8862, roughness: 0.95, flatShading: true, emissive: 0x2a1c0a });
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.75, height, 7), rock);
+    this.add(col, 1.4, (k) => {
+      const up = k < 0.12 ? k / 0.12 : k > 0.6 ? Math.max(0, 1 - (k - 0.6) / 0.4) : 1;
+      col.position.set(at.x, at.y - height / 2 + height * up * 0.9, at.z);
+    });
+  }
+
+  /** Ice shattering: crystal shards flying out. */
+  iceShards(at: THREE.Vector3, color: number): void {
+    for (let i = 0; i < 12; i++) {
+      const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.12 + (i % 3) * 0.05, 0), additive(color, 0.9));
+      const a = (i / 12) * Math.PI * 2;
+      const v = new THREE.Vector3(Math.cos(a) * (3 + (i % 4)), 2 + (i % 5), Math.sin(a) * (3 + (i % 4)));
+      const p = at.clone();
+      this.add(shard, 0.6, (k, dt) => {
+        v.y -= 18 * dt;
+        p.addScaledVector(v, dt);
+        shard.position.copy(p);
+        shard.rotation.x += dt * 9;
+        (shard.material as THREE.MeshBasicMaterial).opacity = 0.9 * (1 - k);
+      });
+    }
+  }
+
+  /** Ice trail left by Ice Slide. */
+  iceTrail(at: THREE.Vector3, color: number): void {
+    const patch = new THREE.Mesh(new THREE.CircleGeometry(0.55, 10), additive(color, 0.45));
+    patch.rotation.x = -Math.PI / 2;
+    patch.position.copy(at).add(new THREE.Vector3(0, 0.04, 0));
+    this.add(patch, 1.2, (k) => ((patch.material as THREE.MeshBasicMaterial).opacity = 0.45 * (1 - k)));
   }
 
   /** Earth shockwave when the aegis rises. */

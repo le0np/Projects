@@ -1,16 +1,23 @@
 import { abilities, abilityConfig, type AnyAbilityDef } from '../config/abilities';
 import { elementOrder, type ElementId } from '../config/elements';
-import { imbueConfig, levelCost, MAX_SKILL_LEVEL, mobility, skills, type MobilityTier, type SkillTier } from '../config/skills';
+import { elementDodge, imbueConfig, type ElementDodgeDef, levelCost, MAX_SKILL_LEVEL, mobility, skills, type MobilityTier, type SkillTier } from '../config/skills';
+
+export type DodgeElement = keyof typeof elementDodge;
+export type { ElementDodgeDef };
 
 export type CastResult = { ok: true; def: AnyAbilityDef; damageScale: number; area: number } | { ok: false; reason: 'locked' | 'cooldown' };
 
-/** The selected element coating the weapon. */
+/** The element (or, at level 5, two fused elements) coating the weapon. */
 export interface Imbue {
   element: ElementId;
+  /** Second element fused in at level 5, or null. */
+  second: ElementId | null;
   remaining: number;
   duration: number;
   power: number;
 }
+
+export type ImbueResult = { ok: true; imbue: Imbue; fused: boolean } | { ok: false; reason: 'locked' | 'cooldown' | 'active' };
 
 /**
  * Which elemental abilities the player has, which one is selected and their cooldowns (game time).
@@ -21,7 +28,9 @@ export class AbilityState {
   selected: ElementId;
   private cooldowns = new Map<ElementId, number>();
   private levels = new Map<ElementId, number>();
-  /** Gale Step charges left before its cooldown starts (mobility level 5 has two). */
+  /** Element dodges (C) recharge separately from the abilities. */
+  private dodgeCooldowns = new Map<ElementId, number>();
+  /** Gale Rush charges left before its cooldown starts. */
   private dashCharges = 1;
   imbue: Imbue | null = null;
   imbueCooldown = 0;
@@ -54,7 +63,7 @@ export class AbilityState {
   /** Air is the mobility skill; without it there is no double jump or high jump. */
   get mobility(): MobilityTier & { unlocked: boolean } {
     const unlocked = this.unlocked.has('air');
-    return unlocked ? { ...mobility[this.level('air') - 1], unlocked } : { airJumps: 0, highJump: false, dashCharges: 1, unlocked };
+    return unlocked ? { ...mobility[this.level('air') - 1], unlocked } : { airJumps: 0, highJump: false, dashCharges: 1, hover: 0, unlocked };
   }
 
   /** Points needed for the next level, or null at max level / locked. */
@@ -76,14 +85,56 @@ export class AbilityState {
     return Object.fromEntries(elementOrder.map((e) => [e, this.level(e)])) as Record<ElementId, number>;
   }
 
-  /** Z: coat the weapon in the selected element. */
-  tryImbue(el: ElementId = this.selected): { ok: true; imbue: Imbue } | { ok: false; reason: 'locked' | 'cooldown' } {
+  /**
+   * Z: coat the weapon in the selected element. While a coat is on, Z with another element fuses the
+   * two when either is at level 5; otherwise Z waits for the coat to wear off and the cooldown after it.
+   */
+  tryImbue(el: ElementId = this.selected): ImbueResult {
     if (!this.unlocked.has(el)) return { ok: false, reason: 'locked' };
+    const cur = this.imbue;
+    if (cur) {
+      if (this.canFuse(el)) {
+        const t = this.tier(el);
+        cur.second = el;
+        cur.duration = Math.max(cur.duration, t.imbueDuration);
+        cur.remaining = Math.max(cur.remaining, t.imbueDuration);
+        cur.power = Math.max(cur.power, t.imbuePower);
+        return { ok: true, imbue: cur, fused: true };
+      }
+      return { ok: false, reason: 'active' };
+    }
     if (this.imbueCooldown > 0) return { ok: false, reason: 'cooldown' };
     const t = this.tier(el);
-    this.imbue = { element: el, remaining: t.imbueDuration, duration: t.imbueDuration, power: t.imbuePower };
-    this.imbueCooldown = imbueConfig.cooldown + t.imbueDuration;
-    return { ok: true, imbue: this.imbue };
+    this.imbue = { element: el, second: null, remaining: t.imbueDuration, duration: t.imbueDuration, power: t.imbuePower };
+    return { ok: true, imbue: this.imbue, fused: false };
+  }
+
+  /** Would Z with `el` fuse it into the current coat? */
+  canFuse(el: ElementId = this.selected): boolean {
+    const cur = this.imbue;
+    return !!cur && !cur.second && el !== cur.element && this.unlocked.has(el) && (this.level(el) >= MAX_SKILL_LEVEL || this.level(cur.element) >= MAX_SKILL_LEVEL);
+  }
+
+  /** A perfect parry or a landed combo ender keeps the coat burning longer (up to 1.5x its duration). */
+  extendImbue(seconds: number): number {
+    const cur = this.imbue;
+    if (!cur) return 0;
+    const before = cur.remaining;
+    cur.remaining = Math.min(cur.duration * imbueConfig.maxExtend, cur.remaining + seconds);
+    return cur.remaining - before;
+  }
+
+  /** C with fire, water or earth selected: that element's dodge, if ready. */
+  tryElementDodge(el: ElementId = this.selected): { ok: true; el: DodgeElement; def: ElementDodgeDef; damageScale: number; area: number } | { ok: false } {
+    if (el === 'air' || !this.unlocked.has(el) || this.dodgeCooldownOf(el) > 0) return { ok: false };
+    const def = elementDodge[el];
+    const t = this.tier(el);
+    this.dodgeCooldowns.set(el, def.cooldown * t.cooldown);
+    return { ok: true, el, def, damageScale: t.damage, area: t.area };
+  }
+
+  dodgeCooldownOf(el: ElementId): number {
+    return this.dodgeCooldowns.get(el) ?? 0;
   }
 
   unlock(el: ElementId): boolean {
@@ -124,10 +175,15 @@ export class AbilityState {
       this.cooldowns.set(k, n);
       if (k === 'air' && n === 0) this.dashCharges = this.mobility.dashCharges;
     }
+    for (const [k, v] of this.dodgeCooldowns) this.dodgeCooldowns.set(k, Math.max(0, v - dt));
     this.imbueCooldown = Math.max(0, this.imbueCooldown - dt);
     if (this.imbue) {
       this.imbue.remaining -= dt;
-      if (this.imbue.remaining <= 0) this.imbue = null;
+      if (this.imbue.remaining <= 0) {
+        this.imbue = null;
+        // The cooldown starts once the coat wears off.
+        this.imbueCooldown = imbueConfig.cooldown;
+      }
     }
   }
 
@@ -142,6 +198,7 @@ export class AbilityState {
 
   resetCooldowns(): void {
     this.cooldowns.clear();
+    this.dodgeCooldowns.clear();
     this.imbueCooldown = 0;
     this.dashCharges = this.mobility.dashCharges;
   }
@@ -160,6 +217,6 @@ export class AbilityState {
       if (typeof v === 'number' && Number.isFinite(v)) this.cooldowns.set(e, Math.min(Math.max(0, v), this.maxCooldown(e)));
     }
     const im = saved.imbue;
-    if (typeof im === 'number' && Number.isFinite(im)) this.imbueCooldown = Math.min(Math.max(0, im), imbueConfig.cooldown + 16);
+    if (typeof im === 'number' && Number.isFinite(im)) this.imbueCooldown = Math.min(Math.max(0, im), imbueConfig.cooldown);
   }
 }

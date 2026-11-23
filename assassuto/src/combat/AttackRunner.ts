@@ -9,6 +9,8 @@ export interface ActiveAttack {
   opened: boolean;
   /** Last move of a combo string: hits harder. */
   ender: boolean;
+  /** Button whose combo string this move belongs to (null for scripted moves). */
+  input: AttackInput | null;
 }
 
 /** What an input would start: the move and where it sits in a combo string. */
@@ -101,7 +103,7 @@ export class AttackRunner {
       this.roll(p.combo.input);
     }
     const ender = !!p.combo && p.combo.moves.length >= 2 && p.combo.index === p.combo.moves.length - 1;
-    this.current = { def, instance: nextInstance++, t: 0, opened: false, ender };
+    this.current = { def, instance: nextInstance++, t: 0, opened: false, ender, input: p.combo?.input ?? null };
     this.chain++;
     return this.current;
   }

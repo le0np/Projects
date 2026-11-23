@@ -99,11 +99,29 @@ export class Enemy implements Targetable {
   /** Called by the combat system when this enemy is hit/staggered, to play a reaction. */
   react(kind: 'stagger' | 'knockdown' | 'vulnerable' | 'dead' | 'parried'): void {
     this.cancelAttack();
+    // Encased in ice: the pose holds until the ice breaks or melts.
+    if (this.status.frozen && kind !== 'dead') {
+      this.reaction ??= 'stagger';
+      return;
+    }
     this.reaction = kind;
     const c = this.combatant;
     if (kind === 'dead' || kind === 'knockdown') this.view.playAction('fall_down', kind === 'dead' ? 1.1 : 0.9, { hold: true, range: [0, 0.75] });
     else if (kind === 'vulnerable') this.view.playAction('hurt', c.stateTimer, { hold: true, range: [0, 0.6] });
     else this.view.playAction(Math.random() < 0.5 ? 'hurt' : 'hit_to_body_01', 0.5, { range: [0, 0.8] });
+  }
+
+  /** Frost weapon: frozen solid for `seconds` (cannot move or attack, the animation stops). */
+  freeze(seconds: number, tokens?: AttackTokens): void {
+    this.cancelAttack(tokens);
+    if (this.combatant.state === 'normal' || this.combatant.state === 'staggered') this.combatant.setState('staggered', seconds);
+    this.reaction ??= 'stagger';
+  }
+
+  /** The ice breaks (shatter or melt): back to a short stagger. */
+  thaw(): void {
+    this.status.thaw();
+    if (this.combatant.state === 'staggered') this.combatant.stateTimer = Math.min(this.combatant.stateTimer, 0.35);
   }
 
   cancelAttack(tokens?: AttackTokens): void {
@@ -125,6 +143,11 @@ export class Enemy implements Targetable {
     if (wasState !== 'normal' && c.state === 'normal' && this.reaction) {
       this.reaction = null;
       this.view.stopAction(0.25);
+    }
+    if (this.status.frozen) {
+      this.motor.step(dt, { moveX: 0, moveZ: 0, speed: 0, jump: false }, ctx.world);
+      this.syncCurr();
+      return;
     }
     // Soaked enemies move and swing slower.
     const speedK = this.status.speed;
@@ -307,7 +330,7 @@ export class Enemy implements Targetable {
     this.view.object.position.copy(this.renderPosition);
     this.view.object.rotation.y = this.facing;
     const s: LocomotionState = { grounded: this.motor.grounded, speed: this.motor.horizontalSpeed, vy: this.motor.vy, sprinting: false, landing: 0 };
-    this.view.update(dt, s);
+    this.view.update(this.status.frozen && this.alive ? 0 : dt, s);
   }
 
   /** Resets the enemy at its camp (player respawn / camp respawn). */

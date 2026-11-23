@@ -179,6 +179,14 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--gold); }
 .ab-cd { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(rgba(6,8,14,.78) calc(var(--cd, 0) * 360deg), transparent 0); }
 .ab-time { position: absolute; inset: 0; display: grid; place-items: center; font: 800 17px var(--font-ui); text-shadow: 0 1px 4px #000; }
 .ab-name { font: 700 14px var(--font-display); letter-spacing: .1em; color: var(--gold-strong); text-shadow: 0 2px 8px rgba(0,0,0,.7); margin-top: 6px; }
+.imbue { --c1: #fff; --c2: #fff; display: flex; align-items: center; gap: 6px; margin-top: 4px; font: 600 12px var(--font-ui); color: var(--ink-dim); text-shadow: 0 1px 4px rgba(0,0,0,.7); }
+.imbue kbd { flex: none; }
+.imbue-text { white-space: nowrap; }
+.imbue-bar { width: 70px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); overflow: hidden; }
+.imbue-fill { height: 100%; background: linear-gradient(90deg, var(--c1), var(--c2)); box-shadow: 0 0 8px var(--c1); transition: width .2s linear; }
+.imbue.on .imbue-text { color: var(--c1); text-shadow: 0 0 10px var(--c1), 0 1px 3px #000; }
+.imbue.fused .imbue-text { background: linear-gradient(90deg, var(--c1), var(--c2)); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; filter: drop-shadow(0 1px 2px #000); }
+.ab-dodge { margin-left: 4px; }
 .ab-keys { font-size: 12px; color: var(--ink-dim); text-shadow: 0 1px 4px rgba(0,0,0,.7); }
 @keyframes abReady { from { box-shadow: 0 0 0 2px var(--gold-strong), 0 0 10px var(--glow); } to { box-shadow: 0 0 0 2px var(--gold-strong), 0 0 26px var(--glow); } }
 @keyframes abDenied { 0%, 100% { translate: 0; } 25% { translate: -5px; } 75% { translate: 5px; } }

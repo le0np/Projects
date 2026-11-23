@@ -65,9 +65,23 @@ Bez API ključa: `npm run assets:prompts` napravi `assets-src/TRIPO-PROMPTS.md` 
   - **Ember Burst** (vatra): eksplozija oko igrača ruši neprijatelje i pali ih (šteta kroz vrijeme).
   - **Tidal Surge** (voda): val u stošcu ispred igrača odbacuje neprijatelje, prekida im napade, usporava ih na pola brzine i ispire strijele u letu.
   - **Stone Aegis** (zemlja): udarni val i kameni oklop na 7 s. Dok traje, igrač prima pola štete i ne može se zateturati ni srušiti.
-  - **Wind** (zrak) je vještina mobilnosti: **dupli skok** (Space u zraku), **visoki skok** na jastuku zraka (drži Space na tlu, pusti), i **Gale Step** (R): nalet od 9 m kroz neprijatelje, nedodirljiv za vrijeme naleta. Pogođene reže i podiže u zrak. Radi i u skoku.
-  - **Element na oružju (Z)**: odabrani element obavije oružje (ili šake) na 8–16 s. Vatra pali, voda usporava, zemlja lomi poise, a zrak jače odbacuje i produži doseg. Vrijedi i za bačeno koplje.
-  - **Razine vještina**: svaka elementalna vještina ima 5 razina koje jačaju sposobnost i element na oružju (šteta, doseg, cooldown, trajanje). Wind po razinama dodaje visoki skok, duži Gale Step, trostruki skok i dva Gale Stepa zaredom. Bodovi se dobivaju iskustvom od neprijatelja (1 bod na 100 XP) i attuneom shrinea, a troše se na shrineu (razina 2 košta 1 bod, 3 košta 2, 4 košta 3, 5 košta 4).
+  - **Wind** (zrak) je vještina mobilnosti:
+    - **Dupli skok** (Space u zraku) je besplatan: nema cooldown ni staminu i puni se pri doskoku. Lik pritom napravi salto.
+    - **Visoki skok** na jastuku zraka: drži Space na tlu, pa pusti.
+    - **Lebdenje** (od razine 3): drži Space pritisnut u zraku dok padaš i vjetar te spušta polako.
+    - S vjetrom lik uvijek pada malo sporije.
+    - **Gale Rush** (R) ima 2 naboja (3 na razini 5). To je iskorak na vjetru kroz neprijatelje: nedodirljiv si, pogođene odbacuje u stranu i ostavlja trag vjetra, a završava okretnim udarcem oko lika. Radi i u skoku.
+  - **Element na oružju (Z)**: ruka prijeđe preko oštrice i odabrani element obavije oružje (ili šake) na 20–30 s, ovisno o razini. Oštrica svijetli u boji elementa i ostavlja trag zamaha, a HUD pokazuje naziv i preostalo vrijeme. Perfect parry dodaje 4 s, a zadnji udarac kombinacije 3 s, najviše do 1,5× trajanja. Cooldown (10 s) kreće tek kad element nestane.
+    - **Vatra**: udarci pale. Teški udarac, zadnji udarac kombinacije ili finisher izazovu malu eksploziju.
+    - **Voda/led**: udarci usporavaju i slažu hladnoću. 3 udarca zalede neprijatelja (ne miče se ni ne napada 2,6 s), a teški udarac zaleđenog razbije za ×2,5 štete.
+    - **Zemlja**: udarci su teži i ×0,88 sporiji, jače lome poise, a teški i zadnji udarci ruše. Bačeno koplje na mjestu pada podiže kamene šiljke.
+    - **Zrak**: vrtlog oko oštrice daje veći doseg i jače odbacivanje, a bačeno koplje se vraća u ruku kao bumerang i reže sve na putu.
+    - **Spajanje (razina 5)**: dok element traje, Z s drugim elementom ih spoji, ako je jedan od njih na razini 5. Oba djeluju istovremeno, a spoj ima ime: vatra i zrak Flame Vortex, vatra i voda Steam Blade, vatra i zemlja Magma Edge, voda i zrak Frost Gale, voda i zemlja Mire Blade, zemlja i zrak Sandstorm.
+  - **Elementalno izmicanje (C)**: s odabranom vatrom, vodom ili zemljom C umjesto kolutanja izvodi potez elementa, a dok mu traje cooldown, C je obično kolutanje. Zrak zadržava kolutanje jer ima Gale Rush.
+    - **Blast Hop** (vatra): eksplozija na mjestu i salto unatrag.
+    - **Ice Slide** (voda): nisko klizanje po ledenom tragu. Lik je nedodirljiv, a neprijatelje na putu sapliće, smoči i ohladi.
+    - **Rock Pillar** (zemlja): kameni stup izbaci lika visoko u zrak, uz udarni val koji ruši.
+  - **Razine vještina**: svaka elementalna vještina ima 5 razina koje jačaju sposobnost, izmicanje i element na oružju (šteta, doseg, cooldown, trajanje). Wind po razinama dodaje visoki skok, lebdenje, trostruki skok i treći naboj Gale Rusha. Bodovi se dobivaju iskustvom od neprijatelja (1 bod na 100 XP) i attuneom shrinea, a troše se na shrineu (razina 2 košta 1 bod, 3 košta 2, 4 košta 3, 5 košta 4).
   - Cooldowni se prikazuju u HUD-u (dolje desno) i spremaju u save kao preostalo vrijeme igre.
 - **Tri vrste neprijatelja** (GDD 10), svi na Tripo modelu Raidera, pa nisu trebali dodatni krediti:
   - **Dune Raider**: uravnotežen borac s mačem.
@@ -95,17 +109,19 @@ Bez API ključa: `npm run assets:prompts` napravi `assets-src/TRIPO-PROMPTS.md` 
 | W A S D | kretanje |
 | miš / kotačić | kamera / zoom |
 | Shift | sprint |
-| Ctrl ili C | hodanje |
-| Space | skok |
-| C ili Alt | izmicanje |
+| Ctrl | hodanje |
+| Space | skok, u zraku dupli skok (s vjetrom), držati u zraku: lebdenje |
+| C ili Alt | izmicanje (s vatrom, vodom ili zemljom: elementalno izmicanje) |
 | LMB / J | lagani napad |
 | RMB / K | teški napad |
 | Q (držati) / L | blok, tik prije udarca parry |
 | Tab ili srednji klik | lock-on |
 | F | finisher (kad je neprijatelj "BROKEN") |
-| 1 / 2 / 3 | mač / koplje / bez oružja |
+| 1 / 2 / 3 | bez oružja / mač / koplje |
 | X | spremi ili izvadi oružje |
-| R | elementalna sposobnost |
+| G | baci koplje |
+| R | elementalna sposobnost (zrak: Gale Rush) |
+| Z | element na oružju (drugi put, na razini 5: spajanje) |
 | V | promjena elementa |
 | E | shrine (attune, odmor, putovanje) |
 | H, F3, Esc | pomoć, debug, pauza |
