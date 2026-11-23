@@ -42,6 +42,8 @@ export interface AttackDef {
   knockdown?: boolean;
   /** Bone rotations layered on the clip (see config/moves.ts). */
   overlay?: PoseOverlay;
+  /** Throws instead of striking: the weapon leaves the hand at this time (no melee hit). */
+  release?: number;
 }
 
 export interface WeaponDef {
@@ -179,6 +181,7 @@ export const spear: WeaponDef = {
     sp_slam: A({ id: 'sp_slam', clip: 'slash', duration: 0.88, clipRange: [0.12, 0.55], hitStart: 0.4, hitEnd: 0.54, comboWindow: [0.5, 0.88], cancelAfter: 0.6, damage: 24, poise: 42, knockback: 6, reach: 3.5, arc: 35, lunge: 0.5, stamina: 15, knockdown: true, overlay: poses.overhead, hitstop: 0.11, shake: 0.4 }),
     sp_spin: A({ id: 'sp_spin', clip: 'slash', duration: 0.92, clipRange: [0.15, 0.55], hitStart: 0.34, hitEnd: 0.6, comboWindow: [0.62, 0.92], cancelAfter: 0.66, damage: 20, poise: 40, knockback: 7, reach: 3.4, arc: 180, lunge: 0.3, stamina: 16, knockdown: true, overlay: poses.spin, hitstop: 0.1, shake: 0.4 }),
     sp_lunge: A({ id: 'sp_lunge', clip: 'slash', duration: 0.7, clipRange: [0.28, 0.42], hitStart: 0.3, hitEnd: 0.42, comboWindow: [0.44, 0.7], cancelAfter: 0.5, damage: 22, poise: 36, knockback: 7, reach: 3.6, arc: 22, lunge: 2.2, stamina: 13, overlay: poses.thrust, hitstop: 0.1, shake: 0.35 }),
+    sp_throw: A({ id: 'sp_throw', clip: 'slash', duration: 0.6, clipRange: [0.12, 0.3], hitStart: 0.27, hitEnd: 0.28, release: 0.27, comboWindow: [0.4, 0.6], cancelAfter: 0.4, damage: 0, poise: 0, knockback: 0, reach: 0, arc: 0, lunge: 0.3, stamina: 10, overlay: poses.throwSpear }),
     sp_air: A({ id: 'sp_air', clip: 'slash', duration: 0.6, clipRange: [0.15, 0.5], hitStart: 0.2, hitEnd: 0.34, comboWindow: [0.4, 0.6], cancelAfter: 0.4, damage: 16, poise: 25, knockback: 3, reach: 3, arc: 60, lunge: 0.4, stamina: 10, overlay: poses.overhead }),
     sp_counter: A({ id: 'sp_counter', clip: 'slash', duration: 0.5, clipRange: [0.28, 0.42], hitStart: 0.14, hitEnd: 0.28, comboWindow: [0.3, 0.5], cancelAfter: 0.3, damage: 26, poise: 80, knockback: 7, reach: 3.5, arc: 60, lunge: 1.0, stamina: 0, overlay: poses.thrust, hitstop: 0.14, shake: 0.4 }),
     sp_finisher: A({ id: 'sp_finisher', clip: 'slash', duration: 1.4, clipRange: [0, 0.6], hitStart: 0.8, hitEnd: 0.95, comboWindow: [2, 2], cancelAfter: 1.4, damage: 9999, poise: 999, knockback: 9, launch: 4, reach: 3.6, arc: 120, lunge: 0.6, stamina: 0, hitstop: 0.2, shake: 0.7, knockdown: true, overlay: poses.overhead }),
@@ -227,6 +230,8 @@ export const combatConfig = {
   lockOn: { range: 22, breakRange: 30 },
   aimAssist: { range: 4.5, arc: 70 },
   hitstopScale: 0.04,
+  /** Spear throw (G with the spear in hand). */
+  spearThrow: { speed: 30, gravity: 9, life: 2.5, damage: 32, poise: 45, knockback: 5, aimRange: 32, aimArc: 25, pickupWalk: 1.3, pickupInteract: 2.8 },
   /** Multipliers for the last move of a combo string. */
   comboEnder: { damage: 1.3, poise: 1.4, knockback: 1.3 },
 } as const;

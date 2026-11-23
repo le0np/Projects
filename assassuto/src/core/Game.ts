@@ -679,7 +679,8 @@ export class Game {
     const p = player.motor;
     const nearShrine = Math.hypot(p.x - region.landmark.x, p.z - region.landmark.z) < discoveryConfig.shrineRadius;
     const el = elements[region.def.element];
-    this.hud.setInteract(nearShrine ? `Shrine of ${el.name}` : null);
+    const spear = !nearShrine && this.director.spearNearby(player);
+    this.hud.setInteract(nearShrine ? `Shrine of ${el.name}` : spear ? 'Pick up spear' : null);
     if (nearShrine && interact) this.openShrine();
     for (const w of region.waystones) {
       if (w.lit || Math.hypot(p.x - w.pos.x, p.z - w.pos.z) > discoveryConfig.waystoneRadius) continue;

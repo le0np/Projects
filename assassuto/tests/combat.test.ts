@@ -4,7 +4,9 @@ import { AttackRunner } from '../src/combat/AttackRunner';
 import { Combatant } from '../src/combat/Combatant';
 import { InputBuffer } from '../src/combat/InputBuffer';
 import { inArc, isInFront, resolveHit, type HitInfo } from '../src/combat/resolveHit';
-import { armedClips, combatConfig, fists, sword, unarmedClips, weaponOrder, weapons } from '../src/config/combat';
+import { armedClips, combatConfig, fists, spear, sword, unarmedClips, weaponOrder, weapons } from '../src/config/combat';
+import { ThrownSpear } from '../src/combat/ThrownSpear';
+import { aimVelocity } from '../src/combat/Projectiles';
 import { rng } from '../src/core/math';
 import { makePlayer } from './fixtures/playerHarness';
 
@@ -302,5 +304,56 @@ describe('Player parry and automatic counter', () => {
       h.step();
       expect(h.p.weapon.id).toBe(id);
     }
+  });
+});
+
+describe('Spear throw and pick-up', () => {
+  it('flies, strikes the first enemy in its path and drops at its feet', () => {
+    const s = new ThrownSpear({ gravity: 9, life: 3 });
+    s.throwFrom({ x: 0, y: 1.5, z: 0 }, aimVelocity({ x: 0, y: 1.5, z: 0 }, { x: 0, y: 1.1, z: 10 }, 30, 9), 77);
+    const enemy = { id: 'e1', team: 'enemy' as const, x: 0, y: 0, z: 10, radius: 0.5, height: 1.8 };
+    let struck = null;
+    for (let i = 0; i < 120 && !struck; i++) struck = s.step(1 / 60, () => 0, [enemy]);
+    expect(struck?.id).toBe('e1');
+    expect(s.state).toBe('grounded');
+    expect(Math.hypot(s.x - 0, s.z - 10)).toBeLessThan(1.2);
+  });
+
+  it('sticks in the ground when it misses, and can be picked up by walking over it', () => {
+    const s = new ThrownSpear({ gravity: 9, life: 3 });
+    s.throwFrom({ x: 0, y: 1.5, z: 0 }, { vx: 0, vy: 2, vz: 20 }, 78);
+    for (let i = 0; i < 240 && s.state === 'flying'; i++) s.step(1 / 60, () => 0, []);
+    expect(s.state).toBe('grounded');
+    expect(s.z).toBeGreaterThan(5);
+    expect(s.canPickUp(0, 0, 1.3)).toBe(false);
+    expect(s.canPickUp(s.x, s.z - 1, 1.3)).toBe(true);
+    s.pickUp();
+    expect(s.state).toBe('held');
+  });
+
+  it('the player throws with G: the spear leaves the hand, 3 cannot draw it, picking it up re-equips it', () => {
+    const h = makePlayer('spear');
+    h.input.press('throwWeapon');
+    h.step();
+    expect(h.p.runner.current?.def.id).toBe('sp_throw');
+    let ev = null;
+    for (let i = 0; i < 60 && !ev; i++) {
+      h.step();
+      ev = h.p.throwEvent;
+    }
+    expect(ev).not.toBeNull();
+    expect(h.p.spearAway).toBe(true);
+    expect(h.p.weapon.id).toBe('fists');
+    h.step(40);
+    h.input.press('weapon3');
+    h.step();
+    expect(h.p.weapon.id).toBe('fists');
+    h.p.spearReturned();
+    expect(h.p.weapon.id).toBe('spear');
+    expect(h.p.spearAway).toBe(false);
+  });
+
+  it('the throw has no melee hit', () => {
+    expect(spear.attacks.sp_throw.release).toBeDefined();
   });
 });

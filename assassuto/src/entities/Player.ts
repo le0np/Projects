@@ -112,8 +112,18 @@ export class Player {
   /** Weapon change requested mid-attack; applied as soon as the move ends. */
   private pendingWeapon: string | null = null;
 
+  /** The spear has been thrown and lies somewhere in the world. */
+  spearAway = false;
+  /** Re-equip the spear when it is picked up (it was in hand when thrown). */
+  private rearmSpear = false;
+  /** Set on the step the spear leaves the hand (consumed by the combat director). */
+  throwEvent: { x: number; y: number; z: number; facing: number } | null = null;
+  /** Game time of the last attempt to draw a spear that is not in hand (HUD hint). */
+  spearMissingAt = -Infinity;
+
   setWeapon(id: string): void {
     if (!weapons[id]) return;
+    if (id === 'spear' && this.spearAway) return;
     if (this.runner.busy) {
       this.pendingWeapon = id;
       return;
@@ -208,7 +218,10 @@ export class Player {
     if (input.wasPressed('attackHeavy')) this.buffer.push('heavy', ctx.now);
     if (input.wasPressed('weapon1')) this.setWeapon('fists');
     if (input.wasPressed('weapon2')) this.setWeapon('sword');
-    if (input.wasPressed('weapon3')) this.setWeapon('spear');
+    if (input.wasPressed('weapon3')) {
+      if (this.spearAway) this.spearMissingAt = ctx.now;
+      this.setWeapon('spear');
+    }
     if (input.wasPressed('sheathe')) this.setWeapon(this.intendedWeapon === 'fists' ? this.lastArmed : 'fists');
     if (this.pendingWeapon && !this.runner.busy) this.setWeapon(this.pendingWeapon);
     this.abilities.tick(dt);
@@ -280,10 +293,32 @@ export class Player {
       }
     }
 
+    // ---- spear throw (G)
+    if (canAct && input.wasPressed('throwWeapon') && this.weapon.id === 'spear' && !this.spearAway && !this.cast && this.dodgeT < 0 && this.runner.cancelable) {
+      const def = this.weapon.attacks.sp_throw;
+      if (this.stamina.spend(def.stamina)) {
+        this.buffer.clear();
+        const t = ctx.lockTarget?.alive ? ctx.lockTarget.position() : null;
+        const yaw = t ? Math.atan2(t.x - this.motor.x, t.z - this.motor.z) : Math.atan2(ctx.camForward.x, ctx.camForward.z);
+        this.beginAttack('sp_throw', { ...ctx, lockTarget: null, targets: [] }, yaw);
+      }
+    }
+
     // ---- advance attack
+    this.throwEvent = null;
     const atk = this.runner.current;
     if (atk) {
+      const before = atk.t;
       const ev = this.runner.step(dt);
+      const rel = atk.def.release;
+      if (rel !== undefined && before < rel && atk.t >= rel && this.weapon.id === 'spear') {
+        this.throwEvent = { x: this.motor.x, y: this.motor.y + 1.55, z: this.motor.z, facing: this.facing };
+        this.spearAway = true;
+        this.rearmSpear = true;
+        // The spear leaves the hand: fight unarmed until it is picked up.
+        this.runner.weapon = weapons.fists;
+        this.pendingWeapon = null;
+      }
       if (ev.finished) this.view.stopAction(0.2);
     }
 
@@ -367,6 +402,13 @@ export class Player {
       const t = ctx.lockTarget.position();
       this.turnTowards(Math.atan2(t.x - this.motor.x, t.z - this.motor.z), dt, 1.4);
     }
+  }
+
+  /** The thrown spear was picked up: back in hand if the player has not switched weapons since. */
+  spearReturned(): void {
+    this.spearAway = false;
+    if (this.rearmSpear && this.intendedWeapon === 'fists') this.setWeapon('spear');
+    this.rearmSpear = false;
   }
 
   /**

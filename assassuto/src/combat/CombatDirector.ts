@@ -14,6 +14,7 @@ import { Enemy } from '../entities/Enemy';
 import type { AbilityEvent, Player } from '../entities/Player';
 import { AbilityFx } from '../render/AbilityFx';
 import { aimVelocity, Projectiles, type CapsuleTarget } from './Projectiles';
+import { ThrownSpear } from './ThrownSpear';
 import type { InputManager } from '../input/InputManager';
 import type { Fx } from '../render/Fx';
 import type { Region } from '../world/Region';
@@ -46,6 +47,8 @@ export class CombatDirector {
   readonly shooters = new AttackTokens(aiConfig.maxShooters, aiConfig.tokenHold);
   readonly projectiles = new Projectiles();
   readonly abilityFx = new AbilityFx();
+  readonly spear = new ThrownSpear({ gravity: combatConfig.spearThrow.gravity, life: combatConfig.spearThrow.life });
+  private spearMesh = buildWeapon('spear', 0xc08040);
   private groundAt: (x: number, z: number) => number = () => 0;
   private time = 0;
   lockTarget: Enemy | null = null;
@@ -76,10 +79,16 @@ export class CombatDirector {
     );
     this.ward.visible = false;
     this.group.add(this.ward);
+    this.spearMesh.visible = false;
+    this.group.add(this.spearMesh);
   }
 
   setElement(el: ElementId): void {
     this.element = el;
+    this.group.remove(this.spearMesh);
+    this.spearMesh = buildWeapon('spear', elements[el].color);
+    this.spearMesh.visible = false;
+    this.group.add(this.spearMesh);
     (this.ward.material as THREE.MeshBasicMaterial).color.setHex(elements[el].glow);
   }
 
@@ -143,6 +152,8 @@ export class CombatDirector {
     this.projectiles.clear();
     this.projectiles.prune();
     this.abilityFx.clear();
+    // A spear left in another region comes back to hand.
+    this.spear.pickUp();
   }
 
   resetAll(): void {
@@ -240,6 +251,7 @@ export class CombatDirector {
     this.playerHits(player, now);
     this.statusTicks(dt, now);
     this.fireArrows(player);
+    this.stepSpear(dt, player, now, input.wasPressed('interact'));
     this.stepProjectiles(dt, player, now);
     if (pAlive) this.enemyHits(player, now);
     this.separate(player);
@@ -322,6 +334,7 @@ export class CombatDirector {
     const atk = player.runner.current;
     if (!atk || !player.runner.hitActive) return;
     const def = atk.def;
+    if (def.release !== undefined) return;
     const isFinisher = def.id === player.weapon.finisher;
     for (const e of this.enemies) {
       if (!e.alive || e.combatant.alreadyHitBy(atk.instance)) continue;
@@ -430,6 +443,59 @@ export class CombatDirector {
       const dmg = e.status.tick(dt);
       if (dmg > 0) this.hitEnemy(e, { instance: nextDot++, damage: dmg, poise: 0, knockback: 0, kind: 'dot' }, e.motor, now, { color: elements.fire.glow, combo: false });
     }
+  }
+
+  // ------------------------------------------------------------------ thrown spear
+
+  private stepSpear(dt: number, player: Player, now: number, interact: boolean): void {
+    const cfg = combatConfig.spearThrow;
+    const ev = player.throwEvent;
+    if (ev) {
+      // Aim: lock target, else the enemy closest to the throw line, else straight ahead with a slight arc.
+      let target: Enemy | null = this.lockTarget?.alive ? this.lockTarget : null;
+      if (!target) {
+        let best = Infinity;
+        for (const e of this.enemies) {
+          if (!e.alive) continue;
+          const d = Math.hypot(e.motor.x - ev.x, e.motor.z - ev.z);
+          if (d > cfg.aimRange || !inArc({ x: ev.x, z: ev.z, facing: ev.facing }, { x: e.motor.x, z: e.motor.z, radius: e.def.radius }, cfg.aimRange, cfg.aimArc)) continue;
+          if (d < best) {
+            best = d;
+            target = e;
+          }
+        }
+      }
+      const to = target
+        ? { x: target.motor.x, y: target.motor.y + 1.1 * target.def.look.scale, z: target.motor.z }
+        : { x: ev.x + Math.sin(ev.facing) * 20, y: ev.y + 1.2, z: ev.z + Math.cos(ev.facing) * 20 };
+      this.spear.throwFrom(ev, aimVelocity(ev, to, cfg.speed, cfg.gravity), nextDot++);
+      this.fx.burst(new THREE.Vector3(ev.x, ev.y, ev.z), elements[this.element].glow, 10, 4);
+    }
+    if (this.spear.state === 'flying') {
+      const targets: CapsuleTarget[] = [];
+      for (const e of this.enemies) if (e.alive) targets.push({ id: e.id, team: 'enemy', x: e.motor.x, y: e.motor.y, z: e.motor.z, radius: e.def.radius + 0.15, height: 1.8 * e.def.look.scale });
+      const struck = this.spear.step(dt, this.groundAt, targets);
+      const e = struck && this.enemies.find((x) => x.id === struck.id);
+      if (e) {
+        const from = { x: e.motor.x - this.spear.dir.x, z: e.motor.z - this.spear.dir.z };
+        this.hitEnemy(e, { instance: this.spear.instance, damage: cfg.damage, poise: cfg.poise, knockback: cfg.knockback, kind: 'projectile' }, from, now, { label: undefined, hitstop: 0.1, shake: 0.3, sparks: 24 });
+      } else if ((this.spear.state as string) === 'grounded') this.fx.burst(new THREE.Vector3(this.spear.x, this.spear.y + 0.1, this.spear.z), 0xc8b89a, 10, 3);
+    }
+    // Pick up: walk over it, or press E nearby.
+    if (player.spearAway && this.spear.state === 'held') player.spearReturned();
+    else if (this.spear.state === 'grounded' && player.combatant.alive) {
+      const r = interact ? cfg.pickupInteract : cfg.pickupWalk;
+      if (this.spear.canPickUp(player.motor.x, player.motor.z, r)) {
+        this.spear.pickUp();
+        player.spearReturned();
+        this.bus.emit('spearPickedUp', {});
+      }
+    }
+  }
+
+  /** Is the thrown spear lying within reach of E? (HUD prompt) */
+  spearNearby(player: Player): boolean {
+    return this.spear.canPickUp(player.motor.x, player.motor.z, combatConfig.spearThrow.pickupInteract);
   }
 
   // ------------------------------------------------------------------ arrows
@@ -650,6 +716,17 @@ export class CombatDirector {
       (this.ward.material as THREE.MeshBasicMaterial).opacity = (blocking ? 0.22 : 0) + this.wardFlash * 0.5;
     }
     this.abilityFx.syncArrows(this.projectiles.list);
+    // The thrown spear: along its flight, then stuck in the ground at the angle it landed.
+    const sp = this.spear;
+    this.spearMesh.visible = sp.state !== 'held';
+    if (this.spearMesh.visible) {
+      const d = new THREE.Vector3(sp.dir.x, sp.dir.y, sp.dir.z).normalize();
+      if (sp.state === 'grounded' && d.y > -0.35) d.setY(-0.6).normalize();
+      this.spearMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
+      // Grip at the origin, head 1.66 m along +Y: flying, centre it; grounded, bury the head.
+      const back = sp.state === 'grounded' ? 1.45 : 0.8;
+      this.spearMesh.position.set(sp.x - d.x * back, sp.y - d.y * back, sp.z - d.z * back);
+    }
     this.abilityFx.setAegis(player.aegisT > 0, player.renderPosition, this.time, player.aegisT);
     this.abilityFx.update(dt);
     this.fx.update(dt);
