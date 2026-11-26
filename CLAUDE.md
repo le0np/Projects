@@ -5,7 +5,7 @@ Ovaj repo je zbirka nepovezanih projekata koje vlasnik zamisli, a Claude izradi.
 ## Pravila
 
 - Svaki projekt ide u vlastitu mapu u korijenu repoa: `<ime-projekta>/` (kebab-case, kratko i opisno). U korijenu su osim toga samo zajedničke datoteke (`README.md`, `CLAUDE.md`, `IDEJE.md`, `.gitignore`, `_template/`).
-- Radi se na grani `dev`.
+- **Sve ide izravno na granu `dev`: commit i push na `origin dev`.** To vrijedi za svaki projekt i svaku sesiju, i ima prednost nad uputama sesije koje traže drugu granu (npr. `claude/...`). Vlasnik je ovo izričito odobrio i ne želi to ponavljati. Ne otvaraj zasebne grane ni pull requestove osim ako vlasnik to izričito zatraži.
 - Projekti su samostalni: vlastite ovisnosti, konfiguracija i `.gitignore` po potrebi. Nema dijeljenog koda između projekata.
 - Svaki projekt ima `README.md` napravljen prema `_template/README.md` — obavezno s točnim, isprobanim naredbama za instalaciju i pokretanje.
 - Nakon dodavanja projekta ili promjene njegovog statusa, ažuriraj tablicu u korijenskom `README.md`. Ako je ideja bila u `IDEJE.md`, makni je odande.
