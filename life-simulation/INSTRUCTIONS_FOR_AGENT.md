@@ -21,7 +21,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 
 ## Sprint 1 — tempo i raznolikost (najveći učinak, najmanji trud)
 
-### [ ] T1. Rok za odluku u stvarnim sekundama, prema duljini teksta
+### [x] T1. Rok za odluku u stvarnim sekundama, prema duljini teksta
 - Rok za **ljudskog igrača** računaj u stvarnim (wall-clock) sekundama, neovisno o `TIME_SCALE`. Npr. u `LiveSession` pomnoži rok s `timeScale` prije nego ga daš engineu, ili engineu daj rok već preračunat.
 - Duljina roka: `8 s + 0,25 s po riječi` (javni + privatni tekst + izbori), ograničeno na **15–35 s**; **+10 s** ako odlučuje više ljudi.
 - Kad svi ljudi u eventu odluče, event se odmah razrješava (provjeri da tako radi i kad su u eventu 2 čovjeka).
@@ -113,6 +113,8 @@ _(QA/PM piše ovdje)_
 ## Dnevnik developera
 
 _(developer piše ovdje: datum, zadatak, commit, napomena)_
+
+- **27. 11. 2026. — T1 gotov** (`f34eebe`). Rok za čovjeka je u stvarnim sekundama: `8 + 0,25 × riječi`, 15–35 s (važni ≥ 25 s), +10 s za više ljudi; ne ovisi o `TIME_SCALE`. Kad svi ljudi odluče, botovi koji još „razmišljaju” odgovore odmah. Botovi i `sim` nepromijenjeni (test uspoređuje). Testovi: `engine/test/pacing.test.ts`, `server/test/pacing.test.ts`. Za ručni test: `TIME_SCALE=6 FILL_AFTER_SECONDS=2 npm run start`. Pretpostavka: „riječi” = javni + privatni tekst za tvoju ulogu + oznake izbora koje vidiš.
 
 ## Dnevnik QA/PM
 
