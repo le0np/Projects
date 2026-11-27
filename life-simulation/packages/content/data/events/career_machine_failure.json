@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "career_machine_failure",
-  "version": 4,
+  "version": 5,
   "title": "Smoke from the Machine",
   "category": "career",
   "trigger": "director",
@@ -35,7 +35,7 @@
     }
   },
   "text": {
-    "public": "During a rush order, a machine on {operator}'s shift starts smoking. {coworker} is nearby.",
+    "public": "During a rush order, a machine on {operator}'s shift starts smoking. {coworker} {coworker|is|are} nearby.",
     "private": {
       "operator": "If you stop the line, the order will be late and your bonus is gone.",
       "coworker": "You have seen this machine catch fire once before."

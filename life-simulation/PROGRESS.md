@@ -479,6 +479,13 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **Rezultat (200 sesija, `docs/reports/t7b.report.md`; isto i na drugom seedu):** stvarne veze 88 %, Jealousy 19 %, Crisis Talk 12,5 %, First Date 66 %, Loan Due 23 % sesija; smrtnost 4,1 %.
 - Test: `sim/test/sim.test.ts` (100 sesija, sva tri kriterija).
 
+### T6c: glagol se slaže s brojem ljudi u ulozi (developer)
+
+- Novi oblik u tekstu `{uloga|jednina|množina}`: `{witness} {witness|is|are} a few metres away` → „Maja is …” / „Maja and Ema are …” (engine, `docs/EVENT_FORMAT.md`).
+- Validator upozorava kad iza uloge koja može imati više ljudi stoji `is`/`has`/`was`/`does`, i javlja grešku za krivi broj oblika. Našao je 4 teksta (The Robbery, Heart Attack, Collapse on the Street, Machine Failure); ispravljeni.
+- `card-fit.mjs` usput traži „X and Y is/has/was” u svim popunjenim tekstovima: 0.
+- Testovi: engine (jedan svjedok „is”, više njih „are”), validator (upozorenje i oblici).
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 1, T1–T4):

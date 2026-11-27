@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "health_collapse_street",
-  "version": 6,
+  "version": 7,
   "title": "Collapse on the Street",
   "category": "critical",
   "trigger": "director",
@@ -39,7 +39,7 @@
     }
   },
   "text": {
-    "public": "{patient} collapses on a busy pavement. {bystander} is a few steps away.",
+    "public": "{patient} collapses on a busy pavement. {bystander} {bystander|is|are} a few steps away.",
     "private": {
       "patient": "Your chest tightens and the world goes grey.",
       "bystander": "{patient} is pale and barely responding. Nobody else seems to be stopping."

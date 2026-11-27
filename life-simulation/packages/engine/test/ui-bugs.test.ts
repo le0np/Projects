@@ -78,3 +78,30 @@ describe("T4b N4: lists of names read naturally", () => {
     expect(texts.some((t) => /[A-Z][a-z]+, [A-Z][a-z]+(, [A-Z][a-z]+)* and [A-Z][a-z]+/.test(t))).toBe(true);
   });
 });
+
+describe("T6c: verbs agree with how many people a role has", () => {
+  it("{role|is|are} picks the form by the number of people", () => {
+    const content = buildContent([
+      event({
+        id: "crowd",
+        roles: { victim: { count: 1 }, witness: { count: [1, 3] } },
+        text: { public: "{victim} trips. {witness} {witness|is|are} right there." },
+        choices: { witness: duoChoices },
+        outcomes: [{ id: "done" }],
+      }),
+    ]);
+    const texts = new Map<number, string>();
+    for (let k = 0; k < 20 && texts.size < 2; k++) {
+      runSession({
+        content,
+        config: { seed: `crowd-${k}`, durationSeconds: 30, initialDelaySeconds: [0, 0] },
+        participants: ["doctor", "teacher", "mechanic", "civilian"].map((career) => ({ career, isBot: true, controller: scripted((v) => {
+          texts.set(v.offer.participants.length, v.offer.publicText);
+          return v.offer.choices[0]!.id;
+        }) })),
+      });
+    }
+    expect(texts.get(2)).toMatch(/^\w+ trips\. \w+ is right there\.$/);
+    expect([...texts].find(([n]) => n > 2)?.[1]).toMatch(/ and \w+ are right there\.$/);
+  });
+});

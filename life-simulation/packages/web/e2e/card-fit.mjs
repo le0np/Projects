@@ -18,12 +18,22 @@ const dir = join(root, "packages/content/data/events");
 const NAMES = ["Alexandra", "Maximilian", "Konstantin", "Gabriela", "Valentina", "Sebastian", "Henrietta"];
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 const cards = [];
+const grammar = []; // T6c: "Maja and Ema is …"
 for (const f of readdirSync(dir)) {
   const e = JSON.parse(readFileSync(join(dir, f), "utf8"));
   if (e.hidden) continue;
   let k = 0; const names = {};
   for (const [r, def] of Object.entries(e.roles)) { const n = typeof def.count === "number" ? def.count : Math.min(def.count[1], 3); names[r] = NAMES.slice(k, k + n); k += n; }
-  const fill = (t) => t.replace(/\{([a-z_0-9]+)\}/g, (_, r) => { const l = names[r] ?? [r]; return l.length > 1 ? `${l.slice(0, -1).join(", ")} and ${l.at(-1)}` : l[0]; });
+  const fill = (t) =>
+    t.replace(/\{([a-z_0-9]+)(?:\|([^|{}]*)\|([^|{}]*))?\}/g, (_, r, one, many) => {
+      const l = names[r] ?? [r];
+      if (one !== undefined) return l.length > 1 ? many : one;
+      return l.length > 1 ? `${l.slice(0, -1).join(", ")} and ${l.at(-1)}` : l[0];
+    });
+  for (const t of [e.text.public, ...Object.values(e.text.private ?? {})]) {
+    const filled = fill(t);
+    if (/ and [A-Z][a-z]+ (is|has|was) /.test(filled)) grammar.push(`${e.id}: ${filled}`);
+  }
   for (const [role, choices] of Object.entries(e.choices ?? {})) {
     const visible = [...choices.filter((c) => !c.careers && !c.condition), ...choices.filter((c) => c.condition && !c.careers).slice(0, 1), ...choices.filter((c) => c.careers).slice(0, 1)];
     cards.push({ id: `${e.id}/${role}`, title: fill(e.title), cat: e.category, important: e.importance === "important",
@@ -60,4 +70,6 @@ failed += bad;
 await page.close();
 }
 await browser.close();
-process.exit(failed ? 1 : 0);
+console.log(`${grammar.length ? "✗" : "✓"} grammar: ${grammar.length} texts with "X and Y is/has/was"`);
+for (const g of grammar) console.log("   ", g);
+process.exit(failed || grammar.length ? 1 : 0);

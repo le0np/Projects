@@ -207,3 +207,13 @@ describe("T7: mark effects", () => {
   });
 });
 
+describe("T6c: verb forms for roles with several people", () => {
+  it("warns about '{multi} is' and checks the {role|one|many} form", () => {
+    const warn = (raw: RawContent) => validateContent(raw).issues.filter((i) => i.severity === "warning").map((i) => i.message);
+    expect(warn(mutate("critical_robbery", (ev) => (ev.text.public = "{witness} is near.")))).toContainEqual(expect.stringContaining("{witness|is|are}"));
+    expect(warn(mutate("critical_robbery", (ev) => (ev.text.public = "{witness} {witness|is|are} near.")))).toEqual([]);
+    expect(warn(mutate("critical_robbery", (ev) => (ev.text.public = "{victim} is near.")))).toEqual([]); // one person: fine
+    expectError(mutate("critical_robbery", (ev) => (ev.text.public = "{witness|is} near.")), "exactly two forms");
+  });
+});
+

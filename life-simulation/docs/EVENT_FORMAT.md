@@ -190,3 +190,9 @@ Tragovi (`mark`, T7) ostaju vidljivi na mapi: na liku (`bandage`, `handcuffs`), 
 - Posljedice ranijih odnosa vide se kroz **izbore s uvjetima** (npr. „Run in: {trapped} was there for you once” samo ako postoji `saved_by`/`owes_favor`/`owes_money` prema toj osobi).
 - Kad se finale razriješi, sesija završava (`endReason: "finale"`).
 
+## Imena i glagoli u tekstu (T4b, T6c)
+
+- `{uloga}` se zamijeni imenima: „Ana”, „Ana and Ben”, „Ana, Ben and Clara”.
+- `{uloga|jednina|množina}` se zamijeni glagolom koji se slaže s brojem ljudi u ulozi: `{witness} {witness|is|are} a few metres away` → „Maja is …” ili „Maja and Ema are …”.
+- Validator upozorava kad iza uloge koja može imati više ljudi stoji `is`, `has`, `was` ili `does`.
+

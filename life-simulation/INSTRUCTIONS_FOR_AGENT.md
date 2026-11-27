@@ -83,7 +83,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - **M2:** Javni tekst eventa je odrezan usred rečenice („…and asks Marko to”), jer je kartica najviše 38 % mape, a privatni tekst i izbori su uvijek cijeli. Na desktopu ima mjesta: neka kartica smije biti viša (do visine mape), ili smanji razmake/oznake izbora. Javni tekst mora biti cijeli bez skrolanja barem na 1280×800. Dodaj u e2e.
 - **M3 (sadržaj):** „The Charity Drive” kao zadani izbor (ako ne odgovoriš) ima „Push hard, mention who else gave”, agresivan izbor. Zadani izbor treba biti pasivan i neutralan. Provjeri sve evente (validator može upozoriti ako default ima tag `risk`, `lie` ili cilja drugog lika negativno).
 
-### [ ] T6c. Gramatika kod uloga s više ljudi (sitno)
+### [x] T6c. Gramatika kod uloga s više ljudi (sitno)
 - „Maja and Ema **is** a few metres away” (The Robbery). Kad uloga ima 2+ člana, glagol mora biti u množini. Najjednostavnije: u predlošku teksta podrži oblik poput `{witness|is|are}` ili prepiši rečenice tako da ne ovise o broju („…, a few metres away.”). Provjeri sve evente s višečlanim ulogama (card-fit skripta već iscrtava sve kombinacije, može usput tražiti „and X is”).
 
 ### [x] T7. Trajni tragovi na mapi

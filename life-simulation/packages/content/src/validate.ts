@@ -326,6 +326,10 @@ export function hashContent(raw: RawContent): string {
 function checkEvent(ev: EventDefinition, reg: Registry, report: Report): void {
   const roleNames = Object.keys(ev.roles);
   const roles = new Set(roleNames);
+  multiRoles.set(
+    roles,
+    new Set(roleNames.filter((r) => typeof ev.roles[r]!.count !== "number" && (ev.roles[r]!.count as [number, number])[1] > 1)),
+  );
   const choiceIds = new Map<string, Set<string>>();
   for (const [role, list] of Object.entries(ev.choices)) choiceIds.set(role, new Set(list.map((c) => c.id)));
 
@@ -447,9 +451,24 @@ function checkCareers(ids: readonly string[] | undefined, path: string, reg: Reg
   for (const id of ids ?? []) if (!reg.careers.has(id)) report("error", path, `unknown career "${id}"`);
 }
 
+/** Roles that can have more than one member, per event (keyed by the event's role set). */
+const multiRoles = new WeakMap<ReadonlySet<string>, ReadonlySet<string>>();
+const SINGULAR_VERB = /^(?:'s)? (is|has|was|does)\b/;
+
+/**
+ * `{role}` is replaced by the name(s); `{role|is|are}` by the verb that agrees with how many
+ * people the role has (T6c: "Maja and Ema are a few metres away").
+ */
 function checkPlaceholders(text: string, path: string, roles: ReadonlySet<string>, report: Report): void {
   for (const m of text.matchAll(PLACEHOLDER)) {
-    if (!roles.has(m[1] as string)) report("error", path, `placeholder "{${m[1]}}" is not a role of this event`);
+    const [role, ...forms] = (m[1] as string).split("|");
+    if (!roles.has(role as string)) report("error", path, `placeholder "{${m[1]}}" is not a role of this event`);
+    else if (forms.length !== 0 && forms.length !== 2) report("error", path, `placeholder "{${m[1]}}" needs exactly two forms: {role|singular|plural}`);
+    else if (forms.length === 0 && multiRoles.get(roles)?.has(role as string)) {
+      const after = text.slice((m.index ?? 0) + m[0].length);
+      const verb = SINGULAR_VERB.exec(after);
+      if (verb && !after.startsWith("'s")) report("warning", path, `"{${role}} ${verb[1]}": ${role} can be several people; write {${role}|${verb[1]}|${({ is: "are", has: "have", was: "were", does: "do" } as Record<string, string>)[verb[1] as string]}}`);
+    }
   }
 }
 

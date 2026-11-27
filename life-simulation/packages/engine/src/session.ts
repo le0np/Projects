@@ -1816,9 +1816,12 @@ export class Session {
   }
 
   private interpolate(text: string, bindings: Record<string, string[]>): string {
-    return text.replace(/\{([a-z][a-z0-9_]*)\}/g, (m, role: string) => {
+    // {role} → "Ana, Ben and Clara"; {role|is|are} → the verb agreeing with how many they are (T6c).
+    return text.replace(/\{([a-z][a-z0-9_]*)(?:\|([^|{}]*)\|([^|{}]*))?\}/g, (m, role: string, one?: string, many?: string) => {
       const ids = bindings[role];
-      return ids ? listNames(ids.map((id) => this.char(id).name)) : m;
+      if (!ids) return m;
+      if (one !== undefined && many !== undefined) return ids.length > 1 ? many : one;
+      return listNames(ids.map((id) => this.char(id).name));
     });
   }
 
