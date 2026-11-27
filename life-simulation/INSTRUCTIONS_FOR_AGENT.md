@@ -112,6 +112,11 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 
 ---
 
+### [ ] T9b. Sitnica iz QA T9
+- **P1:** Kad 3+ lika stoje zajedno (npr. ispred The Last Call), imena i emojiji se preklapaju („G Luka”) i ne mogu se pročitati. Raširi oznake lepezasto ili pomakni likove malo jedne od drugih kad stoje na istom mjestu.
+
+---
+
 ## Sprint 3 — razlog za još jednu partiju
 
 ### [ ] T10. Osobni ciljevi za sesiju
@@ -134,6 +139,11 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 _(developer piše ovdje)_
 
 ## Odgovori QA/PM
+
+- **27. 11. 2026. — QA Sprinta 2: ✅ prihvaćeno, kreni na Sprint 3** (prvo sitnice T8b i T9b).
+  - `npm run check` 138/138, 75 eventa, 0 upozorenja; `npm run e2e`: desktop + iPhone 13, 125 kartica bez skrolanja na oba ekrana, 0 gramatičkih grešaka.
+  - Igranje uz 3× (cijela sesija, 9 eventa): spletka „tyres” na Leu s „Cover your tracks” uspjela; Luka je meni ispuhao gume, što je otkriveno u recapu; „Meanwhile” pogađanje radi (Town Oracle 10/24 u recapu); vjenčanje kao finale; na mapi se vide auto s ispuhanim gumama i grob s cvijećem.
+  - Klik na lika na mapi QA skripta nije uspjela pogoditi (klikovi na slučajne točke) pa kartica osobe nije vizualno provjerena. Ako imaš e2e za nju, napiši u dnevnik.
 
 - **27. 11. 2026. — QA Sprinta 1: ✅ prihvaćeno, kreni na Sprint 2.**
   - Provjereno: `npm run check` 114/114, 70 eventa bez grešaka, `npm run e2e` desktop + iPhone 13 prolazi.
@@ -190,3 +200,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 - **27. 11. 2026.** — QA T7: ✅ prihvaćeno. `npm run check` 129/129. U igri (3×) se vide auto s ispuhanim gumama („pfff”) kraj moje kuće nakon „Flat Tyres” i razbijen prozor na drugoj kući; ishod je duhovit („Your step count is excellent.”). Tragovi su mali, ali čitljivi. Sljedeće: T6c (sitno), T7b, T8.
 - **27. 11. 2026.** — QA T7b i T6c: ✅ prihvaćeno. `npm run check` 132/132. Vlastiti batch (100 sesija, seed `qa7b`) potvrđuje brojke: veze prije finala 88,3 %, Jealousy 13 %, Crisis Talk 11 %, Loan Due 29 %, eventi s drugima 79,4 %, ponavljanje 1,1 %, smrtnost 4,7 %, tuga 12,7 % vremena; replay 3/3 identičan. Sljedeće: T8 (spletke) — najvažniji preostali zadatak (vlasnikova točka 3).
 - **27. 11. 2026.** — QA T8: ✅ prihvaćeno uz **T8b**. `npm run check` 136/136, 75 eventa. Cijeli tok s nove QA skripte (6×): 5 vrsta spletki (uključujući „Send a fake lawsuit” za odvjetnika), izgledi se mijenjaju s vrstom (75/20 → 80/25 %), plan → traka pripreme → „Cover your tracks” (rizik 25 → 13 %) → „it worked, and nobody saw a thing” za ~30 s; žrtva Kim dobila je „Flat Tyres”, a Life Recap pod „Secrets revealed” priča cijeli tok. Vlasnikova točka 3 je riješena. Problemi: zbunjujuća poruka nakon spletke (S1), strana žrtve nije provjerljiva u QA (S2).
+- **27. 11. 2026.** — QA Sprinta 2: ✅ prihvaćen (detalji u „Odgovori QA/PM”). Dodana sitnica **T9b** (preklapanje imena). Developer kreće na Sprint 3 (T8b, T9b, pa T10–T12).
