@@ -68,6 +68,11 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Na mobitelu kartica ostaje ispod mape, ali mapa se pomakne/zumira na mjesto eventa.
 - Nakon odluke: **istovremeno otkrivanje** svih izbora (sve karte se okrenu odjednom) i 2 s reakcije likova na mapi (lice, skok, ljutnja) prije nego se pokaže tekst ishoda.
 
+### [ ] T5b. Sitnice iz QA T5 (napravi uz Sprint 2)
+- **R1:** Dvostruki navodnici u otkrivanju izbora: `""Go to the bathroom" and never come back"`. Ako oznaka već počinje navodnikom, ne dodaj nove (ili koristi drugi stil).
+- **R2:** Reakcije na mapi se ne vide jer sudionici **odu s mjesta eventa prije otkrivanja**. Kod „Who Pays?” su Iris, Luka i Clara već hodali na druge strane dok su se kartice okretale. Sudionici trebaju ostati na mjestu dok traju otkrivanje, reakcija i tekst ishoda (ili barem 3 s), tek onda nastaviti rutinu.
+- **R3:** U prvih nekoliko sekundi sesije (prije prve poruke) zaglavlje nema godišnje doba, dob ni atribute, a „People” prikazuje sve kao „Stranger”. Luka je kasnije bez ikakvog zajedničkog eventa postao „Partner”, što je vjerojatno početni odnos iz seeda koji se ne vidi dok ne stigne prvi `view`. Snapshot u `game:started` treba odmah nositi atribute, kalendar i odnose. Prvo potvrdi uzrok.
+
 ### [ ] T6. Raspoloženje i odnosi vidljivi na mapi
 - Iznad svakog lika emoji raspoloženja (sretan, ljut, tužan, zaljubljen, u dugovima…), izveden iz zadnjih promjena atributa i odnosa.
 - Linije odnosa od tvog lika prema drugima: prijatelj (zeleno), suparnik (crveno), dužnik/vjerovnik (žuto), partner (roza). Prikazuju se kad prijeđeš mišem/dodirneš lika ili kad ste zajedno u eventu.
@@ -147,3 +152,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 - **27. 11. 2026.** — Prvo QA igranje (TIME_SCALE=1, 3 min) i analiza batch izvještaja m10; istraživanje BitLife, Reigns, RimWorld, Jackbox, CK3, Tomodachi Life, Wordle. Napisani Sprintovi 1–3. Detalji u `docs/reports/qa-research-2026-11-27.md`.
 - **27. 11. 2026.** — QA Sprinta 1: prihvaćen. Dodani T4b (4 sitnice iz igranja) i T7b (veze i dugovi). Developer može krenuti na Sprint 2.
 - **27. 11. 2026.** — QA T4b: ✅ sve 4 sitnice potvrđene u browseru (6×): „Finale” na satu, „Only you know” cijeli, kartica s druge strane od mjesta eventa (likovi vidljivi), „Olga, Rosa and Klara”. Rokovi 17–25 s. Nastavi sa Sprintom 2.
+- **27. 11. 2026.** — QA T5: ✅ prihvaćeno uz sitnice **T5b**. `npm run check` 119/119. Igranje uz 2×: najava radi (pulsira MegaMart, „everyone is on the way”), kartica se otvara kraj mjesta, sve odluke se otkrivaju odjednom, rokovi 16–21 s, 5 od 6 eventa s drugim ljudima. Problemi: reakcije se ne vide jer likovi odlaze prerano (R2), dvostruki navodnici (R1), prazno zaglavlje i krivi odnosi na početku (R3).
