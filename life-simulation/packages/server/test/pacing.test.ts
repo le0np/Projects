@@ -25,10 +25,18 @@ interface Hooks {
 }
 
 /** A live session that reports every event offered to (and resolved for) the human. */
-function live(timeScale: number, paceScale: number, hooks: Hooks, bundle: ContentBundle = content, roster: Seat[] = seats): LiveSession {
+function live(
+  timeScale: number,
+  paceScale: number,
+  hooks: Hooks,
+  bundle: ContentBundle = content,
+  roster: Seat[] = seats,
+  durationSeconds = 480,
+  seed = `pace-${timeScale}-${paceScale}`,
+): LiveSession {
   const s: LiveSession = new LiveSession(
     bundle,
-    { durationSeconds: 480 },
+    { durationSeconds },
     roster,
     {
       toUser: (userId, ev, payload) => {
@@ -40,7 +48,7 @@ function live(timeScale: number, paceScale: number, hooks: Hooks, bundle: Conten
       onDecision: () => {},
       onFinished: () => {},
     },
-    { timeScale, paceScale, seed: `pace-${timeScale}-${paceScale}` },
+    { timeScale, paceScale, seed },
   );
   return s;
 }
@@ -77,7 +85,7 @@ describe("T1: live deadlines are in real seconds", () => {
         {
           onOffer: (s, o, userId) => {
             offer = o;
-            if (userId === "u1") expect(s.submit("u1", o.instanceId, "yes")).toEqual({ ok: true });
+            if (userId === "u1") setTimeout(() => expect(s.submit("u1", o.instanceId, "yes")).toEqual({ ok: true }), 20);
             else
               setTimeout(() => {
                 answeredAt = performance.now();
@@ -108,10 +116,12 @@ describe("T1: live deadlines are in real seconds", () => {
         6,
         0.5,
         {
-          onOffer: (s, o) => {
-            answered.set(o.instanceId, performance.now());
-            expect(s.submit("u1", o.instanceId, o.choices[0]!.id)).toEqual({ ok: true });
-          },
+          onOffer: (s, o) =>
+            // Like a real player: the answer arrives after everyone has been offered the event.
+            setTimeout(() => {
+              answered.set(o.instanceId, performance.now());
+              expect(s.submit("u1", o.instanceId, o.choices[0]!.id)).toEqual({ ok: true });
+            }, 20),
           onResolved: (s, n) => {
             if (!answered.has(n.instanceId)) return;
             lags.push({ ms: performance.now() - answered.get(n.instanceId)!, others: n.participants.length - 1 });
@@ -130,4 +140,38 @@ describe("T1: live deadlines are in real seconds", () => {
       expect(l.ms).toBeLessThan(50);
     }
   }, 40_000);
+});
+
+describe("T3: the finale live", () => {
+  it("bots still thinking answer at once when the finale is due, so the human does not wait for them", async () => {
+    const timeScale = 4;
+    let lastResolved = 0;
+    const result = await new Promise<{ gap: number; eventId: string }>((resolve, reject) => {
+      const s = live(
+        timeScale,
+        0.3,
+        {
+          onOffer: (session, o) => {
+            if (o.eventId.startsWith("finale_")) {
+              session.cancel();
+              resolve({ gap: performance.now() - lastResolved, eventId: o.eventId });
+              return;
+            }
+            setTimeout(() => session.submit("u1", o.instanceId, o.choices[0]!.id), 20);
+          },
+          onResolved: (_s, n) => {
+            if (n.myChoice) lastResolved = performance.now();
+          },
+        },
+        content,
+        seats,
+        60,
+        "finale-live",
+      );
+      setTimeout(() => reject(new Error("no finale within 40 s")), 40_000);
+      s.start();
+    });
+    // Rest is 2–3 s at PACE_SCALE 0.3; bot-only events would otherwise take up to 10 s more.
+    expect(result.gap).toBeLessThan(5_000);
+  }, 45_000);
 });

@@ -79,6 +79,8 @@ export class LiveSession {
     this.session.onNotice = (characterId, notice) => this.route(characterId, notice);
     this.session.chooseLeisure = (characterId, options) => this.bots.get(characterId)?.chooseLeisure(options) as never;
     this.session.onPublic = (entry) => {
+      // T3: the finale waits for everyone, so bots still "thinking" answer at once.
+      if (entry.kind === "phase" && entry.phase === "finale") queueMicrotask(() => this.flushAllBots());
       if (entry.kind !== "move") {
         this.feed.push(entry);
         if (this.feed.length > FEED_LIMIT) this.feed.shift();
@@ -216,6 +218,20 @@ export class LiveSession {
       this.botTimers.delete(handle);
       this.session.submitDecision(characterId, instanceId, choiceId);
     }
+  }
+
+  private flushAllBots(): void {
+    if (this.finished) return;
+    for (const instanceId of [...this.botPending.keys()].sort()) {
+      const waiting = this.botPending.get(instanceId)!;
+      this.botPending.delete(instanceId);
+      for (const [characterId, { handle, choiceId }] of [...waiting].sort(([a], [b]) => a.localeCompare(b))) {
+        clearTimeout(handle);
+        this.botTimers.delete(handle);
+        this.session.submitDecision(characterId, instanceId, choiceId);
+      }
+    }
+    this.afterChange();
   }
 
   /** Persist new decisions, re-arm the engine timer, detect the end. */

@@ -1,5 +1,19 @@
 import type { Attribute, Importance } from "@lifesim/core";
 
+export type StoryPhase = "intro" | "growth" | "climax" | "respite" | "finale";
+export const STORY_PHASES: readonly StoryPhase[] = ["intro", "growth", "climax", "respite", "finale"];
+
+/** When each phase starts, in session milliseconds. */
+export function storyTimeline(config: Pick<SessionConfig, "durationSeconds" | "story">): Record<StoryPhase, number> {
+  const d = config.durationSeconds * 1000;
+  const { introShare, climaxShare, respiteSeconds, finaleSeconds } = config.story;
+  const finale = Math.round(Math.max(0.8 * d, d - finaleSeconds * 1000));
+  const respite = Math.round(finale - Math.min(respiteSeconds * 1000, 0.08 * d));
+  const climax = Math.round(Math.min(climaxShare * d, respite));
+  const growth = Math.round(Math.min(introShare * d, climax));
+  return { intro: 0, growth, climax, respite, finale };
+}
+
 /** Tunable session parameters. All times in seconds of session time. */
 export interface SessionConfig {
   seed: string;
@@ -39,6 +53,12 @@ export interface SessionConfig {
    * and solo events weigh `soloFactor` as much.
    */
   director: { relationBoost: number; acquaintanceBoost: number; relatedPullTiles: number; soloFactor: number };
+  /**
+   * Tension curve (T3, after RimWorld's storytellers): intro (light events that bring people together),
+   * growth, climax (an upheaval around `climaxUpheaval`), a respite, and a finale for everyone at the end.
+   * Shares are of `durationSeconds`; the finale starts `finaleSeconds` before the end (at least at 80 %).
+   */
+  story: { introShare: number; climaxShare: number; climaxUpheaval: [number, number]; respiteSeconds: number; finaleSeconds: number };
   /** Pre-existing relationships at session start (decision D3). */
   startingRelationships: {
     /** Number of colleague pairs = round(participants × ratio). */
@@ -69,12 +89,18 @@ export interface HumanPacing {
   /** Breather after an event (wall seconds), and after an important one. */
   restSeconds: [number, number];
   restAfterImportantSeconds: [number, number];
+  /** A human idle this long (wall seconds) gets any event, even a solo one (T3: never long without anything). */
+  patienceSeconds: number;
+  /** How often the director looks again for an idle human (wall seconds). */
+  retrySeconds: number;
 }
 
 export const DEFAULT_HUMAN_PACING: Omit<HumanPacing, "timeScale"> = {
   deadline: { baseSeconds: 8, perWordSeconds: 0.25, minSeconds: 15, importantMinSeconds: 25, maxSeconds: 35, multiHumanBonusSeconds: 10 },
-  restSeconds: [5, 9],
-  restAfterImportantSeconds: [10, 14],
+  restSeconds: [6.5, 10],
+  restAfterImportantSeconds: [11, 14],
+  patienceSeconds: 10,
+  retrySeconds: 2,
 };
 
 /** Pacing for a live server running at `timeScale`; `scale` shortens every wall-clock duration (tests). */
@@ -93,6 +119,8 @@ export function humanPacing(timeScale: number, scale = 1): HumanPacing {
     },
     restSeconds: r(DEFAULT_HUMAN_PACING.restSeconds),
     restAfterImportantSeconds: r(DEFAULT_HUMAN_PACING.restAfterImportantSeconds),
+    patienceSeconds: DEFAULT_HUMAN_PACING.patienceSeconds * scale,
+    retrySeconds: DEFAULT_HUMAN_PACING.retrySeconds * scale,
   };
 }
 
@@ -106,7 +134,8 @@ export const DEFAULT_CONFIG: Omit<SessionConfig, "seed"> = {
   baseAttributes: { health: 75, mental: 70, money: 50, reputation: 50, career: 50 },
   attributeVariation: 8,
   startingRelationships: { colleaguePairRatio: 0.25, familyChance: 0.3, partnerChance: 0.25 },
-  director: { relationBoost: 3, acquaintanceBoost: 1.3, relatedPullTiles: 10, soloFactor: 0.6 },
+  director: { relationBoost: 3, acquaintanceBoost: 1.3, relatedPullTiles: 10, soloFactor: 0.5 },
+  story: { introShare: 0.15, climaxShare: 0.6, climaxUpheaval: [0.62, 0.7], respiteSeconds: 30, finaleSeconds: 75 },
   chaos: { upheavals: [2, 3], mischiefCharges: 2, followUpBoost: 1.25 },
   walkTilesPerSecond: 4,
   routine: { night: 0.15, workEnd: 0.6, leisureStaySeconds: [3, 8] },
@@ -126,5 +155,6 @@ export function resolveConfig(partial: Partial<SessionConfig> & { seed: string }
     routine: { ...DEFAULT_CONFIG.routine, ...partial.routine },
     chaos: { ...DEFAULT_CONFIG.chaos, ...partial.chaos },
     director: { ...DEFAULT_CONFIG.director, ...partial.director },
+    story: { ...DEFAULT_CONFIG.story, ...partial.story },
   };
 }

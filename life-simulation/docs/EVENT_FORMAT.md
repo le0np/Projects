@@ -31,7 +31,7 @@ Karijera u `careers.json` ima `workplace` (vrsta mjesta gdje radi).
   "version": 1,                  // verzija sadržaja ovog eventa; povećaj kad mijenjaš ponašanje
   "title": "A Coworker Needs Help",
   "category": "career",          // everyday | social | career | relationships | family | financial | health | critical
-  "trigger": "director",         // director: bira ga direktor; followup_only: samo kao nastavak
+  "trigger": "director",         // director: bira ga direktor; followup_only: samo kao nastavak; finale: završni event (vidi dolje)
   "hidden": false,               // skriveni event: ne najavljuje se onima koji ne sudjeluju
   "importance": "multi",         // simple | multi | important → rok za odluku iz konfiguracije
   "durationSeconds": 25,         // opcionalno: nadjačava rok
@@ -179,3 +179,11 @@ Sposobnosti karijere (`effect_multiplier`) skaliraju `attr` efekte lika koji ih 
 
 - **Preokret** postavi `sessionFact` dok traje. Eventi s uvjetom `{ "sessionFact": "storm" }` tada su četiri puta vjerojatniji.
 - **Smicalica** pokreće skriveni nastavak s ulogama `victim` (zna da se nešto događa) i `culprit` (`aware: false`). Validator to provjerava. Krivac se žrtvi ne prikazuje ni u tekstu, ni na popisu sudionika, ni kroz promjenu odnosa. Otkriva se tek ako ishod to izričito kaže (npr. `found_out` s `{culprit}` u tekstu) ili u Life Recapu.
+
+## Finale (T3)
+
+- Event s `"trigger": "finale"` ne bira direktor. Kad počne faza `finale` (75 s prije kraja, najkasnije na 80 % sesije), novi eventi više ne počinju. Kad nitko živ nije u eventu (i ljudi su odmorili), engine bira jedan finale event (po `weight`) među onima koje može popuniti.
+- Pri popunjavanju finala svaka uloga uzima **koliko god može** (do svog maksimuma), pa uloga poput `"count": [1, 7]` bez uvjeta skupi sve preostale žive likove.
+- Posljedice ranijih odnosa vide se kroz **izbore s uvjetima** (npr. „Run in: {trapped} was there for you once” samo ako postoji `saved_by`/`owes_favor`/`owes_money` prema toj osobi).
+- Kad se finale razriješi, sesija završava (`endReason: "finale"`).
+

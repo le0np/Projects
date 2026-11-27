@@ -609,7 +609,7 @@ function checkFollowUp(source: EventDefinition, fu: FollowUp, path: string, reg:
 
 function reachableFromDirector(reg: Registry): Set<string> {
   const seen = new Set<string>();
-  const queue = [...reg.events.values()].filter((e) => e.trigger === "director").map((e) => e.id);
+  const queue = [...reg.events.values()].filter((e) => e.trigger === "director" || e.trigger === "finale").map((e) => e.id);
   queue.push(...reg.followUpTargets);
   while (queue.length > 0) {
     const id = queue.pop() as string;

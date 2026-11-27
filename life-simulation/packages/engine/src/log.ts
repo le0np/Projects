@@ -3,9 +3,9 @@
  * Life Recap, statistics, replay checks and the human-readable log are built from it.
  */
 import type { Attribute, RelationType, Season, Status, TilePos } from "@lifesim/core";
-import type { SessionConfig } from "./config";
+import type { SessionConfig, StoryPhase } from "./config";
 
-export type EndReason = "time_limit" | "all_ended" | "story_resolved" | "cancelled";
+export type EndReason = "time_limit" | "all_ended" | "story_resolved" | "finale" | "cancelled";
 
 export type Change =
   | { kind: "attr"; characterId: string; attribute: Attribute; delta: number; value: number }
@@ -35,6 +35,8 @@ export type LogEntry = { t: number } & (
       offerAt: number;
       deadlineAt: number;
       place: { tile: TilePos; placeId: string | null };
+      /** Story phase when it started (T3). */
+      phase: StoryPhase;
     }
   | { type: "decision"; instanceId: string; characterId: string; choiceId: string; label: string; source: "player" | "default" }
   | { type: "decision_rejected"; instanceId: string; characterId: string; choiceId: string; reason: string }
@@ -54,6 +56,10 @@ export type LogEntry = { t: number } & (
   | { type: "leisure"; characterId: string; kind: string }
   /** A new season (and at spring, a new year: everyone is a year older). */
   | { type: "season_changed"; year: number; season: Season }
+  /** The tension curve moves on (T3). */
+  | { type: "phase_changed"; phase: StoryPhase }
+  /** The finale is due: no new events, everyone gathers once they are free (T3). */
+  | { type: "finale_waiting" }
   | { type: "session_completed"; reason: EndReason }
 );
 
@@ -84,7 +90,7 @@ export function formatLog(log: readonly LogEntry[]): string {
         const who = Object.entries(e.bindings)
           .map(([role, ids]) => `${role}: ${ids.map(name).join(", ")}`)
           .join("; ");
-        lines.push(`${at} - Event [${e.instanceId}]: ${e.title} (${who})${e.place.placeId ? ` at ${e.place.placeId}` : ""}${e.parentInstanceId ? ` — follow-up of ${e.parentInstanceId}` : ""}`);
+        lines.push(`${at} - Event [${e.instanceId}]: ${e.title} (${who})${e.place.placeId ? ` at ${e.place.placeId}` : ""}${e.parentInstanceId ? ` — follow-up of ${e.parentInstanceId}` : ""} [${e.phase}]`);
         break;
       }
       case "decision":
@@ -135,6 +141,12 @@ export function formatLog(log: readonly LogEntry[]): string {
         break;
       case "season_changed":
         lines.push(`${at} - ${e.season === "spring" ? `Year ${e.year + 1} begins. ` : ""}It is ${e.season}.`);
+        break;
+      case "phase_changed":
+        lines.push(`${at} - STORY: ${e.phase} phase`);
+        break;
+      case "finale_waiting":
+        lines.push(`${at} - STORY: the finale is coming, the whole town gathers`);
         break;
       case "session_completed":
         lines.push(`${at} - Session completed (${e.reason})`);

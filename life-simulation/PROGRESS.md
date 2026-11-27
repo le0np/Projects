@@ -389,6 +389,21 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 
 - **Testovi:** `sim/test/sim.test.ts` (40 sesija: ≥ 55 % zajedničkih eventa, ponavljanje ≤ 5 %, nijedan solo event dvaput, najviše 3 stara solo eventa), engine test za istu smicalicu na istoj meti.
 
+### T3: krivulja napetosti i finale (developer)
+
+- **Faze** (`config.story`, `storyTimeline`): upoznavanje (0–15 %), rast, vrhunac (od 60 %), predah (30 s prije finala), finale (75 s prije kraja, najkasnije na 80 %). Za kratke sesije predah je najviše 8 % trajanja.
+  - U logu: `phase_changed` (u tekstualnom logu „STORY: … phase”), a svaki `event_started` ima polje `phase`. Javni feed dobije `{ kind: "phase" }`.
+  - Upoznavanje: nema kritičnih ni važnih eventa, svakodnevni i društveni ×1,5, solo eventi još manje vjerojatni. Vrhunac: kritični ×2, važni ×1,5. Predah: nema kritičnih, važni ×0,3.
+  - Zadnji preokret je vrhunac na 62–70 % sesije; ostali preokreti su u fazi rasta (20–55 %).
+- **Finale:** nova vrsta eventa `trigger: "finale"` (shema, validator, `docs/EVENT_FORMAT.md`). Kad dođe finale, novi eventi i smicalice više ne počinju; kad nitko živ nije u eventu i ljudi su odmorili, počinje jedan finale event za **sve žive likove**, a nakon njega sesija završava (`endReason: "finale"`).
+  - 3 finala: **Fire on Market Street** (požar, netko je zarobljen), **A Wedding in the Park** (vjenčanje dvoje prijatelja/partnera), **The Last Town Meeting** (park ili tržnica; predsjedavajući može namjestiti glasanje).
+  - Raniji odnosi se vide kroz izbore koji postoje samo uz odnos: „Run in: {trapped} was there for you once” (dug, usluga, spašen život), „Run in for your friend”, „Hold back” (suparnik), „I object!” (suparnik ili poznata tajna), „Pay for the party: you still owe them”, „Stand up for your friend / Heckle {chair}”.
+  - Na serveru, kad dođe finale, botovi koji još „razmišljaju” odgovore odmah (inače bi ljudi čekali tuđe evente).
+- **Pauza između eventa za čovjeka** (stvarne sekunde): odmor 6,5–10 s (nakon važnog 11–14 s); čovjek koji čeka više od 10 s dobije i solo event iako mu je kvota potrošena; direktor za ljude ponovno traži svake 2 s; čovjeku se mogu pridružiti botovi koji odmaraju. Izmjereno (10 sesija, odgovor za 4 s): uz 1× medijan 12 s (p10 9 s, p90 16 s, iznad 20 s oko 1 %), uz 6× medijan 9 s (7,6–13,5 s).
+- **Sadržaj:** Overtime, Side Gig i Tax Refund najviše 3 puta po sesiji (prije su ih dobili svi), solo težina ×0,5.
+- **Batch (200 sesija, `docs/reports/t3.report.md`):** sve sesije završe finalom; 64,4 % eventa ima ≥ 2 lika koji odlučuju (79,3 % po liku), ponavljanje 1,0 %, smrtnost 3,5 %, replay identičan. Sesija samo s botovima traje u prosjeku 432 s, jer botovi finale odluče brzo; s ljudima finale traje koliko i njihov rok.
+- **Testovi:** `engine/test/pacing.test.ts` (faze redom, finale za sve žive, ništa kritično u upoznavanju, vrhunac 60–72 %, medijan pauze 8–15 s uz 1× i 6×, najviše 3 % iznad 20 s ili ispod 6 s), `server/test/pacing.test.ts` (uživo: do finala čovjek čeka < 5 s).
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:

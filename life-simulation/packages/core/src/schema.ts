@@ -224,8 +224,11 @@ export const EventSchema = z.strictObject({
   version: z.number().int().min(1),
   title: NonEmptyText,
   category: Category,
-  /** `director` events are picked by the selector; `followup_only` only start as follow-ups. */
-  trigger: z.enum(["director", "followup_only"]),
+  /**
+   * `director` events are picked by the selector; `followup_only` only start as follow-ups;
+   * `finale` events close the session (T3): one of them starts for every living character at the end.
+   */
+  trigger: z.enum(["director", "followup_only", "finale"]),
   /** Hidden events are not announced to non-participants and never shown in lobby stats. */
   hidden: z.boolean().optional(),
   importance: z.enum(IMPORTANCE),

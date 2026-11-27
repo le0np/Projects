@@ -38,7 +38,7 @@ describe("bot-only sessions with random decisions (invariants over many seeds)",
   it("always complete, and only for allowed reasons", () => {
     for (const r of runs) {
       expect(r.state).toBe("completed");
-      expect(["time_limit", "all_ended", "story_resolved"]).toContain(r.endReason);
+      expect(["time_limit", "all_ended", "story_resolved", "finale"]).toContain(r.endReason);
       expect(r.recaps).toHaveLength(entries(r, "session_started")[0]!.characters.length);
     }
   });

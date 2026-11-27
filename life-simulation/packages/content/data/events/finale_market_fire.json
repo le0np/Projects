@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 1,
+  "id": "finale_market_fire",
+  "version": 1,
+  "title": "Fire on Market Street",
+  "category": "critical",
+  "trigger": "finale",
+  "importance": "important",
+  "weight": 10,
+  "location": {
+    "at": [
+      "shop"
+    ]
+  },
+  "roles": {
+    "trapped": {
+      "count": 1,
+      "description": "Trapped upstairs"
+    },
+    "neighbours": {
+      "count": [
+        1,
+        7
+      ],
+      "description": "Everyone else in town"
+    }
+  },
+  "text": {
+    "public": "Late at night, smoke pours out of the flats above the market. {trapped} is still inside. The whole town is in the street: {neighbours}.",
+    "private": {
+      "trapped": "The stairs are full of smoke. Through the window you can see everyone you have met in this town looking up at you.",
+      "neighbours": "{trapped} is at the upstairs window. The fire brigade is ten minutes away."
+    }
+  },
+  "choices": {
+    "trapped": [
+      {
+        "id": "window",
+        "label": "Climb out of the window",
+        "tags": [
+          "risk"
+        ],
+        "perceived": {
+          "health": -1,
+          "risk": 2
+        }
+      },
+      {
+        "id": "shout",
+        "label": "Shout for help and wait",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "risk": 1
+        }
+      }
+    ],
+    "neighbours": [
+      {
+        "id": "owe_them",
+        "label": "Run in: {trapped} was there for you once",
+        "tags": [
+          "help",
+          "sacrifice",
+          "risk"
+        ],
+        "condition": {
+          "any": [
+            {
+              "fact": "saved_by",
+              "about": "role:trapped"
+            },
+            {
+              "fact": "owes_favor",
+              "about": "role:trapped"
+            },
+            {
+              "fact": "owes_money",
+              "about": "role:trapped"
+            }
+          ]
+        },
+        "perceived": {
+          "health": -1,
+          "reputation": 1,
+          "relation": {
+            "trapped": 2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "health": -8,
+              "reputation": 8
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:trapped",
+            "affinity": 25,
+            "trust": 20,
+            "mutual": true
+          }
+        ]
+      },
+      {
+        "id": "friend_in",
+        "label": "Run in for your friend {trapped}",
+        "tags": [
+          "help",
+          "sacrifice",
+          "risk"
+        ],
+        "condition": {
+          "relation": {
+            "from": "self",
+            "to": "role:trapped",
+            "typeIn": [
+              "friend",
+              "partner",
+              "family"
+            ]
+          }
+        },
+        "perceived": {
+          "health": -1,
+          "reputation": 1,
+          "relation": {
+            "trapped": 2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "health": -8,
+              "reputation": 6
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:trapped",
+            "affinity": 20,
+            "trust": 15,
+            "mutual": true
+          }
+        ]
+      },
+      {
+        "id": "rescue",
+        "label": "Run into the smoke",
+        "tags": [
+          "help",
+          "risk"
+        ],
+        "perceived": {
+          "health": -2,
+          "reputation": 1,
+          "relation": {
+            "trapped": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "health": -10,
+              "reputation": 6
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:trapped",
+            "affinity": 15,
+            "trust": 10,
+            "mutual": true
+          }
+        ]
+      },
+      {
+        "id": "hold_back",
+        "label": "Hold back: {trapped} never did anything for you",
+        "tags": [
+          "refuse"
+        ],
+        "condition": {
+          "relation": {
+            "from": "self",
+            "to": "role:trapped",
+            "typeIn": [
+              "rival",
+              "enemy"
+            ]
+          }
+        },
+        "perceived": {
+          "relation": {
+            "trapped": -1
+          }
+        },
+        "effects": [
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:trapped",
+            "affinity": -10
+          }
+        ]
+      },
+      {
+        "id": "ladder",
+        "label": "Fetch a ladder from the hardware shop",
+        "tags": [
+          "help"
+        ],
+        "careers": [
+          "mechanic",
+          "engineer"
+        ],
+        "perceived": {
+          "reputation": 1,
+          "relation": {
+            "trapped": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "reputation": 6
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:trapped",
+            "affinity": 12,
+            "mutual": true
+          }
+        ]
+      },
+      {
+        "id": "call",
+        "label": "Call the fire brigade and keep the crowd back",
+        "tags": [
+          "take_responsibility"
+        ],
+        "default": true,
+        "perceived": {
+          "reputation": 0
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "carried_out",
+      "when": {
+        "chose": "owe_them",
+        "role": "neighbours"
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:trapped",
+          "delta": {
+            "health": -5,
+            "mental": 10
+          }
+        }
+      ],
+      "text": {
+        "trapped": "Someone you once helped comes through the smoke for you. Old debts, paid in full.",
+        "neighbours": "Someone who owed {trapped} a favour carries them out. The street cheers."
+      }
+    },
+    {
+      "id": "rescued",
+      "when": {
+        "any": [
+          {
+            "chose": "friend_in",
+            "role": "neighbours"
+          },
+          {
+            "chose": "rescue",
+            "role": "neighbours"
+          },
+          {
+            "chose": "ladder",
+            "role": "neighbours"
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:trapped",
+          "delta": {
+            "health": -5,
+            "mental": 8
+          }
+        }
+      ],
+      "text": {
+        "trapped": "Hands grab you in the smoke and pull you out. You are coughing, but alive.",
+        "neighbours": "{trapped} is pulled out alive. You will all tell this story for years."
+      }
+    },
+    {
+      "id": "jumped",
+      "when": {
+        "chose": "window",
+        "role": "trapped"
+      },
+      "chance": 0.6,
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:trapped",
+          "delta": {
+            "health": -15,
+            "mental": -5
+          }
+        }
+      ],
+      "text": {
+        "trapped": "Nobody came. You jump onto the market awnings and roll into the street, bruised.",
+        "neighbours": "Nobody went in. {trapped} jumps from the window and lands on the awnings."
+      }
+    },
+    {
+      "id": "brigade",
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:trapped",
+          "delta": {
+            "health": -25,
+            "mental": -15
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:trapped",
+          "to": "role:neighbours",
+          "affinity": -10,
+          "trust": -10
+        }
+      ],
+      "text": {
+        "trapped": "Ten long minutes later the fire brigade gets you out. You saw everyone just standing there.",
+        "neighbours": "The fire brigade gets {trapped} out, badly hurt. Nobody looks anybody in the eye."
+      }
+    }
+  ]
+}

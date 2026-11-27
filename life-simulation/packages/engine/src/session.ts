@@ -36,7 +36,7 @@ import {
   type VisibleChoice,
 } from "@lifesim/core";
 import type { ContentBundle } from "@lifesim/content";
-import type { SessionConfig } from "./config";
+import { STORY_PHASES, storyTimeline, type SessionConfig, type StoryPhase } from "./config";
 import { makeContext, type Bindings, type WorldView } from "./context";
 import type { Change, EndReason, LogEntry } from "./log";
 import { pickNames } from "./names";
@@ -57,6 +57,8 @@ export type PublicEntry =
   | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
   | { kind: "season"; t: number; year: number; season: string }
   | { kind: "upheaval"; t: number; id: string; title: string; text: string; active: boolean }
+  /** The tension curve moves on; `finale` also means everyone is about to gather (T3). */
+  | { kind: "phase"; t: number; phase: StoryPhase }
   | { kind: "move"; t: number; characterId: string; from: TilePos; path: TilePos[]; departAt: number; msPerTile: number; to: string | null };
 
 export type SubmitResult = { ok: true } | { ok: false; reason: string };
@@ -121,7 +123,8 @@ type Timer =
   | { kind: "end" }
   | { kind: "season" }
   | { kind: "upheaval"; id: string }
-  | { kind: "upheaval_end"; id: string };
+  | { kind: "upheaval_end"; id: string }
+  | { kind: "phase"; phase: StoryPhase };
 
 const LEISURE: PlaceKind[] = ["cafe", "park", "shop", "bar", "home"];
 
@@ -184,6 +187,10 @@ export class Session {
   private readonly rngChaos: Rng;
   private readonly mischiefUsed = new Map<string, number>();
   private mischiefSeq = 0;
+  /** T3: the finale closes the session once everyone alive is free. */
+  private finale: "none" | "waiting" | "running" | "done" = "none";
+  private readonly finaleEvents: EventDefinition[];
+  private readonly timeline: Record<StoryPhase, number>;
   /** Session facts each event refers to (events tied to an upheaval get a boost while it lasts). */
   private readonly eventSessionFacts = new Map<string, Set<string>>();
 
@@ -204,6 +211,10 @@ export class Session {
     this.directorEvents = [...content.events.values()]
       .filter((e) => e.trigger === "director" && e.weight > 0)
       .sort((a, b) => a.id.localeCompare(b.id));
+    this.finaleEvents = [...content.events.values()]
+      .filter((e) => e.trigger === "finale" && e.weight > 0)
+      .sort((a, b) => a.id.localeCompare(b.id));
+    this.timeline = storyTimeline(config);
     this.createCharacters(participants);
     for (const ev of content.events.values()) {
       const facts = new Set<string>();
@@ -250,6 +261,10 @@ export class Session {
       relations,
     });
     this._state = "active";
+    this.log.push({ t: this.now(), type: "phase_changed", phase: "intro" });
+    for (const phase of STORY_PHASES) {
+      if (phase !== "intro" && this.timeline[phase] > this.timeline.intro) this.timers.push(this.timeline[phase], { kind: "phase", phase });
+    }
     this.timers.push(this.config.durationSeconds * MS, { kind: "end" });
     this.scheduleNextSeason();
     this.scheduleUpheavals();
@@ -281,10 +296,13 @@ export class Session {
         case "upheaval_end":
           this.endUpheaval(timer.id);
           break;
+        case "phase":
+          this.onPhase(timer.phase);
+          break;
         case "end":
           this.accepting = false;
           this.endReason ??= "time_limit";
-          this.maybeComplete();
+          if (!this.maybeComplete()) this.fillIdle();
           break;
       }
     }
@@ -331,10 +349,18 @@ export class Session {
     const [lo, hi] = this.config.chaos.upheavals;
     const count = Math.min(pool.length, this.rngChaos.int(lo, hi));
     const span = this.config.durationSeconds * MS;
+    // T3: the last upheaval is the climax (around 60–70 %); the others are spread over the growth phase.
+    const [c0, c1] = this.config.story.climaxUpheaval;
+    const growthStart = Math.max(this.timeline.growth, 0.2 * span);
+    const growthEnd = Math.max(growthStart, Math.min(0.55 * span, this.timeline.climax));
     for (let k = 0; k < count; k++) {
       const pick = this.rngChaos.weighted(pool, (u) => u.weight)!;
       pool.splice(pool.indexOf(pick), 1);
-      const at = span * (0.12 + ((k + this.rngChaos.range(0.15, 0.85)) / count) * 0.76);
+      const others = count - 1;
+      const at =
+        k === others
+          ? Math.min(span * this.rngChaos.range(c0, c1), this.timeline.respite)
+          : growthStart + ((k + this.rngChaos.range(0.15, 0.85)) / others) * (growthEnd - growthStart);
       this.timers.push(Math.round(at), { kind: "upheaval", id: pick.id });
     }
   }
@@ -386,6 +412,52 @@ export class Session {
     this.onPublic({ kind: "upheaval", t: this.now(), id, title: u.title, text: u.text, active: false });
   }
 
+  // ================================================================== story curve (T3)
+
+  /** Current phase of the tension curve. */
+  phase(): StoryPhase {
+    let current: StoryPhase = "intro";
+    for (const p of STORY_PHASES) if (this.now() >= this.timeline[p]) current = p;
+    return current;
+  }
+
+  private onPhase(phase: StoryPhase): void {
+    this.log.push({ t: this.now(), type: "phase_changed", phase });
+    this.onPublic({ kind: "phase", t: this.now(), phase });
+    if (phase === "finale" && this.finaleEvents.length > 0 && this.finale === "none") {
+      this.finale = "waiting";
+      this.log.push({ t: this.now(), type: "finale_waiting" });
+      this.tryStartFinale();
+    }
+  }
+
+  /** Starts the finale as soon as nobody alive is in an event (no new events start meanwhile). */
+  private tryStartFinale(): void {
+    if (this.finale !== "waiting") return;
+    const alive = this.order.filter((id) => this.char(id).status === "active");
+    if (alive.some((id) => this.char(id).busyWith !== null)) return;
+    // Humans get their breather first (bots do not mind).
+    const rested = Math.max(this.now(), ...alive.filter((id) => !this.char(id).isBot).map((id) => this.char(id).availableAt));
+    if (rested > this.now()) {
+      this.scheduleTick(rested);
+      return;
+    }
+    const pool = this.rngSelect.shuffle(alive);
+    const candidates: { ev: EventDefinition; bindings: Record<string, string[]> }[] = [];
+    for (const ev of this.finaleEvents) {
+      const bindings = alive.length > 0 ? this.bind(ev, null, pool, {}, true) : null;
+      if (bindings) candidates.push({ ev, bindings });
+    }
+    const pick = this.rngSelect.weighted(candidates, (c) => c.ev.weight);
+    if (!pick) {
+      this.finale = "done";
+      this.maybeComplete();
+      return;
+    }
+    this.finale = "running";
+    this.startInstance(pick.ev, pick.bindings);
+  }
+
   /** What a character can still play. */
   mischiefState(characterId: string): MischiefState {
     return {
@@ -404,6 +476,7 @@ export class Session {
       return { ok: false, reason };
     };
     if (this._state !== "active" || !this.accepting) return reject("session is not active");
+    if (this.finale !== "none") return reject("the finale has begun");
     const def = this.content.mischief.get(mischiefId);
     if (!def) return reject("unknown prank");
     const actor = this.characters.get(characterId);
@@ -597,17 +670,28 @@ export class Session {
   // ================================================================== director
 
   private fillIdle(): void {
-    if (this._state !== "active" || !this.accepting) return;
+    if (this._state !== "active") return;
+    if (this.finale !== "none") {
+      // T3: no new events around the finale; whoever is free keeps living their routine.
+      this.tryStartFinale();
+      if (this._state === "active") this.runRoutine();
+      return;
+    }
+    if (!this.accepting) return;
     this.activateFollowUps();
 
     const free = this.rngSelect.shuffle(this.order.filter((id) => this.isFree(id)));
     for (const anchor of free) {
       if (!this.isFree(anchor)) continue; // grabbed by an earlier event in this loop
       const candidates: { ev: EventDefinition; bindings: Record<string, string[]>; weight: number }[] = [];
+      const impatient = this.isImpatient(anchor);
       for (const ev of this.directorEvents) {
-        if (!this.cooldownOk(ev, true)) continue;
+        if (this.phaseFactor(ev) === 0) continue;
+        // T3: a human who has waited too long may get a solo event even if its session quota is used up.
+        const extra = impatient && this.isSoloEvent(ev);
+        if (!this.cooldownOk(ev, true) && !(extra && this.cooldownOk(ev, true, true))) continue;
         const bindings = this.bind(ev, anchor, this.nearbyPool(anchor), {});
-        if (bindings) candidates.push({ ev, bindings, weight: this.weight(ev, anchor, bindings) });
+        if (bindings) candidates.push({ ev, bindings, weight: this.weight(ev, anchor, bindings) * (extra ? 1 / this.config.director.soloFactor : 1) });
       }
       const pick = this.rngSelect.weighted(candidates, (c) => c.weight);
       if (!pick) {
@@ -627,8 +711,14 @@ export class Session {
   private nearbyPool(anchor: string): string[] {
     const at = this.posOf(anchor);
     const pull = this.config.director.relatedPullTiles;
+    // A waiting human may also be joined by bots who are only on their breather (bots do not need one).
+    const human = this.config.humanPacing !== undefined && !this.char(anchor).isBot;
+    const available = (id: string) => {
+      const c = this.char(id);
+      return this.isFree(id) || (human && c.isBot && c.status === "active" && c.busyWith === null);
+    };
     return this.order
-      .filter((id) => id !== anchor && this.isFree(id))
+      .filter((id) => id !== anchor && available(id))
       .map((id) => ({ id, d: manhattan(this.posOf(id), at) + this.rngSelect.range(0, 6) - (this.isRelated(anchor, id) ? pull : 0) }))
       .sort((a, b) => a.d - b.d)
       .map((x) => x.id);
@@ -791,6 +881,22 @@ export class Session {
     return arrival;
   }
 
+  /** An event in which only one person decides (whatever the role counts turn out to be). */
+  private isSoloEvent(ev: EventDefinition): boolean {
+    const min = (r: string) => {
+      const c = ev.roles[r]!.count;
+      return typeof c === "number" ? c : c[0];
+    };
+    return Object.keys(ev.roles).reduce((n, r) => n + ((ev.choices[r]?.length ?? 0) > 0 ? min(r) : 0), 0) < 2;
+  }
+
+  /** A human who has been free for longer than their patience. */
+  private isImpatient(id: string): boolean {
+    const pacing = this.config.humanPacing;
+    const c = this.char(id);
+    return pacing !== undefined && !c.isBot && this.now() - c.availableAt >= pacing.patienceSeconds * MS * pacing.timeScale;
+  }
+
   /**
    * A real relationship: more than strangers or people who have only met — or something between them,
    * like a debt, a favour or a secret (a pair fact either way).
@@ -807,10 +913,10 @@ export class Session {
     return c.status === "active" && c.busyWith === null && c.availableAt <= this.now();
   }
 
-  private cooldownOk(ev: EventDefinition, director: boolean): boolean {
+  private cooldownOk(ev: EventDefinition, director: boolean, ignoreSessionQuota = false): boolean {
     const s = this.eventStarts.get(ev.id);
     if (!s) return true;
-    if (ev.cooldown.maxPerSession !== undefined && s.count >= ev.cooldown.maxPerSession) return false;
+    if (!ignoreSessionQuota && ev.cooldown.maxPerSession !== undefined && s.count >= ev.cooldown.maxPerSession) return false;
     if (director && ev.cooldown.minGapSeconds !== undefined && this.now() - s.lastAt < ev.cooldown.minGapSeconds * MS) {
       return false;
     }
@@ -826,6 +932,8 @@ export class Session {
     anchor: string | null,
     pool: readonly string[],
     preset: Record<string, string[]>,
+    /** Finale: every role takes as many people as it can (up to its maximum). */
+    fillAll = false,
   ): Record<string, string[]> | null {
     const roles = Object.keys(ev.roles);
     const anchorRoles: (string | null)[] = anchor ? this.rngSelect.shuffle(roles.filter((r) => !preset[r])) : [null];
@@ -838,7 +946,7 @@ export class Session {
         if (preset[role]) continue;
         const def = ev.roles[role]!;
         const [min, max] = typeof def.count === "number" ? [def.count, def.count] : def.count;
-        const target = this.rngSelect.int(min, max);
+        const target = fillAll ? max : this.rngSelect.int(min, max);
         const fits = (id: string) => {
           const c = this.char(id);
           if (c.status !== "active") return false;
@@ -893,14 +1001,33 @@ export class Session {
     if (others.some((o) => this.isRelated(anchor, o))) w *= dir.relationBoost;
     else if (others.some((o) => this.relations.get(anchor, o).type !== "stranger")) w *= dir.acquaintanceBoost;
     const deciders = Object.entries(bindings).reduce((n, [role, ids]) => n + ((ev.choices[role]?.length ?? 0) > 0 ? ids.length : 0), 0);
-    if (deciders < 2) w *= dir.soloFactor;
+    if (deciders < 2) w *= this.phase() === "intro" ? dir.soloFactor * dir.soloFactor : dir.soloFactor; // T3: the intro brings people together
     if (ev.category === "critical") w *= 0.4 + this.progress();
+    w *= this.phaseFactor(ev);
     const tied = this.eventSessionFacts.get(ev.id);
     if (tied && [...tied].some((f) => this.sessionFacts.has(f))) w *= 4;
     const here = this.placeAt(this.posOf(anchor));
     const herePlace = here ? this.content.map.place(here) : undefined;
     if (herePlace && ev.location?.at.includes(herePlace.kind)) w *= 1.5;
     return w;
+  }
+
+  /**
+   * T3: what fits the current phase. Intro: light, everyday and social events that bring people
+   * together, nothing critical; climax: drama; respite: nothing critical or important.
+   */
+  private phaseFactor(ev: EventDefinition): number {
+    switch (this.phase()) {
+      case "intro":
+        if (ev.category === "critical" || ev.importance === "important") return 0;
+        return ev.category === "everyday" || ev.category === "social" ? 1.5 : 1;
+      case "climax":
+        return ev.category === "critical" ? 2 : ev.importance === "important" ? 1.5 : 1;
+      case "respite":
+        return ev.category === "critical" ? 0 : ev.importance === "important" ? 0.3 : 1;
+      default:
+        return 1;
+    }
   }
 
   private activateFollowUps(): void {
@@ -1014,6 +1141,7 @@ export class Session {
       offerAt: inst.startedAt,
       deadlineAt: inst.deadlineAt,
       place: inst.place,
+      phase: this.phase(),
     });
     if (!ev.hidden) {
       this.onPublic({
@@ -1210,6 +1338,11 @@ export class Session {
     }
 
     if (outcome.endsSession) this.storyResolved = true;
+    if (ev.trigger === "finale") {
+      this.finale = "done";
+      this.accepting = false;
+      if (this.endReason === undefined || this.endReason === "time_limit") this.endReason = "finale";
+    }
     this.stats.eventsResolved++;
     this.log.push({ t: this.now(), type: "event_resolved", instanceId: inst.id, eventId: ev.id, outcomeId: outcome.id, changes });
 
@@ -1329,7 +1462,8 @@ export class Session {
   }
 
   private maybeComplete(): boolean {
-    if (this.accepting || this.running.size > 0) return false;
+    if (this.finale === "waiting" && this.order.every((id) => this.char(id).status !== "active")) this.finale = "done";
+    if (this.accepting || this.running.size > 0 || this.finale === "waiting") return false;
     this.finish("completed", this.endReason ?? "time_limit");
     return true;
   }
@@ -1469,8 +1603,13 @@ export class Session {
   }
 
   private scheduleRetry(): void {
-    if (this.retryAt !== undefined && this.retryAt > this.now()) return;
-    this.retryAt = this.now() + this.config.idleRetrySeconds * MS;
+    const pacing = this.config.humanPacing;
+    // Idle humans are looked after more often than bots (in real seconds).
+    const humanWaiting = pacing !== undefined && this.order.some((id) => !this.char(id).isBot && this.isFree(id));
+    const delay = humanWaiting ? Math.min(this.config.idleRetrySeconds * MS, pacing.retrySeconds * MS * pacing.timeScale) : this.config.idleRetrySeconds * MS;
+    const at = this.now() + delay;
+    if (this.retryAt !== undefined && this.retryAt > this.now() && this.retryAt <= at) return;
+    this.retryAt = at;
     this.scheduleTick(this.retryAt);
   }
 
