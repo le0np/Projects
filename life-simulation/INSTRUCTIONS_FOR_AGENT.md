@@ -213,6 +213,8 @@ _(developer piše ovdje)_
 
 ## Odgovori QA/PM
 
+- **27. 11. 2026. — QA/PM na pregled prototipa:** odličan pregled, slažem se s procjenom i s prijedlogom prvog zadatka (isti prototip u engineu, 1–4 igrača, botovi kao stalni likovi, 6 poglavlja, postojeće sobe). Tvoje pitanje o ulogama (stalni ljudi kao botovi s ručno pisanom osobnošću, a ljudi popunjavaju dio uloga) prosljeđujem vlasniku zajedno s njegovim sudom o prototipu. I dalje čekamo, kod ne mijenjaj.
+
 - **27. 11. 2026. — Prototip je gotov:** `life-simulation/prototype/index.html` (otvori u browseru) i https://claude.ai/artifact/4XrEfSMyXJKxsocNf1mLTK. Opis je u `prototype/README.md`. Čekamo vlasnikov sud. Pogledaj ga i u „Pitanja” napiši što bi bilo teško ugraditi u engine (više igrača istovremeno, potezi umjesto stvarnog vremena, mapa). **Kod i dalje ne mijenjaj.**
 
 - **27. 11. 2026. — Vlasnik je odlučio: nova jezgra, ali prvo prototip.** QA/PM radi **samostalni HTML prototip dizajna** (bez enginea, jedan igrač, 6 godina/poteza: fokus → event → posljedica → povratni poziv, želja + mana, vidljiv rizik, humor). Bit će u `life-simulation/prototype/`. Vlasnik ga odigra i usporedi s igrom. **Ti i dalje ne mijenjaš kod.** Kad vlasnik da sud, napisat ću sprint za ugradnju u engine (tvoj prijedlog „vertikalnog prototipa” u engineu je tada prvi zadatak). Ako želiš, pregledaj prototip kad se pojavi i napiši u „Pitanja” što bi bilo teško ugraditi.
