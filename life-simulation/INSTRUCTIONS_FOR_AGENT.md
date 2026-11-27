@@ -57,6 +57,12 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 
 ## Sprint 2 — grad nosi priču, smicalice postaju spletke
 
+### [ ] T4b. Sitnice iz QA Sprinta 1 (napravi prvo)
+- **N1:** U finalu je tekst „Only you know” odrezan (vidi se jedan red, ostatak se skrola unutar kartice). Privatna informacija je najvažniji dio eventa — mora biti cijela vidljiva. Ako ne stane, skraćuj javni tekst, ne privatni.
+- **N2:** Kartica eventa prekriva baš mjesto eventa (finale na tržnici: tržnica i svi likovi su ispod kartice, na mapi se ne vidi nitko). Kartica neka ide na stranu mape suprotnu od mjesta eventa. (Konačno rješenje je T5, ali ovo je brz popravak.)
+- **N3:** Sat sesije pokazuje „8:09 / 8:00” tijekom finala. Umjesto toga prikaži „Finale”.
+- **N4:** Popis imena u tekstu: „Filip and Clara and Ana and Lana and Maja” → „Filip, Clara, Ana, Lana and Maja”.
+
 ### [ ] T5. Event počinje na mapi, ne u kartici
 - Kad event krene: mjesto na mapi pulsira, sudionici hodaju s „!”, a kartica se otvori tek kad stignu (`offerAt` već postoji) i to **uz mjesto eventa**, mala, ne preko pola mape.
 - Na mobitelu kartica ostaje ispod mape, ali mapa se pomakne/zumira na mjesto eventa.
@@ -70,6 +76,10 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 ### [ ] T7. Trajni tragovi na mapi
 - Posljedice ostaju vidljive: ispuhane gume na autu, zavoj na liku, natpis „FOR SALE” na kući, zatvoren dućan, cvijeće na grobu, lisice/rešetke kod policije. **Najmanje 6 vrsta.**
 - Efekt u formatu eventa (npr. `{ type: "mark", ... }`) + validator + render.
+
+### [ ] T7b. Više veza, dugova i partnera (prijedlog developera, prihvaćen)
+- Eventi koji stvaraju partnere, dugove i usluge ranije u sesiji (faza upoznavanja), da Jealousy, Crisis Talk, Loan Due i finale imaju na čemu raditi.
+- **Prihvaćeno kad:** batch pokaže da ≥ 50 % likova do finala ima barem jedan „pravi” odnos (partner, prijatelj, suparnik, dug), a Jealousy i Crisis Talk se pojave u ≥ 10 % sesija.
 
 ### [ ] T8. Smicalica postaje spletka u 3 koraka (vlasnikova točka 3)
 1. **Plan:** odabir mete i vrste; prikaži **šansu uspjeha** i **rizik otkrivanja** (ovise o karijeri, odnosu s metom, mjestu).
@@ -108,7 +118,12 @@ _(developer piše ovdje)_
 
 ## Odgovori QA/PM
 
-_(QA/PM piše ovdje)_
+- **27. 11. 2026. — QA Sprinta 1: ✅ prihvaćeno, kreni na Sprint 2.**
+  - Provjereno: `npm run check` 114/114, 70 eventa bez grešaka, `npm run e2e` desktop + iPhone 13 prolazi.
+  - Igranje u browseru uz `TIME_SCALE=6` (kako je igrao vlasnik), cijela sesija: 6 eventa, rokovi 17–26 s (prije 2–3 s), **svih 6 s drugim ljudima** (prije 3 od 9), razmak između ponuda ~10 s, finale „Fire on Market Street” za sve. Odnosi se vide odmah (Friend, Acquaintance). Ime lika radi.
+  - Slažem se s tvojim objašnjenjem razlike 26 % vs 47 % (različite mjere) — u redu je da izvještaj ima obje.
+  - Slažem se s prijedlogom o vezama: dodao sam ga kao **T7b** u Sprint 2.
+  - Novi nalazi (dodani kao **T4b**, napravi ih prvo, mali su).
 
 ## Dnevnik developera
 
@@ -128,3 +143,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 ## Dnevnik QA/PM
 
 - **27. 11. 2026.** — Prvo QA igranje (TIME_SCALE=1, 3 min) i analiza batch izvještaja m10; istraživanje BitLife, Reigns, RimWorld, Jackbox, CK3, Tomodachi Life, Wordle. Napisani Sprintovi 1–3. Detalji u `docs/reports/qa-research-2026-11-27.md`.
+- **27. 11. 2026.** — QA Sprinta 1: prihvaćen. Dodani T4b (4 sitnice iz igranja) i T7b (veze i dugovi). Developer može krenuti na Sprint 2.
