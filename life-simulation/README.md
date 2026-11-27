@@ -56,6 +56,7 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
 - Grad gledan odozgo s animiranim likovima (stil B3) koji žive rutinu, smjenu godišnjih doba, gradske preokrete i tajne smicalice (koncept v2, `docs/spec/08_CONCEPT_V2.md`).
 - Igru u browseru (desktop i mobitel):
   - prijava i registracija;
+  - privatna soba za prijatelje: „Create a room”, kod i link `/r/KX4P`, čekaonica, domaćin pokreće, botovi popune prazna mjesta;
   - lobby s avatarom, statistikom, brojem igrača online, prijašnjim životima i imenom lika (s nasumičnim prijedlogom);
   - izbor karijere s opisom sposobnosti; matchmaking s odbrojavanjem do popune botovima;
   - event s javnim i privatnim tekstom, odbrojavanjem i izborima koji pokazuju percipirane posljedice (isto što vide botovi), uz posebne izbore karijere;

@@ -564,6 +564,14 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **Z2:** mrtav lik više ne hoda: u trenutku smrti zaustavi se gdje je (klijenti dobiju poruku), rutina ga ionako preskače; za sve igrače se crta blijed s „x” očima čim stigne javna vijest o kraju priče, a grob s cvijećem ostaje kod kuće. Provjereno snimkom mape uz `QA_GHOST=1`.
 - Testovi: engine (nakon smrti nema kretanja; recap uhvaćenog krivca s odgovorom žrtve i „Caught: …”). `npm run check` 151/151, `npm run e2e` sve prolazi.
 
+## Sprint 4: MVP za objavu (odobrio vlasnik 27. studenog 2026.)
+
+### T14: privatna soba s linkom (developer)
+
+- **Server** (`server/src/rooms.ts`, `app.ts`): soba s kratkim kodom od 4 znaka bez sličnih slova (npr. `KX4P`), član (ime, karijera), domaćin i stanje (čeka / igra). Socket događaji `room:create`, `room:join`, `room:update`, `room:leave`, `room:start`, a svi u sobi dobivaju `room:state`. Nakon starta nitko ne može ući („This life has already started”); kad domaćin ode, domaćin postaje sljedeći; prazna soba se briše; tko zatvori sve prozore dok soba čeka, izlazi iz nje. Domaćin pokreće s 1 čovjekom naviše; prazna mjesta do `SESSION_SIZE` popune botovi. Nakon kraja života soba se vraća u čekaonicu (za T17). Klijent na spajanju dobije `me` (svoj id) i svoju sobu.
+- **Web:** u lobbyju „Create a room for friends” i „Join” s kodom; čekaonica `RoomScreen`: veliki kod, link i „Copy link”, tko je tu (domaćin, ti), ime i karijera, „Start the life” samo za domaćina, „Leave the room”. Link `/r/KX4P` (adresa u pregledniku se postavi dok si u sobi) nakon prijave odmah ulazi u sobu. „Find a life” ostaje.
+- **Testovi:** server (soba: kodovi, ulazak, „started”, „full”, predaja domaćina, brisanje; preko socketa domaćin + prijatelj s kodom igraju isti život s 2 bota, kasni gost odbijen) i **e2e `packages/web/e2e/room.mjs` s dva preglednika** (domaćin napravi sobu, prijatelj otvori link i registrira se, vide se u čekaonici, domaćin pokrene, oboje igraju isti život do Life Recapa). Dio `npm run e2e`.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 3, T10–T12):

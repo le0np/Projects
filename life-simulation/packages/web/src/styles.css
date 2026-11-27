@@ -1220,3 +1220,33 @@ main.game {
   width: 100%;
   max-width: 100%;
 }
+
+/* ---------- T14: private rooms ---------- */
+.room-code {
+  font-size: 3rem;
+  letter-spacing: 0.3em;
+  margin: 4px 0;
+}
+.room-link {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.room-link input {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.room-members li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.join-code {
+  display: inline-flex;
+  gap: 6px;
+}
+.join-code input {
+  width: 6em;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}

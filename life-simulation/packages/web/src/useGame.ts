@@ -99,6 +99,15 @@ export interface GameState {
   mischief?: Snapshot["mischief"];
 }
 
+/** T14: a private room's waiting room. */
+export interface RoomView {
+  code: string;
+  hostId: string;
+  members: { userId: string; name: string; career: string; isHost: boolean }[];
+  state: "waiting" | "playing";
+  maxPlayers: number;
+}
+
 export interface Lobby {
   online: number;
   inQueue: number;
@@ -157,6 +166,8 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
   const [match, setMatch] = useState<MatchStatus | null>(null);
   const [searching, setSearching] = useState(false);
   const [game, setGame] = useState<GameState | null>(null);
+  const [room, setRoom] = useState<RoomView | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -168,6 +179,8 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
       if (err.message === "unauthorized") onUnauthorized();
     });
     socket.on("lobby:state", setLobby);
+    socket.on("room:state", (r: RoomView) => setRoom(r));
+    socket.on("me", (m: { userId: string }) => setUserId(m.userId));
     socket.on("match:status", (s: MatchStatus) => setMatch(s));
 
     const start = (s: Snapshot) => {
@@ -364,7 +377,26 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
     [game?.sessionId],
   );
 
+  // T14: private rooms.
+  type RoomAck = { ok: boolean; error?: string; room?: RoomView } | undefined;
+  const createRoom = useCallback(async (name: string, career: string) => {
+    const res = (await socketRef.current?.emitWithAck("room:create", { name, career })) as RoomAck;
+    if (res?.room) setRoom(res.room);
+    return res;
+  }, []);
+  const joinRoom = useCallback(async (code: string, name: string, career: string) => {
+    const res = (await socketRef.current?.emitWithAck("room:join", { code, name, career })) as RoomAck;
+    if (res?.room) setRoom(res.room);
+    return res;
+  }, []);
+  const updateRoom = useCallback(async (change: { name?: string; career?: string }) => (await socketRef.current?.emitWithAck("room:update", change)) as RoomAck, []);
+  const leaveRoom = useCallback(async () => {
+    await socketRef.current?.emitWithAck("room:leave", {});
+    setRoom(null);
+  }, []);
+  const startRoom = useCallback(async () => (await socketRef.current?.emitWithAck("room:start", {})) as RoomAck, []);
+
   const leaveGame = useCallback(() => setGame(null), []);
 
-  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, playMischief, previewScheme, boostScheme, guess, ghostAction, leaveGame };
+  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, playMischief, previewScheme, boostScheme, guess, ghostAction, leaveGame, room, userId, createRoom, joinRoom, updateRoom, leaveRoom, startRoom };
 }

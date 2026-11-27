@@ -13,10 +13,15 @@ interface Props {
   match: MatchStatus | null;
   searching: boolean;
   findMatch: (career: string, name: string) => Promise<{ ok: boolean; error?: string } | undefined>;
+  createRoom: (name: string, career: string) => Promise<{ ok: boolean; error?: string } | undefined>;
+  joinRoom: (code: string, name: string, career: string) => Promise<{ ok: boolean; error?: string } | undefined>;
+  /** T14: why opening a room link did not work, if it did not. */
+  roomError?: string | null;
   cancelMatch: () => Promise<void>;
 }
 
-export function LobbyScreen({ token, onLogout, connected, lobby, match, searching, findMatch, cancelMatch }: Props) {
+export function LobbyScreen({ token, onLogout, connected, lobby, match, searching, findMatch, cancelMatch, createRoom, joinRoom, roomError }: Props) {
+  const [code, setCode] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [careers, setCareers] = useState<Career[]>([]);
   const [career, setCareer] = useState<string>(() => {
@@ -174,12 +179,37 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
               </button>
             </>
           ) : (
-            <button className="primary big" onClick={play} disabled={!connected || !selected || !nameOk}>
-              Find a life as {selected?.name ?? "…"}
-            </button>
+            <>
+              <button className="primary big" onClick={play} disabled={!connected || !selected || !nameOk}>
+                Find a life as {selected?.name ?? "…"}
+              </button>
+              <button
+                className="ghost big"
+                disabled={!connected || !selected || !nameOk}
+                onClick={async () => {
+                  const r = await createRoom(name.trim(), career);
+                  if (!r?.ok) setError("Could not create a room.");
+                }}
+              >
+                Create a room for friends
+              </button>
+              <span className="join-code">
+                <input aria-label="Room code" placeholder="Code" maxLength={4} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+                <button
+                  className="ghost"
+                  disabled={!connected || code.length !== 4 || !nameOk}
+                  onClick={async () => {
+                    const r = await joinRoom(code, name.trim(), career);
+                    if (!r?.ok) setError(roomErrorText(r?.error));
+                  }}
+                >
+                  Join
+                </button>
+              </span>
+            </>
           )}
         </div>
-        {error && <p className="error">{error}</p>}
+        {(error || roomError) && <p className="error">{error ?? roomError}</p>}
       </section>
 
       {profile?.titles && profile.titles.length > 0 && (
@@ -243,4 +273,17 @@ function Stat({ label, value }: { label: string; value: number | string }) {
       <span className="stat-label">{label}</span>
     </div>
   );
+}
+
+/** T14: what to say when a room cannot be joined. */
+export function roomErrorText(error: string | undefined): string {
+  return error === "started"
+    ? "This life has already started."
+    : error === "not_found"
+      ? "There is no room with that code."
+      : error === "full"
+        ? "That room is full."
+        : error === "already_in_session"
+          ? "You are already in a session."
+          : "Could not join the room.";
 }

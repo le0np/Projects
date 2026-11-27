@@ -16,12 +16,14 @@ import type { Database } from "./db/database";
 import { LiveSession, type Seat } from "./live-session";
 import { Matchmaker, type Ticket } from "./matchmaking";
 import { Repo, type UserRow } from "./repo";
+import { Rooms } from "./rooms";
 
 export interface App {
   http: FastifyInstance;
   io: SocketServer;
   repo: Repo;
   matchmaker: Matchmaker;
+  rooms: Rooms;
   live: ReadonlyMap<string, LiveSession>;
   close(): Promise<void>;
 }
@@ -41,6 +43,10 @@ const CharacterName = z
   .max(16)
   .regex(/^[\p{L}][\p{L} '-]*$/u);
 const FindMatch = z.object({ career: z.string(), name: CharacterName.optional() });
+const RoomCode = z.string().trim().regex(/^[A-Za-z0-9]{4}$/).transform((c) => c.toUpperCase());
+const RoomCreate = z.object({ career: z.string(), name: CharacterName });
+const RoomJoin = z.object({ code: RoomCode, career: z.string(), name: CharacterName });
+const RoomUpdate = z.object({ career: z.string().optional(), name: CharacterName.optional() });
 const Decide = z.object({ sessionId: z.string(), instanceId: z.string(), choiceId: z.string() });
 const Prank = z.object({ sessionId: z.string(), mischiefId: z.string(), targetId: z.string() });
 const Ghost = z.object({ sessionId: z.string(), action: z.enum(["nudge", "vote", "will"]), target: z.string().max(300) });
@@ -56,6 +62,8 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
   const io = new SocketServer(http.server, { cors: { origin: true } });
 
   const live = new Map<string, LiveSession>(); // sessionId → session
+  const rooms = new Rooms(config.sessionSize);
+  const roomOfSession = new Map<string, string>(); // sessionId → room code (T14)
   const liveByUser = new Map<string, LiveSession>();
   const sockets = new Map<string, Set<string>>(); // userId → socket ids
   const careerIds = [...content.careers.keys()];
@@ -88,7 +96,13 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
     onMatch: (tickets) => void startSession(tickets),
   });
 
-  async function startSession(tickets: Ticket[]): Promise<void> {
+  /** T14: everyone in a room sees the same waiting room. */
+  const broadcastRoom = (code: string) => {
+    const room = rooms.get(code);
+    if (room) io.to(`room:${code}`).emit("room:state", rooms.view(room));
+  };
+
+  async function startSession(tickets: Ticket[], roomCode?: string): Promise<void> {
     const seats: Seat[] = tickets.map((t) => ({ kind: "human", userId: t.userId, name: t.name, career: t.career }));
     while (seats.length < config.sessionSize) seats.push({ kind: "bot", career: seatRng.pick(careerIds) });
     const session = new LiveSession(
@@ -104,6 +118,10 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
         onDecision: (sessionId, entry) => void repo.decisionMade(sessionId, entry).catch((err) => http.log.error(err)),
         onFinished: (s, result) => {
           live.delete(s.id);
+          // T14/T17: a room's life is over; whoever is still in it is back in its waiting room.
+          const code = roomOfSession.get(s.id);
+          roomOfSession.delete(s.id);
+          if (code && rooms.finished(code)) broadcastRoom(code);
           for (const userId of s.humans.keys()) if (liveByUser.get(userId) === s) liveByUser.delete(userId);
           const userOf = (key: string) => s.roster.find((r) => r.characterId === key)?.userId ?? null;
           void repo
@@ -115,6 +133,7 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
       { timeScale: config.timeScale, paceScale: config.paceScale, qaSchemeOnHuman: config.qaForceSchemeOnHuman },
     );
     live.set(session.id, session);
+    if (roomCode) roomOfSession.set(session.id, roomCode);
     for (const t of tickets) liveByUser.set(t.userId, session);
     try {
       session.start();
@@ -248,6 +267,13 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
     const running = liveByUser.get(user.id);
     if (running) socket.emit("game:state", running.snapshot(user.id));
     socket.emit("lobby:state", lobbyState());
+    // T14: who you are (the client needs it to know whether it hosts its room), and your room, if any.
+    socket.emit("me", { userId: user.id });
+    const myRoom = rooms.roomOf(user.id);
+    if (myRoom) {
+      void socket.join(`room:${myRoom.code}`);
+      socket.emit("room:state", rooms.view(myRoom));
+    }
 
     socket.on("match:find", (raw: unknown, ack: Ack = () => {}) => {
       const body = FindMatch.safeParse(raw);
@@ -257,6 +283,70 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
       matchmaker.enqueue(user.id, body.data.name ?? user.username, body.data.career);
       ack({ ok: true, status: matchmaker.status(user.id) ?? { state: "matched" } });
       broadcastLobby();
+    });
+
+    // ---------------------------------------------------------------- T14: private rooms
+
+    const enterRoom = (code: string) => io.in(`user:${user.id}`).socketsJoin(`room:${code}`);
+    const leaveRoom = () => {
+      const before = rooms.roomOf(user.id);
+      if (!before) return;
+      io.in(`user:${user.id}`).socketsLeave(`room:${before.code}`);
+      const after = rooms.leave(user.id);
+      if (after) broadcastRoom(after.code);
+    };
+
+    socket.on("room:create", (raw: unknown, ack: Ack = () => {}) => {
+      const body = RoomCreate.safeParse(raw);
+      if (!body.success) return ack({ ok: false, error: "invalid" });
+      if (!content.careers.has(body.data.career)) return ack({ ok: false, error: "unknown_career" });
+      if (liveByUser.has(user.id)) return ack({ ok: false, error: "already_in_session" });
+      leaveRoom();
+      matchmaker.cancel(user.id);
+      const room = rooms.create({ userId: user.id, name: body.data.name, career: body.data.career });
+      enterRoom(room.code);
+      ack({ ok: true, room: rooms.view(room) });
+      broadcastRoom(room.code);
+    });
+
+    socket.on("room:join", (raw: unknown, ack: Ack = () => {}) => {
+      const body = RoomJoin.safeParse(raw);
+      if (!body.success) return ack({ ok: false, error: "invalid" });
+      if (!content.careers.has(body.data.career)) return ack({ ok: false, error: "unknown_career" });
+      if (liveByUser.has(user.id)) return ack({ ok: false, error: "already_in_session" });
+      if (rooms.roomOf(user.id)?.code !== body.data.code) leaveRoom();
+      matchmaker.cancel(user.id);
+      const res = rooms.join(body.data.code, { userId: user.id, name: body.data.name, career: body.data.career });
+      if (!res.ok) return ack(res);
+      enterRoom(res.room.code);
+      ack({ ok: true, room: rooms.view(res.room) });
+      broadcastRoom(res.room.code);
+    });
+
+    socket.on("room:update", (raw: unknown, ack: Ack = () => {}) => {
+      const body = RoomUpdate.safeParse(raw);
+      if (!body.success || (body.data.career && !content.careers.has(body.data.career))) return ack({ ok: false, error: "invalid" });
+      const room = rooms.update(user.id, body.data);
+      if (!room) return ack({ ok: false, error: "not_in_room" });
+      ack({ ok: true });
+      broadcastRoom(room.code);
+    });
+
+    socket.on("room:leave", (_raw: unknown, ack: Ack = () => {}) => {
+      leaveRoom();
+      ack({ ok: true });
+    });
+
+    socket.on("room:start", (_raw: unknown, ack: Ack = () => {}) => {
+      const res = rooms.start(user.id);
+      if (!res.ok) return ack(res);
+      const tickets: Ticket[] = res.room.members
+        .filter((m) => !liveByUser.has(m.userId))
+        .map((m) => ({ userId: m.userId, name: m.name, career: m.career, enqueuedAt: Date.now() }));
+      for (const t of tickets) matchmaker.cancel(t.userId);
+      ack({ ok: true });
+      broadcastRoom(res.room.code);
+      void startSession(tickets, res.room.code);
     });
 
     socket.on("match:cancel", (_raw: unknown, ack: Ack = () => {}) => {
@@ -329,6 +419,8 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
         sockets.delete(user.id);
         // An absent player should not be matched; a running session keeps their seat (defaults apply).
         matchmaker.cancel(user.id);
+        // T14: someone who left the waiting room for good is out of it (a refresh joins again via the link).
+        if (rooms.roomOf(user.id)?.state === "waiting") leaveRoom();
       }
       broadcastLobby();
     });
@@ -339,6 +431,7 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
     io,
     repo,
     matchmaker,
+    rooms,
     live,
     async close() {
       clearInterval(matchTimer);

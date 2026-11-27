@@ -148,7 +148,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 
 Podloga: [`docs/research/market-research-2026-11-27.md`](docs/research/market-research-2026-11-27.md) (§5 gameplay, §6 MVP). Niša: **„BitLife za tvoju grupu prijatelja”**. Prvo privatne sobe, a javni matchmaking ostaje drugi put ulaska. Radi redom, nakon T13.
 
-### [ ] T14. Privatna soba s linkom (M1)
+### [x] T14. Privatna soba s linkom (M1)
 - U lobbyju gumb **„Create a room”** → soba s kratkim kodom (npr. `KX4P`) i linkom `/r/KX4P`. Gumb „Copy link”.
 - Tko otvori link, ulazi u **čekaonicu sobe**: popis ljudi, izbor karijere i imena. Domaćin vidi „Start” (od 1 čovjeka naviše); prazna mjesta do `SESSION_SIZE` popune botovi.
 - Ulaz u sobu nakon starta nije moguć (poruka „This life has already started”). Soba se briše kad svi odu.
