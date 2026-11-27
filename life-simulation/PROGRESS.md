@@ -418,20 +418,16 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 
 ## Zadnja automatizirana provjera
 
-Provedeno 13. studenog 2026.:
+Provedeno 27. studenog 2026. (nakon Sprinta 1, T1–T4):
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm run typecheck` | prolazi |
-| `npm run validate` | 67 eventa, 0 grešaka, 0 upozorenja |
-| `npm test` | 97/97 testova prolazi |
-| `TEST_DATABASE_URL=… npx vitest run packages/server` | 4/4 na PostgreSQL 16 (privremeni lokalni klaster); u bazi: sesija `completed`, 40 odluka igrača i 1 default (dok je igrač bio odspojen), 4 rezultata |
-| `npm run server` + curl | health, registracija, validacijske poruke, karijere rade |
-| `npm run typecheck` (uključuje web) i `npm run web:build` | čisto; bundle 88 kB gzip |
-| `npm run e2e` | ✓ desktop i ✓ iPhone 13 (s gradom i likovima B3): cijela sesija, recap, log, lobby; server se nakon testa gasi |
-| `npm run sim:batch -- --sessions 500 --seed m4` | 500 sesija; replay 3/3 identičan; izvještaj u `docs/reports/m4.report.md` |
-| `npm run sim -- --seed demo --explain` | sesija sa 6 botova, 10 eventa, 1 nastavak; odluke su u skladu s osobnostima (npr. principijelan bot posuđuje novac i oprašta dug, manipulator laže i izbjegava vjerovnika) |
-| Ručno: CLI na pokvarenoj kopiji sadržaja | izlazni kod 1; prijavljuje neispravan JSON i nepostojeći nastavak |
+| Svjež `git clone` grane `dev` s GitHuba → `npm install`, `npm run check` | typecheck čist; 70 eventa, 0 grešaka, 0 upozorenja; **114/114 testova** |
+| Svjež klon: `npm run web:build`, server + curl | build čist (94 kB gzip); `/api/health`, `/api/careers` i web stranica rade |
+| `npm run e2e` | ✓ desktop 1280×800 i ✓ iPhone 13: cijela sesija s finalom, recap, log, lobby; za svaki event svi izbori na ekranu bez skrolanja; ime lika iz lobbyja |
+| `npm run sim:batch -- --sessions 200 --seed t3` | sve sesije završe finalom; 64,4 % eventa s ≥ 2 lika koji odlučuju; ponavljanje 1,0 %; smrtnost 3,5 %; replay 3/3 identičan (`docs/reports/t3.report.md`) |
+| Skripta u browseru (TIME_SCALE=6, 4 eventa po uređaju) | 0 izbora izvan ekrana, kartica 300 px na mapi od 856 px |
+| Ranije (13. 11.): PostgreSQL 16 | nije ponovljeno u ovom sprintu (nema promjena u bazi) |
 
 ## Poznata ograničenja
 
@@ -442,11 +438,14 @@ Provedeno 13. studenog 2026.:
 - Restart servera prekida sesije u tijeku (označe se kao `cancelled`).
 - Nema prijevoda sučelja; tekstovi igre su na engleskom (odluka D5).
 - Engineer, teacher, mechanic, psychologist, journalist i civilian još nemaju poseban izbor ni u jednom eventu (dolazi s M4).
+- Prije finala čovjek čeka da svi ostali završe svoje evente. Botovi tada odgovore odmah, ali ako je drugi čovjek u eventu, čekanje može trajati do njegovog roka (do 35–45 s).
+- Pravih odnosa (prijatelj, suparnik, partner, dug…) u zajedničkim eventima je ~31 %. Eventi koji traže partnera (Jealousy, Crisis Talk) i dalje su rijetki, jer se partneri malo stvaraju.
+- Sesija samo s botovima traje ~432 s umjesto 480, jer botovi finale odluče odmah; s ljudima finale traje koliko i njihov rok.
 - Kad Zod `union` padne (uvjeti), poruka greške prikazuje grananje koje je stiglo najdublje. Ponekad je zato manje jasna od poruka za efekte.
 
 ## Sljedeći koraci
 
-1. **Riješiti povratnu informaciju vlasnika** (gore) prema zadacima u `INSTRUCTIONS_FOR_AGENT.md` (Sprint 1 → 2 → 3).
+1. **QA testira Sprint 1** (`INSTRUCTIONS_FOR_AGENT.md`). Nakon njegove povratne informacije: Sprint 2 (T5–T9: event počinje na mapi, raspoloženje i odnosi na mapi, trajni tragovi, spletke u 3 koraka, pogađanje dok čekaš), pa Sprint 3 (T10–T12).
 2. Nakon toga, po planu §9: M12 Sadržaj (humorističan ton, životne faze) i M13 Balans.
 
 ## Handoff za novi chat
