@@ -1148,3 +1148,9 @@ main.game {
 .goals-recap .bad {
   color: var(--bad);
 }
+.clue-line {
+  display: block;
+  margin-top: 4px;
+  color: var(--risk);
+  font-weight: 600;
+}

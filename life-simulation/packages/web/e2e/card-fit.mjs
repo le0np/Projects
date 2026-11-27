@@ -36,17 +36,26 @@ for (const f of readdirSync(dir)) {
     if (/ and [A-Z][a-z]+ (is|has|was) /.test(filled)) grammar.push(`${e.id}: ${filled}`);
   }
   for (const [role, choices] of Object.entries(e.choices ?? {})) {
-    const visible = [...choices.filter((c) => !c.careers && !c.condition), ...choices.filter((c) => c.condition && !c.careers).slice(0, 1), ...choices.filter((c) => c.careers).slice(0, 1)];
-    const clue = role === "victim" && (clues.has(e.id) || e.id === "scheme_caught") ? fill(clues.get(e.id) ?? "You caught {culprit} at it.") : null;
-    cards.push({ id: `${e.id}/${role}`, clue, title: fill(e.title), cat: e.category, important: e.importance === "important",
+    // T8c V1: a victim of a scheme is drawn twice: not knowing who did it, and having caught them
+    // (the clue, every "caught" choice, no more investigating).
+    const spotted = (c) => JSON.stringify(c.condition ?? null).includes('"spotted"');
+    const caughtToo = role === "victim" && choices.some((c) => spotted(c) && !JSON.stringify(c.condition).includes('"not"'));
+    for (const caught of caughtToo ? [false, true] : [false]) {
+    const unconditional = choices.filter((c) => !c.careers && !c.condition);
+    const visible = caught
+      ? [...unconditional, ...choices.filter((c) => spotted(c) && !c.careers && !JSON.stringify(c.condition).includes('"not"')), ...choices.filter((c) => c.careers).slice(0, 1)]
+      : [...unconditional, ...choices.filter((c) => c.condition && !c.careers && !(spotted(c) && !JSON.stringify(c.condition).includes('"not"'))).slice(0, 1), ...choices.filter((c) => c.careers).slice(0, 1)];
+    const clue = caught || (role === "victim" && e.id === "scheme_caught") ? fill(clues.get(e.id) ?? "You caught {culprit} at it.") : null;
+    cards.push({ id: `${e.id}/${role}${caught ? "+caught" : ""}`, clue, title: fill(e.title), cat: e.category, important: e.importance === "important",
       pub: fill(e.text.public), priv: e.text.private?.[role] ? fill(e.text.private[role]) : null,
       with: Object.entries(names).filter(([r]) => r !== role).flatMap(([, n]) => n).join(", "),
       choices: visible.map((c) => ({ label: fill(c.label), special: !!c.careers, note: c.insight?.note, hints: Object.keys(c.perceived ?? {}).length })), def: fill(choices.find((c) => c.default).label) });
+    }
   }
 }
 const card = (c) => `<div class="overlay beside"><article class="card event"><div class="event-meta"><span class="chip cat-${c.cat}">${c.cat}</span>${c.important ? '<span class="chip risk">Important</span>' : ""}<span class="countdown">25s</span></div>
 <div class="bar thin"><div class="bar-fill urgent" style="width:80%"></div></div><h1 id="event-title">${esc(c.title)}</h1><div class="event-story"><p class="lead">${esc(c.pub)}</p></div>
-${c.clue ? `<p class="clue"><span class="private-label">You noticed</span>${esc(c.clue)}</p>` : ""}${c.priv ? `<p class="private"><span class="private-label">Only you know</span>${esc(c.priv)}</p>` : ""}${c.with ? `<p class="muted small with">With: ${esc(c.with)}</p>` : ""}
+${c.priv || c.clue ? `<p class="private"><span class="private-label">Only you know</span>${esc(c.priv ?? "")}${c.clue ? `<span class="clue-line">🔎 ${esc(c.clue)}</span>` : ""}</p>` : ""}${c.with ? `<p class="muted small with">With: ${esc(c.with)}</p>` : ""}
 <ul class="choices">${c.choices.map((x) => `<li><button class="choice${x.special ? " special" : ""}"><span class="choice-label">${x.special ? '<span class="special-tag">Your expertise</span>' : ""}${esc(x.label)}</span>${x.note ? `<span class="insight">${esc(x.note)}</span>` : ""}<span class="hints">${Array.from({ length: Math.min(3, x.hints) }, (_, i) => `<span class="hint ${i % 2 ? "bad" : "good"}">${["€ Money ↑", "Alexandra ↓", "Risky"][i]}</span>`).join("")}</span></button></li>`).join("")}</ul>
 <p class="muted small default-note">If time runs out: “${esc(c.def)}”</p></article></div>`;
 const browser = await pw.chromium.launch();
@@ -59,13 +68,15 @@ for (const c of cards) {
   const m = await page.evaluate(() => {
     const st = document.querySelector(".event-story"); const pr = document.querySelector(".card.event .private"); const vh = innerHeight;
     const ch = [...document.querySelectorAll("button.choice")].map((b) => b.getBoundingClientRect());
-    return { story: st.scrollHeight - st.clientHeight, priv: pr ? pr.scrollHeight - pr.clientHeight : 0, cardH: Math.round(document.querySelector(".card.event").getBoundingClientRect().height),
+    const card = document.querySelector(".card.event").getBoundingClientRect();
+    const note = document.querySelector(".default-note").getBoundingClientRect();
+    return { noteCut: note.bottom > Math.min(vh, card.bottom) + 0.5 ? 1 : 0, story: st.scrollHeight - st.clientHeight, priv: pr ? pr.scrollHeight - pr.clientHeight : 0, cardH: Math.round(document.querySelector(".card.event").getBoundingClientRect().height),
       town: Math.round(document.querySelector(".town").getBoundingClientRect().height), choiceOff: ch.filter((r) => r.bottom > vh).length };
   });
   rows.push([c.id, m]);
-  if (m.story > 1 || m.priv > 1 || m.choiceOff) bad++;
+  if (m.story > 1 || m.priv > 1 || m.choiceOff || m.noteCut) bad++;
 }
-const worst = rows.filter((r) => r[1].story > 1 || r[1].priv > 1 || r[1].choiceOff).slice(0, 20);
+const worst = rows.filter((r) => r[1].story > 1 || r[1].priv > 1 || r[1].choiceOff || r[1].noteCut).slice(0, 20);
 console.log(`${bad ? "✗" : "✓"} ${W}×${H}: ${cards.length} event cards, ${bad} need scrolling`);
 for (const [id, m] of worst) console.log("   ", id, JSON.stringify(m));
 failed += bad;

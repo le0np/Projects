@@ -27,7 +27,7 @@
       },
       "success": 0.7,
       "risk": 0.25,
-      "clue": "The complaint mentions things only {culprit} could know."
+      "clue": "Only {culprit} could know these details."
     },
     {
       "id": "flat_tyres",

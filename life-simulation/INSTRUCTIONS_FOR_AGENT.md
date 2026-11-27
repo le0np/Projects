@@ -115,7 +115,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 ### [x] T9b. Sitnica iz QA T9
 - **P1:** Kad 3+ lika stoje zajedno (npr. ispred The Last Call), imena i emojiji se preklapaju („G Luka”) i ne mogu se pročitati. Raširi oznake lepezasto ili pomakni likove malo jedne od drugih kad stoje na istom mjestu.
 
-### [ ] T8c. Sitnice sa strane žrtve (QA uz `QA_FORCE_SCHEME_ON_HUMAN=1`)
+### [x] T8c. Sitnice sa strane žrtve (QA uz `QA_FORCE_SCHEME_ON_HUMAN=1`)
 - **V1:** Kartica „Flat Tyres” s tragom ima 5 izbora i na 1280×800 donji red („If time runs out: …”) je odrezan. `card-fit.mjs` vjerojatno ne iscrtava kombinaciju „trag + svi izbori žrtve”; dodaj je i popravi.
 - **V2:** Kad žrtva već ima trag („Your neighbour's camera shows Lea…”), izbor „Check the neighbour's doorbell camera” nema smisla. Sakrij ga kad je krivac otkriven, ili ga promijeni u nešto drugo.
 

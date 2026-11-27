@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "mischief_fake_lawsuit",
-  "version": 2,
+  "version": 3,
   "title": "A Letter from a Lawyer",
   "category": "everyday",
   "trigger": "followup_only",
@@ -57,7 +57,7 @@
       },
       {
         "id": "confront",
-        "label": "Confront {culprit} in public",
+        "label": "Confront {culprit}",
         "tags": [
           "threaten",
           "truth"
@@ -92,7 +92,7 @@
       },
       {
         "id": "revenge",
-        "label": "Smile and plan your revenge on {culprit}",
+        "label": "Plan revenge on {culprit}",
         "tags": [
           "risk"
         ],

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "mischief_dodgy_repair",
-  "version": 2,
+  "version": 4,
   "title": "A Slow Leak",
   "category": "everyday",
   "trigger": "followup_only",
@@ -53,11 +53,17 @@
         "perceived": {
           "money": -1,
           "risk": 1
+        },
+        "condition": {
+          "not": {
+            "fact": "spotted",
+            "about": "role:culprit"
+          }
         }
       },
       {
         "id": "confront",
-        "label": "Confront {culprit} in public",
+        "label": "Confront {culprit}",
         "tags": [
           "threaten",
           "truth"
@@ -92,7 +98,7 @@
       },
       {
         "id": "revenge",
-        "label": "Smile and plan your revenge on {culprit}",
+        "label": "Plan revenge on {culprit}",
         "tags": [
           "risk"
         ],

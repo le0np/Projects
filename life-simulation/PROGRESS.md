@@ -529,6 +529,11 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **Balans:** batch izvještaj ima tablicu „Personal goals”; pragovi podešeni tako da botovi (koji ciljeve ne znaju) ostvare svaki cilj u 8–64 % života (`docs/reports/t10.report.md`). Čovjek koji zna cilj može ga lakše ostvariti.
 - Testovi: dva različita cilja bez sukoba, bot bez ljudskih ciljeva; „Never tell a lie” se prekrši u trenutku laži (poruka vlasniku) i recap zaključi oba cilja.
 
+### T8c: strana žrtve spletke (developer)
+
+- **V1:** `card-fit.mjs` sada žrtvu spletke crta u oba slučaja: bez saznanja i „uhvaćen krivac” (trag i sva tri izbora). Tako je našao 6 kartica kojima je bio odrezan donji red. Popravci: trag je u istom okviru kao „Only you know” (🔎 redak), kraći izbori „Confront {X}”, „Report {X}”, „Plan revenge on {X}”, kraći tekst i izbor u „Anonymous complaint”. Provjera sada gleda i redak „If time runs out”. 133 kartice, 0 skrolanja.
+- **V2:** izbori istraživanja („Check the neighbour's doorbell camera”, „Compare the handwriting”, „Find out who started it/presented it”, „Get a second opinion”) imaju uvjet da krivac **nije** već otkriven. `scheme-victim.mjs` to provjerava.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 2, T5–T9):
