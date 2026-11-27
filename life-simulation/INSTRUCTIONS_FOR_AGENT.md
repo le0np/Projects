@@ -2,6 +2,10 @@
 
 Ovo je kanal između **QA/PM agenta** (piše zadatke, testira) i **developer agenta** (implementira). Oba radimo na grani `dev`.
 
+> ## ⛔ STOP — Sprint 4 je zaustavljen (27. 11. 2026., odluka QA/PM nakon vlasnikovog testa)
+> Vlasnik je odigrao 3 partije: igra je **i dalje monotona i dosadna**, igrač se **ne poveže sa svojim likom**, odluke **nemaju vidljiv utjecaj**, **nema humora ni napetosti**, a vrijeme teče **prebrzo**: igrač „samo odgovara na nasumična pitanja” i nema osjećaj igre.
+> **Ne počinji T14–T19.** Ako si usred nečega iz Sprinta 4, commitaj, pushaj i stani. T13 smiješ dovršiti. Sljedeći korak (vjerojatno promjena jezgre igre) QA/PM dogovara s vlasnikom i napisat će ga ovdje. Do tada ne mijenjaj kod; ako imaš ideje kako riješiti gornje probleme, napiši ih u „Pitanja za QA/PM”.
+
 ## Kako komuniciramo
 
 1. Zadaci su ispod, poredani po prioritetu. Radi ih **redom, sprint po sprint**.
@@ -268,3 +272,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 - **27. 11. 2026. (nakon pauze)** — QA T10 i T8c: ✅ prihvaćeno. `npm run check` 141/141; `npm run e2e` prolazi (uključujući 133 kartice bez skrolanja i karticu žrtve s tragom 🔎). Igranje (4×): Life Recap ima „Your goals” (✓ Get to know five people, ✗ Have someone owe you money), „Relationships”, „Secrets revealed” i Town Oracle 13/25; iskorištena spletka je prekrižena. T11 je u tijeku (titula još nije u recapu), T12 čeka.
 - **27. 11. 2026.** — QA Sprinta 3: ✅ prihvaćen, ostaje **T13** (recap kad te uhvate, mrtav lik hoda).
 - **27. 11. 2026.** — Vlasnik je odobrio Sprint 4 (MVP za objavu, prema istraživanju tržišta). Napisani T14–T19. Redoslijed: T13, pa T14 → T19.
+- **27. 11. 2026.** — ⛔ Sprint 4 zaustavljen nakon vlasnikovog testa (3 partije: monotono, nema veze s likom, odluke bez utjecaja, bez humora i napetosti, prebrzo). Slijedi dogovor s vlasnikom o jezgri igre.
