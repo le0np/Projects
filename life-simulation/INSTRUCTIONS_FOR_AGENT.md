@@ -115,7 +115,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 ### [x] T9b. Sitnica iz QA T9
 - **P1:** Kad 3+ lika stoje zajedno (npr. ispred The Last Call), imena i emojiji se preklapaju („G Luka”) i ne mogu se pročitati. Raširi oznake lepezasto ili pomakni likove malo jedne od drugih kad stoje na istom mjestu.
 
-### [ ] T8c. Sitnice sa strane žrtve (QA uz `QA_FORCE_SCHEME_ON_HUMAN=1`)
+### [x] T8c. Sitnice sa strane žrtve (QA uz `QA_FORCE_SCHEME_ON_HUMAN=1`)
 - **V1:** Kartica „Flat Tyres” s tragom ima 5 izbora i na 1280×800 donji red („If time runs out: …”) je odrezan. `card-fit.mjs` vjerojatno ne iscrtava kombinaciju „trag + svi izbori žrtve”; dodaj je i popravi.
 - **V2:** Kad žrtva već ima trag („Your neighbour's camera shows Lea…”), izbor „Check the neighbour's doorbell camera” nema smisla. Sakrij ga kad je krivac otkriven, ili ga promijeni u nešto drugo.
 
@@ -123,7 +123,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 
 ## Sprint 3 — razlog za još jednu partiju
 
-### [ ] T10. Osobni ciljevi za sesiju
+### [x] T10. Osobni ciljevi za sesiju
 - Svaki igrač na početku dobije **2 osobna cilja** iz popisa od ~20. Ciljevi su **o tvom životu, ne protiv nekoga** i ne o dugom životu. Primjeri: „Zaradi da ti 2 osobe duguju novac”, „Napreduj na poslu prije 25.”, „Pretvori stranca u najboljeg prijatelja”, „Prođi preokret bez ičije pomoći”, „Izvedi spletku i ne budi otkriven”.
 - Vidljivi u zaglavlju, a u recapu ✓/✗. Nema pobjednika.
 
@@ -193,6 +193,8 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 **✅ Sprint 2 (T5–T9, plus T4b, T5b, T6b, T6c, T7b) je gotov i spreman za QA test.** Provjereno na svježem `git clone` (`npm install`, `npm run check` 138/138, `web:build`, server) i `npm run e2e` (desktop + iPhone 13, 125 kartica bez skrolanja). Batch 200 sesija: `docs/reports/sprint2.report.md`. Ručno: `cd life-simulation && npm install && TIME_SCALE=3 FILL_AFTER_SECONDS=2 npm run start` → http://localhost:3000 (uz 3× se reakcije, spletke i pogađanje dobro vide). Čekam povratnu informaciju prije Sprinta 3.
 - **27. 11. 2026. — T8b gotov** (`6a6db06`). S1: nakon spletke odabir se sam pomakne na još moguću spletku, iskorištene su prekrižene, poruka „Kim already got this one, pick another scheme.” S2: `QA_FORCE_SCHEME_ON_HUMAN=1 TIME_SCALE=6 FILL_AFTER_SECONDS=2 npm run start` → bot nakon 2 s planira „Let their tyres down” na tebe, a svaka spletka uspije i krivac bude otkriven; za ~10 s dobiješ „Flat Tyres” s tragom „You noticed …”, tri izbora i besplatnu osvetu. Isto provjerava novi `packages/web/e2e/scheme-victim.mjs` u `npm run e2e` (prolazi).
 - **27. 11. 2026. — T9b gotov** (`6a3596f`). Likovi koji stoje zajedno crtaju se kao grupa: malo se rašire, imena se slažu prema gore s tankom crtom do glave, emoji je pokraj imena, „!” jednom po grupi. Provjereno na finalu (svih 6 na jednom mjestu, sva imena čitljiva). **Kartica lika ima e2e:** `npm run e2e` klikne drugog lika (pozicije iz atributa `data-people` na canvasu) i provjeri karticu, na desktopu i mobitelu — QA skripta može isto: `JSON.parse(canvas.dataset.people)` daje `{ c2: [x, y] }` u pikselima canvasa. Sljedeće: Sprint 3 (T10–T12).
+- **27. 11. 2026. — T10 gotov** (`93bb9d1`). 20 ciljeva u `packages/content/data/goals.json`, 2 po liku (bez sukoba, botovi bez „pogađanja”), vidljivi u zaglavlju kao čipovi ○/✓/✗, u Life Recapu „Your goals” s ✓/✗. Načini: „ever” (ostvaren kad se dogodi), „end” (stanje na kraju, ✓ tijekom igre je privremen), „never” (ostvaren ako ga ne prekršiš, npr. „Never tell a lie”). Batch tablica „Personal goals”: botovi ostvare svaki cilj u 8–64 % života. Sljedeće: T8c, pa T11.
+- **27. 11. 2026. — T8c gotov** (`037d24f`). V1: `card-fit.mjs` sada crta i karticu žrtve s otkrivenim krivcem (trag + sva tri izbora) i provjerava redak „If time runs out”; našao je 6 odrezanih kartica. Trag je sada redak 🔎 u okviru „Only you know”, izbori su kraći („Confront X”, „Report X”, „Plan revenge on X”): 133 kartice, 0 odrezanih. V2: kamera/rukopis/istraga se ne nude kad je krivac već otkriven (`scheme-victim.mjs` provjerava). Sljedeće: T11.
 
 ## Dnevnik QA/PM
 

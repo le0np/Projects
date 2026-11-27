@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Rng, VirtualClock, type Notice } from "@lifesim/core";
 import { loadContent } from "@lifesim/content";
 import { RandomController, Session, resolveConfig, runSession } from "../src";
+import { scripted } from "./helpers";
 
 const content = loadContent();
 const clock = new VirtualClock();
@@ -357,5 +358,58 @@ describe("T8b: QA can make the victim's side certain", () => {
     const results = session.log.filter((e) => e.type === "scheme_result");
     expect(results).toHaveLength(2);
     for (const r of results) expect(r).toMatchObject({ result: "worked", discovered: true });
+  });
+});
+
+describe("T10: personal goals", () => {
+  it("everyone gets two goals that go together; bots never get a goal they cannot pursue", () => {
+    for (let k = 0; k < 30; k++) {
+      const s = new Session(content, resolveConfig({ seed: `goals-${k}` }), [{ career: "lawyer", isBot: false }, ...["doctor", "teacher", "mechanic"].map((career) => ({ career, isBot: true }))], new VirtualClock());
+      for (const id of ["c1", "c2", "c3", "c4"]) {
+        const goals = s.goalsOf(id);
+        expect(goals).toHaveLength(2);
+        expect(goals[0]!.id).not.toBe(goals[1]!.id);
+        const defs = goals.map((g) => content.goals.get(g.id)!);
+        expect(defs[0]!.conflicts ?? []).not.toContain(defs[1]!.id);
+        if (id !== "c1") expect(defs.some((d) => d.humansOnly)).toBe(false);
+        expect(goals.every((g) => g.state === "open")).toBe(true);
+      }
+    }
+  });
+
+  it("a 'never' goal breaks the moment you do it, the owner is told, and the recap settles every goal", () => {
+    // Find a life with "Never tell a lie" and make that player lie at the first chance.
+    for (let k = 0; k < 200; k++) {
+      const seed = `honest-${k}`;
+      const probe = new Session(content, resolveConfig({ seed }), ["lawyer", "doctor", "teacher", "mechanic"].map((career) => ({ career, isBot: false })), new VirtualClock());
+      if (!probe.goalsOf("c1").some((g) => g.id === "honest")) continue;
+      const notices: Notice[] = [];
+      let lied = false;
+      runSession({
+        content,
+        config: { seed },
+        participants: [
+          { career: "lawyer", isBot: false, controller: scripted((v) => {
+            const lie = v.offer.choices.find((c) => c.tags.includes("lie"));
+            if (lie && !lied) {
+              lied = true;
+              return lie.id;
+            }
+            return v.offer.choices.find((c) => !c.tags.includes("lie"))?.id ?? v.offer.choices[0]!.id;
+          }) },
+          ...["doctor", "teacher", "mechanic"].map((career, i) => ({ career, isBot: false, controller: new RandomController(new Rng(`h${i}`), 0) })),
+        ],
+        onNotice: (id, n) => id === "c1" && notices.push(n),
+      });
+      if (!lied) continue;
+      const update = notices.find((n) => n.kind === "goals" && n.goals.some((g) => g.id === "honest" && g.state === "broken"));
+      expect(update).toBeDefined();
+      const recap = notices.find((n) => n.kind === "session_completed");
+      const goals = recap?.kind === "session_completed" ? recap.recap.goals : [];
+      expect(goals).toHaveLength(2);
+      expect(goals.find((g) => g.id === "honest")?.done).toBe(false);
+      return;
+    }
+    throw new Error("no life with the honesty goal and a chance to lie");
   });
 });

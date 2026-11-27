@@ -58,8 +58,8 @@ try {
   let clue = "";
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
-    if (await page.locator(".card.event .clue").isVisible().catch(() => false)) {
-      clue = await page.locator(".card.event .clue").innerText();
+    if (await page.locator(".card.event .clue-line").isVisible().catch(() => false)) {
+      clue = await page.locator(".card.event .clue-line").innerText();
       break;
     }
     const choice = page.locator("button.choice").first();
@@ -68,10 +68,12 @@ try {
   }
   if (!clue) throw new Error("the victim never saw a clue");
   const labels = await page.locator("button.choice .choice-label").allInnerTexts();
-  for (const want of [/^Confront .+ in public$/, /^Report .+$/, /^Smile and plan your revenge on .+$/]) {
+  for (const want of [/^Confront \w+$/, /^Report \w+$/, /^Plan revenge on \w+$/]) {
     if (!labels.some((l) => want.test(l.trim()))) throw new Error(`missing choice ${want}: ${labels.join(" | ")}`);
   }
-  await page.locator("button.choice", { hasText: "plan your revenge" }).click();
+  // T8c V2: once you know who did it, there is nothing left to investigate.
+  if (labels.some((l) => /doorbell camera/.test(l))) throw new Error("the camera choice is still offered after catching the culprit");
+  await page.locator("button.choice", { hasText: "Plan revenge on" }).click();
   await page.locator(".schemes .revenge").waitFor({ timeout: 15_000 });
   const revenge = await page.locator(".schemes .revenge").innerText();
   if (!/revenge is free/.test(revenge)) throw new Error(`no free revenge: ${revenge}`);

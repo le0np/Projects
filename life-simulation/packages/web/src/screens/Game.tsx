@@ -72,6 +72,15 @@ export function GameScreen({ game, connected, decide, playMischief, previewSchem
           <span className="muted">{finale ? "Finale" : `${clock(sessionTime)} / ${clock(game.durationSeconds * 1000)}`}</span>
         </div>
         {game.attrs && <Attributes attrs={game.attrs} />}
+        {game.goals.length > 0 && (
+          <ul className="goals" aria-label="Your goals for this life">
+            {game.goals.map((g) => (
+              <li key={g.id} className={`goal ${g.state}`} title={g.mode === "end" ? "Counts at the end" : g.mode === "never" ? "Reached unless you break it" : "Reached once you do it"}>
+                <span aria-hidden="true">{g.state === "done" ? "✓" : g.state === "broken" ? "✗" : "○"}</span> {g.label}
+              </li>
+            ))}
+          </ul>
+        )}
       </header>
 
       {game.upheaval && (
@@ -235,16 +244,12 @@ function EventCard({ offer, game, now, decide }: { offer: OfferView; game: GameS
       <div className="event-story">
         <p className="lead">{offer.publicText}</p>
       </div>
-      {offer.clue && (
-        <p className="clue">
-          <span className="private-label">You noticed</span>
-          {offer.clue}
-        </p>
-      )}
-      {offer.privateText && (
+      {(offer.privateText || offer.clue) && (
+        // T8c V1: what you noticed goes in the same box as what only you know (one box, less height).
         <p className="private">
           <span className="private-label">Only you know</span>
           {offer.privateText}
+          {offer.clue && <span className="clue-line">🔎 {offer.clue}</span>}
         </p>
       )}
       {others.length > 0 && <p className="muted small with">With: {others.map((o) => o.name).join(", ")}</p>}

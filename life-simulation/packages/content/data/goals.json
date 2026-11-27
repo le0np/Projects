@@ -1,0 +1,170 @@
+{
+  "goals": [
+    {
+      "id": "owed_money",
+      "label": "Have someone owe you money",
+      "check": {
+        "type": "owed_money",
+        "n": 1
+      }
+    },
+    {
+      "id": "early_promotion",
+      "label": "Get a step up at work before you turn 27",
+      "check": {
+        "type": "career_gain_before_age",
+        "gain": 10,
+        "age": 27
+      }
+    },
+    {
+      "id": "stranger_to_friend",
+      "label": "Turn a stranger into a friend",
+      "check": {
+        "type": "stranger_to_friend"
+      }
+    },
+    {
+      "id": "crisis_unharmed",
+      "label": "Get through every town crisis with your health above 65",
+      "check": {
+        "type": "upheavals_unharmed",
+        "minHealth": 65
+      }
+    },
+    {
+      "id": "perfect_crime",
+      "label": "Pull off a scheme nobody ever finds out about",
+      "check": {
+        "type": "secret_scheme"
+      },
+      "conflicts": [
+        "honest"
+      ]
+    },
+    {
+      "id": "partner",
+      "label": "End your story with a partner",
+      "check": {
+        "type": "partner"
+      }
+    },
+    {
+      "id": "two_friends",
+      "label": "Have two friends at the end",
+      "check": {
+        "type": "friends",
+        "n": 2
+      }
+    },
+    {
+      "id": "richer",
+      "label": "End with more money than you started with",
+      "check": {
+        "type": "richer",
+        "gain": 12
+      }
+    },
+    {
+      "id": "respected",
+      "label": "Become someone the town respects (reputation 65)",
+      "check": {
+        "type": "attr_at_least",
+        "attribute": "reputation",
+        "min": 65
+      }
+    },
+    {
+      "id": "helper",
+      "label": "Help people five times",
+      "check": {
+        "type": "tag_count",
+        "tag": "help",
+        "n": 5
+      }
+    },
+    {
+      "id": "honest",
+      "label": "Never tell a lie",
+      "check": {
+        "type": "never_tag",
+        "tag": "lie"
+      },
+      "conflicts": [
+        "perfect_crime"
+      ]
+    },
+    {
+      "id": "own_up",
+      "label": "Own up to your mistakes four times",
+      "check": {
+        "type": "tag_count",
+        "tag": "take_responsibility",
+        "n": 4
+      }
+    },
+    {
+      "id": "oracle",
+      "label": "Guess right three times what others will do",
+      "check": {
+        "type": "oracle",
+        "n": 3
+      },
+      "humansOnly": true
+    },
+    {
+      "id": "social",
+      "label": "Share fourteen moments with other people",
+      "check": {
+        "type": "shared_events",
+        "n": 14
+      }
+    },
+    {
+      "id": "nemesis",
+      "label": "Make yourself a proper rival",
+      "check": {
+        "type": "rival"
+      }
+    },
+    {
+      "id": "hero",
+      "label": "Save someone's life",
+      "check": {
+        "type": "saved_someone"
+      }
+    },
+    {
+      "id": "detective",
+      "label": "Catch someone scheming against you",
+      "check": {
+        "type": "caught_culprit"
+      }
+    },
+    {
+      "id": "trusted",
+      "label": "Be trusted by the people you know",
+      "check": {
+        "type": "trusted",
+        "min": 55
+      }
+    },
+    {
+      "id": "know_everyone",
+      "label": "Get to know five people",
+      "check": {
+        "type": "met",
+        "n": 5
+      }
+    },
+    {
+      "id": "peace_of_mind",
+      "label": "Keep your peace of mind (mind 75 at the end)",
+      "check": {
+        "type": "attr_at_least",
+        "attribute": "mental",
+        "min": 75
+      }
+    }
+  ]
+}

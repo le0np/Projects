@@ -1114,3 +1114,43 @@ main.game {
   text-decoration: line-through;
   opacity: 0.55;
 }
+
+/* ---------- T10: personal goals ---------- */
+.goals {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.goal {
+  font-size: 0.82rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: var(--surface-2);
+}
+.goal.done {
+  background: var(--good-soft);
+  color: var(--good);
+  border-color: transparent;
+}
+.goal.broken {
+  background: var(--bad-soft);
+  color: var(--bad);
+  border-color: transparent;
+  text-decoration: line-through;
+}
+.goals-recap .good {
+  color: var(--good);
+}
+.goals-recap .bad {
+  color: var(--bad);
+}
+.clue-line {
+  display: block;
+  margin-top: 4px;
+  color: var(--risk);
+  font-weight: 600;
+}

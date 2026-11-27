@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import type { Attribute, LifeRecap, Mark, MischiefState, Mood, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction, SchemeBoost } from "@lifesim/core";
+import type { Attribute, GoalView, LifeRecap, Mark, MischiefState, Mood, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction, SchemeBoost } from "@lifesim/core";
 
 export type ComingEvent = Extract<Notice, { kind: "coming" }> & { receivedAt: number };
 
@@ -36,6 +36,7 @@ export interface Snapshot {
   roster: { characterId: string; name: string; career: string; isBot: boolean; trait?: string }[];
   moods?: { characterId: string; mood: Mood }[];
   marks?: Mark[];
+  goals?: GoalView[];
   me?: Pick<Extract<Notice, { kind: "event" }>["view"], "self" | "others" | "calendar">;
   pending: OfferView | null;
   history: Notice[];
@@ -76,6 +77,8 @@ export interface GameState {
   moods: Record<string, Mood>;
   /** T7: lasting traces on the map. */
   marks: Mark[];
+  /** T10: your two personal goals. */
+  goals: GoalView[];
   /** T5: faces on the map right after an event, until `until` (wall clock). */
   reactions: Record<string, { reaction: Reaction; until: number }>;
   feed: PublicEntry[];
@@ -122,6 +125,7 @@ function stateFromSnapshot(s: Snapshot): GameState {
     },
     moods: Object.fromEntries((s.moods ?? []).map((m) => [m.characterId, m.mood])),
     marks: s.marks ?? [],
+    goals: s.goals ?? [],
     resolvedWall: {},
     reactions: {},
     feed: s.feed,
@@ -203,6 +207,7 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
       setGame((g) => {
         if (!g) return g;
         const history = [...g.history, n].slice(-30);
+        if (n.kind === "goals") return { ...g, history, goals: n.goals };
         if (n.kind === "coming") return { ...g, history, coming: { ...n, receivedAt: Date.now() } };
         if (n.kind === "guessable") return { ...g, guessables: [...g.guessables.filter((x) => x.deadlineAt > n.t), n].slice(-6) };
         if (n.kind === "guess_result")

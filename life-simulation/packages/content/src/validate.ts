@@ -12,6 +12,8 @@ import {
   FactsFileSchema,
   MapSchema,
   MischiefFileSchema,
+  GoalsFileSchema,
+  type Goal,
   UpheavalsFileSchema,
   type Mischief,
   type Upheaval,
@@ -53,6 +55,8 @@ export interface RawContent {
   map: RawFile;
   upheavals: RawFile;
   mischief: RawFile;
+  /** T10: personal goals (optional: test content may leave them out). */
+  goals?: RawFile;
   events: RawFile[];
 }
 
@@ -63,6 +67,8 @@ export interface ContentBundle {
   map: TownMap;
   upheavals: ReadonlyMap<string, Upheaval>;
   mischief: ReadonlyMap<string, Mischief>;
+  /** T10: personal goals. */
+  goals: ReadonlyMap<string, Goal>;
   /** sha256 of the raw content; recorded in session logs for replay. */
   hash: string;
 }
@@ -308,19 +314,37 @@ export function validateContent(raw: RawContent): ValidationResult {
     report("error", cycle[0] as string, `immediate unconditional follow-up loop: ${cycle.join(" → ")}`);
   }
 
+  // --- T10: personal goals
+  const goals = new Map<string, Goal>();
+  if (raw.goals) {
+    const parsed = GoalsFileSchema.safeParse(raw.goals.data);
+    if (!parsed.success) formatZodIssues(parsed.error, raw.goals.file, issues);
+    else {
+      const report = reporter(raw.goals.file);
+      parsed.data.goals.forEach((g, i) => {
+        if (goals.has(g.id)) report("error", `goals[${i}].id`, `duplicate goal id "${g.id}"`);
+        goals.set(g.id, g);
+      });
+      parsed.data.goals.forEach((g, i) => {
+        for (const c of g.conflicts ?? []) if (!goals.has(c)) report("error", `goals[${i}].conflicts`, `unknown goal "${c}"`);
+      });
+      if (goals.size > 0 && goals.size < 4) report("warning", "goals", "fewer than 4 goals: every life gets the same two");
+    }
+  }
+
   const hasErrors = issues.some((i) => i.severity === "error") || town === null;
   return {
     issues,
     bundle: hasErrors
       ? null
-      : { careers: reg.careers, facts: reg.facts, events: reg.events, map: town as TownMap, upheavals, mischief, hash: hashContent(raw) },
+      : { careers: reg.careers, facts: reg.facts, events: reg.events, map: town as TownMap, upheavals, mischief, goals, hash: hashContent(raw) },
   };
 }
 
 export function hashContent(raw: RawContent): string {
   const events = [...raw.events].sort((a, b) => a.file.localeCompare(b.file)).map((e) => e.data);
   return createHash("sha256")
-    .update(JSON.stringify([raw.careers.data, raw.facts.data, raw.map.data, raw.upheavals.data, raw.mischief.data, events]))
+    .update(JSON.stringify([raw.careers.data, raw.facts.data, raw.map.data, raw.upheavals.data, raw.mischief.data, events, ...(raw.goals ? [raw.goals.data] : [])]))
     .digest("hex")
     .slice(0, 16);
 }

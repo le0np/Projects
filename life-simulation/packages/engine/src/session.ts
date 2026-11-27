@@ -36,6 +36,7 @@ import {
   type Reaction,
   type Mood,
   type SchemeBoost,
+  type GoalView,
   type SchemeView,
   type AccompliceAnswer,
   type Mark,
@@ -49,6 +50,7 @@ import { makeContext, type Bindings, type WorldView } from "./context";
 import type { Change, EndReason, LogEntry } from "./log";
 import { pickNames } from "./names";
 import { computeRecaps, type CharacterTracking } from "./recap";
+import { goalHolds, goalMode, newGoalTrack, type GoalWorld } from "./goals";
 import { Relations, arrivalOf, clampAttr, factKey, positionAt, type CharacterState, type Trip } from "./state";
 
 export type SessionState = "initializing" | "active" | "completed" | "cancelled";
@@ -215,6 +217,8 @@ export class Session {
   private readonly rngOutcome: Rng;
   private readonly rngTiming: Rng;
   private readonly rngChaos: Rng;
+  /** T10: its own stream, so adding goals does not change anything else in a session. */
+  private readonly rngGoals: Rng;
   private readonly mischiefUsed = new Map<string, number>();
   private mischiefSeq = 0;
   /** T3: the finale closes the session once everyone alive is free. */
@@ -252,7 +256,9 @@ export class Session {
       .filter((e) => e.trigger === "finale" && e.weight > 0)
       .sort((a, b) => a.id.localeCompare(b.id));
     this.timeline = storyTimeline(config);
+    this.rngGoals = root.fork("goals");
     this.createCharacters(participants);
+    this.assignGoals();
     for (const ev of content.events.values()) {
       const facts = new Set<string>();
       const scan = (c?: Condition) => c && walkCondition(c, (n) => "sessionFact" in n && (n.present ?? true) && facts.add(n.sessionFact));
@@ -441,6 +447,12 @@ export class Session {
       this.onNotice(cid, { kind: "upheaval", t: this.now(), id: u.id, title: u.title, text: u.text, personal, selfChanges });
     }
     this.log.push({ t: this.now(), type: "upheaval_started", upheavalId: u.id, title: u.title, changes });
+    this.trackYears(changes);
+    for (const cid of this.order) {
+      const g = (this.tracking.get(cid) as CharacterTracking).goalTrack;
+      if (this.char(cid).status === "active") g.upheavalMinHealth = Math.min(g.upheavalMinHealth, this.char(cid).attrs.health);
+    }
+    this.updateGoals();
     for (const cid of this.order) this.updateMood(cid, this.reaction(cid, changes), changes);
     this.onPublic({ kind: "upheaval", t: this.now(), id: u.id, title: u.title, text: u.text, active: true });
     for (const cid of this.order) {
@@ -610,6 +622,7 @@ export class Session {
       success,
       risk,
       state: "preparing",
+      ...(free ? { revenge: true } : {}),
     };
     this.schemes.set(scheme.id, scheme);
     this.timers.push(scheme.readyAt, { kind: "scheme", id: scheme.id });
@@ -704,11 +717,17 @@ export class Session {
       mischief: def.label,
       on: s.targetId,
       result: s.result,
+      discovered,
+      ...(s.revenge ? { revenge: true } : {}),
       ...(s.boost ? { boost: s.boost } : {}),
       ...(s.accomplice ? { accomplice: s.accomplice } : {}),
       ...(s.accompliceAnswer ? { accompliceAnswer: s.accompliceAnswer } : {}),
     });
-    if (worked || discovered) (this.tracking.get(s.targetId) as CharacterTracking).suffered.push({ mischief: def.label, by: s.plotter, discovered });
+    if (worked || discovered) (this.tracking.get(s.targetId) as CharacterTracking).suffered.push({ mischief: def.label, by: s.plotter, discovered, year: this.lifeYear() });
+    this.yearOf(s.plotter).schemed = true;
+    if (worked && !discovered) (this.tracking.get(s.plotter) as CharacterTracking).goalTrack.secretSchemes++;
+    if (discovered) (this.tracking.get(s.targetId) as CharacterTracking).goalTrack.caughtCulprits++;
+    this.updateGoals();
     // The victim's event: the prank itself, or (if it failed but they caught you) being caught at it.
     const eventId = worked ? def.event : discovered ? CAUGHT_EVENT : null;
     if (eventId && this.content.events.has(eventId)) {
@@ -863,7 +882,20 @@ export class Session {
       ch.pos = [...home.door] as TilePos;
       ch.work = (this.content.map.nearest(career.workplace, ch.pos) ?? home).id;
       this.order.push(id);
-      this.tracking.set(id, { keyMoments: [], influence: new Map(), startTypes: new Map(), played: [], suffered: [], oracle: { guesses: 0, correct: 0 } });
+      this.tracking.set(id, {
+        keyMoments: [],
+        influence: new Map(),
+        startTypes: new Map(),
+        played: [],
+        suffered: [],
+        oracle: { guesses: 0, correct: 0 },
+        goalTrack: newGoalTrack(),
+        goals: [],
+        choiceIds: new Map(),
+        years: new Map(),
+        minHealth: 100,
+        married: false,
+      });
     });
   }
 
@@ -1496,6 +1528,96 @@ export class Session {
     for (const id of this.order) if (!inst.participants.includes(id) && this.char(id).status === "active") this.onNotice(id, guessable);
   }
 
+  // ================================================================== personal goals (T10)
+
+  /** Two goals per character that go together (and suit bots or humans). */
+  private assignGoals(): void {
+    const all = [...this.content.goals.values()].sort((a, b) => a.id.localeCompare(b.id));
+    if (all.length === 0) return;
+    for (const id of this.order) {
+      const c = this.char(id);
+      const pool = all.filter((g) => !(g.humansOnly && c.isBot));
+      const first = this.rngGoals.pick(pool);
+      const rest = pool.filter((g) => g.id !== first.id && !(first.conflicts ?? []).includes(g.id) && !(g.conflicts ?? []).includes(first.id));
+      const picked = rest.length > 0 ? [first, this.rngGoals.pick(rest)] : [first];
+      (this.tracking.get(id) as CharacterTracking).goals = picked.map((goal) => ({ goal, state: "open" as const }));
+    }
+  }
+
+  /** T11: the year of life we are in (0 = the first). */
+  private lifeYear(): number {
+    return calendarAt(this.now(), this.config.yearSeconds * MS).year;
+  }
+
+  private yearOf(id: string): { changes: Partial<Record<Attribute, number>>; partner?: boolean; rival?: boolean; schemed?: boolean } {
+    const years = (this.tracking.get(id) as CharacterTracking).years;
+    const y = this.lifeYear();
+    const entry = years.get(y) ?? { changes: {} };
+    years.set(y, entry);
+    return entry;
+  }
+
+  /** T11: what changed this year, per character (for the emoji row), and the lowest health seen. */
+  private trackYears(changes: readonly Change[]): void {
+    for (const ch of changes) {
+      if (ch.kind === "attr") {
+        const y = this.yearOf(ch.characterId);
+        y.changes[ch.attribute] = (y.changes[ch.attribute] ?? 0) + ch.delta;
+        if (ch.attribute === "health") {
+          const t = this.tracking.get(ch.characterId) as CharacterTracking;
+          t.minHealth = Math.min(t.minHealth, ch.value);
+        }
+      } else if (ch.kind === "relation") {
+        if (ch.type === "partner") this.yearOf(ch.from).partner = true;
+        if (ch.type === "rival" || ch.type === "enemy") this.yearOf(ch.from).rival = true;
+      }
+    }
+  }
+
+  private goalWorld(id: string): GoalWorld {
+    const t = this.tracking.get(id) as CharacterTracking;
+    return {
+      me: this.char(id),
+      others: this.order.filter((o) => o !== id).map((o) => this.char(o)),
+      relations: this.relations,
+      startTypes: t.startTypes as ReadonlyMap<string, string>,
+      age: this.age(id),
+      track: t.goalTrack,
+    };
+  }
+
+  /** What a character sees of their goals. */
+  goalsOf(id: string): GoalView[] {
+    const t = this.tracking.get(id);
+    return (t?.goals ?? []).map((g) => ({ id: g.goal.id, label: g.goal.label, mode: goalMode(g.goal.check), state: g.state }));
+  }
+
+  /** Re-check everyone's goals; tell the owner when one is reached or broken. With `final`, settle them. */
+  private updateGoals(final = false): void {
+    for (const id of this.order) {
+      const t = this.tracking.get(id) as CharacterTracking;
+      if (t.goals.length === 0) continue;
+      const world = this.goalWorld(id);
+      let changed = false;
+      for (const g of t.goals) {
+        const mode = goalMode(g.goal.check);
+        const before = g.state;
+        if (mode === "ever") {
+          if (g.state === "open" && goalHolds(g.goal, world)) g.state = "done";
+          else if (final && g.state === "open") g.state = "broken";
+        } else if (mode === "never") {
+          if (g.state === "open" && !goalHolds(g.goal, world)) g.state = "broken";
+          else if (final && g.state === "open") g.state = "done";
+        } else if (g.state !== "broken") {
+          const holds = goalHolds(g.goal, world);
+          g.state = holds ? "done" : final ? "broken" : "open";
+        }
+        changed ||= g.state !== before;
+      }
+      if (changed && !final) this.onNotice(id, { kind: "goals", t: this.now(), goals: this.goalsOf(id) });
+    }
+  }
+
   /** T9: guess what someone in another event will choose (one guess per event). */
   guess(characterId: string, instanceId: string, deciderId: string, choiceId: string): SubmitResult {
     const reject = (reason: string): SubmitResult => {
@@ -1526,7 +1648,11 @@ export class Session {
       const actual = inst.decisions.get(g.deciderId)?.choiceId;
       if (!actual) continue;
       const correct = actual === g.choiceId;
-      if (correct) (this.tracking.get(characterId) as CharacterTracking).oracle.correct++;
+      if (correct) {
+        const t = this.tracking.get(characterId) as CharacterTracking;
+        t.oracle.correct++;
+        t.goalTrack.oracleCorrect++;
+      }
       const label = (id: string) => inst.offered.get(g.deciderId)?.find((c) => c.id === id)?.label ?? id;
       this.onNotice(characterId, { kind: "guess_result", t: this.now(), instanceId: inst.id, deciderId: g.deciderId, name: this.char(g.deciderId).name, guessed: label(g.choiceId), actual: label(actual), correct });
     }
@@ -1670,6 +1796,7 @@ export class Session {
       ...(seconds !== undefined ? { until: this.now() + seconds * MS } : {}),
     };
     this.marks.set(mark.id, mark);
+    if (kind === "just_married") (this.tracking.get(characterId) as CharacterTracking).married = true;
     if (mark.until !== undefined) this.timers.push(mark.until, { kind: "unmark", id: mark.id });
     this.onPublic({ kind: "mark", t: this.now(), mark });
   }
@@ -1787,6 +1914,19 @@ export class Session {
     this.stats.eventsResolved++;
     this.log.push({ t: this.now(), type: "event_resolved", instanceId: inst.id, eventId: ev.id, outcomeId: outcome.id, changes });
     this.settleGuesses(inst);
+    // T10: what this event means for everyone's goals.
+    for (const id of inst.deciders) {
+      const tr = this.tracking.get(id) as CharacterTracking;
+      const choice = this.choiceDef(inst, id);
+      for (const tag of choice.tags) tr.goalTrack.tags.set(tag, (tr.goalTrack.tags.get(tag) ?? 0) + 1);
+      tr.choiceIds.set(choice.id, (tr.choiceIds.get(choice.id) ?? 0) + 1);
+    }
+    this.trackYears(changes);
+    for (const id of inst.participants) {
+      if (this.isUnaware(ev, inst.roleOf.get(id))) continue;
+      if (inst.deciders.some((d) => d !== id)) (this.tracking.get(id) as CharacterTracking).goalTrack.sharedEvents++;
+    }
+    this.updateGoals();
     // T8: the accomplice answered; and a victim who caught their culprit only "sees" them in this event.
     if (ev.id === ACCOMPLICE_EVENT) this.onAccompliceAnswer(inst, outcome.id);
     for (const v of inst.bindings.victim ?? []) for (const c of inst.bindings.culprit ?? []) this.char(v).facts.delete(factKey("spotted", c));
@@ -1961,6 +2101,7 @@ export class Session {
     this.pending = [];
     this._state = state;
     this.log.push({ t: this.now(), type: "session_completed", reason });
+    this.updateGoals(true);
     this.recaps = computeRecaps({
       characters: this.order.map((id) => this.char(id)),
       relations: this.relations,

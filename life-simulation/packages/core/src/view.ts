@@ -110,6 +110,15 @@ export interface MischiefState {
   revengeOn?: string[];
 }
 
+/** T10: a personal goal as its owner sees it during the session. */
+export interface GoalView {
+  id: string;
+  label: string;
+  mode: "ever" | "end" | "never";
+  /** "done" for "end" goals is provisional until the end; "broken"/"failed" are final. */
+  state: "open" | "done" | "broken";
+}
+
 export type SchemeBoost = "cover" | "wait" | "accomplice";
 export type AccompliceAnswer = "helped" | "refused" | "betrayed";
 export type SchemeResult = "worked" | "failed";
@@ -128,6 +137,8 @@ export interface SchemeView {
   accomplice?: string;
   accompliceAnswer?: AccompliceAnswer;
   state: "preparing" | "done";
+  /** A free scheme: revenge on someone who wronged you. */
+  revenge?: boolean;
   result?: SchemeResult;
   discovered?: boolean;
 }
@@ -149,6 +160,8 @@ export type Reaction = "joy" | "angry" | "sad" | "shock" | "neutral";
 /** Messages the engine sends to one character. */
 export type Notice =
   | { kind: "event"; t: number; view: CharacterView }
+  /** T10: your goals changed (one reached, one broken). */
+  | { kind: "goals"; t: number; goals: GoalView[] }
   /** T9: someone else is deciding right now; you may guess what they will do. */
   | { kind: "guessable"; t: number; instanceId: string; title: string; deciderId: string; name: string; choices: { id: string; label: string }[]; deadlineAt: number }
   /** T9: how your guess turned out. */
@@ -231,9 +244,25 @@ export interface LifeRecap {
   influencedBy: { characterId: string; name: string; events: number; impact: number }[];
   /** Revealed at the end: pranks this character played, and pranks played on them. */
   secrets: {
-    played: { mischief: string; on: string; result?: SchemeResult; boost?: SchemeBoost; accomplice?: string; accompliceAnswer?: AccompliceAnswer }[];
-    suffered: { mischief: string; by: string; discovered?: boolean }[];
+    played: {
+      mischief: string;
+      on: string;
+      result?: SchemeResult;
+      discovered?: boolean;
+      revenge?: boolean;
+      boost?: SchemeBoost;
+      accomplice?: string;
+      accompliceAnswer?: AccompliceAnswer;
+    }[];
+    /** `year`: the year of your life it happened in (0 = the first). */
+    suffered: { mischief: string; by: string; discovered?: boolean; year?: number }[];
   };
+  /** T11: what this life will be remembered as. */
+  title: { id: string; label: string; why: string };
+  /** T11: one emoji per year of life (for "Copy my life"). */
+  years: string[];
+  /** T10: the two personal goals and whether they were reached. */
+  goals: { id: string; label: string; done: boolean }[];
   /** T9: guesses about other people's decisions while waiting. */
   oracle: { guesses: number; correct: number };
   /** Internal balancing metric; not shown to players as a "win". */

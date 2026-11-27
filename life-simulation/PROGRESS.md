@@ -518,6 +518,27 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 
 - T5, T5b, T6, T6b, T6c, T7, T7b, T8 i T9. Batch 200 sesija (`docs/reports/sprint2.report.md`): 65 % eventa s ≥ 2 lika koji odlučuju (80 % po liku), ponavljanje 0,8 %, smrtnost 3,4 %, stvarne veze 87 %, Jealousy 19 %, Crisis Talk 13 %, 4,4 spletke po sesiji (70 % uspije, 27 % otkriveno), mir 62 % i tuga 11 % vremena; replay identičan.
 
+## Sprint 3 (27. studenog 2026.)
+
+### T10: osobni ciljevi (developer)
+
+- Novi sadržaj `goals.json` (20 ciljeva, shema `GoalSchema`, validator): ciljevi su o tvom životu, ne protiv nekoga i ne o dugom životu — „Turn a stranger into a friend”, „Pull off a scheme nobody ever finds out about”, „Never tell a lie”, „Save someone's life”, „Catch someone scheming against you”, „End your story with a partner”, „Guess right three times what others will do”…
+- Svaki cilj ima deklarativnu provjeru (`check: { type, … }`, 19 vrsta) i način iz vrste: **ever** (ostvaren kad se dogodi), **end** (broji se stanje na kraju; tijekom igre ✓ je privremen), **never** (ostvaren ako ga ne prekršiš).
+- Svaki lik dobije 2 cilja koja se slažu (`conflicts`); botovi ne dobiju ciljeve koje ne mogu (pogađanje). Vlastiti tok slučajnosti (`rngGoals`), pa dodavanje ciljeva ne mijenja ništa drugo u sesiji.
+- Engine ih provjerava nakon svakog eventa, preokreta, spletke i pogotka (`updateGoals`), vlasniku šalje `goals` kad se cilj ostvari ili prekrši, a na kraju ih zaključi. Zaglavlje igre ima dva čipa (○ / ✓ / ✗), a Life Recap „Your goals” s ✓/✗. Nema pobjednika.
+- **Balans:** batch izvještaj ima tablicu „Personal goals”; pragovi podešeni tako da botovi (koji ciljeve ne znaju) ostvare svaki cilj u 8–64 % života (`docs/reports/t10.report.md`). Čovjek koji zna cilj može ga lakše ostvariti.
+- Testovi: dva različita cilja bez sukoba, bot bez ljudskih ciljeva; „Never tell a lie” se prekrši u trenutku laži (poruka vlasniku) i recap zaključi oba cilja.
+
+### T8c: strana žrtve spletke (developer)
+
+- **V1:** `card-fit.mjs` sada žrtvu spletke crta u oba slučaja: bez saznanja i „uhvaćen krivac” (trag i sva tri izbora). Tako je našao 6 kartica kojima je bio odrezan donji red. Popravci: trag je u istom okviru kao „Only you know” (🔎 redak), kraći izbori „Confront {X}”, „Report {X}”, „Plan revenge on {X}”, kraći tekst i izbor u „Anonymous complaint”. Provjera sada gleda i redak „If time runs out”. 133 kartice, 0 skrolanja.
+- **V2:** izbori istraživanja („Check the neighbour's doorbell camera”, „Compare the handwriting”, „Find out who started it/presented it”, „Get a second opinion”) imaju uvjet da krivac **nije** već otkriven. `scheme-victim.mjs` to provjerava.
+
+### T11 (u tijeku, nije gotovo)
+
+- Engine već računa **titulu života** (`engine/src/titles.ts`, 20 titula po prioritetu, npr. „Gone Too Soon”, „Bailed Everyone Out, Died Broke”, „Never Caught”, „The Town Snitch”, „Town Oracle”, rezervna „A Quiet Life”) i **niz emojija po godinama života** (najveća promjena u godini, 💍 za partnera, 🪦 za smrt) i stavlja ih u Life Recap (`title`, `years`). Smicalice protiv tebe pamte godinu (za otkrivanje „Who let your tyres down in year 3?”). Batch izvještaj ima redak „Life titles”.
+- Nije još: provjera raspodjele titula, otkrivanje jedno po jedno u recapu, gumb „Copy my life”, kolekcija titula u lobbyju, testovi. Nastavak u 17:30.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 2, T5–T9):

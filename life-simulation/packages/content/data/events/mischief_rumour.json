@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 3,
+  "version": 5,
   "id": "mischief_rumour",
   "title": "Whispers",
   "category": "social",
@@ -43,6 +43,12 @@
         ],
         "perceived": {
           "risk": 1
+        },
+        "condition": {
+          "not": {
+            "fact": "spotted",
+            "about": "role:culprit"
+          }
         }
       },
       {
@@ -68,7 +74,7 @@
       },
       {
         "id": "confront",
-        "label": "Confront {culprit} in public",
+        "label": "Confront {culprit}",
         "tags": [
           "threaten",
           "truth"
@@ -103,7 +109,7 @@
       },
       {
         "id": "revenge",
-        "label": "Smile and plan your revenge on {culprit}",
+        "label": "Plan revenge on {culprit}",
         "tags": [
           "risk"
         ],
