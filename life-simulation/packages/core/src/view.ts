@@ -137,6 +137,8 @@ export interface SchemeView {
   accomplice?: string;
   accompliceAnswer?: AccompliceAnswer;
   state: "preparing" | "done";
+  /** A free scheme: revenge on someone who wronged you. */
+  revenge?: boolean;
   result?: SchemeResult;
   discovered?: boolean;
 }
@@ -242,9 +244,23 @@ export interface LifeRecap {
   influencedBy: { characterId: string; name: string; events: number; impact: number }[];
   /** Revealed at the end: pranks this character played, and pranks played on them. */
   secrets: {
-    played: { mischief: string; on: string; result?: SchemeResult; boost?: SchemeBoost; accomplice?: string; accompliceAnswer?: AccompliceAnswer }[];
-    suffered: { mischief: string; by: string; discovered?: boolean }[];
+    played: {
+      mischief: string;
+      on: string;
+      result?: SchemeResult;
+      discovered?: boolean;
+      revenge?: boolean;
+      boost?: SchemeBoost;
+      accomplice?: string;
+      accompliceAnswer?: AccompliceAnswer;
+    }[];
+    /** `year`: the year of your life it happened in (0 = the first). */
+    suffered: { mischief: string; by: string; discovered?: boolean; year?: number }[];
   };
+  /** T11: what this life will be remembered as. */
+  title: { id: string; label: string; why: string };
+  /** T11: one emoji per year of life (for "Copy my life"). */
+  years: string[];
   /** T10: the two personal goals and whether they were reached. */
   goals: { id: string; label: string; done: boolean }[];
   /** T9: guesses about other people's decisions while waiting. */

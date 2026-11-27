@@ -534,6 +534,11 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **V1:** `card-fit.mjs` sada žrtvu spletke crta u oba slučaja: bez saznanja i „uhvaćen krivac” (trag i sva tri izbora). Tako je našao 6 kartica kojima je bio odrezan donji red. Popravci: trag je u istom okviru kao „Only you know” (🔎 redak), kraći izbori „Confront {X}”, „Report {X}”, „Plan revenge on {X}”, kraći tekst i izbor u „Anonymous complaint”. Provjera sada gleda i redak „If time runs out”. 133 kartice, 0 skrolanja.
 - **V2:** izbori istraživanja („Check the neighbour's doorbell camera”, „Compare the handwriting”, „Find out who started it/presented it”, „Get a second opinion”) imaju uvjet da krivac **nije** već otkriven. `scheme-victim.mjs` to provjerava.
 
+### T11 (u tijeku, nije gotovo)
+
+- Engine već računa **titulu života** (`engine/src/titles.ts`, 20 titula po prioritetu, npr. „Gone Too Soon”, „Bailed Everyone Out, Died Broke”, „Never Caught”, „The Town Snitch”, „Town Oracle”, rezervna „A Quiet Life”) i **niz emojija po godinama života** (najveća promjena u godini, 💍 za partnera, 🪦 za smrt) i stavlja ih u Life Recap (`title`, `years`). Smicalice protiv tebe pamte godinu (za otkrivanje „Who let your tyres down in year 3?”). Batch izvještaj ima redak „Life titles”.
+- Nije još: provjera raspodjele titula, otkrivanje jedno po jedno u recapu, gumb „Copy my life”, kolekcija titula u lobbyju, testovi. Nastavak u 17:30.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 2, T5–T9):

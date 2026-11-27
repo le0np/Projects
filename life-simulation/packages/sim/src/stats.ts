@@ -42,6 +42,8 @@ export interface BatchStats {
   multiDeciderShare: number;
   /** T8: schemes — planned, worked, found out, boosts, accomplice answers, revenge planned by victims. */
   schemes: { planned: number; worked: number; discovered: number; boosts: Counter; accomplice: Counter; revenge: number; caughtOutcomes: Counter };
+  /** T11: how often each life title is given. */
+  titles: Counter;
   /** T10: per goal, how many lives had it and reached it. */
   goals: Record<string, { n: number; done: number }>;
   /** T7b: share of characters with at least one real tie (partner, friend, family, rival, enemy, a debt) before the finale. */
@@ -86,6 +88,7 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
     moodShare: {},
     tiedShare: 0,
     goals: {},
+    titles: {},
     schemes: { planned: 0, worked: 0, discovered: 0, boosts: {}, accomplice: {}, revenge: 0, caughtOutcomes: {} },
     sessionsWith: {},
     soloRepeats: {},
@@ -249,6 +252,7 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
       inc(s.statusCounts, r.finalStatus);
       for (const t of r.outcomes) inc(s.outcomeTags, t);
       if (r.finalStatus === "dead") sessionDeaths++;
+      if (r.title) inc(s.titles, r.title.label);
       for (const g of r.goals ?? []) {
         const x = (s.goals[g.id] ??= { n: 0, done: 0 });
         x.n++;
@@ -318,6 +322,7 @@ export function formatReport(s: BatchStats, title = "Simulation report"): string
     `| Event repetition | ${pct(s.repetitionRate)} of a character's events repeat a template |`,
     `| Shared events | ${pct(s.sharedShare)} of a character's events have someone else deciding too; ${pct(s.multiDeciderShare)} of events have ≥ 2 deciders; ${pct(s.knownShare)} of shared events are with someone they have a relationship with |`,
     `| Schemes | ${(s.schemes.planned / Math.max(1, s.sessions)).toFixed(1)} per session; ${pct(s.schemes.worked / Math.max(1, s.schemes.planned))} worked, ${pct(s.schemes.discovered / Math.max(1, s.schemes.planned))} found out; boosts: ${top(s.schemes.boosts).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}; accomplices: ${top(s.schemes.accomplice).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}; caught culprits: ${top(s.schemes.caughtOutcomes).map(([k, v]) => `${k} ${v}`).join(", ") || "none"} |`,
+    `| Life titles | ${Object.keys(s.titles).length} different; ${top(s.titles, 25).map(([k, v]) => `${k} ${pct(v / Math.max(1, s.characters))}`).join(", ")} |`,
     `| Real ties before the finale | ${pct(s.tiedShare)} of characters have a partner, friend, family, rival, enemy or debt |`,
     `| Relationship events | ${["relationships_first_date", "relationships_jealousy", "relationships_crisis_talk", "financial_loan_due"].map((id) => `${id.replace(/^[a-z]+_/, "")} in ${pct(s.sessionsWith[id] ?? 0)} of sessions`).join(", ")} |`,
     `| Moods (share of time) | ${top(s.moodShare, 10).map(([k, v]) => `${k} ${pct(v)}`).join(", ")} |`,

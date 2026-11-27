@@ -1,6 +1,8 @@
 /** Life Recap (GDD §9): derived at session end from character state and tracked history. */
-import { ATTRIBUTES, type Fact, type Goal, type KeyMoment, type LifeRecap, type OutcomeTag, type RelationType } from "@lifesim/core";
+import { ATTRIBUTES, type Attribute, type Fact, type Goal, type KeyMoment, type LifeRecap, type OutcomeTag, type RelationType } from "@lifesim/core";
 import type { GoalTrack } from "./goals";
+import { titleFor, yearEmoji } from "./titles";
+import { factKey } from "./state";
 import type { CharacterState, Relations } from "./state";
 
 export interface CharacterTracking {
@@ -13,6 +15,11 @@ export interface CharacterTracking {
   oracle: LifeRecap["oracle"];
   goalTrack: GoalTrack;
   goals: { goal: Goal; state: "open" | "done" | "broken" }[];
+  /** T11: choices made (by id), what happened in each year of life, the lowest health, a wedding. */
+  choiceIds: Map<string, number>;
+  years: Map<number, { changes: Partial<Record<Attribute, number>>; partner?: boolean; rival?: boolean; schemed?: boolean }>;
+  minHealth: number;
+  married: boolean;
 }
 
 const POSITIVE = new Set<RelationType>(["friend", "partner", "family"]);
@@ -86,13 +93,25 @@ export function computeRecaps(input: {
       .map(([id, v]) => ({ characterId: id, name: byId.get(id)?.name ?? id, ...v }))
       .sort((a, b) => b.impact - a.impact || a.characterId.localeCompare(b.characterId));
 
-    return {
+    const secrets: LifeRecap["secrets"] = {
+      played: track.played.map((p) => ({ ...p, on: byId.get(p.on)?.name ?? p.on, ...(p.accomplice ? { accomplice: byId.get(p.accomplice)?.name ?? p.accomplice } : {}) })),
+      suffered: track.suffered.map((p) => ({ ...p, by: byId.get(p.by)?.name ?? p.by })),
+    };
+    const lifeDurationMs = c.endedAt ?? sessionDurationMs;
+    // T11: one emoji per year of life, and a title for the whole of it.
+    const lifeYears = Math.max(1, ageAt(lifeDurationMs) - ageAt(0) + 1);
+    const years = Array.from({ length: lifeYears }, (_, y) => {
+      const yr = track.years.get(y);
+      return yearEmoji(yr?.changes ?? {}, { ...yr, died: c.status === "dead" && y === lifeYears - 1 });
+    });
+    const others = characters.filter((o) => o.id !== c.id);
+    const recapBase = {
       characterId: c.id,
       name: c.name,
       career: c.career.id,
       isBot: c.isBot,
       sessionDurationMs,
-      lifeDurationMs: c.endedAt ?? sessionDurationMs,
+      lifeDurationMs,
       ageAtEnd: ageAt(c.endedAt ?? sessionDurationMs),
       eventsCount: c.eventsCompleted,
       finalStatus: c.status,
@@ -104,14 +123,25 @@ export function computeRecaps(input: {
       relationshipsGained: gained,
       relationshipsLost: lost,
       influencedBy,
-      secrets: {
-        played: track.played.map((p) => ({ ...p, on: byId.get(p.on)?.name ?? p.on, ...(p.accomplice ? { accomplice: byId.get(p.accomplice)?.name ?? p.accomplice } : {}) })),
-        suffered: track.suffered.map((p) => ({ ...p, by: byId.get(p.by)?.name ?? p.by })),
-      },
+      secrets,
       oracle: { ...track.oracle },
       goals: track.goals.map((g) => ({ id: g.goal.id, label: g.goal.label, done: g.state === "done" })),
       lifeScore,
     };
+    const title = titleFor({
+      recap: recapBase,
+      tags: track.goalTrack.tags,
+      choices: track.choiceIds,
+      sharedEvents: track.goalTrack.sharedEvents,
+      owedBy: others.filter((o) => o.facts.has(factKey("owes_money", c.id))).length,
+      owes: [...c.facts].filter((f) => f.startsWith("owes_money:")).length,
+      savedSomeone: others.some((o) => o.facts.has(factKey("saved_by", c.id))),
+      married: track.married,
+      revengeWorked: track.played.some((p) => p.revenge && p.result === "worked"),
+      minHealth: track.minHealth,
+      lifeShare: lifeDurationMs / Math.max(1, sessionDurationMs),
+    });
+    return { ...recapBase, title, years };
   });
 }
 

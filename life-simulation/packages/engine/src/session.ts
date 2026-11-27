@@ -447,6 +447,7 @@ export class Session {
       this.onNotice(cid, { kind: "upheaval", t: this.now(), id: u.id, title: u.title, text: u.text, personal, selfChanges });
     }
     this.log.push({ t: this.now(), type: "upheaval_started", upheavalId: u.id, title: u.title, changes });
+    this.trackYears(changes);
     for (const cid of this.order) {
       const g = (this.tracking.get(cid) as CharacterTracking).goalTrack;
       if (this.char(cid).status === "active") g.upheavalMinHealth = Math.min(g.upheavalMinHealth, this.char(cid).attrs.health);
@@ -621,6 +622,7 @@ export class Session {
       success,
       risk,
       state: "preparing",
+      ...(free ? { revenge: true } : {}),
     };
     this.schemes.set(scheme.id, scheme);
     this.timers.push(scheme.readyAt, { kind: "scheme", id: scheme.id });
@@ -715,11 +717,14 @@ export class Session {
       mischief: def.label,
       on: s.targetId,
       result: s.result,
+      discovered,
+      ...(s.revenge ? { revenge: true } : {}),
       ...(s.boost ? { boost: s.boost } : {}),
       ...(s.accomplice ? { accomplice: s.accomplice } : {}),
       ...(s.accompliceAnswer ? { accompliceAnswer: s.accompliceAnswer } : {}),
     });
-    if (worked || discovered) (this.tracking.get(s.targetId) as CharacterTracking).suffered.push({ mischief: def.label, by: s.plotter, discovered });
+    if (worked || discovered) (this.tracking.get(s.targetId) as CharacterTracking).suffered.push({ mischief: def.label, by: s.plotter, discovered, year: this.lifeYear() });
+    this.yearOf(s.plotter).schemed = true;
     if (worked && !discovered) (this.tracking.get(s.plotter) as CharacterTracking).goalTrack.secretSchemes++;
     if (discovered) (this.tracking.get(s.targetId) as CharacterTracking).goalTrack.caughtCulprits++;
     this.updateGoals();
@@ -886,6 +891,10 @@ export class Session {
         oracle: { guesses: 0, correct: 0 },
         goalTrack: newGoalTrack(),
         goals: [],
+        choiceIds: new Map(),
+        years: new Map(),
+        minHealth: 100,
+        married: false,
       });
     });
   }
@@ -1535,6 +1544,36 @@ export class Session {
     }
   }
 
+  /** T11: the year of life we are in (0 = the first). */
+  private lifeYear(): number {
+    return calendarAt(this.now(), this.config.yearSeconds * MS).year;
+  }
+
+  private yearOf(id: string): { changes: Partial<Record<Attribute, number>>; partner?: boolean; rival?: boolean; schemed?: boolean } {
+    const years = (this.tracking.get(id) as CharacterTracking).years;
+    const y = this.lifeYear();
+    const entry = years.get(y) ?? { changes: {} };
+    years.set(y, entry);
+    return entry;
+  }
+
+  /** T11: what changed this year, per character (for the emoji row), and the lowest health seen. */
+  private trackYears(changes: readonly Change[]): void {
+    for (const ch of changes) {
+      if (ch.kind === "attr") {
+        const y = this.yearOf(ch.characterId);
+        y.changes[ch.attribute] = (y.changes[ch.attribute] ?? 0) + ch.delta;
+        if (ch.attribute === "health") {
+          const t = this.tracking.get(ch.characterId) as CharacterTracking;
+          t.minHealth = Math.min(t.minHealth, ch.value);
+        }
+      } else if (ch.kind === "relation") {
+        if (ch.type === "partner") this.yearOf(ch.from).partner = true;
+        if (ch.type === "rival" || ch.type === "enemy") this.yearOf(ch.from).rival = true;
+      }
+    }
+  }
+
   private goalWorld(id: string): GoalWorld {
     const t = this.tracking.get(id) as CharacterTracking;
     return {
@@ -1757,6 +1796,7 @@ export class Session {
       ...(seconds !== undefined ? { until: this.now() + seconds * MS } : {}),
     };
     this.marks.set(mark.id, mark);
+    if (kind === "just_married") (this.tracking.get(characterId) as CharacterTracking).married = true;
     if (mark.until !== undefined) this.timers.push(mark.until, { kind: "unmark", id: mark.id });
     this.onPublic({ kind: "mark", t: this.now(), mark });
   }
@@ -1876,9 +1916,12 @@ export class Session {
     this.settleGuesses(inst);
     // T10: what this event means for everyone's goals.
     for (const id of inst.deciders) {
-      const t = (this.tracking.get(id) as CharacterTracking).goalTrack;
-      for (const tag of this.choiceDef(inst, id).tags) t.tags.set(tag, (t.tags.get(tag) ?? 0) + 1);
+      const tr = this.tracking.get(id) as CharacterTracking;
+      const choice = this.choiceDef(inst, id);
+      for (const tag of choice.tags) tr.goalTrack.tags.set(tag, (tr.goalTrack.tags.get(tag) ?? 0) + 1);
+      tr.choiceIds.set(choice.id, (tr.choiceIds.get(choice.id) ?? 0) + 1);
     }
+    this.trackYears(changes);
     for (const id of inst.participants) {
       if (this.isUnaware(ev, inst.roleOf.get(id))) continue;
       if (inst.deciders.some((d) => d !== id)) (this.tracking.get(id) as CharacterTracking).goalTrack.sharedEvents++;
