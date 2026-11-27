@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import type { Attribute, Notice, OfferView } from "@lifesim/core";
-import { ATTR_LABELS, RELATION_LABELS, careerName, clock, hints, isNewsworthy } from "../format";
+import { ATTR_LABELS, RELATION_LABELS, careerName, clock, hints, isNewsworthy, quoted } from "../format";
 import { Town, useMapSize } from "../town/Town";
 import type { GameState } from "../useGame";
 
@@ -276,7 +276,7 @@ function EventCard({ offer, game, now, decide }: { offer: OfferView; game: GameS
 
       {game.submitted ? (
         <p className="waiting" aria-live="polite">
-          You chose “{offer.choices.find((c) => c.id === game.submitted)?.label}”. Waiting for the others…
+          You chose {quoted(offer.choices.find((c) => c.id === game.submitted)?.label)}. Waiting for the others…
         </p>
       ) : (
         <ul className="choices">
@@ -300,7 +300,7 @@ function EventCard({ offer, game, now, decide }: { offer: OfferView; game: GameS
           ))}
         </ul>
       )}
-      <p className="muted small default-note">If you do not choose in time: “{offer.choices.find((c) => c.isDefault)?.label}”.</p>
+      <p className="muted small default-note">If you do not choose in time: {quoted(offer.choices.find((c) => c.isDefault)?.label)}.</p>
     </article>
   );
 }
@@ -339,7 +339,7 @@ function RevealCard({ notice, game }: { notice: Extract<Notice, { kind: "resolve
           return (
             <li key={id} className={`flip ${label ? "" : "secret"}`}>
               <span className="flip-who">{nameOf(id)}</span>
-              <span className="flip-what">{label ? `“${label}”` : "🤐 kept it to themselves"}</span>
+              <span className="flip-what">{label ? quoted(label) : "🤐 kept it to themselves"}</span>
             </li>
           );
         })}
@@ -356,7 +356,7 @@ function OutcomeCard({ notice, waiting }: { notice: Extract<Notice, { kind: "res
       <h1>{notice.title}</h1>
       {notice.myChoice && (
         <p className="muted">
-          {notice.myChoice.defaulted ? "You did not decide in time: " : "You chose: "}“{notice.myChoice.label}”
+          {notice.myChoice.defaulted ? "You did not decide in time: " : "You chose: "}{quoted(notice.myChoice.label)}
         </p>
       )}
       {notice.outcomeText && <p className="lead">{notice.outcomeText}</p>}
@@ -364,7 +364,7 @@ function OutcomeCard({ notice, waiting }: { notice: Extract<Notice, { kind: "res
         <ul className="revealed">
           {notice.revealed.map((r) => (
             <li key={r.characterId}>
-              {notice.participants.find((p) => p.characterId === r.characterId)?.name ?? r.characterId} chose “{r.label}”
+              {notice.participants.find((p) => p.characterId === r.characterId)?.name ?? r.characterId} chose {quoted(r.label)}
             </li>
           ))}
         </ul>

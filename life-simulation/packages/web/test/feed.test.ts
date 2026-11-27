@@ -15,3 +15,13 @@ describe("B3: Around town shows news, not other people's errands", () => {
     expect(isNewsworthy({ kind: "move" })).toBe(false);
   });
 });
+
+describe("T5b R1: quotes around choice labels", async () => {
+  const { quoted } = await import("../src/format");
+  it("adds quotes once, never doubles them", () => {
+    expect(quoted("Count fairly")).toBe("“Count fairly”");
+    expect(quoted('"Go to the bathroom" and never come back')).toBe('"Go to the bathroom" and never come back');
+    expect(quoted("„Ja”")).toBe("„Ja”");
+    expect(quoted(undefined)).toBe("");
+  });
+});

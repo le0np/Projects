@@ -89,6 +89,15 @@ async function playOnce(browser, label, contextOptions) {
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/${label}-lobby.png`, fullPage: true });
   await page.getByRole("button", { name: /Find a life as Doctor/ }).click();
 
+  // T5b R3: the header is complete from the first second (attributes, season), before any event.
+  await page.locator(".game-header").waitFor({ timeout: 15_000 });
+  const header = await page.evaluate(() => ({
+    attrs: document.querySelectorAll(".game-header .attrs li").length,
+    season: document.querySelector(".game-header .chip")?.textContent ?? "",
+    offer: !!document.querySelector("button.choice"),
+  }));
+  if (!header.offer && (header.attrs !== 5 || !/year/.test(header.season))) throw new Error(`[${label}] empty header at the start: ${JSON.stringify(header)}`);
+
   // Play: answer every offer with the first choice until the recap appears.
   let decisions = 0;
   let checkedCards = 0;

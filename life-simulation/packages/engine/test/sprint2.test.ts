@@ -91,3 +91,31 @@ describe("T6: moods and ties on the map", () => {
     if (t) expect(ties.some((x) => x.viewer === t.other && x.other === t.viewer && (x.debt === "owes_you" || x.debt === "both"))).toBe(true);
   });
 });
+
+describe("T5b R2: people stay at the spot while the cards are revealed", () => {
+  it("after an event with a human, nobody in it walks away for the linger time (live pacing only)", async () => {
+    const { humanPacing } = await import("../src");
+    const pacing = humanPacing(6);
+    const result = runSession({
+      content,
+      config: { seed: "linger", humanPacing: pacing },
+      participants: [
+        { career: "lawyer", isBot: false, controller: { decide: (v) => ({ choiceId: v.offer.choices[0]!.id, thinkMs: 3000 * 6 }) } },
+        ...["doctor", "teacher", "mechanic", "civilian"].map((career, i) => ({ career, isBot: true, controller: new RandomController(new Rng(`l${i}`), 0) })),
+      ],
+    });
+    const linger = pacing.lingerSeconds * 1000 * 6;
+    const started = new Map<string, string[]>();
+    let checked = 0;
+    for (const e of result.log) {
+      if (e.type === "event_started") started.set(e.instanceId, Object.values(e.bindings).flat());
+      if (e.type !== "event_resolved") continue;
+      const who = started.get(e.instanceId)!;
+      if (!who.includes("c1")) continue;
+      const early = result.log.filter((m) => m.type === "moved" && who.includes(m.characterId) && m.t > e.t && m.t < e.t + linger && m.reason !== "event");
+      expect(early).toEqual([]);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(3);
+  });
+});

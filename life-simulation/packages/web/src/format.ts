@@ -37,6 +37,12 @@ export const ATTR_LABELS: Record<Attribute, { label: string; icon: string }> = {
   career: { label: "Career", icon: "▲" },
 };
 
+/** T5b R1: a choice label in quotation marks, without doubling quotes the label already has. */
+export function quoted(label: string | undefined): string {
+  if (!label) return "";
+  return /^["“„']/.test(label.trim()) ? label : `“${label}”`;
+}
+
 /** B4: suggestions for a character name (the player can type their own). */
 export const NAME_SUGGESTIONS = [
   "Mila", "Oskar", "Nina", "Bruno", "Iris", "Teo", "Vera", "Leon", "Dora", "Max",

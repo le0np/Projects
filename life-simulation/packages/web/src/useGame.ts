@@ -31,6 +31,7 @@ export interface Snapshot {
   timeScale: number;
   roster: { characterId: string; name: string; career: string; isBot: boolean; trait?: string }[];
   moods?: { characterId: string; mood: Mood }[];
+  me?: Pick<Extract<Notice, { kind: "event" }>["view"], "self" | "others" | "calendar">;
   pending: OfferView | null;
   history: Notice[];
   feed: PublicEntry[];
@@ -106,10 +107,12 @@ function stateFromSnapshot(s: Snapshot): GameState {
     resolvedWall: {},
     reactions: {},
     feed: s.feed,
-    attrs: lastView?.self.attrs,
-    calendar: [...s.feed].reverse().find((f): f is Extract<PublicEntry, { kind: "season" }> => f.kind === "season") ?? lastView?.calendar,
-    ageBase: lastView ? { age: lastView.self.age, year: lastView.calendar.year } : undefined,
+    // T5b R3: the snapshot carries the current state, so nothing is empty before the first event.
+    attrs: s.me?.self.attrs ?? lastView?.self.attrs,
+    calendar: s.me?.calendar ?? [...s.feed].reverse().find((f): f is Extract<PublicEntry, { kind: "season" }> => f.kind === "season") ?? lastView?.calendar,
+    ageBase: s.me ? { age: s.me.self.age, year: s.me.calendar.year } : lastView ? { age: lastView.self.age, year: lastView.calendar.year } : undefined,
     others:
+      s.me?.others ??
       [...s.history].reverse().map((n) => (n.kind === "event" ? n.view.others : n.kind === "resolved" ? n.others : undefined)).find((o) => o !== undefined) ?? [],
     ...(ended ? { ended: { status: ended.status, cause: ended.cause } } : {}),
     upheaval: (() => {

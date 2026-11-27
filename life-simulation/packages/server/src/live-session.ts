@@ -142,6 +142,8 @@ export class LiveSession {
       roster: this.roster.map(({ userId: _u, ...r }) => r),
       positions: this.session.positions(),
       moods: this.session.moods(),
+      // T5b R3: attributes, calendar and relationships (including starting ones) from the very first second.
+      me: seat ? this.session.selfView(seat.characterId) : undefined,
       mischief: seat ? this.session.mischiefState(seat.characterId) : null,
       homes: this.roster.map((r) => ({ characterId: r.characterId, home: this.homeOf(r.characterId) })),
       pending: seat?.pending ?? null,

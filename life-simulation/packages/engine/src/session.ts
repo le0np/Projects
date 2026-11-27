@@ -128,7 +128,8 @@ type Timer =
   | { kind: "season" }
   | { kind: "upheaval"; id: string }
   | { kind: "upheaval_end"; id: string }
-  | { kind: "phase"; phase: StoryPhase };
+  | { kind: "phase"; phase: StoryPhase }
+  | { kind: "release"; characterId: string };
 
 /** "Ana", "Ana and Ben", "Ana, Ben and Clara" (T4b N4). */
 export function listNames(names: readonly string[]): string {
@@ -308,6 +309,13 @@ export class Session {
         case "phase":
           this.onPhase(timer.phase);
           break;
+        case "release": {
+          // T5b R2: the lingering after an event is over; now go wherever life takes you.
+          const c = this.char(timer.characterId);
+          if (c.busyWith === null) this.afterEventMovement(c);
+          if (c.status === "active") this.scheduleTick(this.now());
+          break;
+        }
         case "end":
           this.accepting = false;
           this.endReason ??= "time_limit";
@@ -1320,6 +1328,17 @@ export class Session {
       });
   }
 
+  /** T5b R3: what a character sees of themselves and others right now (for the first screen and reconnects). */
+  selfView(characterId: string): Pick<CharacterView, "self" | "others" | "calendar"> | undefined {
+    const c = this.characters.get(characterId);
+    if (!c) return undefined;
+    return {
+      self: { id: c.id, name: c.name, career: c.career.id, age: this.age(characterId), attrs: { ...c.attrs }, status: c.status, facts: [...c.facts].sort() },
+      others: this.othersFor(characterId),
+      calendar: (({ year, season }) => ({ year, season }))(calendarAt(this.now(), this.config.yearSeconds * MS)),
+    };
+  }
+
   /** T6: everyone's current mood (for (re)connecting clients). */
   moods(): { characterId: string; mood: Mood }[] {
     return this.order.map((id) => ({ characterId: id, mood: this.char(id).mood ?? "content" }));
@@ -1428,6 +1447,7 @@ export class Session {
     // 6. Tracking for the Life Recap, notices, and freeing the participants.
     const important = outcome.important === true || ev.importance === "important";
     const reactionOf = (id: string) => this.reaction(id, changes);
+    const humanThere = inst.participants.some((id) => !this.char(id).isBot && !this.isUnaware(ev, inst.roleOf.get(id)));
     for (const id of inst.participants) this.updateMood(id, reactionOf(id), changes);
     for (const id of inst.participants) {
       const c = this.char(id);
@@ -1492,7 +1512,13 @@ export class Session {
       }
       c.availableAt = this.now() + Math.round(rest);
       c.stayUntil = this.now();
-      this.afterEventMovement(c);
+      // T5b R2 (live only): everyone stays at the spot while the choices are revealed and people react.
+      const linger = pacing && humanThere ? Math.round(pacing.lingerSeconds * MS * pacing.timeScale) : 0;
+      if (linger > 0) {
+        c.stayUntil = this.now() + linger;
+        c.availableAt = Math.max(c.availableAt, c.stayUntil);
+        this.timers.push(c.stayUntil, { kind: "release", characterId: id });
+      } else this.afterEventMovement(c);
       if (c.status === "active") this.scheduleTick(Math.max(c.availableAt, c.stayUntil));
 
       this.onNotice(id, {

@@ -93,6 +93,8 @@ export interface HumanPacing {
   patienceSeconds: number;
   /** How often the director looks again for an idle human (wall seconds). */
   retrySeconds: number;
+  /** T5b R2: after an event everyone stays at the spot this long (reveal, reactions, outcome) before moving on. */
+  lingerSeconds: number;
 }
 
 export const DEFAULT_HUMAN_PACING: Omit<HumanPacing, "timeScale"> = {
@@ -101,6 +103,7 @@ export const DEFAULT_HUMAN_PACING: Omit<HumanPacing, "timeScale"> = {
   restAfterImportantSeconds: [11, 14],
   patienceSeconds: 10,
   retrySeconds: 2,
+  lingerSeconds: 5,
 };
 
 /** Pacing for a live server running at `timeScale`; `scale` shortens every wall-clock duration (tests). */
@@ -121,6 +124,7 @@ export function humanPacing(timeScale: number, scale = 1): HumanPacing {
     restAfterImportantSeconds: r(DEFAULT_HUMAN_PACING.restAfterImportantSeconds),
     patienceSeconds: DEFAULT_HUMAN_PACING.patienceSeconds * scale,
     retrySeconds: DEFAULT_HUMAN_PACING.retrySeconds * scale,
+    lingerSeconds: DEFAULT_HUMAN_PACING.lingerSeconds * scale,
   };
 }
 

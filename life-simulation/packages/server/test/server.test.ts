@@ -118,7 +118,12 @@ describe("a full session with two humans and bots", () => {
     expect(await s1.emitWithAck("match:find", { career: "doctor", name: "x" })).toEqual({ ok: false, error: "invalid_name" });
     expect(await s1.emitWithAck("match:find", { career: "doctor", name: "<b>Mila</b>" })).toEqual({ ok: false, error: "invalid_name" });
 
-    const started1 = once<{ sessionId: string; characterId: string; roster: { characterId: string; name: string }[] }>(s1, "game:started");
+    const started1 = once<{
+      sessionId: string;
+      characterId: string;
+      roster: { characterId: string; name: string }[];
+      me?: { self: { attrs: Record<string, number> }; calendar: { season: string }; others: unknown[] };
+    }>(s1, "game:started");
     const started2 = once<{ sessionId: string; characterId: string }>(s2, "game:started");
     expect((await s1.emitWithAck("match:find", { career: "doctor", name: "Mila" })).ok).toBe(true);
     expect((await s2.emitWithAck("match:find", { career: "lawyer" })).ok).toBe(true);
@@ -127,6 +132,10 @@ describe("a full session with two humans and bots", () => {
     expect(g1.roster).toHaveLength(4); // 2 humans + 2 bots
     expect(g1.characterId).not.toBe(g2.characterId);
     expect(g1.roster.find((r) => r.characterId === g1.characterId)?.name).toBe("Mila");
+    // T5b R3: the very first snapshot already has your attributes, the calendar and everyone else.
+    expect(Object.keys(g1.me!.self.attrs)).toHaveLength(5);
+    expect(g1.me!.calendar.season).toBeTruthy();
+    expect(g1.me!.others).toHaveLength(3);
     expect(g1.roster.some((r) => r.name === "bob")).toBe(false);
     expect(g1.roster.find((r) => r.characterId === g2.characterId)?.name).toBe("cleo"); // no name sent: the username
 

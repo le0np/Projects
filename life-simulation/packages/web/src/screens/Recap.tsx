@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Attribute, LifeRecap } from "@lifesim/core";
 import { api } from "../api";
-import { ATTR_LABELS, GOOD_OUTCOMES, OUTCOME_LABELS, RELATION_LABELS, careerName, clock } from "../format";
+import { ATTR_LABELS, GOOD_OUTCOMES, OUTCOME_LABELS, RELATION_LABELS, careerName, clock, quoted } from "../format";
 
 export function RecapView({ recap }: { recap: LifeRecap }) {
   return (
@@ -66,7 +66,7 @@ export function RecapView({ recap }: { recap: LifeRecap }) {
             {recap.keyMoments.map((m) => (
               <li key={m.instanceId}>
                 <strong>{m.eventTitle}</strong>
-                {m.choiceLabel && <span className="muted"> — you chose “{m.choiceLabel}”</span>}
+                {m.choiceLabel && <span className="muted"> — you chose {quoted(m.choiceLabel)}</span>}
                 {m.text && <p>{m.text}</p>}
               </li>
             ))}
@@ -101,7 +101,7 @@ export function RecapView({ recap }: { recap: LifeRecap }) {
             ))}
             {recap.secrets.suffered.map((p, i) => (
               <li key={`s-${i}`} className="bad">
-                <strong>{p.by}</strong> was behind “{p.mischief}”.
+                <strong>{p.by}</strong> was behind {quoted(p.mischief)}.
               </li>
             ))}
           </ul>

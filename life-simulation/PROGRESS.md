@@ -441,6 +441,12 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - Canvas ima `data-people` (pozicije likova na ekranu) za testove i za T9.
 - **Testovi:** engine (raspoloženja se mijenjaju i objavljuju, dug vidljiv s obje strane), bots (osobine se razlikuju). Provjereno u browseru: preko sebe plava linija do kolegice i crvena do neprijateljice, osobina u imenu, 😠 nakon ispuhanih guma.
 
+### T5b: sitnice iz QA T5 (developer)
+
+- **R1:** navodnici oko oznake izbora se ne udvostručuju ako oznaka već počinje navodnikom (`quoted()` u `web/src/format.ts`, svugdje u igri i recapu; test).
+- **R2:** nakon eventa u kojem je čovjek, svi sudionici ostaju na mjestu 5 stvarnih sekundi (otkrivanje kartica, reakcije i početak teksta ishoda), tek onda nastavljaju (timer `release` u engineu, `humanPacing.lingerSeconds`). Sesije samo s botovima su nepromijenjene. Test: nitko iz eventa ne krene prije isteka (pada kad je zadržavanje 0).
+- **R3:** potvrđeni uzrok: klijent je atribute, kalendar, dob i odnose uzimao samo iz zadnje ponude u povijesti, koja je na početku prazna; početni odnosi (npr. partner iz seeda) zato su se vidjeli tek uz prvi event. Snapshot (`game:started`, `game:state`) sada nosi `me` (`Session.selfView`): atribute, kalendar, dob i sve odnose. Testovi: server (prvi snapshot) i e2e (zaglavlje puno prije prvog eventa).
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 1, T1–T4):

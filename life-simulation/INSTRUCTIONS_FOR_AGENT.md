@@ -68,7 +68,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Na mobitelu kartica ostaje ispod mape, ali mapa se pomakne/zumira na mjesto eventa.
 - Nakon odluke: **istovremeno otkrivanje** svih izbora (sve karte se okrenu odjednom) i 2 s reakcije likova na mapi (lice, skok, ljutnja) prije nego se pokaže tekst ishoda.
 
-### [ ] T5b. Sitnice iz QA T5 (napravi uz Sprint 2)
+### [x] T5b. Sitnice iz QA T5 (napravi uz Sprint 2)
 - **R1:** Dvostruki navodnici u otkrivanju izbora: `""Go to the bathroom" and never come back"`. Ako oznaka već počinje navodnikom, ne dodaj nove (ili koristi drugi stil).
 - **R2:** Reakcije na mapi se ne vide jer sudionici **odu s mjesta eventa prije otkrivanja**. Kod „Who Pays?” su Iris, Luka i Clara već hodali na druge strane dok su se kartice okretale. Sudionici trebaju ostati na mjestu dok traju otkrivanje, reakcija i tekst ishoda (ili barem 3 s), tek onda nastaviti rutinu.
 - **R3:** U prvih nekoliko sekundi sesije (prije prve poruke) zaglavlje nema godišnje doba, dob ni atribute, a „People” prikazuje sve kao „Stranger”. Luka je kasnije bez ikakvog zajedničkog eventa postao „Partner”, što je vjerojatno početni odnos iz seeda koji se ne vidi dok ne stigne prvi `view`. Snapshot u `game:started` treba odmah nositi atribute, kalendar i odnose. Prvo potvrdi uzrok.
