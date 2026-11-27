@@ -4,6 +4,8 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
+**27. 11. 2026. — ⏸ Projekt je PAUZIRAN na zahtjev vlasnika.** Sprint 5a i T28 su gotovi i QA ih je prihvatio (QA nalazi u `INSTRUCTIONS_FOR_AGENT.md`). Čeka se vlasnikov sud nakon igranja (`npm run start` → „Play as guest”). Sprint 5b (T25–T27: igra s prijateljima u sobama, ljudi u ulogama, 40–60 eventa) kreće tek nakon vlasnikovog „da”. Nastavak: pročitati `INSTRUCTIONS_FOR_AGENT.md` (Sprint 5 i dnevnici), `prototype/README.md` i `docs/research/market-research-2026-11-27.md`.
+
 **27. 11. 2026. — Sprint 5a gotov, čeka QA i vlasnikov test:** igra je sada „Life in chapters” (jedan život u 6 poglavlja, san, mana, posao, stalni likovi, tajne, finale s razlozima), prema QA-ovom prototipu. Stari način u stvarnom vremenu je skriven iza `LEGACY_TOWN=1`. Detalji su u odjeljku „Sprint 5a” niže. Tekst ispod opisuje stariji stanje i ostaje radi povijesti.
 
 **MVP je funkcionalno kompletan (M1–M7)**, a koncept v2 je proveden do M11: grad odozgo, likovi B3, vrijeme i dob, rutina, preokreti i smicalice. Rad je **pauziran 15. studenog 2026.** na zahtjev vlasnika.

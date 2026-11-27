@@ -2,7 +2,10 @@
 
 Ovo je kanal između **QA/PM agenta** (piše zadatke, testira) i **developer agenta** (implementira). Oba radimo na grani `dev`.
 
-> ## ⛔ STOP — Sprint 4 je zaustavljen (27. 11. 2026., odluka QA/PM nakon vlasnikovog testa)
+> ## ⏸ PAUZA (27. 11. 2026., odluka vlasnika)
+> Projekt je pauziran. **Ne radi ništa dok vlasnik ili QA/PM ovdje ne napišu da se nastavlja.** Stanje: Sprint 5a + T28 gotovi i prihvaćeni od QA; čeka se vlasnikov sud nakon igranja. Sljedeće je Sprint 5b (T25–T27), ali tek nakon vlasnikovog „da”.
+
+> ## ⛔ STOP (staro, vrijedilo do Sprinta 5) — Sprint 4 je zaustavljen (27. 11. 2026., odluka QA/PM nakon vlasnikovog testa)
 > Vlasnik je odigrao 3 partije: igra je **i dalje monotona i dosadna**, igrač se **ne poveže sa svojim likom**, odluke **nemaju vidljiv utjecaj**, **nema humora ni napetosti**, a vrijeme teče **prebrzo**: igrač „samo odgovara na nasumična pitanja” i nema osjećaj igre.
 > **Ne počinji T14–T19.** Ako si usred nečega iz Sprinta 4, commitaj, pushaj i stani. T13 smiješ dovršiti. Sljedeći korak (vjerojatno promjena jezgre igre) QA/PM dogovara s vlasnikom i napisat će ga ovdje. Do tada ne mijenjaj kod; ako imaš ideje kako riješiti gornje probleme, napiši ih u „Pitanja za QA/PM”.
 
@@ -366,3 +369,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 - **27. 11. 2026.** — QA Sprinta 5a: ✅ funkcionalno prihvaćen; dodan T28 (oznake mana, Show-off spam, balans mayor/rich, „Dream chance” na ploči, font i lica u recapu). Vlasnik može igrati.
 - **27. 11. 2026. — T28 gotov** (`b7654fe`). F1: mana djeluje samo na izbore s pravim tagom (maknuto 8 nelogičnih tagova), oznaka je uvijek „Hot-headed −20 %” (samo „Can't say no: 40 %” po starom). F2: Show-off najviše 2× po životu, svaki put druga poanta. F3: na `--lives 300 --seed qa3` snovi su 33–61 % (mayor 61, rich 39). F4: na ploči „🎯 Dream chance: N %”, klik otvara razloge (isti izračun kao finale; test potvrđuje da je zadnja vrijednost jednaka finalu). F5: Fredoka i Atkinson Hyperlegible su u projektu (`@fontsource`, bez CDN-a); lica u recapu prate odnos. Usput: svaki event ostavlja trenutak u „Your life”, pa sada svih 1800 života na `qa3` ima ≥ 2 povratna poziva. `npm run check` 166/166, `npm run e2e` sve prolazi (life.mjs sada otvara i „Dream chance”).
 - **27. 11. 2026.** — QA T28: ✅ prihvaćeno. `npm run check` 166/166, `npm run e2e` prolazi. Batch seed `qa4`, 300 života po snu: 36–66 % (love 66 %, 1 % iznad granice; to je unutar šuma, ne treba dirati), povratni pozivi min 2 / prosjek 4,6, 0 ponavljanja, replay 18/18. U 3 života u browseru oznake mana su samo „X −20 %”, Show-off se pojavio 1× s novom poantom, „🎯 Dream chance” se vidi na ploči, naslovi su u Fredoki. Sprint 5a je spreman za vlasnikov test; 5b čeka njegov sud.
+- **27. 11. 2026.** — ⏸ Projekt pauziran na zahtjev vlasnika. QA/PM je ugasio redovne provjere. Nastavak: vlasnikov sud o Sprintu 5a, zatim 5b.
