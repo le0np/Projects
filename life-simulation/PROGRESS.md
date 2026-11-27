@@ -519,7 +519,7 @@ Provedeno 27. studenog 2026. (nakon Sprinta 2, T5–T9):
 | `card-fit.mjs` (dio `npm run e2e`) | svih 125 kombinacija event/uloga (i skriveni eventi, s tragom) bez skrolanja na 1280×800 i 390×664; 0 gramatičkih grešaka „X and Y is” |
 | `npm run sim:batch -- --sessions 200 --seed sprint2` | brojke gore; replay 3/3 identičan |
 | Skripte u browseru (T5–T9) | najava i karta uz mjesto, otkrivanje i reakcije, zum na mobitelu, raspoloženja i linije odnosa, tragovi (svih 8 iscrtano), spletka od plana do rezultata, pogađanje i kartica lika; bez grešaka u konzoli |
-| Svjež `git clone` + `npm install` + `npm run check` + server | vidi zapis ispod tablice |
+| Svjež `git clone` grane `dev` (`91cfc6d`) + `npm install` + `npm run check` + `web:build` + server | 138/138, build čist, `/api/health` i web stranica rade |
 
 ## Poznata ograničenja
 
