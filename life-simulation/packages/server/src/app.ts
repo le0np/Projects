@@ -8,9 +8,10 @@ import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { Server as SocketServer, type Socket } from "socket.io";
 import { z } from "zod";
-import { Rng } from "@lifesim/core";
-import type { ContentBundle } from "@lifesim/content";
-import { DEFAULT_CONFIG, formatLog } from "@lifesim/engine";
+import { Rng, type ChapterContent } from "@lifesim/core";
+import { loadChapters, type ContentBundle } from "@lifesim/content";
+import { ChapterLife, DEFAULT_CONFIG, formatLifeLog, formatLog, type LifeLogEntry } from "@lifesim/engine";
+import { randomUUID } from "node:crypto";
 import type { ServerConfig } from "./config";
 import type { Database } from "./db/database";
 import { LiveSession, type Seat } from "./live-session";
@@ -49,6 +50,9 @@ const RoomCode = z.string().trim().regex(/^[A-Za-z0-9]{4}$/).transform((c) => c.
 const RoomCreate = z.object({ career: z.string(), name: CharacterName });
 const RoomJoin = z.object({ code: RoomCode, career: z.string(), name: CharacterName });
 const RoomUpdate = z.object({ career: z.string().optional(), name: CharacterName.optional() });
+/** Sprint 5: a life in chapters. */
+const LifeStart = z.object({ name: CharacterName, dream: z.string(), flaw: z.string(), career: z.string() });
+const LifeAct = z.union([z.object({ t: z.literal("next") }), z.object({ t: z.enum(["focus", "choose"]), id: z.string().max(64) })]);
 const Decide = z.object({ sessionId: z.string(), instanceId: z.string(), choiceId: z.string() });
 const Prank = z.object({ sessionId: z.string(), mischiefId: z.string(), targetId: z.string() });
 const Ghost = z.object({ sessionId: z.string(), action: z.enum(["nudge", "vote", "will"]), target: z.string().max(300) });
@@ -57,8 +61,11 @@ const Boost = z.object({ sessionId: z.string(), schemeId: z.string(), boost: z.e
 
 type Ack = (response: unknown) => void;
 
-export async function buildApp(opts: { db: Database; content: ContentBundle; config: ServerConfig; logger?: boolean }): Promise<App> {
+export async function buildApp(opts: { db: Database; content: ContentBundle; chapters?: ChapterContent; config: ServerConfig; logger?: boolean }): Promise<App> {
   const { content, config } = opts;
+  const chapters = opts.chapters ?? loadChapters();
+  /** Sprint 5: each player's current life in chapters (solo, in memory until they go back to the lobby). */
+  const lives = new Map<string, { id: string; life: ChapterLife; saved: boolean }>();
   const repo = new Repo(opts.db);
   const http = Fastify({ logger: opts.logger ?? false });
   const io = new SocketServer(http.server, { cors: { origin: true } });
@@ -249,6 +256,14 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
 
   http.get("/api/lobby", async () => lobbyState());
 
+  /** Sprint 5: what you can choose when you create your character, and whether the old town mode is on. */
+  http.get("/api/life/options", async () => ({
+    legacyTown: config.legacyTown,
+    dreams: chapters.dreams.map(({ id, icon, label, note }) => ({ id, icon, label, note })),
+    flaws: chapters.flaws.map(({ id, icon, label, note }) => ({ id, icon, label, note })),
+    careers: chapters.careers.map(({ id, icon, label, jobs }) => ({ id, icon, label, note: `${jobs[0]} → ${jobs[1]}` })),
+  }));
+
   /** The town (concept v2): tiles, roads and places, for the client's map. */
   http.get("/api/map", async () => content.map.data);
 
@@ -259,6 +274,8 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
     if (!(await repo.isParticipant(req.params.id, user.id))) return reply.code(404).send({ error: "not_found" });
     const log = await repo.sessionLog(req.params.id);
     if (!log) return reply.code(409).send({ error: "session_still_running" });
+    const first = log[0] as unknown as LifeLogEntry | undefined;
+    if (first && "t" in first && first.t === "start") return { log, text: formatLifeLog(chapters, log as unknown as LifeLogEntry[]) };
     return { log, text: formatLog(log) };
   });
 
@@ -300,6 +317,51 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
       void socket.join(`room:${myRoom.code}`);
       socket.emit("room:state", rooms.view(myRoom));
     }
+
+    // ---------------------------------------------------------------- Sprint 5: life in chapters
+
+    const mine = lives.get(user.id);
+    if (mine) socket.emit("life:state", { lifeId: mine.id, view: mine.life.view() });
+    const lifeState = (entry: { id: string; life: ChapterLife }) => ({ lifeId: entry.id, view: entry.life.view() });
+
+    socket.on("life:start", (raw: unknown, ack: Ack = () => {}) => {
+      const body = LifeStart.safeParse(raw);
+      if (!body.success) return ack({ ok: false, error: body.error.issues.some((i) => i.path[0] === "name") ? "invalid_name" : "invalid" });
+      const { name, dream, flaw, career } = body.data;
+      if (!chapters.dreams.some((d) => d.id === dream) || !chapters.flaws.some((f) => f.id === flaw) || !chapters.careers.some((c) => c.id === career))
+        return ack({ ok: false, error: "unknown_choice" });
+      const id = randomUUID();
+      const entry = { id, life: new ChapterLife(chapters, { name: name.trim(), dream, flaw, career }, id), saved: false };
+      lives.set(user.id, entry);
+      ack({ ok: true, ...lifeState(entry) });
+      socket.to(`user:${user.id}`).emit("life:state", lifeState(entry));
+    });
+
+    socket.on("life:act", (raw: unknown, ack: Ack = () => {}) => {
+      const entry = lives.get(user.id);
+      if (!entry) return ack({ ok: false, error: "no_life" });
+      const body = LifeAct.safeParse(raw);
+      if (!body.success) return ack({ ok: false, error: "invalid" });
+      const error = entry.life.act(body.data);
+      if (error) return ack({ ok: false, error, ...lifeState(entry) });
+      if (entry.life.finished && !entry.saved) {
+        entry.saved = true;
+        const step = entry.life.view().step;
+        if (step.kind === "done")
+          void repo
+            .chapterLifeFinished({ id: entry.id, userId: user.id, seed: entry.life.seed, content: chapters, log: entry.life.log, recap: step.recap, career: entry.life.state.setup.career })
+            .catch((err) => http.log.error(err));
+      }
+      ack({ ok: true, ...lifeState(entry) });
+      socket.to(`user:${user.id}`).emit("life:state", lifeState(entry));
+    });
+
+    /** Back to the lobby: the life is over (or abandoned). */
+    socket.on("life:leave", (_raw: unknown, ack: Ack = () => {}) => {
+      lives.delete(user.id);
+      ack({ ok: true });
+      socket.to(`user:${user.id}`).emit("life:state", null);
+    });
 
     socket.on("match:find", (raw: unknown, ack: Ack = () => {}) => {
       const body = FindMatch.safeParse(raw);

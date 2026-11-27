@@ -39,6 +39,7 @@ const server = spawn("npx", ["tsx", "packages/server/src/main.ts"], {
   cwd: root,
   env: {
     ...process.env,
+    LEGACY_TOWN: "1",
     PORT: String(PORT),
     HOST: "127.0.0.1",
     PGLITE_DIR: "",

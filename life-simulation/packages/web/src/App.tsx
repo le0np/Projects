@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { loadToken, saveToken } from "./api";
 import { AuthScreen } from "./screens/Auth";
 import { GameScreen } from "./screens/Game";
+import { LifeScreen } from "./screens/Life";
 import { LobbyScreen, roomErrorText } from "./screens/Lobby";
 import { RoomScreen } from "./screens/Room";
 import { RecapScreen } from "./screens/Recap";
@@ -44,6 +45,8 @@ export function App() {
   }, [room, game.game, pendingCode]);
 
   if (!token) return <AuthScreen onAuthenticated={login} roomCode={pendingCode} />;
+  // Sprint 5: your life in chapters (the default game).
+  if (game.life) return <LifeScreen life={game.life} act={game.lifeAct} leave={game.leaveLife} token={token} />;
   if (game.game?.recap) return <RecapScreen recap={game.game.recap} sessionId={game.game.sessionId} token={token} onBack={game.leaveGame} />;
   if (game.game) return <GameScreen game={game.game} decide={game.decide} playMischief={game.playMischief} previewScheme={game.previewScheme} boostScheme={game.boostScheme} guess={game.guess} ghostAction={game.ghostAction} connected={game.connected} />;
   if (game.room) return <RoomScreen room={game.room} myUserId={game.userId} update={game.updateRoom} leave={game.leaveRoom} start={game.startRoom} />;

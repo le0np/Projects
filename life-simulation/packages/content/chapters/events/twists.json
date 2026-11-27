@@ -1,0 +1,318 @@
+[
+  {
+    "id": "flood",
+    "kind": "twist",
+    "title": "The Great Flood",
+    "text": "The river decides to visit town. Your street is under a metre of water. {crush}'s cat is on a roof. {rival}'s jet ski is floating past, unattended.",
+    "choices": [
+      {
+        "id": "things",
+        "label": "Save your own things",
+        "tags": [
+          "modest"
+        ],
+        "ok": {
+          "text": "You save your laptop and three plants. The plants are dead, but they're yours.",
+          "emoji": "📦",
+          "effects": [
+            {
+              "money": 10
+            }
+          ]
+        }
+      },
+      {
+        "id": "cat",
+        "label": "Save {crush}'s cat",
+        "tags": [
+          "brave"
+        ],
+        "base": 60,
+        "ok": {
+          "text": "You climb the roof and save the cat. The cat scratches you. {crush} kisses the scratches.",
+          "emoji": "🐈",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 2
+            },
+            {
+              "fame": 1
+            },
+            {
+              "remember": "Saved {crush}'s cat from a roof during the flood."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You slip off the roof into the water. The cat climbs down by itself and looks disappointed in you.",
+          "emoji": "💦",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "jetski",
+        "label": "Borrow {rival}'s jet ski and rescue everyone",
+        "tags": [
+          "brave"
+        ],
+        "base": 50,
+        "ok": {
+          "text": "You save eleven people and a goat. The Gazette calls you a hero. {rival} calls the police.",
+          "emoji": "🚤",
+          "effects": [
+            {
+              "fame": 2
+            },
+            {
+              "rep": 10
+            },
+            {
+              "rel": "rival",
+              "n": -1
+            },
+            {
+              "remember": "Rescued half the street on {rival}'s jet ski."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You crash {rival}'s jet ski into the war memorial. Everyone is fine. The memorial isn't.",
+          "emoji": "💥",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": -2
+            },
+            {
+              "rep": -10
+            }
+          ]
+        }
+      },
+      {
+        "id": "canoe",
+        "label": "Wave to {friend}, who is paddling past in {friend.his} canoe",
+        "cast": "friend",
+        "ok": {
+          "text": [
+            {
+              "when": {
+                "flags": [
+                  "carried_piano"
+                ]
+              },
+              "text": "{friend} remembers who carried {friend.his} piano. {Friend.he} paddles over, saves your TV and gives you a lift to the pub.",
+              "callback": true
+            },
+            {
+              "text": "{friend} paddles over and saves your TV. And you."
+            }
+          ],
+          "emoji": "🛶",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "remember": "{friend} rescued you in a canoe during the flood."
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "paddled over in the canoe"
+          }
+        },
+        "fail": {
+          "text": "{friend} waves back. And keeps paddling.",
+          "emoji": "🛶",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": -1
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "paddled straight past you"
+          }
+        }
+      },
+      {
+        "id": "triage",
+        "label": "Set up a first aid station in the church",
+        "career": "doctor",
+        "ok": {
+          "text": "You treat sprains, shock and one man who swallowed a goldfish. The town will never forget it.",
+          "emoji": "⛑️",
+          "effects": [
+            {
+              "rep": 15
+            },
+            {
+              "fame": 1
+            },
+            {
+              "remember": "Ran a first aid station in the church during the flood."
+            }
+          ]
+        }
+      },
+      {
+        "id": "pump",
+        "label": "Restart the broken flood pump at the waterworks",
+        "career": "engineer",
+        "ok": {
+          "text": "You fix it with a bicycle chain and a lot of swearing. The water goes down. You're the town hero.",
+          "emoji": "🛠️",
+          "effects": [
+            {
+              "rep": 15
+            },
+            {
+              "fame": 1
+            },
+            {
+              "remember": "Restarted the flood pump with a bicycle chain."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "blackout",
+    "kind": "twist",
+    "title": "The Great Blackout",
+    "text": "A squirrel bites the wrong cable and the whole town loses power for three days. No phones, no internet, no fridge. People are talking to each other. It's terrifying.",
+    "choices": [
+      {
+        "id": "street_party",
+        "label": "Organise a street party with everything in the freezers",
+        "tags": [
+          "effort"
+        ],
+        "base": 65,
+        "ok": {
+          "text": "Forty people, two hundred fish fingers, one guitar. People still talk about it. Mostly about the fish fingers.",
+          "emoji": "🎸",
+          "effects": [
+            {
+              "rep": 10
+            },
+            {
+              "fame": 1
+            },
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "remember": "Threw a blackout street party with the whole street's freezers."
+            }
+          ]
+        },
+        "fail": {
+          "text": "It's a lovely idea until the prawns. Twelve people spend the night in the hospital, which also has no power.",
+          "emoji": "🦐",
+          "effects": [
+            {
+              "rep": -10
+            }
+          ]
+        }
+      },
+      {
+        "id": "candles",
+        "label": "Light candles and finally talk to {crush}",
+        "tags": [
+          "calm"
+        ],
+        "ok": {
+          "text": "Three days of candlelight and nothing to do but talk. You learn {crush} hates squirrels. You agree.",
+          "emoji": "🕯️",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 2
+            },
+            {
+              "remember": "Spent the blackout talking to {crush} by candlelight."
+            }
+          ]
+        }
+      },
+      {
+        "id": "sell",
+        "label": "Sell bags of ice at triple price",
+        "base": 60,
+        "ok": {
+          "text": "You make a fortune. You also make enemies. The town's memory is long and the ice melts fast.",
+          "emoji": "🧊",
+          "effects": [
+            {
+              "money": 25
+            },
+            {
+              "rep": -10
+            },
+            {
+              "remember": "Sold ice at triple price in the blackout."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You buy all the ice. It melts before you sell any. You now own a lot of water.",
+          "emoji": "💧",
+          "effects": [
+            {
+              "money": -10
+            }
+          ]
+        }
+      },
+      {
+        "id": "rewire",
+        "label": "Climb the pole and rewire the cable yourself",
+        "career": "engineer",
+        "ok": {
+          "text": "The lights come back on. The whole town cheers. The squirrel is fine and now works for you.",
+          "emoji": "💡",
+          "effects": [
+            {
+              "rep": 15
+            },
+            {
+              "fame": 1
+            },
+            {
+              "remember": "Fixed the town's power cable after the squirrel incident."
+            }
+          ]
+        }
+      },
+      {
+        "id": "night_watch",
+        "label": "Organise a night watch so nobody gets robbed",
+        "career": "police_officer",
+        "ok": {
+          "text": "Nobody gets robbed. Three people get engaged. Two get lost. One is found in the bakery.",
+          "emoji": "🔦",
+          "effects": [
+            {
+              "rep": 10
+            },
+            {
+              "remember": "Kept the town safe in the blackout."
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

@@ -28,7 +28,7 @@ try {
 const server = spawn("npx", ["tsx", "packages/server/src/main.ts"], {
   detached: true,
   cwd: root,
-  env: { ...process.env, PORT: String(PORT), HOST: "127.0.0.1", PGLITE_DIR: "", DATABASE_URL: "", TIME_SCALE: "8", SESSION_DURATION_SECONDS: "150", SESSION_SIZE: "4", MAX_HUMANS: "1", FILL_AFTER_SECONDS: "1", QA_GHOST: "1" },
+  env: { ...process.env, LEGACY_TOWN: "1", PORT: String(PORT), HOST: "127.0.0.1", PGLITE_DIR: "", DATABASE_URL: "", TIME_SCALE: "8", SESSION_DURATION_SECONDS: "150", SESSION_SIZE: "4", MAX_HUMANS: "1", FILL_AFTER_SECONDS: "1", QA_GHOST: "1" },
   stdio: "ignore",
 });
 

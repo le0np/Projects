@@ -1,8 +1,8 @@
 /** All SQL lives here. */
 import { randomUUID } from "node:crypto";
-import type { LifeRecap } from "@lifesim/core";
+import type { ChapterContent, ChapterRecap, LifeRecap } from "@lifesim/core";
 import type { ContentBundle } from "@lifesim/content";
-import type { LogEntry, SessionResult } from "@lifesim/engine";
+import type { LifeLogEntry, LogEntry, SessionResult } from "@lifesim/engine";
 import { hashPassword, hashToken, newToken, verifyPassword } from "./auth";
 import type { Database } from "./db/database";
 
@@ -218,6 +218,35 @@ export class Repo {
           );
         }
       }
+    });
+  }
+
+  /**
+   * Sprint 5: a finished "life in chapters" is stored like a session with one participant, so the
+   * lobby history, the title collection and the log endpoint work for it too.
+   */
+  async chapterLifeFinished(input: { id: string; userId: string; seed: string; content: ChapterContent; log: LifeLogEntry[]; recap: ChapterRecap; career: string }): Promise<void> {
+    const { content, recap } = input;
+    await this.db.transaction(async (tx) => {
+      await tx.query("INSERT INTO content_versions (hash, bundle) VALUES ($1, $2) ON CONFLICT (hash) DO NOTHING", [
+        `chapters-${content.hash}`,
+        JSON.stringify({ mode: "chapters", setup: { ...content, events: undefined, hash: undefined }, events: content.events }),
+      ]);
+      await tx.query(
+        "INSERT INTO sessions (id, engine_id, seed, status, config, content_hash, ended_at) VALUES ($1, $2, $3, 'completed', $4, $5, now())",
+        [input.id, input.id, input.seed, JSON.stringify({ mode: "chapters" }), `chapters-${content.hash}`],
+      );
+      await tx.query(
+        "INSERT INTO session_participants (session_id, character_key, user_id, name, career, is_bot, final_status) VALUES ($1, 'you', $2, $3, $4, false, 'active')",
+        [input.id, input.userId, recap.name, input.career],
+      );
+      await tx.query("INSERT INTO session_logs (session_id, log) VALUES ($1, $2)", [input.id, JSON.stringify(input.log)]);
+      await tx.query(
+        `INSERT INTO session_results (session_id, character_key, user_id, final_status, outcomes, life_score, life_duration_ms, recap)
+         VALUES ($1, 'you', $2, 'active', $3, 0, 0, $4)`,
+        [input.id, input.userId, recap.dream.done ? ["dream_came_true"] : [], JSON.stringify(recap)],
+      );
+      await tx.query("UPDATE player_profiles SET games_played = games_played + 1 WHERE user_id = $1", [input.userId]);
     });
   }
 

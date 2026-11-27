@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
-import type { LifeRecap } from "@lifesim/core";
+import type { ChapterRecap, LifeRecap } from "@lifesim/core";
 import { api, ApiError, type AuthResult, type Career, type Profile } from "../api";
 import { AVATARS, GOOD_OUTCOMES, OUTCOME_LABELS, careerName, randomName } from "../format";
 import type { Lobby, MatchStatus } from "../useGame";
 import { RecapView } from "./Recap";
+import { ChapterRecapView, LifeCreate, type LifeOptions } from "./Life";
 
 interface Props {
   token: string;
@@ -13,6 +14,7 @@ interface Props {
   match: MatchStatus | null;
   searching: boolean;
   findMatch: (career: string, name: string) => Promise<{ ok: boolean; error?: string } | undefined>;
+  startLife: Parameters<typeof LifeCreate>[0]["startLife"];
   createRoom: (name: string, career: string) => Promise<{ ok: boolean; error?: string } | undefined>;
   joinRoom: (code: string, name: string, career: string) => Promise<{ ok: boolean; error?: string } | undefined>;
   /** T14: why opening a room link did not work, if it did not. */
@@ -20,7 +22,20 @@ interface Props {
   cancelMatch: () => Promise<void>;
 }
 
-export function LobbyScreen({ token, onLogout, connected, lobby, match, searching, findMatch, cancelMatch, createRoom, joinRoom, roomError }: Props) {
+export function LobbyScreen({
+  token,
+  onLogout,
+  connected,
+  lobby,
+  match,
+  searching,
+  findMatch,
+  cancelMatch,
+  createRoom,
+  joinRoom,
+  roomError,
+  startLife,
+}: Props) {
   const [code, setCode] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [careers, setCareers] = useState<Career[]>([]);
@@ -32,7 +47,13 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
     }
   });
   const [error, setError] = useState<string | null>(null);
-  const [openRecap, setOpenRecap] = useState<LifeRecap | null>(null);
+  const [openRecap, setOpenRecap] = useState<LifeRecap | ChapterRecap | null>(null);
+  // Sprint 5: "Life in chapters" is the game; the old real-time town only with LEGACY_TOWN=1.
+  const [options, setOptions] = useState<LifeOptions | null>(null);
+  useEffect(() => {
+    api<LifeOptions>("/api/life/options").then(setOptions, () => setError("Could not load the game options."));
+  }, []);
+  const legacy = options?.legacyTown === true;
 
   useEffect(() => {
     api<Profile>("/api/me", { token }).then(setProfile, () => onLogout());
@@ -130,95 +151,115 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
 
       {profile?.isGuest && <SaveAccount token={token} onSaved={(p) => setProfile((old) => (old ? { ...old, ...p, isGuest: false } : old))} />}
 
-      <section className="card">
-        <h2>Choose your career</h2>
-        <div className="career-grid" role="radiogroup" aria-label="Career">
-          {careers.map((c) => (
-            <button key={c.id} role="radio" aria-checked={c.id === career} className={c.id === career ? "career active" : "career"} onClick={() => choose(c.id)} disabled={searching}>
-              <strong>{c.name}</strong>
-              <span>{c.description}</span>
-            </button>
-          ))}
-        </div>
-        {selected && (
-          <div className="career-detail">
-            <div>
-              <h3>Abilities</h3>
-              <ul>
-                {selected.abilities.map((a) => (
-                  <li key={a.name}>
-                    <strong>{a.name}.</strong> {a.description}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3>Strengths</h3>
-              <ul>{selected.strengths.map((s) => <li key={s}>{s}</li>)}</ul>
-              <h3>Weaknesses</h3>
-              <ul>{selected.weaknesses.map((s) => <li key={s}>{s}</li>)}</ul>
-            </div>
-          </div>
-        )}
-        <div className="name-row">
-          <label htmlFor="character-name">Your character's name</label>
-          <input
-            id="character-name"
-            value={name}
-            maxLength={16}
-            onChange={(e) => changeName(e.target.value)}
-            disabled={searching}
-            aria-invalid={!nameOk}
-          />
-          <button className="ghost" type="button" onClick={() => changeName(randomName(name))} disabled={searching} aria-label="Suggest a random name" title="Suggest a random name">
-            🎲
-          </button>
-          {!nameOk && <span className="small error">2–16 letters</span>}
-        </div>
-        <div className="play-row">
-          {searching ? (
-            <>
-              <p className="searching" aria-live="polite">
-                Looking for other people…
-                {match && (match.fillInMs > 0 ? ` Bots will fill the empty seats in ${Math.ceil(match.fillInMs / 1000)} s.` : " Starting with bots.")}
-              </p>
-              <button className="ghost" onClick={cancelMatch}>
-                Cancel
-              </button>
-            </>
-          ) : (
-            <>
-              <button className="primary big" onClick={play} disabled={!connected || !selected || !nameOk}>
-                Find a life as {selected?.name ?? "…"}
-              </button>
+      {options && !legacy && <LifeCreate options={options} connected={connected} startLife={startLife} />}
+      {!legacy && error && <p className="error">{error}</p>}
+
+      {legacy && (
+        <section className="card">
+          <h2>Choose your career</h2>
+          <div className="career-grid" role="radiogroup" aria-label="Career">
+            {careers.map((c) => (
               <button
-                className="ghost big"
-                disabled={!connected || !selected || !nameOk}
-                onClick={async () => {
-                  const r = await createRoom(name.trim(), career);
-                  if (!r?.ok) setError("Could not create a room.");
-                }}
+                key={c.id}
+                role="radio"
+                aria-checked={c.id === career}
+                className={c.id === career ? "career active" : "career"}
+                onClick={() => choose(c.id)}
+                disabled={searching}
               >
-                Create a room for friends
+                <strong>{c.name}</strong>
+                <span>{c.description}</span>
               </button>
-              <span className="join-code">
-                <input aria-label="Room code" placeholder="Code" maxLength={4} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+            ))}
+          </div>
+          {selected && (
+            <div className="career-detail">
+              <div>
+                <h3>Abilities</h3>
+                <ul>
+                  {selected.abilities.map((a) => (
+                    <li key={a.name}>
+                      <strong>{a.name}.</strong> {a.description}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h3>Strengths</h3>
+                <ul>
+                  {selected.strengths.map((s) => (
+                    <li key={s}>{s}</li>
+                  ))}
+                </ul>
+                <h3>Weaknesses</h3>
+                <ul>
+                  {selected.weaknesses.map((s) => (
+                    <li key={s}>{s}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+          <div className="name-row">
+            <label htmlFor="character-name">Your character's name</label>
+            <input id="character-name" value={name} maxLength={16} onChange={(e) => changeName(e.target.value)} disabled={searching} aria-invalid={!nameOk} />
+            <button
+              className="ghost"
+              type="button"
+              onClick={() => changeName(randomName(name))}
+              disabled={searching}
+              aria-label="Suggest a random name"
+              title="Suggest a random name"
+            >
+              🎲
+            </button>
+            {!nameOk && <span className="small error">2–16 letters</span>}
+          </div>
+          <div className="play-row">
+            {searching ? (
+              <>
+                <p className="searching" aria-live="polite">
+                  Looking for other people…
+                  {match && (match.fillInMs > 0 ? ` Bots will fill the empty seats in ${Math.ceil(match.fillInMs / 1000)} s.` : " Starting with bots.")}
+                </p>
+                <button className="ghost" onClick={cancelMatch}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="primary big" onClick={play} disabled={!connected || !selected || !nameOk}>
+                  Find a life as {selected?.name ?? "…"}
+                </button>
                 <button
-                  className="ghost"
-                  disabled={!connected || code.length !== 4 || !nameOk}
+                  className="ghost big"
+                  disabled={!connected || !selected || !nameOk}
                   onClick={async () => {
-                    const r = await joinRoom(code, name.trim(), career);
-                    if (!r?.ok) setError(roomErrorText(r?.error));
+                    const r = await createRoom(name.trim(), career);
+                    if (!r?.ok) setError("Could not create a room.");
                   }}
                 >
-                  Join
+                  Create a room for friends
                 </button>
-              </span>
-            </>
-          )}
-        </div>
-        {(error || roomError) && <p className="error">{error ?? roomError}</p>}
-      </section>
+                <span className="join-code">
+                  <input aria-label="Room code" placeholder="Code" maxLength={4} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} />
+                  <button
+                    className="ghost"
+                    disabled={!connected || code.length !== 4 || !nameOk}
+                    onClick={async () => {
+                      const r = await joinRoom(code, name.trim(), career);
+                      if (!r?.ok) setError(roomErrorText(r?.error));
+                    }}
+                  >
+                    Join
+                  </button>
+                </span>
+              </>
+            )}
+          </div>
+          {(error || roomError) && <p className="error">{error ?? roomError}</p>}
+        </section>
+      )}
 
       {profile?.titles && profile.titles.length > 0 && (
         <section className="card">
@@ -241,19 +282,34 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
           <ul className="lives">
             {profile.recentLives.map((l) => (
               <li key={l.sessionId}>
-                <button className="life" onClick={() => setOpenRecap(l.recap)}>
-                  <span>
-                    {l.recap.name}, {careerName(l.recap.career)}
-                    {l.recap.title && <span className="muted"> · “{l.recap.title.label}”</span>}
-                  </span>
-                  <span className="chips">
-                    {l.recap.outcomes.slice(0, 3).map((o) => (
-                      <span key={o} className={GOOD_OUTCOMES.has(o) ? "chip good" : "chip bad"}>
-                        {OUTCOME_LABELS[o]}
+                {"mode" in l.recap ? (
+                  <button className="life" onClick={() => setOpenRecap(l.recap)}>
+                    <span>
+                      {l.recap.name}, {l.recap.career}
+                      <span className="muted"> · “{l.recap.title.label}”</span>
+                    </span>
+                    <span className="chips">
+                      <span>{l.recap.years.join("")}</span>
+                      <span className={l.recap.dream.done ? "chip good" : "chip bad"}>
+                        {l.recap.dream.icon} {l.recap.dream.done ? "Dream came true" : "Dream missed"}
                       </span>
-                    ))}
-                  </span>
-                </button>
+                    </span>
+                  </button>
+                ) : (
+                  <button className="life" onClick={() => setOpenRecap(l.recap)}>
+                    <span>
+                      {l.recap.name}, {careerName(l.recap.career)}
+                      {l.recap.title && <span className="muted"> · “{l.recap.title.label}”</span>}
+                    </span>
+                    <span className="chips">
+                      {l.recap.outcomes.slice(0, 3).map((o) => (
+                        <span key={o} className={GOOD_OUTCOMES.has(o) ? "chip good" : "chip bad"}>
+                          {OUTCOME_LABELS[o]}
+                        </span>
+                      ))}
+                    </span>
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -263,7 +319,13 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
       {openRecap && (
         <div className="modal" role="dialog" aria-modal="true" onClick={() => setOpenRecap(null)}>
           <div className="modal-body card" onClick={(e) => e.stopPropagation()}>
-            <RecapView recap={openRecap} />
+            {"mode" in openRecap ? (
+              <div className="lf">
+                <ChapterRecapView recap={openRecap} />
+              </div>
+            ) : (
+              <RecapView recap={openRecap} />
+            )}
             <button className="primary" onClick={() => setOpenRecap(null)}>
               Close
             </button>
@@ -307,7 +369,10 @@ function SaveAccount({ token, onSaved }: { token: string; onSaved: (p: { usernam
     e.preventDefault();
     setError(null);
     try {
-      const r = await api<Pick<AuthResult, "user">>("/api/me/upgrade", { token, body: { username, email, password } });
+      const r = await api<Pick<AuthResult, "user">>("/api/me/upgrade", {
+        token,
+        body: { username, email, password },
+      });
       onSaved(r.user);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) setError("That username or email is already taken.");

@@ -199,21 +199,21 @@ Radi u dva dijela. **5a** ide prvo i završava vlasnikovim testom. **5b** počin
 
 ### Sprint 5a — prototip u pravoj igri (jedan igrač + botovi)
 
-### [ ] T20. Poglavlja umjesto stvarnog vremena
+### [x] T20. Poglavlja umjesto stvarnog vremena
 - Novi način igre **„Life in chapters”** postaje zadani. Stari način (grad u stvarnom vremenu) ostaje u kodu, ali skriven (zastavica / env), ne briši ga.
 - Život ima 6 poglavlja (18, 21, 24, 27, 30, 33). U poglavljima 0–4 igrač **bira fokus** (3 karte), igra event za taj fokus, vidi „What changed” i sam klikne „Go to age …”. Poglavlje 5 je finale.
 - Prije fokusa, ako su na redu: otkrivanje tajne (automatski) i gradski preokret u poglavlju 3 (kao poplava u prototipu).
 - **Bez timera za odluke.** Samo zaštita od AFK-a kasnije u 5b.
 - Deterministički replay mora ostati identičan (bacanja iz seedanog `Rng`).
 
-### [ ] T21. Stvaranje lika i stalni ljudi
+### [x] T21. Stvaranje lika i stalni ljudi
 - Igrač bira **ime, san, manu i posao**. Vlasnik traži više izbora:
   - **6 snova:** Become famous, Get rich, Find true love, **Become mayor** (finale: izbori, glasovi stalnih ljudi i ugled), **Run your own business** (finale: otvaranje vlastitog posla, novac + razina posla + partner u poslu), **Start a family** (finale: veliki obiteljski ručak, partner + djeca + odnosi).
   - **6 mana:** Coward, Can't keep a secret, Can't say no, **Hot-headed** (mirni izbori −20 %, ponekad se ljutiš umjesto njih), **Lazy** (izbori s puno truda −20 %), **Show-off** (skromni izbori teže, troši novac da impresionira).
   - **10 poslova:** svih 10 postojećih karijera. Svaki ima 2 razine posla (npr. Junior doctor → Head of A&E) i **poseban izbor u barem 2 eventa** (stara „Your expertise” ideja).
 - **Stalni ljudi (varijanta A):** 3 uloge, **best friend**, **crush** i **rival**. Za svaku ulogu napiši barem 2 bot-lika s ručno pisanom osobnošću (Marko/Ana/Vera su prvi), da se životi razlikuju. Tekstovi eventa koriste ulogu (`{friend}`, `{crush}`, `{rival}`).
 
-### [ ] T22. Mehanike iz prototipa
+### [x] T22. Mehanike iz prototipa
 - **Izgledi + bacanje** s modifikatorima mana; oznake izbora `brave`, `lie`, `refuse`, `effort`, `calm`, `modest`.
 - **„What changed”** nakon svake odluke (posao, kuća, partner, odnosi, tajne, brojke).
 - **Tajne s odbrojavanjem**: nastaju iz laži; kad dođe rok, automatski izlaze; fokus „Damage control” najviše 2× po životu.
@@ -222,12 +222,12 @@ Radi u dva dijela. **5a** ide prvo i završava vlasnikovim testom. **5b** počin
 - **Finale prema snu** s izgledima zbrojenim iz cijelog života i **popisom razloga**.
 - **Recap:** titula (postojeći T11 sustav, nove titule po snu), red emojija po poglavljima, „Your life” (ključni trenuci), ljudi (pomogao/povrijedio), „Copy my life”.
 
-### [ ] T23. Sadržaj za 5a
+### [x] T23. Sadržaj za 5a
 - Prenesi 11 eventa iz prototipa + Revenge + Damage control + poplavu + finala, **uz isti ton i poante**. Prototip je stilski vodič: konkretni apsurdni detalji, svaki ishod ima poantu, nikad „You feel happy”.
 - Dodaj toliko eventa da **svaki od 6 snova ima barem 2 eventa koji ga hrane** i da **svaka mana barem jednom promijeni ishod tekstom**, ne samo postotkom.
 - Validator: novi tagovi, uloge, rokovi tajni, finala za svih 6 snova.
 
-### [ ] T24. Sučelje 5a
+### [x] T24. Sučelje 5a
 - Ekran kao u prototipu: **ploča života** (lik, san, mana, posao, dom, partner, novac, slava, ugled, crta vremena s emojijima, 3 stalna lika s odnosom, tajne s odbrojavanjem), **karte fokusa**, **event**, **bacanje**, **ishod s „What changed”**.
 - Mapa grada smije ostati kao mala pozadina ili se sakriti; u 5a nije potrebna.
 - Mobitel i desktop, bez horizontalnog skrolanja; e2e za cijeli život.

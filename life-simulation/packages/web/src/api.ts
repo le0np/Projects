@@ -1,5 +1,5 @@
 /** HTTP client for the game server. The token is kept in localStorage (per-browser convenience). */
-import type { LifeRecap } from "@lifesim/core";
+import type { ChapterRecap, LifeRecap } from "@lifesim/core";
 
 const TOKEN_KEY = "lifesim.token";
 
@@ -61,7 +61,7 @@ export interface Profile {
   isGuest?: boolean;
   avatar: string;
   stats: { gamesPlayed: number; deaths: number; averageLifeScore: number | null; reputation: number };
-  recentLives: { sessionId: string; endedAt: string; recap: LifeRecap }[];
+  recentLives: { sessionId: string; endedAt: string; recap: LifeRecap | ChapterRecap }[];
   activeSessionId: string | null;
   inQueue: boolean;
 }

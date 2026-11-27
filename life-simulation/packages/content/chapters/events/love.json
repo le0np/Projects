@@ -1,0 +1,509 @@
+[
+  {
+    "id": "date",
+    "kind": "love",
+    "title": "The First Date",
+    "when": {
+      "partner": "none",
+      "notFlags": [
+        "crush_with_friend"
+      ],
+      "married": false
+    },
+    "text": "{crush} from next door finally said yes to dinner. {Crush.he} thinks you're “the one who waters everyone's plants when they're away”.",
+    "choices": [
+      {
+        "id": "truth",
+        "label": "Tell {crush.him} it was {friend}",
+        "tags": [
+          "calm"
+        ],
+        "ok": {
+          "text": "{crush} laughs so hard wine comes out of {crush.his} nose. “Honest AND bad with plants.” It's a start.",
+          "emoji": "🍷",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 2
+            },
+            {
+              "partner": "crush"
+            },
+            {
+              "flag": "plants_truth"
+            },
+            {
+              "remember": "Told {crush} the truth about the plants on your first date."
+            }
+          ]
+        }
+      },
+      {
+        "id": "credit",
+        "label": "Take credit for the plants",
+        "tags": [
+          "lie"
+        ],
+        "base": 85,
+        "ok": {
+          "text": "{crush} is charmed. {Crush.he} asks for tips about {crush.his} fern. You panic quietly.",
+          "emoji": "🪴",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 2
+            },
+            {
+              "partner": "crush"
+            },
+            {
+              "secret": {
+                "id": "plants",
+                "text": "{friend} watered the plants, not you",
+                "years": 2,
+                "reveal": {
+                  "text": "{friend}, two beers in, tells {crush} who really watered the plants. {crush} asks what else you've lied about. It's a long list.",
+                  "emoji": "🪴",
+                  "effects": [
+                    {
+                      "rel": "crush",
+                      "n": -2
+                    },
+                    {
+                      "rel": "friend",
+                      "n": -1
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "remember": "Won {crush} over by taking credit for {friend}'s plant watering."
+            }
+          ],
+          "byFlaw": {
+            "blabber": {
+              "text": "{crush} is charmed. Then you say “well, technically {friend} watered them”. Then you explain the whole plan. {crush} finds it adorable, somehow.",
+              "emoji": "🗣️",
+              "effects": [
+                {
+                  "rel": "crush",
+                  "n": 1
+                },
+                {
+                  "partner": "crush"
+                }
+              ]
+            }
+          }
+        },
+        "fail": {
+          "text": "You call {crush.his} fern “the green one”. {crush} gets suspicious.",
+          "emoji": "🌿",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": -1
+            }
+          ]
+        }
+      },
+      {
+        "id": "wingman",
+        "label": "Bring {friend} along as your wingman",
+        "cast": "friend",
+        "ok": {
+          "text": "{friend} tells stories that make you sound like a hero. {crush} kisses you at the door.",
+          "emoji": "😘",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 2
+            },
+            {
+              "partner": "crush"
+            },
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "remember": "{friend} was the best wingman of all time."
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "made you sound like a hero"
+          }
+        },
+        "fail": {
+          "text": "{friend} is charming. Too charming. {crush} leaves with {friend}.",
+          "emoji": "💔",
+          "effects": [
+            {
+              "flag": "crush_with_friend"
+            },
+            {
+              "rel": "friend",
+              "n": -1
+            },
+            {
+              "rel": "crush",
+              "n": -1
+            },
+            {
+              "remember": "Brought {friend} as a wingman. {crush} left with {friend}."
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "left with your date"
+          }
+        }
+      },
+      {
+        "id": "read",
+        "label": "Notice {crush.he} keeps checking {crush.his} phone and ask what's really wrong",
+        "career": "psychologist",
+        "ok": {
+          "text": "{crush.he} talks about {crush.his} mother for two hours. You listen. It's the best date {crush.he}'s ever had.",
+          "emoji": "🛋️",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 3
+            },
+            {
+              "partner": "crush"
+            },
+            {
+              "remember": "Listened to {crush} like a professional. Free of charge."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "ring",
+    "kind": "love",
+    "title": "Making It Official",
+    "when": {
+      "partner": "crush",
+      "married": false
+    },
+    "text": [
+      {
+        "when": {
+          "flags": [
+            "plants_truth"
+          ]
+        },
+        "text": "Two years with {crush}. {Crush.his} mother still tells everyone you're “the honest one who can't keep a plant alive”. At Sunday lunch she asks, loudly, when you're making it official.",
+        "callback": true
+      },
+      {
+        "text": "Two years with {crush}. At Sunday lunch {crush.his} mother asks, very loudly, when you're “making it official”."
+      }
+    ],
+    "choices": [
+      {
+        "id": "onion",
+        "label": "Propose right now, with an onion ring",
+        "tags": [
+          "brave"
+        ],
+        "base": 70,
+        "ok": {
+          "text": "{crush} says yes. The onion ring lasts four days. The marriage, hopefully, longer.",
+          "emoji": "🧅",
+          "effects": [
+            {
+              "marry": true
+            },
+            {
+              "home": "A small house with a crooked fence"
+            },
+            {
+              "remember": "Proposed to {crush} with an onion ring. {Crush.he} said yes."
+            }
+          ]
+        },
+        "fail": {
+          "text": "“Ask me properly,” says {crush}. “Or don't,” says {crush.his} mother.",
+          "emoji": "🧅",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": -1
+            }
+          ]
+        }
+      },
+      {
+        "id": "surprise",
+        "label": "Plan a huge surprise and let {friend} organise it",
+        "cast": "friend",
+        "ok": {
+          "text": "Fireworks, a brass band, a goat in a bow tie. {crush} cries. The goat eats the ring box.",
+          "emoji": "🎆",
+          "effects": [
+            {
+              "money": -15
+            },
+            {
+              "marry": true
+            },
+            {
+              "home": "A small house with a crooked fence"
+            },
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "remember": "{friend} organised a perfect surprise proposal."
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "organised everything, including the goat"
+          }
+        },
+        "fail": {
+          "text": "{friend} told {crush} on Tuesday. On Saturday {crush.he} acts surprised. {Crush.he} is a very bad actor.",
+          "emoji": "🙄",
+          "effects": [
+            {
+              "money": -15
+            },
+            {
+              "marry": true
+            },
+            {
+              "home": "A small house with a crooked fence"
+            },
+            {
+              "remember": "{friend} spoiled the surprise proposal. {crush} said yes anyway."
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "told {crush} everything"
+          }
+        }
+      },
+      {
+        "id": "weather",
+        "label": "Change the subject to the weather",
+        "tags": [
+          "refuse"
+        ],
+        "ok": {
+          "text": "You talk about rain for twenty minutes. {crush}'s mother starts knitting something. It looks like a noose.",
+          "emoji": "🌧️",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": -1
+            },
+            {
+              "remember": "Avoided the marriage question by talking about rain."
+            }
+          ]
+        }
+      },
+      {
+        "id": "big_ring",
+        "label": "Buy the biggest ring in the shop",
+        "when": {
+          "stats": {
+            "money": {
+              "min": 25
+            }
+          }
+        },
+        "ok": {
+          "text": "It's enormous. {crush} says yes and needs a new glove. Your bank account needs a hug.",
+          "emoji": "💎",
+          "effects": [
+            {
+              "money": -25
+            },
+            {
+              "marry": true
+            },
+            {
+              "home": "A small house with a crooked fence"
+            },
+            {
+              "remember": "Proposed with a ring the size of a doorknob."
+            }
+          ],
+          "byFlaw": {
+            "showoff": {
+              "text": "It's enormous, and you announce it with a hired trumpeter. {crush} says yes. The trumpeter sends you an invoice.",
+              "emoji": "🎺",
+              "effects": [
+                {
+                  "money": -35
+                },
+                {
+                  "marry": true
+                },
+                {
+                  "home": "A small house with a crooked fence"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "ask_why",
+        "label": "Gently ask {crush}'s mother why it matters so much to her",
+        "career": "psychologist",
+        "ok": {
+          "text": "She tells you about her own wedding, cries, and gives you her mother's ring. You propose that evening.",
+          "emoji": "💍",
+          "effects": [
+            {
+              "marry": true
+            },
+            {
+              "home": "A small house with a crooked fence"
+            },
+            {
+              "rel": "crush",
+              "n": 1
+            },
+            {
+              "remember": "Got {crush}'s grandmother's ring with one good question."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "parents",
+    "kind": "love",
+    "title": "Meet the Parents",
+    "when": {
+      "partner": "crush"
+    },
+    "text": "{crush}'s parents invite you for dinner. Their dog hates you. Their cat hates the dog. Their son-in-law is a dentist and he's “so successful”.",
+    "choices": [
+      {
+        "id": "charm",
+        "label": "Win over the dog first",
+        "tags": [
+          "effort"
+        ],
+        "base": 70,
+        "ok": {
+          "text": "You bring sausages. The dog loves you. The parents conclude you must be good people.",
+          "emoji": "🐕",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 1
+            },
+            {
+              "rep": 5
+            },
+            {
+              "remember": "Won over {crush}'s parents through their dog."
+            }
+          ]
+        },
+        "fail": {
+          "text": "The dog takes the sausages and bites you anyway. The dentist offers to look at it.",
+          "emoji": "🦷",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "brag",
+        "label": "Talk about your job like it's more important than dentistry",
+        "tags": [
+          "brave"
+        ],
+        "base": 50,
+        "ok": {
+          "text": "They're impressed. The dentist goes quiet. {crush} kicks you under the table, lovingly.",
+          "emoji": "😎",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 1
+            },
+            {
+              "remember": "Out-bragged the dentist at {crush}'s parents' dinner."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You say “so basically I save lives”. The dentist saves lives. The table goes silent.",
+          "emoji": "😬",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": -1
+            },
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "help_kitchen",
+        "label": "Wash up without being asked",
+        "tags": [
+          "effort"
+        ],
+        "base": 75,
+        "ok": {
+          "text": "{crush}'s mother takes your hand and says “finally”. Nobody knows what she means. Everybody agrees.",
+          "emoji": "🧽",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 2
+            },
+            {
+              "remember": "Washed up at {crush}'s parents'. Became family on the spot."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You break the good gravy boat. It was {crush}'s grandmother's. Nobody says anything, which is worse.",
+          "emoji": "🫖",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": -1
+            }
+          ],
+          "byFlaw": {
+            "lazy": {
+              "text": "You stand at the sink for twenty minutes holding one plate. {crush}'s mother takes it off you, very gently, like a weapon.",
+              "emoji": "🛋️",
+              "effects": [
+                {
+                  "rel": "crush",
+                  "n": -1
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+]

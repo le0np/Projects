@@ -4,6 +4,8 @@ Ovaj dokument bilježi završeni posao, provedene provjere, poznata ograničenja
 
 ## Trenutno stanje
 
+**27. 11. 2026. — Sprint 5a gotov, čeka QA i vlasnikov test:** igra je sada „Life in chapters” (jedan život u 6 poglavlja, san, mana, posao, stalni likovi, tajne, finale s razlozima), prema QA-ovom prototipu. Stari način u stvarnom vremenu je skriven iza `LEGACY_TOWN=1`. Detalji su u odjeljku „Sprint 5a” niže. Tekst ispod opisuje stariji stanje i ostaje radi povijesti.
+
 **MVP je funkcionalno kompletan (M1–M7)**, a koncept v2 je proveden do M11: grad odozgo, likovi B3, vrijeme i dob, rutina, preokreti i smicalice. Rad je **pauziran 15. studenog 2026.** na zahtjev vlasnika.
 
 ### Povratna informacija vlasnika (15. 11. 2026.) — prvo riješiti ovo
@@ -579,14 +581,47 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **Testovi:** `server/test/guest.test.ts` (gost, prijava odbijena, spremanje računa s istim id-jem, zauzeto ime, limit po IP-u); e2e `room.mjs` sad pušta prijatelja kao gosta (od linka do čekaonice izmjereno 1 klik + ime) i na kraju sprema račun.
 - **STOP:** QA je nakon vlasnikovog testa zaustavio Sprint 4 (igra je monotona, nema veze s likom, odluke bez vidljivog utjecaja, prebrzo). T16–T19 se ne rade. Moji prijedlozi za novu jezgru su u `INSTRUCTIONS_FOR_AGENT.md` → „Pitanja za QA/PM”.
 
+## Sprint 5a: život u poglavljima (developer, 27. 11. 2026.)
+
+Vlasnik je prihvatio QA-ov prototip (`prototype/index.html`), uz više snova, mana i poslova te stalne likove kao botove s osobnošću (varijanta A). 5a je prototip u pravoj igri za jednog igrača.
+
+- **T20 (poglavlja):** `packages/engine/src/chapters.ts` → `ChapterLife`, stroj stanja `intro → (otkrivanje tajne | preokret u 27.) → fokus (3 karte) → event → ishod → sljedeća dob`, a nakon 5 poglavlja finale. Bez timera. Seedani `Rng` tokovi (karte, eventi, bacanja, odluke likova), pa `replayLife(log)` daje identično stanje. To provjeravaju test i `sim:chapters` (18/18). Stari način je skriven: lobby ga prikazuje samo uz `LEGACY_TOWN=1`, a kod je ostao isti.
+- **T21 (lik i stalni ljudi):** 6 snova, 6 mana i 10 poslova s dvije razine u `packages/content/chapters/setup.json`. Uloge friend/crush/rival imaju po dva lika (Marko/Dora, Ana/Luka, Vera/Bruno), svaki s osobinom, bojom, zamjenicama (`{crush.he}`, `{Rival.his}`…), početnim odnosom i time koliko rado pomaže kad je odnos neutralan. Svaki posao ima poseban izbor („Your expertise”) u barem 2 eventa.
+- **T22 (mehanike):** izgledi i bacanje s modifikatorima mana (oznake `brave`, `lie`, `refuse`, `effort`, `calm`, `modest`; izbor koji inače uvijek uspije može propasti zbog mane, uz poseban tekst mane). „Can't say no” pretvara odbijanje u pristanak (`failTo`). „What changed” prati posao, dom, partnera, brak, djecu, novac, slavu, ugled, odnose i tajne. Tajne s odbrojavanjem nastaju iz laži i same izađu (blebetalo ranije); „Damage control” najviše 2×; osveta kad je netko na −2 ili niže. Likovi odlučuju po odnosu. Finale sna ima izglede s popisom razloga. Recap ima titulu (18 titula), emoji po poglavlju, trenutke, ljude, „Copy my life” i log.
+- **Povratni pozivi:** (1) lik u eventu „se sjeća” zadnjeg trenutka s njim iz ranijeg poglavlja, (2) varijante teksta koje spominju raniji izbor, (3) otkrivene tajne, (4) razlozi u finalu koji dolaze od ranijih izbora i (5) „život ti proleti pred očima” u finalu (2 rana trenutka).
+- **T23 (sadržaj):** 34 eventa u `packages/content/chapters/events/` (11 iz prototipa s istim tonom, plus novi za obitelj, posao, gradsku vijećnicu, dom, osvetu, kontrolu štete i drugi preokret) i 6 finala. Validator (`content/src/chapters.ts`, dio `npm run validate`) provjerava tokene, uloge, tagove, `failTo`, zastavice (čitana a nikad postavljena = greška) i pokrivenost (svaki san ≥ 2 eventa, svaka mana barem jednom mijenja tekst ishoda, svaki posao ≥ 2 posebna izbora).
+- **T24 (sučelje):** `packages/web/src/screens/Life.tsx` + `life.css`, prema prototipu: stvaranje lika u lobbyju, ploča života (lik, san, mana, posao, dom, partner, djeca, novac, slava, ugled, crta vremena s emojijima, tri lika s odnosom, tajne s odbrojavanjem), karte fokusa, event (privatna misao, „X remembers”, oznake izgleda i mane, „odlučuje i on/ona”, „may become a secret”, „Your expertise”), animirano bacanje (preskočivo, poštuje reduced motion), ishod s „What changed” i recap. Na mobitelu je ploča sažeta. Server: `GET /api/life/options` i socket `life:start`, `life:act`, `life:leave`, `life:state` (nastavak nakon reconnecta); gotov život se sprema kao sesija s jednim sudionikom.
+- **Testovi:** `engine/test/chapters.test.ts` (validator i pokrivenost, tijek, cijeli život za svih 6 snova + replay, finale s razlozima i sjećanjima, mane, tajne, poslovi), `server/test/life.test.ts` (socket, reconnect, povijest, titula, log) i e2e `packages/web/e2e/life.mjs` (cijeli život na desktopu i iPhone 13, bez horizontalnog skrolanja; prvi u `npm run e2e`). Stari e2e testovi pokreću server s `LEGACY_TOWN=1`.
+
+`npm run sim:chapters` (50 bot-života po snu, seed s5):
+
+| Dream | Came true | % | 25–65 % |
+| --- | --- | --- | --- |
+| 🎤 Become famous | 25/50 | 50 % | ✓ |
+| 💰 Get rich | 14/50 | 28 % | ✓ |
+| 💍 Find true love | 26/50 | 52 % | ✓ |
+| 🏛️ Become mayor | 31/50 | 62 % | ✓ |
+| 🏪 Run your own business | 19/50 | 38 % | ✓ |
+| 👨‍👩‍👧 Start a family | 21/50 | 42 % | ✓ |
+
+Callbacks per life: min 2, avg 4.4; lives with ≥ 2: 300/300
+Estimated play time: avg 6.5 min (min 6.0, max 7.5)
+Lives with an event twice: 0
+Replays identical: 18/18
+Events never played: none
+Titles: The People's Mayor 31, Everybody's Babysitter 26, Town Villain 25, Closed by Christmas 25, Nearly Loaded 24, Happily Ever After 24, Local Legend 23, The One That Got Away 19, Parent of the Year 19, The Boss 17, Almost Famous 14, Poor but Loved 14, Runner-Up for Mayor 13, The Lucky Liar 10, Rich-ish 10, The Open Book 4, Everybody's Favourite 2
+
+Procjena trajanja zbraja čitanje (3,5 riječi/s) i klikove po ekranu, uz 60 s za stvaranje lika. Pravo trajanje treba izmjeriti s vlasnikom.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 27. studenog 2026. (nakon T15):
+Provedeno 27. studenog 2026. (nakon Sprinta 5a):
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm run check` | typecheck čist; 75 eventa, 0 grešaka, 0 upozorenja; **156/156 testova** (nakon T15) |
-| `npm run e2e` | ✓ privatna soba: domaćin + gost preko linka (1 klik + ime), isti život, gost spremi račun; ✓ desktop i ✓ iPhone 13 (spletka, kartica lika, cijela sesija, recap s titulom i „Copy my life”, kolekcija titula u lobbyju); ✓ strana žrtve spletke; ✓ duh (oporuka pročitana u recapu); ✓ 133 kartice bez skrolanja na 1280×800 i 390×664; ✓ 0 gramatičkih grešaka |
+| `npm run check` | typecheck čist; 75 eventa (stari način) i 34 eventa poglavlja, 0 grešaka, 0 upozorenja; **165/165 testova** |
+| `npm run sim:chapters` | svih 6 snova u 25–65 % (28–62 %); povratnih poziva min 2, prosjek 4,4; 0 ponovljenih eventa; replay 18/18 identičan; procjena 6,0–7,5 min |
+| `npm run e2e` | ✓ život u poglavljima na desktopu i iPhone 13 (gost → lik → 5 fokusa → finale → recap → log → povijest, bez horizontalnog skrolanja); ✓ privatna soba: domaćin + gost preko linka (1 klik + ime), isti život, gost spremi račun; ✓ desktop i ✓ iPhone 13 (spletka, kartica lika, cijela sesija, recap s titulom i „Copy my life”, kolekcija titula u lobbyju); ✓ strana žrtve spletke; ✓ duh (oporuka pročitana u recapu); ✓ 133 kartice bez skrolanja na 1280×800 i 390×664; ✓ 0 gramatičkih grešaka |
 | `npm run sim:batch -- --sessions 200 --seed sprint3` | brojke gore; replay 3/3 identičan |
 | Svjež `git clone` grane `dev` (`38d7ef9`) + `npm install` + `npm run check` + `web:build` + server | 149/149, build čist, `/api/health` i web stranica rade |
 
@@ -596,7 +631,10 @@ Provedeno 27. studenog 2026. (nakon T15):
 - Pojedini eventi su rijetki jer ovise o prethodnim događajima (kriza veze, istraga nesreće); to je namjerno.
 - Botovi odlučuju u dijelu roka, pa je tempo u simulaciji gušći nego što će biti s ljudima. Tempo (rokovi, odmor između eventa) treba podesiti s pravim igračima.
 - Nakon kraja sesije log otkriva sve tuđe odluke. To je namjerno „otkrivanje“ nakon igre, ali vlasnik možda želi drukčije.
-- Restart servera prekida sesije u tijeku (označe se kao `cancelled`).
+- Restart servera prekida sesije u tijeku (označe se kao `cancelled`). Život u poglavljima koji je u tijeku drži se samo u memoriji, pa se restartom izgubi (gotovi životi su u bazi).
+- Poglavlja (5a) su samo za jednog igrača; stalni likovi su botovi. Više igrača dolazi u 5b (T25/T26). Sobe (T14) i „Find a life” rade samo u starom načinu (`LEGACY_TOWN=1`).
+- Trajanje života (6–10 min) je procjena iz broja riječi, ne mjerenje s ljudima.
+- Botovi u `sim:chapters` biraju napola nasumično, pa je uspješnost snova kod ljudi vjerojatno nešto viša.
 - Limit gostiju po IP-u je u memoriji, pa se poništi restartom servera i ne dijeli se između više instanci. Napušteni gostinjski računi se zasad ne brišu.
 - Nema prijevoda sučelja; tekstovi igre su na engleskom (odluka D5).
 - Engineer, teacher, mechanic, psychologist, journalist i civilian još nemaju poseban izbor ni u jednom eventu (dolazi s M4).
@@ -609,7 +647,7 @@ Provedeno 27. studenog 2026. (nakon T15):
 
 ## Sljedeći koraci
 
-1. **Sprint 4 je zaustavljen** (T14 i T15 su gotovi, T16–T19 se ne rade). QA/PM s vlasnikom dogovara promjenu jezgre igre; developer je predložio „godina = potez” (izbor fokusa → event → vidljiva posljedica → povratni poziv), lik s manom i željom, vidljiv rizik i sporiji tempo. Do odluke se kod ne mijenja.
+1. **Sprint 5a (T20–T24) je gotov i čeka QA i vlasnikov test.** Nakon prihvaćanja slijedi 5b: zajednički potez za 1–4 čovjeka u sobama (T25), pravi igrač u ulozi stalnog lika (T26) i 40–60 eventa sa spletkama kao „Revenge” (T27).
 2. Nakon toga, po planu §9: M12 Sadržaj (humorističan ton, životne faze) i M13 Balans; QA je dodao istraživanje tržišta (`docs/research/market-research-2026-11-27.md`) s prijedlogom MVP-a za izlazak.
 
 ## Handoff za novi chat

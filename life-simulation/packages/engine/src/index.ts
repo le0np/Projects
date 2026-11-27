@@ -4,3 +4,4 @@ export * from "./recap";
 export * from "./runner";
 export * from "./session";
 export * from "./state";
+export * from "./chapters";

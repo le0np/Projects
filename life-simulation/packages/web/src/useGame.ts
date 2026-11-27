@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import type { Attribute, GhostState, GoalView, LifeRecap, Mark, MischiefState, Mood, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction, SchemeBoost } from "@lifesim/core";
+import type { LifeView, Attribute, GhostState, GoalView, LifeRecap, Mark, MischiefState, Mood, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction, SchemeBoost } from "@lifesim/core";
 
 export type ComingEvent = Extract<Notice, { kind: "coming" }> & { receivedAt: number };
 
@@ -45,6 +45,12 @@ export interface Snapshot {
   positions?: { characterId: string; pos: [number, number]; trip: Walk["trip"]; status: string }[];
   mischief?: MischiefState | null;
 }
+
+export interface LifeState {
+  lifeId: string;
+  view: LifeView;
+}
+type LifeAck = { ok: boolean; error?: string; lifeId?: string; view?: LifeView };
 
 export interface MatchStatus {
   position: number;
@@ -167,6 +173,8 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
   const [searching, setSearching] = useState(false);
   const [game, setGame] = useState<GameState | null>(null);
   const [room, setRoom] = useState<RoomView | null>(null);
+  /** Sprint 5: your life in chapters (the server keeps it; we show it). */
+  const [life, setLife] = useState<LifeState | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -180,6 +188,7 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
     });
     socket.on("lobby:state", setLobby);
     socket.on("room:state", (r: RoomView) => setRoom(r));
+    socket.on("life:state", (l: LifeState | null) => setLife(l));
     socket.on("me", (m: { userId: string }) => setUserId(m.userId));
     socket.on("match:status", (s: MatchStatus) => setMatch(s));
 
@@ -394,9 +403,23 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
     await socketRef.current?.emitWithAck("room:leave", {});
     setRoom(null);
   }, []);
+  const startLife = useCallback(async (setup: { name: string; dream: string; flaw: string; career: string }) => {
+    const res = (await socketRef.current?.emitWithAck("life:start", setup)) as LifeAck | undefined;
+    if (res?.ok && res.view) setLife({ lifeId: res.lifeId!, view: res.view });
+    return res;
+  }, []);
+  const lifeAct = useCallback(async (action: { t: "next" } | { t: "focus" | "choose"; id: string }) => {
+    const res = (await socketRef.current?.emitWithAck("life:act", action)) as LifeAck | undefined;
+    if (res?.view) setLife({ lifeId: res.lifeId!, view: res.view });
+    return res;
+  }, []);
+  const leaveLife = useCallback(async () => {
+    await socketRef.current?.emitWithAck("life:leave", {});
+    setLife(null);
+  }, []);
   const startRoom = useCallback(async () => (await socketRef.current?.emitWithAck("room:start", {})) as RoomAck, []);
 
   const leaveGame = useCallback(() => setGame(null), []);
 
-  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, playMischief, previewScheme, boostScheme, guess, ghostAction, leaveGame, room, userId, createRoom, joinRoom, updateRoom, leaveRoom, startRoom };
+  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, playMischief, previewScheme, boostScheme, guess, ghostAction, leaveGame, room, userId, life, startLife, lifeAct, leaveLife, createRoom, joinRoom, updateRoom, leaveRoom, startRoom };
 }

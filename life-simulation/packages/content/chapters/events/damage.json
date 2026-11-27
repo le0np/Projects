@@ -1,0 +1,259 @@
+[
+  {
+    "id": "damage_control",
+    "kind": "damage",
+    "title": "Damage Control",
+    "text": "Your secret is getting heavy: “{secret}.” People are starting to ask questions.",
+    "choices": [
+      {
+        "id": "confess",
+        "label": "Confess to {about}",
+        "tags": [
+          "brave"
+        ],
+        "base": 80,
+        "ok": {
+          "text": "{about} is quiet for a while, then says “thanks for telling me”. It still hurts, but it's over.",
+          "emoji": "🙇",
+          "effects": [
+            {
+              "secretClear": true
+            },
+            {
+              "rel": "about",
+              "n": 1
+            },
+            {
+              "remember": "Confessed: {secret}."
+            }
+          ]
+        },
+        "fail": {
+          "text": "{about} takes it badly. Very badly. At least it's out.",
+          "emoji": "🙇",
+          "effects": [
+            {
+              "secretClear": true
+            },
+            {
+              "rel": "about",
+              "n": -1
+            },
+            {
+              "rep": -5
+            },
+            {
+              "remember": "Confessed: {secret}. It went badly."
+            }
+          ]
+        }
+      },
+      {
+        "id": "pay",
+        "label": "Pay someone to keep quiet",
+        "base": 75,
+        "ok": {
+          "text": "It costs you. The secret goes back in the ground. For now.",
+          "emoji": "💰",
+          "effects": [
+            {
+              "money": -20
+            },
+            {
+              "secretDelay": 2
+            },
+            {
+              "remember": "Paid to keep a secret buried: {secret}."
+            }
+          ]
+        },
+        "fail": {
+          "text": "It costs you. The secret goes back in the ground, for now. You tell the person you paid what it was for, in detail.",
+          "emoji": "🗣️",
+          "effects": [
+            {
+              "money": -20
+            },
+            {
+              "secretDelay": 1
+            }
+          ],
+          "byFlaw": {
+            "blabber": {
+              "text": "You pay them, then explain the whole secret so they know what they're keeping quiet about. They're now very well informed.",
+              "emoji": "🗣️",
+              "effects": [
+                {
+                  "money": -20
+                },
+                {
+                  "secretDelay": 1
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "blame",
+        "label": "Blame it all on {friend}",
+        "tags": [
+          "lie"
+        ],
+        "base": 50,
+        "ok": {
+          "text": "It works. {friend} gets the blame. You get to keep a friend, technically.",
+          "emoji": "🫵",
+          "effects": [
+            {
+              "secretClear": true
+            },
+            {
+              "rel": "friend",
+              "n": -2
+            },
+            {
+              "remember": "Blamed {friend} for your secret: {secret}."
+            }
+          ]
+        },
+        "fail": {
+          "text": "{friend} has an alibi: {friend.he} was in a fountain, on camera. Now everyone's looking at you.",
+          "emoji": "🫵",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": -3
+            },
+            {
+              "secretRevealNow": true
+            },
+            {
+              "remember": "Tried to blame {friend}. It made everything worse."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "damage_dinner",
+    "kind": "damage",
+    "title": "The Awkward Dinner",
+    "text": "At dinner someone says “funny story…” and you just know it's about this: “{secret}.” You have about four seconds.",
+    "choices": [
+      {
+        "id": "joke",
+        "label": "Tell the story yourself first, as a joke",
+        "tags": [
+          "brave"
+        ],
+        "base": 60,
+        "ok": {
+          "text": "Everyone laughs. It's just a funny story now. Nobody can use it against you. Genius.",
+          "emoji": "😂",
+          "effects": [
+            {
+              "secretClear": true
+            },
+            {
+              "rep": 5
+            },
+            {
+              "remember": "Turned your secret into a dinner party joke: {secret}."
+            }
+          ]
+        },
+        "fail": {
+          "text": "Nobody laughs. Somebody gasps. You keep going, which makes it worse.",
+          "emoji": "😶",
+          "effects": [
+            {
+              "secretClear": true
+            },
+            {
+              "rep": -10
+            },
+            {
+              "remember": "Told your secret as a joke at dinner. Nobody laughed."
+            }
+          ]
+        }
+      },
+      {
+        "id": "distract",
+        "label": "Knock over the gravy",
+        "tags": [
+          "calm"
+        ],
+        "base": 85,
+        "ok": {
+          "text": "Gravy everywhere. Chaos. By the time it's cleaned up, the story is forgotten. For now.",
+          "emoji": "🫗",
+          "effects": [
+            {
+              "secretDelay": 2
+            },
+            {
+              "rep": -5
+            },
+            {
+              "remember": "Saved yourself with a gravy spill."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You knock over the gravy. Everyone waits politely while you clean it up. Then: “Anyway, funny story…”",
+          "emoji": "🫗",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "crush_cover",
+        "label": "Kick {crush} under the table for help",
+        "cast": "crush",
+        "ok": {
+          "text": "{crush} starts a long story about {crush.his} cousin's divorce. Nobody ever gets back to yours.",
+          "emoji": "🦶",
+          "effects": [
+            {
+              "secretDelay": 2
+            },
+            {
+              "rel": "crush",
+              "n": 1
+            },
+            {
+              "remember": "{crush} covered for you at dinner."
+            }
+          ],
+          "cast": {
+            "who": "crush",
+            "did": "changed the subject like a pro"
+          }
+        },
+        "fail": {
+          "text": "{crush} says “ow, why are you kicking me?” Everyone looks at you.",
+          "emoji": "🦶",
+          "effects": [
+            {
+              "secretRevealNow": true
+            },
+            {
+              "rel": "crush",
+              "n": -1
+            }
+          ],
+          "cast": {
+            "who": "crush",
+            "did": "said “ow” out loud"
+          }
+        }
+      }
+    ]
+  }
+]

@@ -9,7 +9,7 @@ Radionica za projekte: ja zamislim ideju, Claude je napravi. Svaki projekt živi
 | [assassuto](assassuto) | Project Fourfold: third-person fantasy akcijski RPG u browseru, četiri elementalne regije, Echo duh čuvar, likovi iz Tripa | TypeScript, Three.js, Vite, Tripo API | 🚧 u izradi (faza 4/8 + proširenje borbe) |
 | [bjj-fighter](bjj-fighter) | No-gi BJJ karijera u browseru: potezi se uče na timer, borbe protiv AI-a s usporenim kritičnim trenucima i 5 opcija | HTML, CSS, JavaScript (Canvas 2D) | 🚧 u izradi (testna verzija) |
 | [dev-farm](dev-farm) | 2D farma za browser: farmer, kvaliteta uroda, štand, tržnica u gradu, izumi i navodnjavanje | HTML, CSS, JavaScript | 🚧 u izradi |
-| [life-simulation](life-simulation) | Kratka multiplayer simulacija života u browseru: karijere, odnosi, tajne i odluke o drugima; ljudi i botovi s osobnošću | TypeScript, React, Fastify, Socket.IO, PostgreSQL | 🚧 u izradi (MVP gotov) |
+| [life-simulation](life-simulation) | Kratka igra života u browseru: jedan život u 6 poglavlja (san, mana, posao, stalni likovi, tajne); stari multiplayer grad u stvarnom vremenu je skriven | TypeScript, React, Fastify, Socket.IO, PostgreSQL | 🚧 u izradi (Sprint 5a: nova jezgra, čeka test) |
 | [pixel-runner](pixel-runner) | Endless runner: skači preko puževa i muha | Python, Pygame | ✅ gotovo |
 
 Statusi: 💡 ideja · 🚧 u izradi · ✅ gotovo · 🧊 pauzirano
