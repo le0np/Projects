@@ -83,17 +83,36 @@ async function playOnce(browser, label, contextOptions) {
   await page.getByRole("button", { name: "Create account" }).last().click();
 
   await page.getByRole("radio", { name: /Doctor/ }).click();
+  // B4: the character has its own name, not the username.
+  const characterName = label === "desktop" ? "Mila" : "Oskar";
+  await page.getByLabel("Your character's name").fill(characterName);
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/${label}-lobby.png`, fullPage: true });
   await page.getByRole("button", { name: /Find a life as Doctor/ }).click();
 
   // Play: answer every offer with the first choice until the recap appears.
   let decisions = 0;
+  let checkedCards = 0;
   let shotTaken = false;
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
     if (await page.getByText("Life Recap").isVisible().catch(() => false)) break;
     const choice = page.locator("button.choice").first();
     if (await choice.isVisible().catch(() => false)) {
+      // B1: every choice is on screen and the card needs no scrolling to reach one.
+      const fit = await page.evaluate(() => {
+        const vh = window.innerHeight;
+        const choices = [...document.querySelectorAll("button.choice")].map((b) => b.getBoundingClientRect());
+        const overlay = document.querySelector(".overlay");
+        return {
+          offscreen: choices.filter((r) => r.top < -0.5 || r.bottom > vh + 0.5).length,
+          overlayScroll: overlay ? overlay.scrollHeight - overlay.clientHeight : 0,
+          title: document.querySelector("#event-title")?.textContent ?? "",
+          me: document.querySelector(".game-header .who strong")?.textContent ?? "",
+        };
+      });
+      if (fit.offscreen > 0 || fit.overlayScroll > 1) throw new Error(`[${label}] "${fit.title}": ${fit.offscreen} choice(s) off screen, card scrolls by ${fit.overlayScroll}px`);
+      if (fit.me !== characterName) throw new Error(`[${label}] character is called "${fit.me}", expected "${characterName}"`);
+      checkedCards++;
       if (SHOTS && !shotTaken) {
         await page.screenshot({ path: `${SHOTS}/${label}-event.png`, fullPage: true });
         shotTaken = true;
@@ -105,6 +124,7 @@ async function playOnce(browser, label, contextOptions) {
   }
   if (!(await page.getByText("Life Recap").isVisible())) throw new Error(`[${label}] no Life Recap after 60 s`);
   if (decisions === 0) throw new Error(`[${label}] never got a decision to make`);
+  if (checkedCards === 0) throw new Error(`[${label}] no event card was checked for fit`);
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/${label}-recap.png`, fullPage: true });
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

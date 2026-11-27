@@ -403,6 +403,18 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **Sadržaj:** Overtime, Side Gig i Tax Refund najviše 3 puta po sesiji (prije su ih dobili svi), solo težina ×0,5.
 - **Batch (200 sesija, `docs/reports/t3.report.md`):** sve sesije završe finalom; 64,4 % eventa ima ≥ 2 lika koji odlučuju (79,3 % po liku), ponavljanje 1,0 %, smrtnost 3,5 %, replay identičan. Sesija samo s botovima traje u prosjeku 432 s, jer botovi finale odluče brzo; s ljudima finale traje koliko i njihov rok.
 - **Testovi:** `engine/test/pacing.test.ts` (faze redom, finale za sve žive, ništa kritično u upoznavanju, vrhunac 60–72 %, medijan pauze 8–15 s uz 1× i 6×, najviše 3 % iznad 20 s ili ispod 6 s), `server/test/pacing.test.ts` (uživo: do finala čovjek čeka < 5 s).
+  - Ograničenje testa: s tim seedom u trenutku finala nijedan bot-only event nije bio u tijeku, pa test provjerava razmak, ali ne nužno i to da botovi odgovore odmah (provjereno isključivanjem: test i dalje prolazi). Logika je jednostavna (`flushAllBots`), ali nije izravno pokrivena.
+
+### T4: popravci sučelja (developer)
+
+- **B1, kartica eventa:** na 1280×800 kartica je zauzimala 334 od 696 px mape, a izbori su se skrolali unutar kartice (do 282 px). Sada:
+  - ekran igre je širi (do 1240 px), mapa je 856×571, kartica je široka 300 px (najviše 38 % mape);
+  - kartica je stupac: priča (naslov, tekstovi) se smanji i skrola ako je baš duga, a **izbori su uvijek cijeli vidljivi**; oznake posljedica su manje i stoje uz izbor;
+  - na mobitelu je kartica fiksni „sheet” na dnu ekrana (do 82 % visine), pa je uvijek na ekranu, bez skrolanja stranice;
+  - izmjereno skriptom na 4 eventa po uređaju: 0 izbora izvan ekrana, 0 px skrolanja kartice. `npm run e2e` to sada provjerava za svaki event (desktop i iPhone 13).
+- **B2, „People” kasni:** potvrđeni uzrok nije redoslijed u engineu (`relations.meet` je prije poruka), nego klijent, koji je odnose osvježavao samo iz nove ponude eventa (`view.others`), a poruka ishoda ih nije nosila. Poruka `resolved` sada nosi `others` (odnosi nakon eventa), a klijent ih odmah prikaže, i nakon reconnecta. Test: `engine/test/ui-bugs.test.ts` (padao je prije popravka).
+- **B3, „Around town”:** prikazuje samo evente s više ljudi, početak preokreta, smrti, bolnicu i zatvor te najavu finala (`isNewsworthy` u `web/src/format.ts`, test `web/test/feed.test.ts`). Smrt od starosti i u preokretu sada se objavljuje javno (prije se nije).
+- **B4, ime lika:** u lobbyju je polje „Your character's name” s nasumičnim prijedlogom (🎲) i pamćenjem u pregledniku. Server prima `name` u `match:find` (2–16 slova, razmak, apostrof, crtica; inače `invalid_name`); bez imena ostaje korisničko ime. Botovi nikad ne dobiju isto ime kao igrač. Testovi: server (ime u rosteru, neispravna imena odbijena), engine (30 sesija bez duplih imena), e2e (ime u zaglavlju igre).
 
 ## Zadnja automatizirana provjera
 

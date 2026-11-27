@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { LifeRecap } from "@lifesim/core";
 import { api, type Career, type Profile } from "../api";
-import { AVATARS, GOOD_OUTCOMES, OUTCOME_LABELS, careerName } from "../format";
+import { AVATARS, GOOD_OUTCOMES, OUTCOME_LABELS, careerName, randomName } from "../format";
 import type { Lobby, MatchStatus } from "../useGame";
 import { RecapView } from "./Recap";
 
@@ -12,7 +12,7 @@ interface Props {
   lobby: Lobby;
   match: MatchStatus | null;
   searching: boolean;
-  findMatch: (career: string) => Promise<{ ok: boolean; error?: string } | undefined>;
+  findMatch: (career: string, name: string) => Promise<{ ok: boolean; error?: string } | undefined>;
   cancelMatch: () => Promise<void>;
 }
 
@@ -43,6 +43,24 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
     }
   }
 
+  // B4: the character gets a name of its own (not the username), with a random suggestion.
+  const [name, setName] = useState<string>(() => {
+    try {
+      return localStorage.getItem("lifesim.name") || randomName();
+    } catch {
+      return randomName();
+    }
+  });
+  const nameOk = /^\p{L}[\p{L} '-]{1,15}$/u.test(name.trim());
+  function changeName(value: string) {
+    setName(value);
+    try {
+      localStorage.setItem("lifesim.name", value);
+    } catch {
+      /* not remembered */
+    }
+  }
+
   async function setAvatar(avatar: string) {
     await api("/api/me/avatar", { method: "PUT", body: { avatar }, token });
     setProfile((p) => (p ? { ...p, avatar } : p));
@@ -50,8 +68,15 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
 
   async function play() {
     setError(null);
-    const res = await findMatch(career);
-    if (!res?.ok) setError(res?.error === "already_in_session" ? "You are already in a session." : "Could not join matchmaking.");
+    const res = await findMatch(career, name.trim());
+    if (!res?.ok)
+      setError(
+        res?.error === "already_in_session"
+          ? "You are already in a session."
+          : res?.error === "invalid_name"
+            ? "Please choose a name of 2–16 letters."
+            : "Could not join matchmaking.",
+      );
   }
 
   const selected = careers.find((c) => c.id === career);
@@ -122,6 +147,21 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
             </div>
           </div>
         )}
+        <div className="name-row">
+          <label htmlFor="character-name">Your character's name</label>
+          <input
+            id="character-name"
+            value={name}
+            maxLength={16}
+            onChange={(e) => changeName(e.target.value)}
+            disabled={searching}
+            aria-invalid={!nameOk}
+          />
+          <button className="ghost" type="button" onClick={() => changeName(randomName(name))} disabled={searching} aria-label="Suggest a random name" title="Suggest a random name">
+            🎲
+          </button>
+          {!nameOk && <span className="small error">2–16 letters</span>}
+        </div>
         <div className="play-row">
           {searching ? (
             <>
@@ -134,7 +174,7 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
               </button>
             </>
           ) : (
-            <button className="primary big" onClick={play} disabled={!connected || !selected}>
+            <button className="primary big" onClick={play} disabled={!connected || !selected || !nameOk}>
               Find a life as {selected?.name ?? "…"}
             </button>
           )}

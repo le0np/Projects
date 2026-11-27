@@ -329,6 +329,7 @@ export class Session {
           this.setStatus(c, "dead", `Worn out by the years, at ${this.age(id)}`, changes);
           this.log.push({ t: this.now(), type: "character_ended", characterId: id, status: "dead", cause: c.cause ?? "" });
           this.onNotice(id, { kind: "ended", t: this.now(), status: "dead", cause: c.cause ?? "" });
+          this.onPublic({ kind: "ended", t: this.now(), characterId: id, name: c.name, status: "dead", cause: c.cause ?? "" });
         }
       }
       if (this.order.every((id) => this.char(id).status !== "active")) {
@@ -398,6 +399,7 @@ export class Session {
         this.setStatus(c, "dead", `Did not survive ${u.title.toLowerCase()}`, death);
         this.log.push({ t: this.now(), type: "character_ended", characterId: cid, status: "dead", cause: c.cause ?? "" });
         this.onNotice(cid, { kind: "ended", t: this.now(), status: "dead", cause: c.cause ?? "" });
+        this.onPublic({ kind: "ended", t: this.now(), characterId: cid, name: c.name, status: "dead", cause: c.cause ?? "" });
       }
     }
     this.timers.push(this.now() + u.durationSeconds * MS, { kind: "upheaval_end", id: u.id });
@@ -582,7 +584,9 @@ export class Session {
   // ================================================================== setup
 
   private createCharacters(participants: readonly ParticipantSpec[]): void {
-    const names = pickNames(participants.length, this.rngInit);
+    // B4: bots never get a name a player chose for their character.
+    const chosen = new Set(participants.flatMap((p) => (p.name ? [p.name.toLowerCase()] : [])));
+    const names = pickNames(participants.length + chosen.size, this.rngInit).filter((n) => !chosen.has(n.toLowerCase()));
     const initFacts = [...this.content.facts.values()].filter((f) => f.setAtInit).map((f) => f.key);
     const [d0, d1] = this.config.initialDelaySeconds;
     const homes = this.rngInit.shuffle(this.content.map.placesOf("home"));
@@ -602,7 +606,7 @@ export class Session {
       for (const a of ATTRIBUTES) attrs[a] = clampAttr(attrs[a]);
       this.characters.set(id, {
         id,
-        name: p.name ?? (names[i] as string),
+        name: p.name ?? (names.shift() as string),
         career,
         isBot: p.isBot,
         attrs,
@@ -1266,16 +1270,21 @@ export class Session {
         status: self.status,
         facts: [...self.facts].sort(),
       },
-      others: this.order
-        .filter((id) => id !== characterId)
-        .map((id) => {
-          const o = this.char(id);
-          const r = this.relations.get(characterId, id);
-          return { id, name: o.name, career: o.career.id, status: o.status, relation: { type: r.type, affinity: r.affinity, trust: r.trust } };
-        }),
+      others: this.othersFor(characterId),
       offer,
       mischief: this.mischiefState(characterId),
     };
+  }
+
+  /** Everyone else, with the viewer's relationship to them. */
+  private othersFor(characterId: string): CharacterView["others"] {
+    return this.order
+      .filter((id) => id !== characterId)
+      .map((id) => {
+        const o = this.char(id);
+        const r = this.relations.get(characterId, id);
+        return { id, name: o.name, career: o.career.id, status: o.status, relation: { type: r.type, affinity: r.affinity, trust: r.trust } };
+      });
   }
 
   // ================================================================== resolution
@@ -1393,6 +1402,7 @@ export class Session {
           revealed: [],
           ...(text ? { outcomeText: text } : {}),
           selfChanges,
+          others: this.othersFor(id),
         });
         continue;
       }
@@ -1438,6 +1448,7 @@ export class Session {
           : [],
         ...(text ? { outcomeText: text } : {}),
         selfChanges,
+        others: this.othersFor(id),
       });
     }
     for (const ch of changes) {

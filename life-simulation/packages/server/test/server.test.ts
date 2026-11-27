@@ -114,14 +114,21 @@ describe("a full session with two humans and bots", () => {
     const bad = await s1.emitWithAck("match:find", { career: "astronaut" });
     expect(bad).toEqual({ ok: false, error: "unknown_career" });
 
-    const started1 = once<{ sessionId: string; characterId: string; roster: unknown[] }>(s1, "game:started");
+    // B4: the character's name comes from the lobby, not the username.
+    expect(await s1.emitWithAck("match:find", { career: "doctor", name: "x" })).toEqual({ ok: false, error: "invalid_name" });
+    expect(await s1.emitWithAck("match:find", { career: "doctor", name: "<b>Mila</b>" })).toEqual({ ok: false, error: "invalid_name" });
+
+    const started1 = once<{ sessionId: string; characterId: string; roster: { characterId: string; name: string }[] }>(s1, "game:started");
     const started2 = once<{ sessionId: string; characterId: string }>(s2, "game:started");
-    expect((await s1.emitWithAck("match:find", { career: "doctor" })).ok).toBe(true);
+    expect((await s1.emitWithAck("match:find", { career: "doctor", name: "Mila" })).ok).toBe(true);
     expect((await s2.emitWithAck("match:find", { career: "lawyer" })).ok).toBe(true);
     const [g1, g2] = await Promise.all([started1, started2]);
     expect(g1.sessionId).toBe(g2.sessionId);
     expect(g1.roster).toHaveLength(4); // 2 humans + 2 bots
     expect(g1.characterId).not.toBe(g2.characterId);
+    expect(g1.roster.find((r) => r.characterId === g1.characterId)?.name).toBe("Mila");
+    expect(g1.roster.some((r) => r.name === "bob")).toBe(false);
+    expect(g1.roster.find((r) => r.characterId === g2.characterId)?.name).toBe("cleo"); // no name sent: the username
 
     const wrong = await s1.emitWithAck("game:decide", { sessionId: "other", instanceId: "E1", choiceId: "x" });
     expect(wrong).toMatchObject({ ok: false });

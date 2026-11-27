@@ -11,6 +11,7 @@ export type PublicEntry =
   | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
   | { kind: "season"; t: number; year: number; season: string }
   | { kind: "upheaval"; t: number; id: string; title: string; text: string; active: boolean }
+  | { kind: "phase"; t: number; phase: "intro" | "growth" | "climax" | "respite" | "finale" }
   | { kind: "move"; t: number; characterId: string; from: [number, number]; path: [number, number][]; departAt: number; msPerTile: number; to: string | null };
 
 export interface Walk {
@@ -92,7 +93,8 @@ function stateFromSnapshot(s: Snapshot): GameState {
     attrs: lastView?.self.attrs,
     calendar: [...s.feed].reverse().find((f): f is Extract<PublicEntry, { kind: "season" }> => f.kind === "season") ?? lastView?.calendar,
     ageBase: lastView ? { age: lastView.self.age, year: lastView.calendar.year } : undefined,
-    others: lastView?.others ?? [],
+    others:
+      [...s.history].reverse().map((n) => (n.kind === "event" ? n.view.others : n.kind === "resolved" ? n.others : undefined)).find((o) => o !== undefined) ?? [],
     ...(ended ? { ended: { status: ended.status, cause: ended.cause } } : {}),
     upheaval: (() => {
       const last = [...s.feed].reverse().find((f): f is Extract<PublicEntry, { kind: "upheaval" }> => f.kind === "upheaval");
@@ -181,6 +183,8 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
             ...g,
             history,
             attrs,
+            // B2: relationships change during the event; show them at once, not at the next offer.
+            others: n.others ?? g.others,
             sync: { sessionTime: n.t, wall: Date.now() },
             pending: clears ? null : g.pending,
             submitted: clears ? null : g.submitted,
@@ -207,8 +211,8 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
     };
   }, [token, onUnauthorized]);
 
-  const findMatch = useCallback(async (career: string) => {
-    const res = (await socketRef.current?.emitWithAck("match:find", { career })) as { ok: boolean; error?: string } | undefined;
+  const findMatch = useCallback(async (career: string, name?: string) => {
+    const res = (await socketRef.current?.emitWithAck("match:find", { career, ...(name ? { name } : {}) })) as { ok: boolean; error?: string } | undefined;
     if (res?.ok) setSearching(true);
     return res;
   }, []);

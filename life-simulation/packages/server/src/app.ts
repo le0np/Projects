@@ -33,7 +33,14 @@ const RegisterBody = z.object({
 });
 const LoginBody = z.object({ login: z.string().min(1), password: z.string().min(1) });
 const AvatarBody = z.object({ avatar: z.string().regex(/^[a-z0-9_-]{1,32}$/) });
-const FindMatch = z.object({ career: z.string() });
+/** B4: the character's name is chosen in the lobby (letters, spaces, apostrophes and hyphens). */
+const CharacterName = z
+  .string()
+  .trim()
+  .min(2)
+  .max(16)
+  .regex(/^[\p{L}][\p{L} '-]*$/u);
+const FindMatch = z.object({ career: z.string(), name: CharacterName.optional() });
 const Decide = z.object({ sessionId: z.string(), instanceId: z.string(), choiceId: z.string() });
 const Prank = z.object({ sessionId: z.string(), mischiefId: z.string(), targetId: z.string() });
 
@@ -237,9 +244,10 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
 
     socket.on("match:find", (raw: unknown, ack: Ack = () => {}) => {
       const body = FindMatch.safeParse(raw);
+      if (!body.success && body.error.issues.some((i) => i.path[0] === "name")) return ack({ ok: false, error: "invalid_name" });
       if (!body.success || !content.careers.has(body.data.career)) return ack({ ok: false, error: "unknown_career" });
       if (liveByUser.has(user.id)) return ack({ ok: false, error: "already_in_session" });
-      matchmaker.enqueue(user.id, user.username, body.data.career);
+      matchmaker.enqueue(user.id, body.data.name ?? user.username, body.data.career);
       ack({ ok: true, status: matchmaker.status(user.id) ?? { state: "matched" } });
       broadcastLobby();
     });

@@ -1,5 +1,33 @@
 import type { Attribute, OutcomeTag, Perceived, RelationType } from "@lifesim/core";
 
+/** The public feed entries "Around town" shows (a structural subset of the server's `PublicEntry`). */
+export type FeedEntry =
+  | { kind: "event"; participants: unknown[] }
+  | { kind: "ended" }
+  | { kind: "upheaval"; active: boolean }
+  | { kind: "phase"; phase: string }
+  | { kind: "season" }
+  | { kind: "move" };
+
+/**
+ * B3: "Around town" is news, not a list of other people's errands: events with more than one person,
+ * upheavals (when they start), deaths, hospital and prison, and the finale.
+ */
+export function isNewsworthy(entry: FeedEntry): boolean {
+  switch (entry.kind) {
+    case "event":
+      return entry.participants.length >= 2;
+    case "ended":
+      return true;
+    case "upheaval":
+      return entry.active;
+    case "phase":
+      return entry.phase === "finale";
+    default:
+      return false;
+  }
+}
+
 export const ATTR_LABELS: Record<Attribute, { label: string; icon: string }> = {
   health: { label: "Health", icon: "❤" },
   mental: { label: "Mind", icon: "☁" },
@@ -7,6 +35,17 @@ export const ATTR_LABELS: Record<Attribute, { label: string; icon: string }> = {
   reputation: { label: "Reputation", icon: "★" },
   career: { label: "Career", icon: "▲" },
 };
+
+/** B4: suggestions for a character name (the player can type their own). */
+export const NAME_SUGGESTIONS = [
+  "Mila", "Oskar", "Nina", "Bruno", "Iris", "Teo", "Vera", "Leon", "Dora", "Max",
+  "Lana", "Igor", "Sara", "Emil", "Nora", "Pavel", "Ruby", "Ivo", "Klara", "Dino",
+];
+
+export function randomName(except?: string): string {
+  const pool = NAME_SUGGESTIONS.filter((n) => n !== except);
+  return pool[Math.floor(Math.random() * pool.length)] as string;
+}
 
 export const AVATARS: Record<string, string> = {
   default: "🙂",

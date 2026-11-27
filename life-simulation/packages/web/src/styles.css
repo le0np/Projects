@@ -337,6 +337,20 @@ input {
   margin: 0;
   flex: 1;
 }
+.name-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.name-row label {
+  font-weight: 600;
+}
+.name-row input {
+  flex: 1 1 160px;
+  max-width: 240px;
+}
 .lives {
   list-style: none;
   margin: 0;
@@ -447,6 +461,9 @@ input {
 .game-grid {
   display: grid;
   gap: 16px;
+}
+main.game {
+  max-width: 1240px;
 }
 .stage {
   display: grid;
@@ -701,15 +718,93 @@ input {
 .overlay .card {
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.18);
 }
+/*
+ * B1: the event card never needs scrolling to reach a choice. It is a column: the story part
+ * (title, texts) shrinks and scrolls if it is very long, the choices are always fully visible.
+ */
+.overlay .card.event {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 100%;
+  overflow: hidden;
+}
+.overlay .card.event .bar,
+.overlay .card.event .event-meta {
+  flex: none;
+}
+.overlay .card.event .bar.thin {
+  margin: 2px 0 4px;
+}
+.event-story {
+  min-height: 0;
+  overflow: auto;
+  flex: 0 1 auto;
+}
+.event-story h1 {
+  margin: 4px 0;
+}
+.event-story p {
+  margin: 0 0 6px;
+}
+.overlay .choices {
+  flex: none;
+  margin: 4px 0 0;
+  gap: 6px;
+}
+.overlay .choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 8px 10px;
+}
+.overlay .choice .hints {
+  gap: 4px;
+}
+.overlay .choice .hint {
+  font-size: 0.72rem;
+  padding: 1px 6px;
+}
+.overlay .default-note {
+  flex: none;
+  margin: 0;
+}
+/* Phones: the card is a sheet at the bottom of the screen while you decide. */
+@media (max-width: 759px) {
+  .overlay:not(.toast) {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    z-index: 20;
+    max-height: 82vh;
+    max-height: 82dvh;
+    display: flex;
+  }
+  .overlay:not(.toast) .card.event {
+    width: 100%;
+    padding: 12px;
+  }
+  .overlay .event h1 {
+    font-size: 1.1rem;
+  }
+  .overlay .lead,
+  .overlay .private {
+    font-size: 0.9rem;
+  }
+}
 @media (min-width: 760px) {
-  /* The decision panel sits at the side of the map so the town stays visible. */
+  /* The decision panel sits at the side of the map, narrow, so the town stays visible. */
   .overlay {
     position: absolute;
     right: 12px;
     top: 12px;
     bottom: 12px;
-    width: min(340px, 48%);
-    overflow: auto;
+    width: min(300px, 38%);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
     border-radius: var(--radius);
   }
   .overlay.toast {
@@ -728,7 +823,8 @@ input {
   .overlay .lead {
     font-size: 0.95rem;
   }
-  .overlay .choice {
+  .overlay .private {
+    font-size: 0.88rem;
     padding: 8px 10px;
   }
 }

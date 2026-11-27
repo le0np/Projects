@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Attribute, Notice, OfferView } from "@lifesim/core";
-import { ATTR_LABELS, RELATION_LABELS, careerName, clock, hints } from "../format";
+import { ATTR_LABELS, RELATION_LABELS, careerName, clock, hints, isNewsworthy } from "../format";
 import { Town } from "../town/Town";
 import type { GameState } from "../useGame";
 
@@ -28,6 +28,7 @@ export function GameScreen({ game, connected, decide, playMischief }: Props) {
   const sessionTime = game.sync.sessionTime + (now - game.sync.wall) * game.timeScale;
   const progress = Math.min(1, sessionTime / (game.durationSeconds * 1000));
   const lastResolved = [...game.history].reverse().find((n): n is Extract<Notice, { kind: "resolved" }> => n.kind === "resolved");
+  const news = [...game.feed].reverse().filter(isNewsworthy);
   const recentOutcomes = game.history.filter((n): n is Extract<Notice, { kind: "resolved" }> => n.kind === "resolved").slice(-6).reverse();
 
   return (
@@ -121,18 +122,26 @@ export function GameScreen({ game, connected, decide, playMischief }: Props) {
           <div className="card">
             <h2>Around town</h2>
             <ul className="feed" aria-live="polite">
-              {[...game.feed].reverse().filter((f) => f.kind === "event" || f.kind === "ended").slice(0, 12).map((f, i) =>
+              {news.slice(0, 12).map((f, i) =>
                 f.kind === "event" ? (
                   <li key={`${f.instanceId}-${i}`}>
                     <strong>{f.title}</strong> — {f.text}
                   </li>
-                ) : (
+                ) : f.kind === "ended" ? (
                   <li key={`${f.characterId}-${i}`} className="ended">
                     {f.name}: {f.status}. {f.cause}
                   </li>
+                ) : f.kind === "upheaval" ? (
+                  <li key={`${f.id}-${i}`} className="upheaval">
+                    <strong>{f.title}</strong> — {f.text}
+                  </li>
+                ) : (
+                  <li key={`phase-${i}`} className="finale">
+                    <strong>The finale</strong> — the whole town gathers for one last event.
+                  </li>
                 ),
               )}
-              {game.feed.length === 0 && <li className="muted">Quiet so far.</li>}
+              {news.length === 0 && <li className="muted">Quiet so far.</li>}
             </ul>
           </div>
         </aside>
@@ -221,15 +230,18 @@ function EventCard({ offer, game, now, decide }: { offer: OfferView; game: GameS
       <div className="bar thin">
         <div className="bar-fill urgent" style={{ width: `${(leftMs / totalMs) * 100}%` }} />
       </div>
-      <h1 id="event-title">{offer.title}</h1>
-      <p className="lead">{offer.publicText}</p>
-      {offer.privateText && (
-        <p className="private">
-          <span className="private-label">Only you know</span>
-          {offer.privateText}
-        </p>
-      )}
-      {others.length > 0 && <p className="muted small">With: {others.map((o) => o.name).join(", ")}</p>}
+      {/* B1: the story may scroll if it is very long; the choices below always stay in view. */}
+      <div className="event-story">
+        <h1 id="event-title">{offer.title}</h1>
+        <p className="lead">{offer.publicText}</p>
+        {offer.privateText && (
+          <p className="private">
+            <span className="private-label">Only you know</span>
+            {offer.privateText}
+          </p>
+        )}
+        {others.length > 0 && <p className="muted small">With: {others.map((o) => o.name).join(", ")}</p>}
+      </div>
 
       {game.submitted ? (
         <p className="waiting" aria-live="polite">
@@ -257,7 +269,7 @@ function EventCard({ offer, game, now, decide }: { offer: OfferView; game: GameS
           ))}
         </ul>
       )}
-      <p className="muted small">If you do not choose in time: “{offer.choices.find((c) => c.isDefault)?.label}”.</p>
+      <p className="muted small default-note">If you do not choose in time: “{offer.choices.find((c) => c.isDefault)?.label}”.</p>
     </article>
   );
 }

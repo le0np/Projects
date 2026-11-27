@@ -113,6 +113,8 @@ export type Notice =
       outcomeText?: string;
       /** Changes to the character's own attributes. */
       selfChanges: Partial<Record<Attribute, number>>;
+      /** Everyone else as the character sees them after this event (B2: relationships are current at once). */
+      others?: CharacterView["others"];
     }
   | { kind: "ended"; t: number; status: Status; cause: string }
   /** A town-wide upheaval and what it did to you. */
