@@ -543,19 +543,31 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - Testovi: engine (≥ 15 različitih titula, pravila, emoji godine, svaki recap ima titulu i godine), web (tekst za dijeljenje), server (kolekcija u `/api/me`), e2e (titula, godine, „Copy my life”, kolekcija u lobbyju).
 - Ograničenje: kod otkrivanja se prikaže ime krivca, ne njegovo lice (QA je predložio lice).
 
+### T12: duh nakon smrti (developer)
+
+- Mrtav ili zatvoren čovjek postaje **duh** (poruka `ghost`, kartica „👻 You are a ghost” umjesto „Schemes”):
+  - **Push fate** jednom po desetljeću kalendara života (1–2 puta u sesiji): u tuđem eventu koji je u tijeku prvi ishod prepušten slučaju dobije +10 % (duh ne zna je li to dobro ili loše);
+  - glas za **Gossip of the Year** među javnim eventima s ≥ 2 osobe (može se promijeniti);
+  - **oporuka** od jedne rečenice iz ponuđenih (`packages/content/data/ghost.json`), pročita se u svačijem Life Recapu.
+- Life Recap: „The town remembers” (trač godine s brojem glasova duhova, sve oporuke) i „As a ghost you pushed fate N times.” Botovi ostave oporuku u pola slučajeva (zabavnije čitanje).
+- Sve akcije duha idu u log (`ghost_nudge`, `ghost_vote`, `ghost_will`, `ghost_rejected`) i replay ih ponavlja.
+- **QA opcija `QA_GHOST=1`** (`.env.example`): priča prvog čovjeka završi nakon 20 s vremena sesije („Struck by a falling piano”), postavka enginea `qaEndFirstHumanAtSeconds` je u logu. Novi e2e `packages/web/e2e/ghost.mjs` (dio `npm run e2e`): kartica duha, oporuka, pročitana u recapu.
+- Testovi: engine (moći duha, jedno guranje po desetljeću, glas i oporuka u svakom recapu, +10 % pretvori ishod od 90 % u siguran, oporuke botova).
+
+### Sprint 3 gotov
+
+- T10, T11, T12, plus T8c i T9b. Batch 200 sesija (`docs/reports/sprint3.report.md`): 64 % eventa s ≥ 2 lika koji odlučuju, ponavljanje 0,7 %, smrtnost 4,6 %, stvarne veze 85 %, Jealousy 17,5 %, Crisis Talk 10 %, 4,4 spletke po sesiji, 20 različitih titula (najčešća 13 %), replay identičan.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 27. studenog 2026. (nakon Sprinta 2, T5–T9):
+Provedeno 27. studenog 2026. (nakon Sprinta 3, T10–T12):
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm run check` | typecheck čist; 75 eventa, 0 grešaka, 0 upozorenja; **139/139 testova** (nakon T8b) |
-| `npm run e2e` | ✓ desktop 1280×800 i ✓ iPhone 13: spletka (plan + pojačanje), cijela sesija s finalom, recap, log, lobby; za svaki event izbori, privatni i javni tekst cijeli; zaglavlje puno od početka |
-| `scheme-victim.mjs` (dio `npm run e2e`, T8b) | strana žrtve: trag, tri izbora, besplatna osveta |
-| `card-fit.mjs` (dio `npm run e2e`) | svih 125 kombinacija event/uloga (i skriveni eventi, s tragom) bez skrolanja na 1280×800 i 390×664; 0 gramatičkih grešaka „X and Y is” |
-| `npm run sim:batch -- --sessions 200 --seed sprint2` | brojke gore; replay 3/3 identičan |
-| Skripte u browseru (T5–T9) | najava i karta uz mjesto, otkrivanje i reakcije, zum na mobitelu, raspoloženja i linije odnosa, tragovi (svih 8 iscrtano), spletka od plana do rezultata, pogađanje i kartica lika; bez grešaka u konzoli |
-| Svjež `git clone` grane `dev` (`91cfc6d`) + `npm install` + `npm run check` + `web:build` + server | 138/138, build čist, `/api/health` i web stranica rade |
+| `npm run check` | typecheck čist; 75 eventa, 0 grešaka, 0 upozorenja; **149/149 testova** |
+| `npm run e2e` | ✓ desktop i ✓ iPhone 13 (spletka, kartica lika, cijela sesija, recap s titulom i „Copy my life”, kolekcija titula u lobbyju); ✓ strana žrtve spletke; ✓ duh (oporuka pročitana u recapu); ✓ 133 kartice bez skrolanja na 1280×800 i 390×664; ✓ 0 gramatičkih grešaka |
+| `npm run sim:batch -- --sessions 200 --seed sprint3` | brojke gore; replay 3/3 identičan |
+| Svjež `git clone` + `npm install` + `npm run check` + server | vidi zapis ispod tablice |
 
 ## Poznata ograničenja
 
@@ -569,12 +581,14 @@ Provedeno 27. studenog 2026. (nakon Sprinta 2, T5–T9):
 - Prije finala čovjek čeka da svi ostali završe svoje evente. Botovi tada odgovore odmah, ali ako je drugi čovjek u eventu, čekanje može trajati do njegovog roka (do 35–45 s).
 - Pravih odnosa (prijatelj, suparnik, partner, dug…) u zajedničkim eventima je ~31 %. Eventi koji traže partnera (Jealousy, Crisis Talk) i dalje su rijetki, jer se partneri malo stvaraju.
 - Sesija samo s botovima traje ~432 s umjesto 480, jer botovi finale odluče odmah; s ljudima finale traje koliko i njihov rok.
+- Pri otkrivanju u Life Recapu prikaže se ime krivca, ne njegovo lice (QA je predložio lice).
+- Botovi ne znaju svoje osobne ciljeve i ne vode računa o njima; ostvare ih koliko slučajno (8–64 % po cilju).
 - Kad Zod `union` padne (uvjeti), poruka greške prikazuje grananje koje je stiglo najdublje. Ponekad je zato manje jasna od poruka za efekte.
 
 ## Sljedeći koraci
 
-1. **QA testira Sprint 2** (`INSTRUCTIONS_FOR_AGENT.md`). Nakon povratne informacije: Sprint 3 (T10 osobni ciljevi, T11 titula života i „Copy my life”, T12 duh nakon smrti).
-2. Nakon toga, po planu §9: M12 Sadržaj (humorističan ton, životne faze) i M13 Balans.
+1. **QA testira Sprint 3** (`INSTRUCTIONS_FOR_AGENT.md`). Svi zadaci iz sva tri sprinta su napravljeni.
+2. Nakon toga, po planu §9: M12 Sadržaj (humorističan ton, životne faze) i M13 Balans; QA je dodao istraživanje tržišta (`docs/research/market-research-2026-11-27.md`) s prijedlogom MVP-a za izlazak.
 
 ## Handoff za novi chat
 

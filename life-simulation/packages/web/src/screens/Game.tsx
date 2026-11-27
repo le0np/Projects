@@ -4,6 +4,7 @@ import { ATTR_LABELS, RELATION_LABELS, careerName, clock, hints, isNewsworthy, q
 import { Town, useMapPlaces, useMapSize } from "../town/Town";
 import { Schemes } from "./Schemes";
 import { GuessCard, PersonCard } from "./Meanwhile";
+import { GhostCard } from "./Ghost";
 import type { GameState } from "../useGame";
 
 const SEASON_LABELS: Record<string, string> = { spring: "🌱 Spring", summer: "☀ Summer", autumn: "🍂 Autumn", winter: "❄ Winter" };
@@ -25,9 +26,10 @@ interface Props {
   previewScheme: Parameters<typeof Schemes>[0]["preview"];
   boostScheme: Parameters<typeof Schemes>[0]["boost"];
   guess: (instanceId: string, deciderId: string, choiceId: string) => void;
+  ghostAction: Parameters<typeof GhostCard>[0]["act"];
 }
 
-export function GameScreen({ game, connected, decide, playMischief, previewScheme, boostScheme, guess }: Props) {
+export function GameScreen({ game, connected, decide, playMischief, previewScheme, boostScheme, guess, ghostAction }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const places = useMapPlaces();
   const now = useNow();
@@ -168,6 +170,7 @@ export function GameScreen({ game, connected, decide, playMischief, previewSchem
               <span className="tie" style={{ background: "#e05a9b" }} /> partner
             </p>
           </div>
+          {game.ended && game.ghost?.isGhost && <GhostCard game={game} sessionTime={sessionTime} act={ghostAction} />}
           {game.mischief && !game.ended && <Schemes game={game} sessionTime={sessionTime} plan={playMischief} preview={previewScheme} boost={boostScheme} />}
           <div className="card">
             <h2>Around town</h2>

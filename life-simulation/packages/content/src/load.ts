@@ -30,6 +30,7 @@ export function readContentDir(dir: string = DEFAULT_CONTENT_DIR): { raw: RawCon
       upheavals: read(join(dir, "upheavals.json")),
       mischief: read(join(dir, "mischief.json")),
       goals: read(join(dir, "goals.json")),
+      ghost: read(join(dir, "ghost.json")),
       // Unreadable files are already reported above; don't report them again as schema errors.
       events: eventFiles.map((f) => read(join(eventsDir, f))).filter((e) => e.data !== undefined),
     },

@@ -37,6 +37,7 @@ import {
   type Mood,
   type SchemeBoost,
   type GoalView,
+  type GhostState,
   type SchemeView,
   type AccompliceAnswer,
   type Mark,
@@ -142,7 +143,8 @@ type Timer =
   | { kind: "phase"; phase: StoryPhase }
   | { kind: "release"; characterId: string }
   | { kind: "unmark"; id: string }
-  | { kind: "scheme"; id: string };
+  | { kind: "scheme"; id: string }
+  | { kind: "qa_end_human" };
 
 /** "Ana", "Ana and Ben", "Ana, Ben and Clara" (T4b N4). */
 export function listNames(names: readonly string[]): string {
@@ -219,6 +221,15 @@ export class Session {
   private readonly rngChaos: Rng;
   /** T10: its own stream, so adding goals does not change anything else in a session. */
   private readonly rngGoals: Rng;
+  /** T12: bots' wills (its own stream). */
+  private readonly rngGhost: Rng;
+  /** T12: ghosts — pushes used, pushes per event, votes, wills. */
+  private readonly ghostNudgesUsed = new Map<string, number>();
+  private readonly nudgesOn = new Map<string, number>();
+  private readonly ghostVotes = new Map<string, string>();
+  private readonly ghostWills = new Map<string, string>();
+  /** Titles of public events, so the vote can name the winner. */
+  private readonly votable = new Map<string, string>();
   private readonly mischiefUsed = new Map<string, number>();
   private mischiefSeq = 0;
   /** T3: the finale closes the session once everyone alive is free. */
@@ -257,6 +268,7 @@ export class Session {
       .sort((a, b) => a.id.localeCompare(b.id));
     this.timeline = storyTimeline(config);
     this.rngGoals = root.fork("goals");
+    this.rngGhost = root.fork("ghost");
     this.createCharacters(participants);
     this.assignGoals();
     for (const ev of content.events.values()) {
@@ -309,6 +321,7 @@ export class Session {
       if (phase !== "intro" && this.timeline[phase] > this.timeline.intro) this.timers.push(this.timeline[phase], { kind: "phase", phase });
     }
     this.timers.push(this.config.durationSeconds * MS, { kind: "end" });
+    if (this.config.qaEndFirstHumanAtSeconds !== undefined) this.timers.push(this.config.qaEndFirstHumanAtSeconds * MS, { kind: "qa_end_human" });
     this.scheduleNextSeason();
     this.scheduleUpheavals();
     for (const id of this.order) this.scheduleTick(this.char(id).availableAt);
@@ -348,6 +361,17 @@ export class Session {
         case "scheme":
           this.onScheme(timer.id);
           break;
+        case "qa_end_human": {
+          const id = this.order.find((x) => !this.char(x).isBot && this.char(x).status === "active");
+          if (id && this.char(id).busyWith === null) {
+            const changes: Change[] = [];
+            this.setStatus(this.char(id), "dead", "Struck by a falling piano (QA)", changes);
+            this.log.push({ t: this.now(), type: "character_ended", characterId: id, status: "dead", cause: this.char(id).cause ?? "" });
+            this.onNotice(id, { kind: "ended", t: this.now(), status: "dead", cause: this.char(id).cause ?? "" });
+            this.onPublic({ kind: "ended", t: this.now(), characterId: id, name: this.char(id).name, status: "dead", cause: this.char(id).cause ?? "" });
+          } else if (id) this.timers.push(this.now() + 2 * MS, { kind: "qa_end_human" });
+          break;
+        }
         case "release": {
           // T5b R2: the lingering after an event is over; now go wherever life takes you.
           const c = this.char(timer.characterId);
@@ -1448,6 +1472,7 @@ export class Session {
       place: inst.place,
       phase: this.phase(),
     });
+    if (!ev.hidden && participants.length >= 2) this.votable.set(id, this.interpolate(ev.title, bindings));
     if (!ev.hidden) {
       this.onPublic({
         kind: "event",
@@ -1525,7 +1550,11 @@ export class Session {
       choices: (inst.offered.get(decider) ?? []).map((c) => ({ id: c.id, label: c.label })),
       deadlineAt: inst.deadlineAt,
     };
-    for (const id of this.order) if (!inst.participants.includes(id) && this.char(id).status === "active") this.onNotice(id, guessable);
+    for (const id of this.order) {
+      const st = this.char(id).status;
+      // T12: ghosts (dead or imprisoned) see what is going on too: they may push fate.
+      if (!inst.participants.includes(id) && (st === "active" || st === "dead" || st === "imprisoned")) this.onNotice(id, guessable);
+    }
   }
 
   // ================================================================== personal goals (T10)
@@ -1616,6 +1645,76 @@ export class Session {
       }
       if (changed && !final) this.onNotice(id, { kind: "goals", t: this.now(), goals: this.goalsOf(id) });
     }
+  }
+
+  // ================================================================== ghosts (T12)
+
+  private isGhost(id: string): boolean {
+    const c = this.characters.get(id);
+    return !!c && !c.isBot && (c.status === "dead" || c.status === "imprisoned");
+  }
+
+  /** What a ghost can still do: one push per decade of the life calendar since their story ended. */
+  ghostState(id: string): GhostState {
+    const c = this.characters.get(id);
+    const ghost = this.isGhost(id);
+    const yearMs = this.config.yearSeconds * MS;
+    const decades = ghost && c?.endedAt !== undefined ? 1 + Math.floor((this.now() - c.endedAt) / (10 * yearMs)) : 0;
+    return {
+      isGhost: ghost,
+      nudgesLeft: Math.max(0, decades - (this.ghostNudgesUsed.get(id) ?? 0)),
+      ...(this.ghostVotes.has(id) ? { votedFor: this.ghostVotes.get(id) } : {}),
+      ...(this.ghostWills.has(id) ? { will: this.ghostWills.get(id) } : {}),
+      wills: [...this.content.wills],
+    };
+  }
+
+  private ghostReject(id: string, action: "nudge" | "vote" | "will", target: string, reason: string): SubmitResult {
+    this.log.push({ t: this.now(), type: "ghost_rejected", characterId: id, action, target, reason });
+    return { ok: false, reason };
+  }
+
+  /** A ghost gives fate a push in someone's event: +10 % to the first outcome left to chance. */
+  ghostNudge(id: string, instanceId: string): SubmitResult {
+    if (this._state !== "active" || !this.isGhost(id)) return this.ghostReject(id, "nudge", instanceId, "only ghosts can do that");
+    const inst = this.instances.get(instanceId);
+    if (!inst || inst.resolved || inst.ev.hidden) return this.ghostReject(id, "nudge", instanceId, "nothing to push");
+    if (this.ghostState(id).nudgesLeft <= 0) return this.ghostReject(id, "nudge", instanceId, "wait for the next decade");
+    this.ghostNudgesUsed.set(id, (this.ghostNudgesUsed.get(id) ?? 0) + 1);
+    this.nudgesOn.set(instanceId, (this.nudgesOn.get(instanceId) ?? 0) + 1);
+    this.log.push({ t: this.now(), type: "ghost_nudge", characterId: id, instanceId });
+    this.onNotice(id, { kind: "ghost", t: this.now(), state: this.ghostState(id), text: `You give fate a little push in "${this.interpolate(inst.ev.title, inst.bindings)}".` });
+    return { ok: true };
+  }
+
+  /** A ghost votes for the Gossip of the Year (one vote, it can be changed). */
+  ghostVote(id: string, instanceId: string): SubmitResult {
+    if (this._state !== "active" || !this.isGhost(id)) return this.ghostReject(id, "vote", instanceId, "only ghosts can do that");
+    if (!this.votable.has(instanceId)) return this.ghostReject(id, "vote", instanceId, "not something the town talks about");
+    this.ghostVotes.set(id, instanceId);
+    this.log.push({ t: this.now(), type: "ghost_vote", characterId: id, instanceId });
+    this.onNotice(id, { kind: "ghost", t: this.now(), state: this.ghostState(id) });
+    return { ok: true };
+  }
+
+  /** A ghost leaves a will (one of the offered sentences), read out in everyone's recap. */
+  ghostWill(id: string, text: string): SubmitResult {
+    if (this._state !== "active" || !this.isGhost(id)) return this.ghostReject(id, "will", text, "only ghosts can do that");
+    if (!this.content.wills.includes(text)) return this.ghostReject(id, "will", text, "not one of the sentences");
+    this.ghostWills.set(id, text);
+    this.log.push({ t: this.now(), type: "ghost_will", characterId: id, text });
+    this.onNotice(id, { kind: "ghost", t: this.now(), state: this.ghostState(id) });
+    return { ok: true };
+  }
+
+  /** The ghosts' Gossip of the Year (most votes, earliest event on a tie) and every will. */
+  private townVerdict(): LifeRecap["town"] {
+    const votes = new Map<string, number>();
+    for (const instanceId of this.ghostVotes.values()) votes.set(instanceId, (votes.get(instanceId) ?? 0) + 1);
+    const best = [...votes].sort((a, b) => b[1] - a[1] || Number(a[0].slice(1)) - Number(b[0].slice(1)))[0];
+    const wills = this.order.filter((id) => this.ghostWills.has(id)).map((id) => ({ name: this.char(id).name, text: this.ghostWills.get(id) as string }));
+    if (!best && wills.length === 0) return undefined;
+    return { ...(best ? { gossipOfTheYear: { title: this.votable.get(best[0]) as string, votes: best[1] } } : {}), wills };
   }
 
   /** T9: guess what someone in another event will choose (one guess per event). */
@@ -1864,10 +1963,16 @@ export class Session {
     // 2. First matching outcome.
     const choicesOf = (role: string) => (inst.bindings[role] ?? []).map((id) => inst.decisions.get(id)?.choiceId ?? "");
     const ctx = makeContext(this.world, inst.bindings, undefined, choicesOf);
+    // T12: ghosts who pushed fate here add +10 % each to the first outcome left to chance.
+    let push = (this.nudgesOn.get(inst.id) ?? 0) * 0.1;
     const outcome =
-      ev.outcomes.find(
-        (o) => (o.when === undefined || evaluate(o.when, ctx)) && (o.chance === undefined || this.rngOutcome.chance(o.chance)),
-      ) ?? (ev.outcomes[ev.outcomes.length - 1] as (typeof ev.outcomes)[number]);
+      ev.outcomes.find((o) => {
+        if (o.when !== undefined && !evaluate(o.when, ctx)) return false;
+        if (o.chance === undefined) return true;
+        const p = Math.min(1, o.chance + push);
+        push = 0;
+        return this.rngOutcome.chance(p);
+      }) ?? (ev.outcomes[ev.outcomes.length - 1] as (typeof ev.outcomes)[number]);
     for (const effect of outcome.effects ?? []) this.applyEffect(effect, inst, changes);
 
     // 3. Taking part together makes people acquainted.
@@ -2108,6 +2213,8 @@ export class Session {
       tracking: this.tracking,
       facts: this.content.facts,
       sessionDurationMs: this.now(),
+      town: this.townVerdict(),
+      ghostNudges: this.ghostNudgesUsed,
       ageAt: (t) => ageAt(this.config.startAge, t, this.config.yearSeconds * MS),
     });
     for (const recap of this.recaps) {
@@ -2206,12 +2313,20 @@ export class Session {
     c.status = status;
     c.cause = cause;
     if (status !== "active") c.endedAt = this.now();
+    // T12: a bot may leave a will (a human chooses their own as a ghost).
+    if ((status === "dead" || status === "imprisoned") && c.isBot && this.content.wills.length > 0 && this.rngGhost.chance(0.5)) {
+      this.ghostWills.set(c.id, this.rngGhost.pick(this.content.wills));
+    }
     // T7: how the town remembers you.
     if (status === "dead") {
       for (const m of [...this.marks.values()]) if (m.characterId === c.id && MARK_PLACE[m.kind] === "character") this.removeMark(m.id);
       this.addMark("flowers", c.id);
     } else if (status === "imprisoned") this.addMark("handcuffs", c.id);
     else if (status === "hospitalized") this.addMark("bandage", c.id);
+    // T12: a human whose story ended becomes a ghost.
+    if (!c.isBot && (status === "dead" || status === "imprisoned")) {
+      this.onNotice(c.id, { kind: "ghost", t: this.now(), state: this.ghostState(c.id), text: "Your story has ended, but you can still haunt the town." });
+    }
     changes.push({ kind: "status", characterId: c.id, status, cause });
   }
 

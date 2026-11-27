@@ -411,4 +411,7 @@ export const GoalSchema = z.strictObject({
 });
 export type Goal = z.infer<typeof GoalSchema>;
 export const GoalsFileSchema = z.strictObject({ goals: z.array(GoalSchema) });
+
+/** T12: what ghosts can leave behind (a one-sentence will, read out in the recap). */
+export const GhostFileSchema = z.strictObject({ wills: z.array(NonEmptyText).min(2) });
 export const MischiefFileSchema = z.strictObject({ mischief: z.array(MischiefSchema) });

@@ -43,6 +43,7 @@ const CharacterName = z
 const FindMatch = z.object({ career: z.string(), name: CharacterName.optional() });
 const Decide = z.object({ sessionId: z.string(), instanceId: z.string(), choiceId: z.string() });
 const Prank = z.object({ sessionId: z.string(), mischiefId: z.string(), targetId: z.string() });
+const Ghost = z.object({ sessionId: z.string(), action: z.enum(["nudge", "vote", "will"]), target: z.string().max(300) });
 const Guess = z.object({ sessionId: z.string(), instanceId: z.string(), deciderId: z.string(), choiceId: z.string() });
 const Boost = z.object({ sessionId: z.string(), schemeId: z.string(), boost: z.enum(["cover", "wait", "accomplice"]), accompliceId: z.string().optional() });
 
@@ -95,6 +96,7 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
       {
         durationSeconds: config.sessionDurationSeconds,
         ...(config.qaForceSchemeOnHuman ? { chaos: { ...DEFAULT_CONFIG.chaos, qaForceSchemes: true } } : {}),
+        ...(config.qaGhost ? { qaEndFirstHumanAtSeconds: 20 } : {}),
       },
       seats,
       {
@@ -277,6 +279,15 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
       if (!s || s.id !== body.data.sessionId) return ack({ ok: false, reason: "not in this session" });
       const result = s.mischief(user.id, body.data.mischiefId, body.data.targetId);
       ack({ ...result, state: s.session.mischiefState(s.humans.get(user.id)!.characterId) });
+    });
+
+    // T12: ghosts push fate, vote for the gossip of the year, leave a will.
+    socket.on("game:ghost", (raw: unknown, ack: Ack = () => {}) => {
+      const body = Ghost.safeParse(raw);
+      if (!body.success) return ack({ ok: false, reason: "invalid request" });
+      const s = liveByUser.get(user.id);
+      if (!s || s.id !== body.data.sessionId) return ack({ ok: false, reason: "not in this session" });
+      ack(s.ghost(user.id, body.data.action, body.data.target));
     });
 
     // T9: guessing what someone else will do while you wait.

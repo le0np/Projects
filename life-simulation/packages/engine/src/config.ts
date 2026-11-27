@@ -80,6 +80,8 @@ export interface SessionConfig {
    * that depends on the text length, and humans rest a little longer between events.
    */
   humanPacing?: HumanPacing;
+  /** T12 (QA only): end the first human's story at this session second, so the ghost can be tested. */
+  qaEndFirstHumanAtSeconds?: number;
 }
 
 export interface HumanPacing {

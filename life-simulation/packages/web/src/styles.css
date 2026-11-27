@@ -1187,3 +1187,36 @@ main.game {
   background: var(--private-soft);
   color: var(--private);
 }
+
+/* ---------- T12: ghosts ---------- */
+.ghost-card {
+  display: grid;
+  gap: 6px;
+  background: var(--private-soft);
+}
+.ghost-card h3 {
+  margin: 6px 0 0;
+  font-size: 0.95rem;
+}
+.ghost-card p {
+  margin: 0;
+}
+.ghost-card select {
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 8px;
+}
+.ghost-card > * {
+  min-width: 0;
+}
+.ghost-card .prank {
+  white-space: normal;
+  text-align: left;
+}
+.ghost-card select {
+  width: 100%;
+  max-width: 100%;
+}

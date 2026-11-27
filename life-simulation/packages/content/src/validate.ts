@@ -13,6 +13,7 @@ import {
   MapSchema,
   MischiefFileSchema,
   GoalsFileSchema,
+  GhostFileSchema,
   type Goal,
   UpheavalsFileSchema,
   type Mischief,
@@ -57,6 +58,8 @@ export interface RawContent {
   mischief: RawFile;
   /** T10: personal goals (optional: test content may leave them out). */
   goals?: RawFile;
+  /** T12: ghosts' wills (optional). */
+  ghost?: RawFile;
   events: RawFile[];
 }
 
@@ -69,6 +72,8 @@ export interface ContentBundle {
   mischief: ReadonlyMap<string, Mischief>;
   /** T10: personal goals. */
   goals: ReadonlyMap<string, Goal>;
+  /** T12: one-sentence wills a ghost can leave. */
+  wills: readonly string[];
   /** sha256 of the raw content; recorded in session logs for replay. */
   hash: string;
 }
@@ -332,19 +337,27 @@ export function validateContent(raw: RawContent): ValidationResult {
     }
   }
 
+  // --- T12: ghosts
+  let wills: string[] = [];
+  if (raw.ghost) {
+    const parsed = GhostFileSchema.safeParse(raw.ghost.data);
+    if (!parsed.success) formatZodIssues(parsed.error, raw.ghost.file, issues);
+    else wills = parsed.data.wills;
+  }
+
   const hasErrors = issues.some((i) => i.severity === "error") || town === null;
   return {
     issues,
     bundle: hasErrors
       ? null
-      : { careers: reg.careers, facts: reg.facts, events: reg.events, map: town as TownMap, upheavals, mischief, goals, hash: hashContent(raw) },
+      : { careers: reg.careers, facts: reg.facts, events: reg.events, map: town as TownMap, upheavals, mischief, goals, wills, hash: hashContent(raw) },
   };
 }
 
 export function hashContent(raw: RawContent): string {
   const events = [...raw.events].sort((a, b) => a.file.localeCompare(b.file)).map((e) => e.data);
   return createHash("sha256")
-    .update(JSON.stringify([raw.careers.data, raw.facts.data, raw.map.data, raw.upheavals.data, raw.mischief.data, events, ...(raw.goals ? [raw.goals.data] : [])]))
+    .update(JSON.stringify([raw.careers.data, raw.facts.data, raw.map.data, raw.upheavals.data, raw.mischief.data, events, ...(raw.goals ? [raw.goals.data] : []), ...(raw.ghost ? [raw.ghost.data] : [])]))
     .digest("hex")
     .slice(0, 16);
 }

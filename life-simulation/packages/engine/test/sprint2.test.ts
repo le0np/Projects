@@ -459,3 +459,88 @@ describe("T11: a title for a life, and a year in an emoji", async () => {
     }
   });
 });
+
+describe("T12: a ghost after death", async () => {
+  const { buildContent, event } = await import("./helpers");
+  const choices = [
+    { id: "ok", label: "OK", tags: ["help"] },
+    { id: "no", label: "No", tags: ["refuse"], default: true },
+  ];
+
+  it("a dead human gets ghost powers: one push per decade, a vote and a will, all in everyone's recap", () => {
+    const clock = new VirtualClock();
+    const session = new Session(content, resolveConfig({ seed: "ghost", qaEndFirstHumanAtSeconds: 10 }), [{ career: "lawyer", isBot: false }, ...["doctor", "teacher", "mechanic"].map((career) => ({ career, isBot: true }))], clock);
+    const notices: Notice[] = [];
+    let pushed = false;
+    let voted = false;
+    session.onNotice = (id, n) => {
+      if (id !== "c1") return;
+      notices.push(n);
+      if (n.kind === "guessable" && session.ghostState("c1").isGhost) {
+        if (!pushed) {
+          expect(session.ghostNudge("c1", n.instanceId)).toEqual({ ok: true });
+          expect(session.ghostNudge("c1", n.instanceId)).toEqual({ ok: false, reason: "wait for the next decade" });
+          pushed = true;
+        }
+      }
+    };
+    session.onPublic = (e) => {
+      if (e.kind === "event" && e.participants.length >= 2 && session.ghostState("c1").isGhost && !voted) voted = session.ghostVote("c1", e.instanceId).ok;
+    };
+    session.start();
+    expect(session.ghostState("c1").isGhost).toBe(false);
+    expect(session.ghostWill("c1", content.wills[0]!)).toEqual({ ok: false, reason: "only ghosts can do that" });
+    for (let i = 0; i < 20_000 && session.state === "active"; i++) {
+      if (session.ghostState("c1").isGhost && !session.ghostState("c1").will) {
+        expect(session.ghostWill("c1", "made up")).toEqual({ ok: false, reason: "not one of the sentences" });
+        expect(session.ghostWill("c1", content.wills[1]!)).toEqual({ ok: true });
+      }
+      clock.advanceTo(session.nextWakeAt() ?? clock.now() + 1000);
+      session.processTimers();
+    }
+    expect(notices.some((n) => n.kind === "ghost" && n.state.isGhost)).toBe(true);
+    expect(pushed && voted).toBe(true);
+    const recaps = session.result().recaps;
+    for (const r of recaps) {
+      expect(r.town?.gossipOfTheYear?.votes).toBe(1);
+      expect(r.town?.wills.some((w) => w.text === content.wills[1])).toBe(true);
+    }
+    expect(recaps.find((r) => r.characterId === "c1")?.ghost).toEqual({ nudges: 1 });
+  });
+
+  it("a push adds 10 % to the first outcome left to chance", () => {
+    const bundle = buildContent([event({ id: "dice", cooldown: { maxPerSession: 1 }, roles: { a: { count: 1 } }, choices: { a: choices }, outcomes: [{ id: "lucky", chance: 0.9 }, { id: "plain" }] })]);
+    let plainWithout = 0;
+    let plainWith = 0;
+    for (let k = 0; k < 40; k++) {
+      for (const nudge of [false, true]) {
+        const clock = new VirtualClock();
+        const s = new Session(bundle, resolveConfig({ seed: `dice-${k}`, durationSeconds: 60, ...(nudge ? { qaEndFirstHumanAtSeconds: 0 } : {}) }), [{ career: "lawyer", isBot: false }, { career: "doctor", isBot: true }], clock);
+        if (nudge) s.onNotice = (id, n) => id === "c1" && n.kind === "guessable" && s.ghostNudge("c1", n.instanceId);
+        s.start();
+        for (let i = 0; i < 2000 && s.state === "active"; i++) {
+          clock.advanceTo(s.nextWakeAt() ?? clock.now() + 1000);
+          s.processTimers();
+        }
+        // With a push, the human is a ghost from the start and pushes the bot's roll.
+        for (const r of s.log.filter((e) => e.type === "event_resolved" && e.eventId === "dice") as { outcomeId: string }[]) {
+          if (r.outcomeId === "plain") {
+            if (nudge) plainWith++;
+            else plainWithout++;
+          }
+        }
+      }
+    }
+    expect(plainWithout).toBeGreaterThan(0); // 10 % of the time without a push
+    expect(plainWith).toBe(0); // 0.9 + 0.1 = certain
+  });
+
+  it("bots sometimes leave a will too", () => {
+    const wills = new Set<string>();
+    for (let k = 0; k < 60 && wills.size === 0; k++) {
+      const { result } = play(`bot-wills-${k}`);
+      for (const w of result.recaps[0]?.town?.wills ?? []) wills.add(w.text);
+    }
+    expect(wills.size).toBeGreaterThan(0);
+  });
+});

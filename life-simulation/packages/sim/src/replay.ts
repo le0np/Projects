@@ -32,6 +32,17 @@ export function replaySession(content: ContentBundle, log: readonly LogEntry[]):
     content,
     config: start.config,
     mischief: mischief.map((m) => ({ t: m.t, characterId: m.characterId, mischiefId: m.mischiefId, targetId: m.targetId })),
+    ghost: log.flatMap((e) =>
+      e.type === "ghost_nudge"
+        ? [{ t: e.t, characterId: e.characterId, action: "nudge" as const, target: e.instanceId }]
+        : e.type === "ghost_vote"
+          ? [{ t: e.t, characterId: e.characterId, action: "vote" as const, target: e.instanceId }]
+          : e.type === "ghost_will"
+            ? [{ t: e.t, characterId: e.characterId, action: "will" as const, target: e.text }]
+            : e.type === "ghost_rejected"
+              ? [{ t: e.t, characterId: e.characterId, action: e.action, target: e.target }]
+              : [],
+    ),
     guesses: log
       .filter((e): e is LogEntryOf<"guess"> | LogEntryOf<"guess_rejected"> => e.type === "guess" || e.type === "guess_rejected")
       .map((g) => ({ t: g.t, characterId: g.characterId, instanceId: g.instanceId, deciderId: g.deciderId, choiceId: g.choiceId })),

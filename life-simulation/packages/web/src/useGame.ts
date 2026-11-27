@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import type { Attribute, GoalView, LifeRecap, Mark, MischiefState, Mood, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction, SchemeBoost } from "@lifesim/core";
+import type { Attribute, GhostState, GoalView, LifeRecap, Mark, MischiefState, Mood, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction, SchemeBoost } from "@lifesim/core";
 
 export type ComingEvent = Extract<Notice, { kind: "coming" }> & { receivedAt: number };
 
@@ -37,6 +37,7 @@ export interface Snapshot {
   moods?: { characterId: string; mood: Mood }[];
   marks?: Mark[];
   goals?: GoalView[];
+  ghost?: GhostState | null;
   me?: Pick<Extract<Notice, { kind: "event" }>["view"], "self" | "others" | "calendar">;
   pending: OfferView | null;
   history: Notice[];
@@ -79,6 +80,8 @@ export interface GameState {
   marks: Mark[];
   /** T10: your two personal goals. */
   goals: GoalView[];
+  /** T12: what you can still do once your story has ended. */
+  ghost: GhostState | null;
   /** T5: faces on the map right after an event, until `until` (wall clock). */
   reactions: Record<string, { reaction: Reaction; until: number }>;
   feed: PublicEntry[];
@@ -126,6 +129,7 @@ function stateFromSnapshot(s: Snapshot): GameState {
     moods: Object.fromEntries((s.moods ?? []).map((m) => [m.characterId, m.mood])),
     marks: s.marks ?? [],
     goals: s.goals ?? [],
+    ghost: s.ghost ?? null,
     resolvedWall: {},
     reactions: {},
     feed: s.feed,
@@ -208,6 +212,7 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
         if (!g) return g;
         const history = [...g.history, n].slice(-30);
         if (n.kind === "goals") return { ...g, history, goals: n.goals };
+        if (n.kind === "ghost") return { ...g, history, ghost: n.state };
         if (n.kind === "coming") return { ...g, history, coming: { ...n, receivedAt: Date.now() } };
         if (n.kind === "guessable") return { ...g, guessables: [...g.guessables.filter((x) => x.deadlineAt > n.t), n].slice(-6) };
         if (n.kind === "guess_result")
@@ -313,6 +318,15 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
     [game],
   );
 
+  /** T12: ghost actions: push fate in an event, vote for the gossip of the year, leave a will. */
+  const ghostAction = useCallback(
+    async (action: "nudge" | "vote" | "will", target: string) => {
+      if (!game) return;
+      return (await socketRef.current?.emitWithAck("game:ghost", { sessionId: game.sessionId, action, target })) as { ok: boolean; reason?: string } | undefined;
+    },
+    [game?.sessionId],
+  );
+
   /** T9: guess what someone else will choose. */
   const guess = useCallback(
     async (instanceId: string, deciderId: string, choiceId: string) => {
@@ -352,5 +366,5 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
 
   const leaveGame = useCallback(() => setGame(null), []);
 
-  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, playMischief, previewScheme, boostScheme, guess, leaveGame };
+  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, playMischief, previewScheme, boostScheme, guess, ghostAction, leaveGame };
 }

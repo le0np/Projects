@@ -19,6 +19,8 @@ export interface ServerConfig {
   timeScale: number;
   /** T8b (QA only): a bot schemes against the first human right away, and every scheme works and is found out. */
   qaForceSchemeOnHuman: boolean;
+  /** T12 (QA only): the first human's story ends after 20 session seconds, so the ghost can be seen. */
+  qaGhost: boolean;
   /** Shortens every real-time duration for humans (deadlines, rests); 1 = normal. Only for tests. */
   paceScale: number;
   /** Directory with the built web client to serve, if any. */
@@ -40,6 +42,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): ServerConfi
     timeScale: num(env.TIME_SCALE, 1),
     paceScale: num(env.PACE_SCALE, 1),
     qaForceSchemeOnHuman: env.QA_FORCE_SCHEME_ON_HUMAN === "1",
+    qaGhost: env.QA_GHOST === "1",
     webDist: env.WEB_DIST || (existsSync(DEFAULT_WEB_DIST) ? DEFAULT_WEB_DIST : undefined),
   };
 }

@@ -110,6 +110,17 @@ export interface MischiefState {
   revengeOn?: string[];
 }
 
+/** T12: what a dead or imprisoned player can still do. */
+export interface GhostState {
+  isGhost: boolean;
+  /** Pushes left (one per decade of the life calendar). */
+  nudgesLeft: number;
+  /** The event you voted "Gossip of the Year". */
+  votedFor?: string;
+  will?: string;
+  wills: string[];
+}
+
 /** T10: a personal goal as its owner sees it during the session. */
 export interface GoalView {
   id: string;
@@ -160,6 +171,8 @@ export type Reaction = "joy" | "angry" | "sad" | "shock" | "neutral";
 /** Messages the engine sends to one character. */
 export type Notice =
   | { kind: "event"; t: number; view: CharacterView }
+  /** T12: your ghost powers changed. */
+  | { kind: "ghost"; t: number; state: GhostState; text?: string }
   /** T10: your goals changed (one reached, one broken). */
   | { kind: "goals"; t: number; goals: GoalView[] }
   /** T9: someone else is deciding right now; you may guess what they will do. */
@@ -257,6 +270,10 @@ export interface LifeRecap {
     /** `year`: the year of your life it happened in (0 = the first). */
     suffered: { mischief: string; by: string; discovered?: boolean; year?: number }[];
   };
+  /** T12: the town's verdict (ghosts' vote) and the wills read out at the end. */
+  town?: { gossipOfTheYear?: { title: string; votes: number }; wills: { name: string; text: string }[] };
+  /** T12: what you did as a ghost. */
+  ghost?: { nudges: number };
   /** T11: what this life will be remembered as. */
   title: { id: string; label: string; why: string };
   /** T11: one emoji per year of life (for "Copy my life"). */

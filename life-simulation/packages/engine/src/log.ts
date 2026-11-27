@@ -51,6 +51,11 @@ export type LogEntry = { t: number } & (
   | { type: "upheaval_ended"; upheavalId: string }
   /** A secret prank (revealed only in the Life Recap). */
   | { type: "mischief"; characterId: string; targetId: string; mischiefId: string; dueAt: number; schemeId?: string }
+  /** T12: ghosts push fate, vote for the gossip of the year and leave a will. */
+  | { type: "ghost_nudge"; characterId: string; instanceId: string }
+  | { type: "ghost_vote"; characterId: string; instanceId: string }
+  | { type: "ghost_will"; characterId: string; text: string }
+  | { type: "ghost_rejected"; characterId: string; action: "nudge" | "vote" | "will"; target: string; reason: string }
   /** T9: a waiting player guesses what someone else will choose (and how it turned out). */
   | { type: "guess"; characterId: string; instanceId: string; deciderId: string; choiceId: string }
   | { type: "guess_rejected"; characterId: string; instanceId: string; deciderId: string; choiceId: string; reason: string }
@@ -147,6 +152,14 @@ export function formatLog(log: readonly LogEntry[]): string {
       case "mischief_rejected":
       case "scheme_rejected":
       case "guess_rejected":
+      case "ghost_rejected":
+      case "ghost_vote":
+        break;
+      case "ghost_nudge":
+        lines.push(`${at} - (ghost) ${name(e.characterId)} gives fate a push in [${e.instanceId}]`);
+        break;
+      case "ghost_will":
+        lines.push(`${at} - (ghost) ${name(e.characterId)} leaves a will: "${e.text}"`);
         break;
       case "guess":
         break;

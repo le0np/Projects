@@ -133,7 +133,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Gumb **„Copy my life”**: niz emojija po godinama + titula, bez spoilera, za dijeljenje.
 - Kolekcija titula u lobbyju (spremljena u bazi uz korisnika).
 
-### [ ] T12. Duh nakon smrti
+### [x] T12. Duh nakon smrti
 - Mrtav ili zatvoren igrač postaje duh: može jednom po desetljeću „gurnuti” jedan event (+10 % jednom ishodu), glasati za „Trač godine” i ostaviti **oporuku** od jedne rečenice (iz ponuđenih) koja se pročita u recapu.
 
 ---

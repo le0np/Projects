@@ -143,6 +143,16 @@ export class LiveSession {
     return result;
   }
 
+  /** T12: ghost actions. */
+  ghost(userId: string, action: "nudge" | "vote" | "will", target: string): SubmitResult {
+    const seat = this.humans.get(userId);
+    if (!seat) return { ok: false, reason: "not a player in this session" };
+    const id = seat.characterId;
+    const result = action === "nudge" ? this.session.ghostNudge(id, target) : action === "vote" ? this.session.ghostVote(id, target) : this.session.ghostWill(id, target);
+    this.afterChange();
+    return result;
+  }
+
   /** T9: guess what someone else will choose. */
   guess(userId: string, instanceId: string, deciderId: string, choiceId: string): SubmitResult {
     const seat = this.humans.get(userId);
@@ -183,6 +193,7 @@ export class LiveSession {
       moods: this.session.moods(),
       marks: this.session.currentMarks(),
       goals: seat ? this.session.goalsOf(seat.characterId) : [],
+      ghost: seat ? this.session.ghostState(seat.characterId) : null,
       // T5b R3: attributes, calendar and relationships (including starting ones) from the very first second.
       me: seat ? this.session.selfView(seat.characterId) : undefined,
       mischief: seat ? this.session.mischiefState(seat.characterId) : null,

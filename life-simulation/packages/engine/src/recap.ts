@@ -31,6 +31,9 @@ export function computeRecaps(input: {
   tracking: ReadonlyMap<string, CharacterTracking>;
   facts: ReadonlyMap<string, Fact>;
   sessionDurationMs: number;
+  /** T12: the ghosts' gossip of the year and the wills; nudges per ghost. */
+  town?: LifeRecap["town"];
+  ghostNudges?: ReadonlyMap<string, number>;
   /** Age at a given session time. */
   ageAt: (timeMs: number) => number;
 }): LifeRecap[] {
@@ -141,7 +144,8 @@ export function computeRecaps(input: {
       minHealth: track.minHealth,
       lifeShare: lifeDurationMs / Math.max(1, sessionDurationMs),
     });
-    return { ...recapBase, title, years };
+    const nudges = input.ghostNudges?.get(c.id) ?? 0;
+    return { ...recapBase, title, years, ...(input.town ? { town: input.town } : {}), ...(nudges > 0 ? { ghost: { nudges } } : {}) };
   });
 }
 

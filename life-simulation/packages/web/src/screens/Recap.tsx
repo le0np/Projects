@@ -129,6 +129,27 @@ export function RecapView({ recap }: { recap: LifeRecap }) {
           </ul>
         </>
       )}
+      {recap.town && (recap.town.gossipOfTheYear || recap.town.wills.length > 0) && (
+        <>
+          <h2>The town remembers</h2>
+          {recap.town.gossipOfTheYear && (
+            <p>
+              🗞️ Gossip of the Year: <strong>{recap.town.gossipOfTheYear.title}</strong>{" "}
+              <span className="muted">({recap.town.gossipOfTheYear.votes} ghost vote{recap.town.gossipOfTheYear.votes === 1 ? "" : "s"})</span>
+            </p>
+          )}
+          {recap.town.wills.length > 0 && (
+            <ul className="plain wills">
+              {recap.town.wills.map((w) => (
+                <li key={w.name}>
+                  📜 {w.name}'s will: “{w.text}”
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+      {recap.ghost && <p className="muted">👻 As a ghost you pushed fate {recap.ghost.nudges} time{recap.ghost.nudges === 1 ? "" : "s"}.</p>}
       {recap.oracle && recap.oracle.guesses > 0 && (
         <p className="oracle">
           {recap.oracle.correct >= 3 ? "🔮 Town Oracle: " : "Guesses about other people: "}
