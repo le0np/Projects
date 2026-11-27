@@ -162,6 +162,7 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
   - **M3:** validator upozorava na zadani izbor s `risk`/`lie`/`threaten`; ispravljeno 17 uloga (Charity Drive sada „Hand in every cent”). Pasivno odbijanje ostaje dopušteno.
   - Smrtnost je pala na 3,0 % (sigurniji zadani izbori) — na donjoj granici.
 - **27. 11. 2026. — T7 gotov** (`c69794c`). Efekt `mark` (+ validator, dokumentacija) i 8 vrsta tragova: zavoj, lisice (na liku); ispuhane gume, FOR SALE, cvijeće na grobu, srca (vjenčanje), razbijeni prozor (kod kuće); CLOSED (na poslu). Smrt/zatvor/bolnica ostave trag automatski. Tragovi su u 12 eventa; oni s vremenom nestaju sami. Za QA: najlakše se vide ispuhane gume (smicalica „Let their tyres down”), FOR SALE nakon „Panic Sale” i zavoj nakon nesreće/ozljede. Batch t7: smrtnost 5,3 %, replay identičan.
+- **27. 11. 2026. — T7b gotov** (`2600a33`). Batch 200 sesija (`docs/reports/t7b.report.md`, potvrđeno i na drugom seedu): **88 %** likova ima stvarnu vezu prije finala, **Jealousy 19 %**, **Crisis Talk 12,5 %** sesija (prije 0 % i 1 %). Kako: priče kao nastavci (First Date → Jealousy → Crisis Talk, kriza i nakon zaboravljene godišnjice/sumnje), sumnja ostaje i nakon „vjernog” ishoda, direktor **rezervira** sudionike nastavka dok se ostali ne oslobode, eventi koji stvaraju veze ×2 u ranim fazama, početni par u 40 % sesija. Batch izvještaj ima nove retke „Real ties” i „Relationship events”. Sljedeće: T6c, pa T8.
 
 ## Dnevnik QA/PM
 
