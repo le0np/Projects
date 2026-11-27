@@ -28,7 +28,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Botovi i `npm run sim` ostaju kakvi jesu (ne smiju usporiti batch).
 - **Prihvaćeno kad:** uz `TIME_SCALE=6` obični event na ekranu počinje s ≥ 15 s, važni s ≥ 25 s; uz `TIME_SCALE=1` isto. Test u `server` to provjerava.
 
-### [ ] T2. Manje istih solo eventa, više eventa s drugim ljudima
+### [x] T2. Manje istih solo eventa, više eventa s drugim ljudima
 - Cilj: **≥ 55 % eventa koje lik dobije uključuje još nekoga tko odlučuje** (sada 26 %).
 - Spusti težinu 7 „obaveznih” solo eventa (`career_overtime`, `everyday_side_gig`, `career_annual_review`, `everyday_missed_bus`, `everyday_parking_scratch`, `everyday_wrong_change`, `financial_tax_error`) tako da lik u sesiji dobije **najviše 3 od njih**, i nijedan solo event ne smije doći dvaput.
 - Bar 4 od tih 7 prepravi u eventa s 2 uloge, gdje drugi lik odlučuje o tebi. Primjeri:
@@ -115,6 +115,7 @@ _(QA/PM piše ovdje)_
 _(developer piše ovdje: datum, zadatak, commit, napomena)_
 
 - **27. 11. 2026. — T1 gotov** (`f34eebe`). Rok za čovjeka je u stvarnim sekundama: `8 + 0,25 × riječi`, 15–35 s (važni ≥ 25 s), +10 s za više ljudi; ne ovisi o `TIME_SCALE`. Kad svi ljudi odluče, botovi koji još „razmišljaju” odgovore odmah. Botovi i `sim` nepromijenjeni (test uspoređuje). Testovi: `engine/test/pacing.test.ts`, `server/test/pacing.test.ts`. Za ručni test: `TIME_SCALE=6 FILL_AFTER_SECONDS=2 npm run start`. Pretpostavka: „riječi” = javni + privatni tekst za tvoju ulogu + oznake izbora koje vidiš.
+- **27. 11. 2026. — T2 gotov** (`c9beede`). Batch 200 sesija (`docs/reports/t2.report.md`): **73,2 %** eventa lika uključuje još nekoga tko odlučuje (bilo 47,4 % po istoj mjeri), **57,4 %** eventa ima ≥ 2 lika koji odlučuju (bilo 30,3 %), ponavljanje predloška 1,3 %, smrtnost 4,0 %, 0 ponovljenih solo eventa. Missed Bus, Car Park Scratch, Too Much Change i Annual Review prepravljeni u evente s 2 uloge; Overtime/Side Gig/Tax Refund najviše jednom po liku; eventi s više ljudi `maxPerSession: 3`. Direktor ×3 za ljude s pravim odnosom (uklj. dug/uslugu/tajnu). Napomena: QA-ova brojka 26 % brojala je pojavljivanja drugačije; izvještaj sada ima obje mjere. Pragovi odnosa spušteni (prijatelj ≥ 25, suparnik ≤ −15) jer inače nema dovoljno odnosa za lance; pravih odnosa u zajedničkim eventima je i dalje samo ~30 %, a Jealousy/Crisis Talk ostaju rijetki (traže partnera) — prijedlog za kasnije: više eventa koji stvaraju partnere i dugove.
 
 ## Dnevnik QA/PM
 
