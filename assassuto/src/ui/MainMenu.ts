@@ -32,7 +32,7 @@ export class MainMenu {
     );
     this.root = h(
       'div',
-      { class: 'screen main-menu' },
+      { class: 'screen main-menu cover-bg' },
       h(
         'div',
         { class: 'menu-col' },

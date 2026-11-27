@@ -24,6 +24,7 @@ import { toast } from '../ui/dom';
 import { Hud } from '../ui/Hud';
 import { IntroOverlay } from '../ui/IntroOverlay';
 import { MainMenu } from '../ui/MainMenu';
+import { LoadingScreen } from '../ui/LoadingScreen';
 import { SettingsPanel } from '../ui/SettingsPanel';
 import { Region } from '../world/Region';
 import { CombatDirector } from '../combat/CombatDirector';
@@ -61,6 +62,7 @@ export class Game {
   private ui: HTMLElement;
   private hud: Hud;
   private menu: MainMenu;
+  private loading: LoadingScreen;
   private creator: CharacterCreator;
   private settingsPanel: SettingsPanel;
   private credits: CreditsPanel;
@@ -131,6 +133,7 @@ export class Game {
       rotatePreview: (dx) => (this.previewYaw += dx * 0.01),
     });
     this.intro = new IntroOverlay(container, () => this.finishIntro());
+    this.loading = new LoadingScreen(container);
     this.settingsPanel = new SettingsPanel(container, (s) => this.applySettings(s));
     this.credits = new CreditsPanel(container);
     this.combatHud = new CombatHud(container);
@@ -218,6 +221,7 @@ export class Game {
       s.appearance.presentation = params.get('body') === 'masculine' ? 'masculine' : 'feminine';
       await this.startNewGame(s, false);
     } else this.showMenu();
+    this.loading.hide();
     requestAnimationFrame(this.frame);
   }
 
@@ -403,6 +407,15 @@ export class Game {
   }
 
   private async enterWorld(save: SaveData, withIntro: boolean): Promise<void> {
+    this.loading.show(`Entering ${regions[save.world.regionId].name}`);
+    try {
+      await this.loadWorld(save, withIntro);
+    } finally {
+      this.loading.hide();
+    }
+  }
+
+  private async loadWorld(save: SaveData, withIntro: boolean): Promise<void> {
     this.menu.hide();
     this.clearActors();
     this.buildRegion(save.world.regionId);
