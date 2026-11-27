@@ -25,3 +25,11 @@ describe("T5b R1: quotes around choice labels", async () => {
     expect(quoted(undefined)).toBe("");
   });
 });
+
+describe("T11: Copy my life", async () => {
+  const { lifeShareText } = await import("../src/format");
+  it("shares the emoji years, the title, career and ages — and no names", () => {
+    const text = lifeShareText({ years: ["🙂", "💼", "💍", "🤕"], ageAtEnd: 21, title: { id: "x", label: "The Town Snitch", why: "" }, career: "lawyer" });
+    expect(text.split("\n")).toEqual(["🏘️ My life in Life Simulation", "🙂💼💍🤕", "“The Town Snitch” · Lawyer · age 18–21"]);
+  });
+});

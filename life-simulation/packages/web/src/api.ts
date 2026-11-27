@@ -54,6 +54,8 @@ export interface Career {
 
 export interface Profile {
   username: string;
+  /** T11: titles earned so far (with how many lives earned each). */
+  titles?: { id: string; label: string; n: number }[];
   email: string;
   avatar: string;
   stats: { gamesPlayed: number; deaths: number; averageLifeScore: number | null; reputation: number };

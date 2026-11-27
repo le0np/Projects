@@ -413,3 +413,49 @@ describe("T10: personal goals", () => {
     throw new Error("no life with the honesty goal and a chance to lie");
   });
 });
+
+describe("T11: a title for a life, and a year in an emoji", async () => {
+  const { titleFor, yearEmoji, TITLES } = await import("../src/titles");
+  const base = {
+    characterId: "c1", name: "Ana", career: "lawyer", isBot: false, sessionDurationMs: 480_000, lifeDurationMs: 480_000, ageAtEnd: 34, eventsCount: 12,
+    finalStatus: "active" as const, outcomes: [], startAttrs: { health: 70, mental: 70, money: 50, reputation: 50, career: 50 },
+    finalAttrs: { health: 70, mental: 70, money: 50, reputation: 50, career: 50 }, keyMoments: [], relationshipsGained: [], relationshipsLost: [],
+    influencedBy: [], secrets: { played: [], suffered: [] }, oracle: { guesses: 0, correct: 0 }, goals: [], lifeScore: 60,
+  };
+  const facts = (over: Partial<Parameters<typeof titleFor>[0]> = {}) => ({
+    recap: base, tags: new Map(), choices: new Map(), sharedEvents: 10, owedBy: 0, owes: 0, savedSomeone: false, married: false, revengeWorked: false, minHealth: 70, lifeShare: 1, ...over,
+  });
+
+  it("has at least 15 titles, all different, with a fallback", () => {
+    expect(TITLES.length).toBeGreaterThanOrEqual(15);
+    expect(new Set(TITLES.map((t) => t.label)).size).toBe(TITLES.length);
+    expect(titleFor(facts()).label).toBe("A Quiet Life");
+  });
+
+  it("picks the title that fits the life", () => {
+    expect(titleFor(facts({ recap: { ...base, finalStatus: "dead", lifeDurationMs: 100_000 }, lifeShare: 0.2 })).label).toBe("Gone Too Soon");
+    expect(titleFor(facts({ recap: { ...base, secrets: { played: [{ mischief: "a", on: "Kim", result: "worked" }, { mischief: "b", on: "Ben", result: "worked" }], suffered: [] } } })).label).toBe("Never Caught");
+    expect(titleFor(facts({ recap: { ...base, secrets: { played: [{ mischief: "a", on: "Kim", result: "worked", discovered: true }, { mischief: "b", on: "Ben", result: "worked" }], suffered: [] } } })).label).not.toBe("Never Caught");
+    expect(titleFor(facts({ choices: new Map([["report", 2]]) })).label).toBe("The Town Snitch");
+    expect(titleFor(facts({ savedSomeone: true })).label).toBe("Hero of the Town");
+    expect(titleFor(facts({ married: true })).label).toBe("Married by the Finale");
+    expect(titleFor(facts({ tags: new Map([["help", 6]]), recap: { ...base, finalAttrs: { ...base.finalAttrs, money: 20 } } })).label).toBe("Bailed Everyone Out, Died Broke");
+  });
+
+  it("a year's emoji is its biggest change (a wedding and a death win)", () => {
+    expect(yearEmoji({ money: 12, health: -3 }, {})).toBe("💰");
+    expect(yearEmoji({ health: -20 }, {})).toBe("🤕");
+    expect(yearEmoji({ money: 30 }, { partner: true })).toBe("💍");
+    expect(yearEmoji({}, { died: true })).toBe("🪦");
+    expect(yearEmoji({ career: 1 }, {})).toBe("🙂");
+  });
+
+  it("every recap has a title and one emoji per year of life", () => {
+    const { result } = play("t11-recap");
+    for (const r of result.recaps) {
+      expect(r.title.label.length).toBeGreaterThan(0);
+      expect(r.years.length).toBeGreaterThanOrEqual(1);
+      expect(r.years.length).toBeLessThanOrEqual(r.ageAtEnd - 18 + 1);
+    }
+  });
+});

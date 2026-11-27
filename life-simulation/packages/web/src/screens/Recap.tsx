@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Attribute, LifeRecap } from "@lifesim/core";
 import { api } from "../api";
-import { ATTR_LABELS, GOOD_OUTCOMES, OUTCOME_LABELS, RELATION_LABELS, careerName, clock, quoted } from "../format";
+import { ATTR_LABELS, GOOD_OUTCOMES, OUTCOME_LABELS, RELATION_LABELS, careerName, clock, lifeShareText, quoted } from "../format";
 
 export function RecapView({ recap }: { recap: LifeRecap }) {
   return (
@@ -10,9 +10,18 @@ export function RecapView({ recap }: { recap: LifeRecap }) {
       <h1>
         {recap.name}, {careerName(recap.career)}
       </h1>
+      {recap.title && (
+        <div className="life-title">
+          <p className="life-title-label">“{recap.title.label}”</p>
+          <p className="muted">{recap.title.why}</p>
+          {recap.years && <p className="years" aria-label="Your life, one emoji per year">{recap.years.join("")}</p>}
+          <CopyLife recap={recap} />
+        </div>
+      )}
       <p className="lead">
         {recap.finalStatus === "active" ? "Made it through." : recap.cause ?? recap.finalStatus}
       </p>
+      <Reveals recap={recap} />
       <p className="chips">
         {recap.outcomes.map((o) => (
           <span key={o} className={GOOD_OUTCOMES.has(o) ? "chip good" : "chip bad"}>
@@ -90,9 +99,9 @@ export function RecapView({ recap }: { recap: LifeRecap }) {
           </ul>
         </>
       )}
-      {recap.secrets && (recap.secrets.played.length > 0 || recap.secrets.suffered.length > 0) && (
+      {recap.secrets && recap.secrets.played.length > 0 && (
         <>
-          <h2>Secrets revealed</h2>
+          <h2>Your schemes</h2>
           <ul className="plain">
             {recap.secrets.played.map((p, i) => (
               <li key={`p-${i}`}>
@@ -104,12 +113,7 @@ export function RecapView({ recap }: { recap: LifeRecap }) {
                 {p.result === "worked" ? " — and it worked." : p.result === "failed" ? " — and it failed." : "."}
               </li>
             ))}
-            {recap.secrets.suffered.map((p, i) => (
-              <li key={`s-${i}`} className="bad">
-                <strong>{p.by}</strong> was behind {quoted(p.mischief)}
-                {p.discovered ? " (you caught them)." : "."}
-              </li>
-            ))}
+
           </ul>
         </>
       )}
@@ -181,5 +185,65 @@ export function RecapScreen({ recap, sessionId, token, onBack }: { recap: LifeRe
         </section>
       )}
     </main>
+  );
+}
+
+function CopyLife({ recap }: { recap: LifeRecap }) {
+  const [done, setDone] = useState<string | null>(null);
+  const text = lifeShareText(recap);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setDone("Copied!");
+    } catch {
+      // No clipboard permission: show the text to copy by hand.
+      setDone(text);
+    }
+  };
+  return (
+    <p className="copy-life">
+      <button className="ghost" onClick={copy}>
+        Copy my life
+      </button>{" "}
+      {done && (done === "Copied!" ? <span className="muted small">{done}</span> : <textarea readOnly className="share-text" value={done} rows={3} />)}
+    </p>
+  );
+}
+
+/**
+ * T11: the recap opens with the secrets, one at a time: the question first ("Who was behind
+ * “Let their tyres down” in year 3?"), a pause, then the answer.
+ */
+function Reveals({ recap }: { recap: LifeRecap }) {
+  const items = (recap.secrets?.suffered ?? []).map((p) => ({
+    question: `Who was behind ${quoted(p.mischief)}${p.year !== undefined ? ` in year ${p.year + 1}` : ""}?`,
+    answer: `${p.by}${p.discovered ? " (and you caught them)" : ""}.`,
+  }));
+  const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const [shown, setShown] = useState(reduce ? items.length * 2 : 0);
+  useEffect(() => {
+    if (shown >= items.length * 2) return;
+    const t = setTimeout(() => setShown((n) => n + 1), shown % 2 === 0 ? 700 : 1600);
+    return () => clearTimeout(t);
+  }, [shown, items.length]);
+  if (items.length === 0) return null;
+  return (
+    <section className="reveals" aria-live="polite">
+      <h2>Secrets revealed</h2>
+      <ul className="plain">
+        {items.map((it, i) =>
+          shown > i * 2 ? (
+            <li key={i}>
+              <span>{it.question}</span> {shown > i * 2 + 1 ? <strong className="reveal-answer">{it.answer}</strong> : <span className="muted">…</span>}
+            </li>
+          ) : null,
+        )}
+      </ul>
+      {shown < items.length * 2 && (
+        <button className="ghost small" onClick={() => setShown(items.length * 2)}>
+          Show all
+        </button>
+      )}
+    </section>
   );
 }

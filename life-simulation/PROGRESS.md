@@ -534,10 +534,14 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **V1:** `card-fit.mjs` sada žrtvu spletke crta u oba slučaja: bez saznanja i „uhvaćen krivac” (trag i sva tri izbora). Tako je našao 6 kartica kojima je bio odrezan donji red. Popravci: trag je u istom okviru kao „Only you know” (🔎 redak), kraći izbori „Confront {X}”, „Report {X}”, „Plan revenge on {X}”, kraći tekst i izbor u „Anonymous complaint”. Provjera sada gleda i redak „If time runs out”. 133 kartice, 0 skrolanja.
 - **V2:** izbori istraživanja („Check the neighbour's doorbell camera”, „Compare the handwriting”, „Find out who started it/presented it”, „Get a second opinion”) imaju uvjet da krivac **nije** već otkriven. `scheme-victim.mjs` to provjerava.
 
-### T11 (u tijeku, nije gotovo)
+### T11: titula života, otkrivanje i „Copy my life” (developer)
 
-- Engine već računa **titulu života** (`engine/src/titles.ts`, 20 titula po prioritetu, npr. „Gone Too Soon”, „Bailed Everyone Out, Died Broke”, „Never Caught”, „The Town Snitch”, „Town Oracle”, rezervna „A Quiet Life”) i **niz emojija po godinama života** (najveća promjena u godini, 💍 za partnera, 🪦 za smrt) i stavlja ih u Life Recap (`title`, `years`). Smicalice protiv tebe pamte godinu (za otkrivanje „Who let your tyres down in year 3?”). Batch izvještaj ima redak „Life titles”.
-- Nije još: provjera raspodjele titula, otkrivanje jedno po jedno u recapu, gumb „Copy my life”, kolekcija titula u lobbyju, testovi. Nastavak u 17:30.
+- **Titula života** (`engine/src/titles.ts`): 21 titula po prioritetu, prva koja odgovara: „Gone Too Soon”, „Bailed Everyone Out, Died Broke”, „Never Caught”, „Revenge, Served Cold”, „Caught Red-Handed”, „The Town Snitch”, „Hero of the Town”, „Town Oracle”, „Married by the Finale”, „Heartbreaker”, „The Debt Collector”, „In Over Their Head”, „Survived Everything”, „Smooth Talker”, „Honest to a Fault”, „Workaholic”, „Self-Made”, „Social Butterfly”, „Lone Wolf”, „Town Drama” i rezervna „A Quiet Life”. Svaka ima rečenicu zašto. Batch (200 sesija, `docs/reports/t11.report.md`): botovi dobiju 18 različitih titula, nijedna iznad 12 %.
+- **Godine u emojiju:** za svaku godinu života najveća promjena (💰 💸 💼 ⭐ 🤕 😌…), 💍 za novog partnera, 😤 za suparnika, 🤫 za spletku, 🪦 za smrt.
+- **Recap** počinje titulom, nizom emojija i gumbom **„Copy my life”** (bez spoilera i imena: „🏘️ My life in Life Simulation / 🙂💼💍🤕 / “The Town Snitch” · Lawyer · age 18–21”; bez dozvole za međuspremnik prikaže tekst za ručno kopiranje). Zatim **otkrivanje jedno po jedno**: „Who was behind “Let their tyres down” in year 3?” → pauza → „Clara (and you caught them).” (gumb „Show all”; uz smanjeno kretanje sve odmah). Tvoje spletke su u odjeljku „Your schemes”.
+- **Kolekcija titula** u lobbyju („Your titles · N collected”, s brojem ponavljanja), iz spremljenih recapa u bazi (bez nove migracije); titula i u popisu prijašnjih života.
+- Testovi: engine (≥ 15 različitih titula, pravila, emoji godine, svaki recap ima titulu i godine), web (tekst za dijeljenje), server (kolekcija u `/api/me`), e2e (titula, godine, „Copy my life”, kolekcija u lobbyju).
+- Ograničenje: kod otkrivanja se prikaže ime krivca, ne njegovo lice (QA je predložio lice).
 
 ## Zadnja automatizirana provjera
 

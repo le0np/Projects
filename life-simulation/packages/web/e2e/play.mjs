@@ -171,6 +171,13 @@ async function playOnce(browser, label, contextOptions) {
   if (checkedCards === 0) throw new Error(`[${label}] no event card was checked for fit`);
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/${label}-recap.png`, fullPage: true });
 
+  // T11: the life's title, the emoji years and "Copy my life" (the clipboard, or the text to copy by hand).
+  const title = await page.locator(".life-title-label").innerText();
+  const years = await page.locator(".years").innerText();
+  if (!/^“.+”$/.test(title.trim()) || years.trim().length === 0) throw new Error(`[${label}] no life title or years in the recap: ${title} ${years}`);
+  await page.getByRole("button", { name: "Copy my life" }).click();
+  await page.locator(".copy-life .muted, .copy-life .share-text").first().waitFor({ timeout: 3000 });
+
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   if (overflow > 0) throw new Error(`[${label}] horizontal overflow of ${overflow}px`);
 
@@ -182,6 +189,9 @@ async function playOnce(browser, label, contextOptions) {
 
   await page.getByRole("button", { name: "Back to the lobby" }).click();
   await page.getByText("Previous lives").waitFor({ timeout: 5000 });
+  // T11: and it is in the title collection.
+  await page.getByText("Your titles").waitFor({ timeout: 5000 });
+  if (!(await page.locator(".title-collection").innerText()).includes(title.trim())) throw new Error(`[${label}] ${title} is not in the title collection`);
   if (errors.length) throw new Error(`[${label}] console errors:\n${errors.join("\n")}`);
   await context.close();
   return decisions;

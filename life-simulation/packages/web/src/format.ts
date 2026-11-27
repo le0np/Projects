@@ -1,4 +1,4 @@
-import type { Attribute, OutcomeTag, Perceived, RelationType } from "@lifesim/core";
+import type { Attribute, LifeRecap, OutcomeTag, Perceived, RelationType } from "@lifesim/core";
 
 /** The public feed entries "Around town" shows (a structural subset of the server's `PublicEntry`). */
 export type FeedEntry =
@@ -140,4 +140,14 @@ export function careerName(id: string): string {
     .split("_")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
+}
+
+/**
+ * T11: "Copy my life" — a spoiler-free line to share (an emoji per year, the title, career and age),
+ * like Wordle's squares.
+ */
+export function lifeShareText(recap: Pick<LifeRecap, "years" | "ageAtEnd" | "title" | "career">): string {
+  const years = recap.years ?? [];
+  const from = Math.max(0, recap.ageAtEnd - years.length + 1);
+  return [`🏘️ My life in Life Simulation`, years.join(""), `“${recap.title?.label ?? "A Life"}” · ${careerName(recap.career)} · age ${from}–${recap.ageAtEnd}`].join("\n");
 }

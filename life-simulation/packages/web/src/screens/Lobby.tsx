@@ -182,6 +182,21 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
         {error && <p className="error">{error}</p>}
       </section>
 
+      {profile?.titles && profile.titles.length > 0 && (
+        <section className="card">
+          <h2>
+            Your titles <span className="muted small">· {profile.titles.length} collected</span>
+          </h2>
+          <p className="chips title-collection">
+            {profile.titles.map((t) => (
+              <span key={t.id} className="chip title-chip">
+                “{t.label}”{t.n > 1 ? ` ×${t.n}` : ""}
+              </span>
+            ))}
+          </p>
+        </section>
+      )}
+
       {profile && profile.recentLives.length > 0 && (
         <section className="card">
           <h2>Previous lives</h2>
@@ -191,6 +206,7 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
                 <button className="life" onClick={() => setOpenRecap(l.recap)}>
                   <span>
                     {l.recap.name}, {careerName(l.recap.career)}
+                    {l.recap.title && <span className="muted"> · “{l.recap.title.label}”</span>}
                   </span>
                   <span className="chips">
                     {l.recap.outcomes.slice(0, 3).map((o) => (

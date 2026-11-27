@@ -1154,3 +1154,36 @@ main.game {
   color: var(--risk);
   font-weight: 600;
 }
+
+/* ---------- T11: life title, reveals, share ---------- */
+.life-title {
+  text-align: center;
+  margin: 8px 0 12px;
+}
+.life-title p {
+  margin: 2px 0;
+}
+.life-title-label {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--private);
+}
+.years {
+  font-size: 1.4rem;
+  letter-spacing: 2px;
+  word-break: break-all;
+}
+.share-text {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  font: inherit;
+}
+.reveal-answer {
+  animation: flip-over 0.5s ease-out both;
+  display: inline-block;
+}
+.title-chip {
+  background: var(--private-soft);
+  color: var(--private);
+}

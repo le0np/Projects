@@ -91,9 +91,17 @@ export class Repo {
         WHERE r.user_id = $1 ORDER BY s.ended_at DESC LIMIT 5`,
       [userId],
     );
+    // T11: every title this player's lives have earned, most frequent first.
+    const titles = await this.db.query<{ id: string; label: string; n: number }>(
+      `SELECT recap->'title'->>'id' AS id, recap->'title'->>'label' AS label, count(*)::int AS n
+         FROM session_results WHERE user_id = $1 AND recap ? 'title'
+        GROUP BY 1, 2 ORDER BY n DESC, label`,
+      [userId],
+    );
     return {
       username: p.username,
       avatar: p.avatar,
+      titles: titles.rows,
       stats: {
         gamesPlayed: p.games_played,
         deaths: p.deaths,

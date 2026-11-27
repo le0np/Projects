@@ -127,7 +127,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Svaki igrač na početku dobije **2 osobna cilja** iz popisa od ~20. Ciljevi su **o tvom životu, ne protiv nekoga** i ne o dugom životu. Primjeri: „Zaradi da ti 2 osobe duguju novac”, „Napreduj na poslu prije 25.”, „Pretvori stranca u najboljeg prijatelja”, „Prođi preokret bez ičije pomoći”, „Izvedi spletku i ne budi otkriven”.
 - Vidljivi u zaglavlju, a u recapu ✓/✗. Nema pobjednika.
 
-### [ ] T11. Titula života i „Copy my life”
+### [x] T11. Titula života i „Copy my life”
 - Na kraju svaki lik dobije **titulu** izračunatu iz povijesti („The Town Snitch”, „Bailed Everyone Out, Died Broke”, „Never Caught”). Bar 15 titula.
 - Recap počinje **otkrivanjem jedno po jedno**: „Tko ti je ispuhao gume 2031.?” → pauza → lice krivca.
 - Gumb **„Copy my life”**: niz emojija po godinama + titula, bez spoilera, za dijeljenje.

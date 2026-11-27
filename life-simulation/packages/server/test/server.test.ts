@@ -175,6 +175,8 @@ describe("a full session with two humans and bots", () => {
 
     const me = await api("/api/me", { token: t1 });
     expect(me.body.stats.gamesPlayed).toBe(1);
+    // T11: the life's title is in the collection.
+    expect(me.body.titles).toEqual([{ id: recap.title.id, label: recap.title.label, n: 1 }]);
     expect(me.body.recentLives[0].sessionId).toBe(g1.sessionId);
 
     const log = await api(`/api/sessions/${g1.sessionId}/log`, { token: t1 });

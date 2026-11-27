@@ -34,7 +34,7 @@ const friends = (f: TitleFacts) => f.recap.relationshipsGained.filter((r) => r.t
 /** In order: the first that fits is the title (the more unusual lives come first). */
 export const TITLES: readonly TitleRule[] = [
   { id: "gone_too_soon", label: "Gone Too Soon", why: "Your story ended early.", when: (f) => f.recap.finalStatus === "dead" && f.lifeShare < 0.6 },
-  { id: "bailed_out_died_broke", label: "Bailed Everyone Out, Died Broke", why: "You kept helping, and it cost you.", when: (f) => tag(f, "help") >= 4 && (delta(f, "money") <= -15 || (f.recap.finalStatus === "dead" && f.recap.finalAttrs.money < 40)) },
+  { id: "bailed_out_died_broke", label: "Bailed Everyone Out, Died Broke", why: "You kept helping, and it cost you.", when: (f) => tag(f, "help") >= 6 && (delta(f, "money") <= -20 || (f.recap.finalStatus === "dead" && f.recap.finalAttrs.money < 35)) },
   { id: "never_caught", label: "Never Caught", why: "Your schemes worked and nobody ever knew.", when: (f) => played(f).filter((p) => p.result === "worked").length >= 2 && !played(f).some((p) => p.discovered) },
   { id: "revenge_cold", label: "Revenge, Served Cold", why: "Someone wronged you, and you paid them back.", when: (f) => f.revengeWorked },
   { id: "caught_red_handed", label: "Caught Red-Handed", why: "Your schemes kept getting you caught.", when: (f) => played(f).filter((p) => p.discovered).length >= 2 },
@@ -43,16 +43,16 @@ export const TITLES: readonly TitleRule[] = [
   { id: "town_oracle", label: "Town Oracle", why: "You knew what people would do before they did.", when: (f) => f.recap.oracle.correct >= 3 },
   { id: "just_married", label: "Married by the Finale", why: "It ended with a wedding. Yours.", when: (f) => f.married },
   { id: "heartbreaker", label: "Heartbreaker", why: "Love came and went.", when: (f) => f.recap.relationshipsLost.some((r) => r.from === "partner") },
-  { id: "debt_collector", label: "The Debt Collector", why: "Half the town owed you money.", when: (f) => f.owedBy >= 2 },
-  { id: "in_over_head", label: "In Over Their Head", why: "You owed more people than you could count.", when: (f) => f.owes >= 2 },
+  { id: "debt_collector", label: "The Debt Collector", why: "People owed you money, and you remembered.", when: (f) => f.owedBy >= 1 },
+  { id: "in_over_head", label: "In Over Their Head", why: "You ended up owing people money.", when: (f) => f.owes >= 1 },
   { id: "survivor", label: "Survived Everything", why: "You nearly did not make it. You made it.", when: (f) => f.minHealth < 25 && f.recap.finalStatus !== "dead" },
-  { id: "smooth_talker", label: "Smooth Talker", why: "The truth was always negotiable.", when: (f) => tag(f, "lie") >= 4 },
+  { id: "smooth_talker", label: "Smooth Talker", why: "The truth was always negotiable.", when: (f) => tag(f, "lie") >= 6 },
   { id: "honest_to_a_fault", label: "Honest to a Fault", why: "You never told a single lie.", when: (f) => tag(f, "lie") === 0 && tag(f, "truth") >= 4 },
   { id: "workaholic", label: "Workaholic", why: "Your career took off.", when: (f) => delta(f, "career") >= 20 },
   { id: "self_made", label: "Self-Made", why: "You ended much richer than you started.", when: (f) => delta(f, "money") >= 25 },
   { id: "social_butterfly", label: "Social Butterfly", why: "Everybody knew you, and liked you.", when: (f) => friends(f) >= 3 || f.sharedEvents >= 16 },
   { id: "lone_wolf", label: "Lone Wolf", why: "You kept to yourself.", when: (f) => f.sharedEvents <= 4 },
-  { id: "town_drama", label: "Town Drama", why: "Rivals everywhere you looked.", when: (f) => f.recap.relationshipsGained.filter((r) => r.type === "rival" || r.type === "enemy").length >= 2 },
+  { id: "town_drama", label: "Town Drama", why: "Rivals everywhere you looked.", when: (f) => f.recap.relationshipsLost.filter((r) => r.to === "rival" || r.to === "enemy").length >= 1 },
   { id: "quiet_life", label: "A Quiet Life", why: "Nothing dramatic. Maybe that is the secret.", when: () => true },
 ];
 
