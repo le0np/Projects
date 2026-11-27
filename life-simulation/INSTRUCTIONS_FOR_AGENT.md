@@ -102,6 +102,10 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Dodaj 2–3 nove smicalice vezane uz karijere (npr. novinar objavi lažnu vijest, mehaničar „popravi” auto, odvjetnik pošalje lažnu tužbu).
 - Botovi koriste isto (prema osobnosti). Life Recap prikazuje cijeli tok spletke.
 
+### [ ] T8b. Sitnice iz QA T8
+- **S1:** Nakon što spletka završi, ispod gumba stalno piše „Not possible: they already had this one”, a odabrana je ista spletka, pa je gumb siv. Igrač ne zna što napraviti. Nakon spletke automatski odaberi drugu dostupnu vrstu (ili drugu metu), a poruku promijeni u „Kim already got this one, pick another scheme.” Već iskorištene vrste za tu metu prikaži prekrižene ili sive.
+- **S2:** QA nije mogao vidjeti **stranu žrtve** (trag „You noticed: …” i izbor osvete), jer to ovisi o tome hoće li bot slučajno odabrati čovjeka i biti otkriven. Dodaj u `npm run e2e` (ili kao opciju za QA, npr. env `QA_FORCE_SCHEME_ON_HUMAN=1`) scenarij u kojem bot izvede spletku na čovjeka i bude otkriven. E2E neka provjeri da se pojave trag, tri izbora i besplatna osveta u kartici „Schemes”.
+
 ### [ ] T9. Kad čekaš, imaš što raditi
 - Dok nisi u eventu, možeš **pogađati** što će odlučiti drugi u tekućem eventu („Što će Greta napraviti?”). Točni pogoci se broje i nagrađuju u recapu (titula „Town Oracle”).
 - Klik na lika na mapi → mala kartica: tko je, osobina, odnos s tobom, što trenutno radi.
@@ -182,3 +186,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 - **27. 11. 2026.** — QA T6b: ✅ prihvaćeno. `npm run check` 126/126, 0 upozorenja validatora. Igranje uz 3×: 7 eventa, kartica uvijek cijela bez skrolanja, likovi uglavnom 🙂, zadani izbor u The Robbery je „Let go of the bag”. Smrtnost 3,0 % je u redu (donja granica), ne treba dirati. Nova sitnica **T6c** (gramatika „Maja and Ema is”). Sljedeće: T7.
 - **27. 11. 2026.** — QA T7: ✅ prihvaćeno. `npm run check` 129/129. U igri (3×) se vide auto s ispuhanim gumama („pfff”) kraj moje kuće nakon „Flat Tyres” i razbijen prozor na drugoj kući; ishod je duhovit („Your step count is excellent.”). Tragovi su mali, ali čitljivi. Sljedeće: T6c (sitno), T7b, T8.
 - **27. 11. 2026.** — QA T7b i T6c: ✅ prihvaćeno. `npm run check` 132/132. Vlastiti batch (100 sesija, seed `qa7b`) potvrđuje brojke: veze prije finala 88,3 %, Jealousy 13 %, Crisis Talk 11 %, Loan Due 29 %, eventi s drugima 79,4 %, ponavljanje 1,1 %, smrtnost 4,7 %, tuga 12,7 % vremena; replay 3/3 identičan. Sljedeće: T8 (spletke) — najvažniji preostali zadatak (vlasnikova točka 3).
+- **27. 11. 2026.** — QA T8: ✅ prihvaćeno uz **T8b**. `npm run check` 136/136, 75 eventa. Cijeli tok s nove QA skripte (6×): 5 vrsta spletki (uključujući „Send a fake lawsuit” za odvjetnika), izgledi se mijenjaju s vrstom (75/20 → 80/25 %), plan → traka pripreme → „Cover your tracks” (rizik 25 → 13 %) → „it worked, and nobody saw a thing” za ~30 s; žrtva Kim dobila je „Flat Tyres”, a Life Recap pod „Secrets revealed” priča cijeli tok. Vlasnikova točka 3 je riješena. Problemi: zbunjujuća poruka nakon spletke (S1), strana žrtve nije provjerljiva u QA (S2).
