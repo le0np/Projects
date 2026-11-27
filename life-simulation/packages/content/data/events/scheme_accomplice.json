@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "id": "scheme_accomplice",
+  "version": 1,
+  "title": "A Little Favour",
+  "category": "social",
+  "trigger": "followup_only",
+  "hidden": true,
+  "importance": "simple",
+  "cooldown": {},
+  "location": {
+    "at": [
+      "here"
+    ],
+    "of": "role:accomplice"
+  },
+  "roles": {
+    "accomplice": {
+      "count": 1
+    },
+    "plotter": {
+      "count": 1,
+      "aware": false
+    },
+    "target": {
+      "count": 1,
+      "aware": false
+    }
+  },
+  "text": {
+    "public": "{plotter} pulls {accomplice} aside, looking around a lot.",
+    "private": {
+      "accomplice": "{plotter} wants your help with a little scheme against {target}. \"Nobody will know.\""
+    }
+  },
+  "choices": {
+    "accomplice": [
+      {
+        "id": "help",
+        "label": "Help {plotter}",
+        "tags": [
+          "lie",
+          "risk"
+        ],
+        "perceived": {
+          "risk": 1,
+          "relation": {
+            "plotter": 1,
+            "target": -1
+          }
+        }
+      },
+      {
+        "id": "refuse",
+        "label": "Say you want nothing to do with it",
+        "tags": [
+          "refuse"
+        ],
+        "default": true,
+        "perceived": {
+          "relation": {
+            "plotter": -1
+          }
+        }
+      },
+      {
+        "id": "betray",
+        "label": "Say yes, then warn {target}",
+        "tags": [
+          "truth",
+          "lie"
+        ],
+        "perceived": {
+          "risk": 1,
+          "relation": {
+            "target": 2,
+            "plotter": -2
+          }
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "helped",
+      "when": {
+        "chose": "help",
+        "role": "accomplice"
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:accomplice",
+          "to": "role:plotter",
+          "affinity": 5,
+          "trust": 5,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "accomplice": "You are in. Partners in crime.",
+        "plotter": "{accomplice} is in."
+      }
+    },
+    {
+      "id": "betrayed",
+      "when": {
+        "chose": "betray",
+        "role": "accomplice"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:target",
+          "to": "role:accomplice",
+          "affinity": 15,
+          "trust": 15
+        },
+        {
+          "type": "relation",
+          "from": "role:accomplice",
+          "to": "role:plotter",
+          "affinity": -10
+        },
+        {
+          "type": "fact",
+          "target": "role:target",
+          "key": "knows_secret",
+          "about": "role:plotter"
+        }
+      ],
+      "text": {
+        "accomplice": "You nod at {plotter}, then go straight to {target}.",
+        "plotter": "{accomplice} nods. They seem very keen.",
+        "target": "{accomplice} warns you: {plotter} is planning something against you."
+      }
+    },
+    {
+      "id": "refused",
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:plotter",
+          "to": "role:accomplice",
+          "affinity": -5
+        }
+      ],
+      "text": {
+        "accomplice": "You tell {plotter} to leave you out of it.",
+        "plotter": "{accomplice} wants nothing to do with it."
+      }
+    }
+  ]
+}

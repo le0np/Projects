@@ -635,13 +635,14 @@ describe("chaos (concept v2 §5)", () => {
     choices: { victim: [{ id: "shrug", label: "Shrug", tags: ["ignore"], default: true }, { id: "dig", label: "Dig", tags: ["truth"] }] },
     outcomes: [{ id: "hit", effects: [{ type: "attr", target: "role:victim", delta: { mental: -5 } }], text: { victim: "Someone got you.", culprit: "It worked." } }],
   });
-  const prank = { id: "tyres", label: "Let tyres down", description: "Petty.", event: "prank_hit", delaySeconds: 3 };
+  // T8: a sure, unnoticed scheme, carried out at once (scheme odds and preparation are tested in sprint2.test.ts).
+  const prank = { id: "tyres", label: "Let tyres down", description: "Petty.", event: "prank_hit", delaySeconds: 3, success: 1, risk: 0.01 };
 
   it("upheavals hit everyone, set a town fact for a while and unlock their events", () => {
     const seen: Notice[] = [];
     const r = runSession({
       content: buildContent([stormy], { upheavals: [storm] }),
-      config: { seed: "storm", durationSeconds: 120, chaos: { upheavals: [1, 1], mischiefCharges: 2, followUpBoost: 1 } },
+      config: { seed: "storm", durationSeconds: 120, chaos: { upheavals: [1, 1], mischiefCharges: 2, followUpBoost: 1, schemePrepSeconds: [30, 60] } },
       participants: ["mechanic", "teacher"].map((career) => ({ career, isBot: true, controller: scripted(pickDefault) })),
       onNotice: (_id, n) => seen.push(n),
     });
@@ -659,7 +660,7 @@ describe("chaos (concept v2 §5)", () => {
   it("pranks are secret: the victim suffers later without the culprit's name, the recap reveals it", () => {
     const content = buildContent([prankEvent, stormy], { mischief: [prank] });
     const clock = new VirtualClock();
-    const session = new Session(content, resolveConfig({ seed: "prank", initialDelaySeconds: [0, 0] }), [
+    const session = new Session(content, resolveConfig({ seed: "prank", initialDelaySeconds: [0, 0], chaos: { upheavals: [0, 0], mischiefCharges: 2, followUpBoost: 1, schemePrepSeconds: [0, 0] } }), [
       { career: "civilian", isBot: true },
       { career: "teacher", isBot: true },
       { career: "doctor", isBot: true },

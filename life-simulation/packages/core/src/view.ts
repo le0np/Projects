@@ -52,6 +52,8 @@ export interface OfferView {
   privateText?: string;
   /** Where it happens (null: on the street). */
   place: { id: string; name: string; kind: string } | null;
+  /** T8: what you noticed (you caught who was behind it). */
+  clue?: string;
   /** The tile where everyone gathers (T5: the card opens next to it). */
   tile: TilePos;
   /** Empty for passive roles (the character is involved but does not decide). */
@@ -101,7 +103,33 @@ export interface CharacterView {
 
 export interface MischiefState {
   charges: number;
-  options: { id: string; label: string; description: string }[];
+  options: { id: string; label: string; description: string; career?: boolean }[];
+  /** T8: your schemes, with what you know about them. */
+  schemes?: SchemeView[];
+  /** T8: people you may take revenge on with a free scheme. */
+  revengeOn?: string[];
+}
+
+export type SchemeBoost = "cover" | "wait" | "accomplice";
+export type AccompliceAnswer = "helped" | "refused" | "betrayed";
+export type SchemeResult = "worked" | "failed";
+
+/** T8: a scheme as its plotter sees it. */
+export interface SchemeView {
+  id: string;
+  mischiefId: string;
+  label: string;
+  targetId: string;
+  startedAt: number;
+  readyAt: number;
+  success: number;
+  risk: number;
+  boost?: SchemeBoost;
+  accomplice?: string;
+  accompliceAnswer?: AccompliceAnswer;
+  state: "preparing" | "done";
+  result?: SchemeResult;
+  discovered?: boolean;
 }
 
 export interface RevealedChoice {
@@ -121,6 +149,8 @@ export type Reaction = "joy" | "angry" | "sad" | "shock" | "neutral";
 /** Messages the engine sends to one character. */
 export type Notice =
   | { kind: "event"; t: number; view: CharacterView }
+  /** T8: news about one of your schemes (planned, boosted, carried out, found out). */
+  | { kind: "scheme"; t: number; scheme: SchemeView; text: string }
   /** T5: something is about to happen to you; the participants are walking there (the offer comes at `offerAt`). */
   | { kind: "coming"; t: number; instanceId: string; title: string; tile: TilePos; placeName: string | null; offerAt: number; participants: ParticipantInfo[] }
   | {
@@ -196,7 +226,10 @@ export interface LifeRecap {
   relationshipsLost: { characterId: string; name: string; from: RelationType; to: RelationType }[];
   influencedBy: { characterId: string; name: string; events: number; impact: number }[];
   /** Revealed at the end: pranks this character played, and pranks played on them. */
-  secrets: { played: { mischief: string; on: string }[]; suffered: { mischief: string; by: string }[] };
+  secrets: {
+    played: { mischief: string; on: string; result?: SchemeResult; boost?: SchemeBoost; accomplice?: string; accompliceAnswer?: AccompliceAnswer }[];
+    suffered: { mischief: string; by: string; discovered?: boolean }[];
+  };
   /** Internal balancing metric; not shown to players as a "win". */
   lifeScore: number;
 }
@@ -217,6 +250,8 @@ export interface Controller {
   observe?(notice: Notice): void;
   /** Optionally play a prank after an event (bots). The host asks after each resolved event. */
   planMischief?(): { mischiefId: string; targetId: string } | null;
+  /** T8: optionally boost one of your schemes after hearing about it (bots). */
+  planBoost?(notice: Extract<Notice, { kind: "scheme" }>): { schemeId: string; boost: SchemeBoost; accompliceId?: string } | null;
   /** Passive play: where to spend free time (a place kind from `options`). Undefined = no preference. */
   chooseLeisure?(options: readonly string[]): string | undefined;
 }

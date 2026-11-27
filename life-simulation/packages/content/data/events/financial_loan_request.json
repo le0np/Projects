@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "financial_loan_request",
-  "version": 2,
+  "version": 4,
   "title": "Can You Lend Me Some Money?",
   "category": "financial",
   "trigger": "director",
@@ -96,6 +96,46 @@
           "ignore"
         ],
         "default": true
+      },
+      {
+        "id": "leverage",
+        "label": "Remind {lender} what you know about them",
+        "tags": [
+          "threaten"
+        ],
+        "condition": {
+          "fact": "knows_secret",
+          "about": "role:lender"
+        },
+        "perceived": {
+          "career": 1,
+          "relation": {
+            "lender": -2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "role:lender",
+            "delta": {
+              "reputation": -4,
+              "mental": -6
+            }
+          },
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": 3
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:lender",
+            "affinity": -10
+          }
+        ]
       }
     ],
     "lender": [
@@ -183,6 +223,46 @@
             "borrower": -1
           }
         }
+      },
+      {
+        "id": "leverage",
+        "label": "Remind {borrower} what you know about them",
+        "tags": [
+          "threaten"
+        ],
+        "condition": {
+          "fact": "knows_secret",
+          "about": "role:borrower"
+        },
+        "perceived": {
+          "career": 1,
+          "relation": {
+            "borrower": -2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "role:borrower",
+            "delta": {
+              "reputation": -4,
+              "mental": -6
+            }
+          },
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": 3
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:borrower",
+            "affinity": -10
+          }
+        ]
       }
     ]
   },

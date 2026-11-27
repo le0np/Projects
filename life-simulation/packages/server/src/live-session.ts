@@ -9,7 +9,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { BotController, careerTrait, createBotProfile, traitLabel, type BotProfile } from "@lifesim/bots";
-import { Rng, type Clock, type Notice, type OfferView } from "@lifesim/core";
+import { Rng, type Clock, type Notice, type OfferView, type SchemeBoost } from "@lifesim/core";
 import type { ContentBundle } from "@lifesim/content";
 import { Session, humanPacing, resolveConfig, type LogEntry, type PublicEntry, type SessionConfig, type SessionResult, type SubmitResult } from "@lifesim/engine";
 
@@ -129,6 +129,22 @@ export class LiveSession {
     return result;
   }
 
+  /** T8: what a scheme would look like before you commit to it. */
+  schemePreview(userId: string, mischiefId: string, targetId: string) {
+    const seat = this.humans.get(userId);
+    if (!seat) return { ok: false as const, reason: "not a player in this session" };
+    return this.session.schemePreview(seat.characterId, mischiefId, targetId);
+  }
+
+  /** T8: one boost for a scheme in preparation. */
+  boostScheme(userId: string, schemeId: string, boost: SchemeBoost, accompliceId?: string): SubmitResult {
+    const seat = this.humans.get(userId);
+    if (!seat) return { ok: false, reason: "not a player in this session" };
+    const result = this.session.boostScheme(seat.characterId, schemeId, boost, accompliceId);
+    this.afterChange();
+    return result;
+  }
+
   /** Everything a (re)connecting player needs to render the game. */
   snapshot(userId: string) {
     const seat = this.humans.get(userId);
@@ -186,6 +202,18 @@ export class LiveSession {
           this.botPending.set(instanceId, waiting);
         }
       }
+      if (notice.kind === "scheme") {
+        const plan = bot.planBoost(notice);
+        if (plan) {
+          const handle = setTimeout(() => {
+            this.botTimers.delete(handle);
+            if (this.finished) return;
+            this.session.boostScheme(characterId, plan.schemeId, plan.boost, plan.accompliceId);
+            this.afterChange();
+          }, 800 / this.timeScale);
+          this.botTimers.add(handle);
+        }
+      }
       if (notice.kind === "resolved") {
         const plan = bot.planMischief();
         if (plan) {
@@ -207,7 +235,7 @@ export class LiveSession {
     seat.history.push(notice);
     if (seat.history.length > HISTORY_LIMIT) seat.history.shift();
     this.events.toUser(seat.userId, notice.kind === "session_completed" ? "game:ended" : "game:notice", notice);
-    if (notice.kind === "resolved") this.events.toUser(seat.userId, "game:mischief_state", this.session.mischiefState(characterId));
+    if (notice.kind === "resolved" || notice.kind === "scheme") this.events.toUser(seat.userId, "game:mischief_state", this.session.mischiefState(characterId));
   }
 
   /** T1: once every human in an event has decided, the bots still "thinking" answer at once. */

@@ -7,8 +7,8 @@ export interface CharacterTracking {
   /** Other character id → events in which they decided and this character's attributes changed. */
   influence: Map<string, { events: number; impact: number }>;
   startTypes: Map<string, RelationType>;
-  played: { mischief: string; on: string }[];
-  suffered: { mischief: string; by: string }[];
+  played: LifeRecap["secrets"]["played"];
+  suffered: LifeRecap["secrets"]["suffered"];
 }
 
 const POSITIVE = new Set<RelationType>(["friend", "partner", "family"]);
@@ -101,8 +101,8 @@ export function computeRecaps(input: {
       relationshipsLost: lost,
       influencedBy,
       secrets: {
-        played: track.played.map((p) => ({ mischief: p.mischief, on: byId.get(p.on)?.name ?? p.on })),
-        suffered: track.suffered.map((p) => ({ mischief: p.mischief, by: byId.get(p.by)?.name ?? p.by })),
+        played: track.played.map((p) => ({ ...p, on: byId.get(p.on)?.name ?? p.on, ...(p.accomplice ? { accomplice: byId.get(p.accomplice)?.name ?? p.accomplice } : {}) })),
+        suffered: track.suffered.map((p) => ({ ...p, by: byId.get(p.by)?.name ?? p.by })),
       },
       lifeScore,
     };

@@ -2,7 +2,7 @@
  * Domain log: the append-only, chronological source of truth for a session.
  * Life Recap, statistics, replay checks and the human-readable log are built from it.
  */
-import type { Attribute, RelationType, Season, Status, TilePos } from "@lifesim/core";
+import type { Attribute, RelationType, SchemeBoost, SchemeResult, Season, Status, TilePos } from "@lifesim/core";
 import type { SessionConfig, StoryPhase } from "./config";
 
 export type EndReason = "time_limit" | "all_ended" | "story_resolved" | "finale" | "cancelled";
@@ -50,7 +50,11 @@ export type LogEntry = { t: number } & (
   | { type: "upheaval_started"; upheavalId: string; title: string; changes: Change[] }
   | { type: "upheaval_ended"; upheavalId: string }
   /** A secret prank (revealed only in the Life Recap). */
-  | { type: "mischief"; characterId: string; targetId: string; mischiefId: string; dueAt: number }
+  | { type: "mischief"; characterId: string; targetId: string; mischiefId: string; dueAt: number; schemeId?: string }
+  /** T8: a scheme gets help (or covers its tracks, or waits for the right moment), and how it ends. */
+  | { type: "scheme_boost"; characterId: string; schemeId: string; boost: SchemeBoost; accompliceId?: string }
+  | { type: "scheme_rejected"; characterId: string; schemeId: string; boost: SchemeBoost; accompliceId?: string; reason: string }
+  | { type: "scheme_result"; schemeId: string; characterId: string; targetId: string; result: SchemeResult; discovered: boolean }
   | { type: "mischief_rejected"; characterId: string; targetId: string; mischiefId: string; reason: string }
   /** Free-time choice (a decision too: replays need it). */
   | { type: "leisure"; characterId: string; kind: string }
@@ -138,6 +142,13 @@ export function formatLog(log: readonly LogEntry[]): string {
         lines.push(`${at} - (secret) ${name(e.characterId)} plays "${e.mischiefId}" on ${name(e.targetId)}`);
         break;
       case "mischief_rejected":
+      case "scheme_rejected":
+        break;
+      case "scheme_boost":
+        lines.push(`${at} - (secret) ${name(e.characterId)} ${e.boost === "cover" ? "covers their tracks" : e.boost === "wait" ? "waits for the right moment" : `asks ${name(e.accompliceId ?? "?")} for help`} (${e.schemeId})`);
+        break;
+      case "scheme_result":
+        lines.push(`${at} - (secret) ${name(e.characterId)}'s scheme on ${name(e.targetId)} ${e.result === "worked" ? "works" : "fails"}${e.discovered ? ", and they are found out" : ""} (${e.schemeId})`);
         break;
       case "season_changed":
         lines.push(`${at} - ${e.season === "spring" ? `Year ${e.year + 1} begins. ` : ""}It is ${e.season}.`);

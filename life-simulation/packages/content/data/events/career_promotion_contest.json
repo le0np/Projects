@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "career_promotion_contest",
-  "version": 2,
+  "version": 4,
   "title": "One Spot at the Top",
   "category": "career",
   "trigger": "director",
@@ -101,6 +101,46 @@
           "ignore"
         ],
         "default": true
+      },
+      {
+        "id": "leverage",
+        "label": "Remind {candidate_b} what you know about them",
+        "tags": [
+          "threaten"
+        ],
+        "condition": {
+          "fact": "knows_secret",
+          "about": "role:candidate_b"
+        },
+        "perceived": {
+          "career": 1,
+          "relation": {
+            "candidate_b": -2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "role:candidate_b",
+            "delta": {
+              "reputation": -4,
+              "mental": -6
+            }
+          },
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": 3
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:candidate_b",
+            "affinity": -10
+          }
+        ]
       }
     ],
     "candidate_b": [
@@ -146,6 +186,46 @@
           "ignore"
         ],
         "default": true
+      },
+      {
+        "id": "leverage",
+        "label": "Remind {candidate_a} what you know about them",
+        "tags": [
+          "threaten"
+        ],
+        "condition": {
+          "fact": "knows_secret",
+          "about": "role:candidate_a"
+        },
+        "perceived": {
+          "career": 1,
+          "relation": {
+            "candidate_a": -2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "role:candidate_a",
+            "delta": {
+              "reputation": -4,
+              "mental": -6
+            }
+          },
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": 3
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:candidate_a",
+            "affinity": -10
+          }
+        ]
       }
     ]
   },

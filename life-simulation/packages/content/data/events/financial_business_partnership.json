@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "financial_business_partnership",
-  "version": 2,
+  "version": 4,
   "title": "Let's Open a Café",
   "category": "financial",
   "trigger": "director",
@@ -84,6 +84,46 @@
             "partner": -1
           }
         }
+      },
+      {
+        "id": "leverage",
+        "label": "Remind {partner} what you know about them",
+        "tags": [
+          "threaten"
+        ],
+        "condition": {
+          "fact": "knows_secret",
+          "about": "role:partner"
+        },
+        "perceived": {
+          "career": 1,
+          "relation": {
+            "partner": -2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "role:partner",
+            "delta": {
+              "reputation": -4,
+              "mental": -6
+            }
+          },
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": 3
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:partner",
+            "affinity": -10
+          }
+        ]
       }
     ],
     "partner": [
@@ -142,6 +182,46 @@
           "refuse"
         ],
         "default": true
+      },
+      {
+        "id": "leverage",
+        "label": "Remind {founder} what you know about them",
+        "tags": [
+          "threaten"
+        ],
+        "condition": {
+          "fact": "knows_secret",
+          "about": "role:founder"
+        },
+        "perceived": {
+          "career": 1,
+          "relation": {
+            "founder": -2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "role:founder",
+            "delta": {
+              "reputation": -4,
+              "mental": -6
+            }
+          },
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": 3
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:founder",
+            "affinity": -10
+          }
+        ]
       }
     ]
   },

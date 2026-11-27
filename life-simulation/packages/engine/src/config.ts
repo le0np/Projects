@@ -38,7 +38,13 @@ export interface SessionConfig {
   /** From this age on, health drops by `healthPerYear` at every new year. */
   aging: { fromAge: number; healthPerYear: number };
   /** Chaos (concept v2 §5): upheavals per session, pranks per character, follow-up chance multiplier. */
-  chaos: { upheavals: [number, number]; mischiefCharges: number; followUpBoost: number };
+  chaos: {
+    upheavals: [number, number];
+    mischiefCharges: number;
+    followUpBoost: number;
+    /** T8: how long a scheme is prepared before it is carried out (1–2 years of the life calendar). */
+    schemePrepSeconds: [number, number];
+  };
   /** Movement on the town map (concept v2 §2). */
   walkTilesPerSecond: number;
   /**
@@ -140,7 +146,7 @@ export const DEFAULT_CONFIG: Omit<SessionConfig, "seed"> = {
   startingRelationships: { colleaguePairRatio: 0.25, familyChance: 0.3, partnerChance: 0.4 },
   director: { relationBoost: 3, acquaintanceBoost: 1.3, relatedPullTiles: 10, soloFactor: 0.5 },
   story: { introShare: 0.15, climaxShare: 0.6, climaxUpheaval: [0.62, 0.7], respiteSeconds: 30, finaleSeconds: 75 },
-  chaos: { upheavals: [2, 3], mischiefCharges: 2, followUpBoost: 1.25 },
+  chaos: { upheavals: [2, 3], mischiefCharges: 2, followUpBoost: 1.25, schemePrepSeconds: [30, 60] },
   walkTilesPerSecond: 4,
   routine: { night: 0.15, workEnd: 0.6, leisureStaySeconds: [3, 8] },
   yearSeconds: 30,

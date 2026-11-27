@@ -35,6 +35,9 @@ import {
   type ParticipantInfo,
   type Reaction,
   type Mood,
+  type SchemeBoost,
+  type SchemeView,
+  type AccompliceAnswer,
   type Mark,
   type MarkKind,
   MARK_PLACE,
@@ -136,12 +139,22 @@ type Timer =
   | { kind: "upheaval_end"; id: string }
   | { kind: "phase"; phase: StoryPhase }
   | { kind: "release"; characterId: string }
-  | { kind: "unmark"; id: string };
+  | { kind: "unmark"; id: string }
+  | { kind: "scheme"; id: string };
 
 /** "Ana", "Ana and Ben", "Ana, Ben and Clara" (T4b N4). */
 export function listNames(names: readonly string[]): string {
   return names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
+
+/** T8: a scheme as the engine keeps it (the plotter's view plus who the plotter is). */
+interface Scheme extends SchemeView {
+  plotter: string;
+}
+
+/** T8: hidden events the scheme machinery starts (content may leave them out). */
+const ACCOMPLICE_EVENT = "scheme_accomplice";
+const CAUGHT_EVENT = "scheme_caught";
 
 const LEISURE: PlaceKind[] = ["cafe", "park", "shop", "bar", "home"];
 
@@ -206,6 +219,8 @@ export class Session {
   private mischiefSeq = 0;
   /** T3: the finale closes the session once everyone alive is free. */
   private finale: "none" | "waiting" | "running" | "done" = "none";
+  /** T8: schemes in preparation or done. */
+  private readonly schemes = new Map<string, Scheme>();
   /** T7: lasting traces on the map. */
   private readonly marks = new Map<string, Mark>();
   private markSeq = 0;
@@ -321,6 +336,9 @@ export class Session {
           break;
         case "unmark":
           this.removeMark(timer.id);
+          break;
+        case "scheme":
+          this.onScheme(timer.id);
           break;
         case "release": {
           // T5b R2: the lingering after an event is over; now go wherever life takes you.
@@ -491,50 +509,233 @@ export class Session {
     this.startInstance(pick.ev, pick.bindings);
   }
 
-  /** What a character can still play. */
+  /** What a character can still play, and their schemes (T8). */
   mischiefState(characterId: string): MischiefState {
+    const c = this.characters.get(characterId);
     return {
       charges: Math.max(0, this.config.chaos.mischiefCharges - (this.mischiefUsed.get(characterId) ?? 0)),
-      options: [...this.content.mischief.values()].map((m) => ({ id: m.id, label: m.label, description: m.description })),
+      options: [...this.content.mischief.values()]
+        .filter((m) => !m.careers || (c !== undefined && m.careers.includes(c.career.id)))
+        .map((m) => ({ id: m.id, label: m.label, description: m.description, ...(m.careers ? { career: true } : {}) })),
+      schemes: [...this.schemes.values()].filter((s) => s.plotter === characterId).map((s) => this.schemeView(s)),
+      revengeOn: c ? [...c.facts].filter((f) => f.startsWith("revenge_on:")).map((f) => f.slice("revenge_on:".length)) : [],
     };
   }
 
+  // ================================================================== schemes (T8: plan → prepare → carry out)
+
+  /** Why a scheme cannot be planned right now, or null. */
+  private schemeProblem(plotter: string, mischiefId: string, targetId: string): string | null {
+    if (this._state !== "active" || !this.accepting) return "session is not active";
+    if (this.finale !== "none") return "the finale has begun";
+    const def = this.content.mischief.get(mischiefId);
+    if (!def) return "unknown prank";
+    const actor = this.characters.get(plotter);
+    const target = this.characters.get(targetId);
+    if (!actor || actor.status !== "active") return "you cannot play pranks now";
+    if (def.careers && !def.careers.includes(actor.career.id)) return "only some careers can do this";
+    if (!target || target.status !== "active" || targetId === plotter) return "invalid target";
+    const free = actor.facts.has(factKey("revenge_on", targetId));
+    if (!free && this.mischiefState(plotter).charges <= 0) return "no pranks left";
+    if (def.targetCondition && !evaluate(def.targetCondition, makeContext(this.world, {}, targetId))) return "this prank does not work on them";
+    // T2: nobody gets the same prank twice (it would be the same solo event again).
+    const already = [...this.schemes.values()].some((s) => s.mischiefId === mischiefId && s.targetId === targetId);
+    if (target.seen.has(def.event) || already || this.pending.some((p) => p.eventId === def.event && p.preset.victim?.[0] === targetId)) {
+      return "they already had this one";
+    }
+    return null;
+  }
+
   /**
-   * A player-initiated prank (concept v2 §5). The victim gets the consequence later as a hidden
-   * follow-up event in which the culprit is an unaware role; only the Life Recap reveals who did it.
+   * T8: chance that a scheme works and risk of being found out. Your career helps with career
+   * schemes; friends trust you (it works more often) but they know you (they see through you
+   * more easily); strangers rarely suspect you; working in the same place is risky.
+   */
+  private schemeChances(plotter: string, mischiefId: string, targetId: string): { success: number; risk: number } {
+    const def = this.content.mischief.get(mischiefId)!;
+    const p = this.char(plotter);
+    const t = this.char(targetId);
+    let success = def.success;
+    let risk = def.risk;
+    if (def.careers?.includes(p.career.id)) {
+      success += 0.15;
+      risk -= 0.05;
+    }
+    const seen = this.relations.get(targetId, plotter).type;
+    if (seen === "friend" || seen === "partner" || seen === "family") {
+      success += 0.1;
+      risk += 0.15;
+    } else if (seen === "rival" || seen === "enemy") risk += 0.1;
+    else if (seen === "stranger") risk -= 0.1;
+    if (p.work === t.work) risk += 0.1;
+    const clamp = (x: number) => Math.round(Math.min(0.95, Math.max(0.05, x)) * 100) / 100;
+    return { success: clamp(success), risk: clamp(risk) };
+  }
+
+  /** T8: what a scheme would look like, before you commit to it. */
+  schemePreview(plotter: string, mischiefId: string, targetId: string): { ok: true; success: number; risk: number; free: boolean } | { ok: false; reason: string } {
+    const problem = this.schemeProblem(plotter, mischiefId, targetId);
+    if (problem) return { ok: false, reason: problem };
+    return { ok: true, ...this.schemeChances(plotter, mischiefId, targetId), free: this.char(plotter).facts.has(factKey("revenge_on", targetId)) };
+  }
+
+  /**
+   * T8, step 1: plan a scheme against someone (concept v2 §5 pranks, now in three steps). It is
+   * prepared for 1–2 years of the life calendar, then carried out; the victim gets the consequence
+   * as a hidden event in which the culprit is an unaware role, unless they catch them.
    */
   mischief(characterId: string, mischiefId: string, targetId: string): SubmitResult {
+    const problem = this.schemeProblem(characterId, mischiefId, targetId);
+    if (problem) {
+      this.log.push({ t: this.now(), type: "mischief_rejected", characterId, targetId, mischiefId, reason: problem });
+      return { ok: false, reason: problem };
+    }
+    const def = this.content.mischief.get(mischiefId)!;
+    const plotter = this.char(characterId);
+    // Revenge is free: it uses up the revenge, not a charge.
+    const free = plotter.facts.delete(factKey("revenge_on", targetId));
+    if (!free) this.mischiefUsed.set(characterId, (this.mischiefUsed.get(characterId) ?? 0) + 1);
+    const { success, risk } = this.schemeChances(characterId, mischiefId, targetId);
+    const [p0, p1] = this.config.chaos.schemePrepSeconds;
+    const scheme: Scheme = {
+      id: `M${++this.mischiefSeq}`,
+      plotter: characterId,
+      mischiefId,
+      label: def.label,
+      targetId,
+      startedAt: this.now(),
+      readyAt: this.now() + Math.round(this.rngChaos.range(p0, p1) * MS),
+      success,
+      risk,
+      state: "preparing",
+    };
+    this.schemes.set(scheme.id, scheme);
+    this.timers.push(scheme.readyAt, { kind: "scheme", id: scheme.id });
+    this.log.push({ t: this.now(), type: "mischief", characterId, targetId, mischiefId, dueAt: scheme.readyAt, schemeId: scheme.id });
+    const pct = (x: number) => `${Math.round(x * 100)} %`;
+    this.schemeNotice(scheme, `${free ? "Revenge, for free: " : ""}you start planning "${def.label}" against ${this.char(targetId).name}: ${pct(success)} chance it works, ${pct(risk)} risk they find out.`);
+    return { ok: true };
+  }
+
+  /** T8, step 2: one boost per scheme while it is being prepared. */
+  boostScheme(characterId: string, schemeId: string, boost: SchemeBoost, accompliceId?: string): SubmitResult {
+    const s = this.schemes.get(schemeId);
     const reject = (reason: string): SubmitResult => {
-      this.log.push({ t: this.now(), type: "mischief_rejected", characterId, targetId, mischiefId, reason });
+      this.log.push({ t: this.now(), type: "scheme_rejected", characterId, schemeId, boost, ...(accompliceId ? { accompliceId } : {}), reason });
       return { ok: false, reason };
     };
-    if (this._state !== "active" || !this.accepting) return reject("session is not active");
-    if (this.finale !== "none") return reject("the finale has begun");
-    const def = this.content.mischief.get(mischiefId);
-    if (!def) return reject("unknown prank");
-    const actor = this.characters.get(characterId);
-    const target = this.characters.get(targetId);
-    if (!actor || actor.status !== "active") return reject("you cannot play pranks now");
-    if (!target || target.status !== "active" || targetId === characterId) return reject("invalid target");
-    if (this.mischiefState(characterId).charges <= 0) return reject("no pranks left");
-    if (def.targetCondition && !evaluate(def.targetCondition, makeContext(this.world, {}, targetId))) return reject("this prank does not work on them");
-    // T2: nobody gets the same prank twice (it would be the same solo event again).
-    if (target.seen.has(def.event) || this.pending.some((p) => p.eventId === def.event && p.preset.victim?.[0] === targetId)) {
-      return reject("they already had this one");
+    if (this._state !== "active") return reject("session is not active");
+    if (!s || s.plotter !== characterId) return reject("unknown scheme");
+    if (s.state !== "preparing") return reject("it is already over");
+    if (s.boost) return reject("you already did something for this one");
+    if (boost === "accomplice") {
+      const a = accompliceId ? this.characters.get(accompliceId) : undefined;
+      if (!a || a.status !== "active" || a.id === characterId || a.id === s.targetId) return reject("invalid accomplice");
+      // Nobody is asked twice (T2: never the same solo event again).
+      const asked = a.seen.has(ACCOMPLICE_EVENT) || [...this.schemes.values()].some((x) => x.accomplice === a.id);
+      if (asked) return reject("they have already been asked once");
+    } else if (boost !== "cover" && boost !== "wait") return reject("unknown boost");
+    s.boost = boost;
+    this.log.push({ t: this.now(), type: "scheme_boost", characterId, schemeId, boost, ...(boost === "accomplice" ? { accompliceId } : {}) });
+    const target = this.char(s.targetId).name;
+    if (boost === "cover") {
+      s.risk = Math.round(s.risk * 50) / 100;
+      this.schemeNotice(s, `You cover your tracks. Risk of being found out: ${Math.round(s.risk * 100)} %.`);
+    } else if (boost === "wait") {
+      s.success = Math.min(0.95, Math.round((s.success + 0.15) * 100) / 100);
+      s.readyAt += 15 * MS;
+      this.timers.push(s.readyAt, { kind: "scheme", id: s.id });
+      this.schemeNotice(s, `You wait for the right moment, when ${target} is not looking. Chance it works: ${Math.round(s.success * 100)} %.`);
+    } else {
+      s.accomplice = accompliceId;
+      const ev = this.content.events.get(ACCOMPLICE_EVENT);
+      if (ev) {
+        const preset = { accomplice: [accompliceId as string], plotter: [characterId], target: [s.targetId] };
+        this.pending.push({ seq: ++this.pendingSeq, dueAt: this.now(), eventId: ev.id, preset, sourceInstanceId: s.id, sourceBindings: preset });
+        this.pending.sort((a, b) => a.dueAt - b.dueAt || a.seq - b.seq);
+        this.scheduleTick(this.now());
+      }
+      this.schemeNotice(s, `You ask ${this.char(accompliceId as string).name} to help you with ${target}. Now you wait for an answer.`);
     }
-    this.mischiefUsed.set(characterId, (this.mischiefUsed.get(characterId) ?? 0) + 1);
-    const [d0, d1] = def.delaySeconds === undefined ? [5, 15] : typeof def.delaySeconds === "number" ? [def.delaySeconds, def.delaySeconds] : def.delaySeconds;
-    const dueAt = this.now() + Math.round(this.rngChaos.range(d0, d1 + 1e-9) * MS);
-    const source = `M${++this.mischiefSeq}`;
-    const preset = { victim: [targetId], culprit: [characterId] };
-    this.pending.push({ seq: ++this.pendingSeq, dueAt, eventId: def.event, preset, sourceInstanceId: source, sourceBindings: preset });
-    this.pending.sort((a, b) => a.dueAt - b.dueAt || a.seq - b.seq);
-    this.scheduleTick(dueAt);
-    (this.tracking.get(characterId) as CharacterTracking).played.push({ mischief: def.label, on: targetId });
-    (this.tracking.get(targetId) as CharacterTracking).suffered.push({ mischief: def.label, by: characterId });
-    this.stats.followUpsScheduled++;
-    this.log.push({ t: this.now(), type: "mischief", characterId, targetId, mischiefId, dueAt });
     return { ok: true };
+  }
+
+  /** T8: the accomplice answered (the hidden accomplice event resolved). */
+  private onAccompliceAnswer(inst: Instance, outcomeId: string): void {
+    const s = inst.parentId ? this.schemes.get(inst.parentId) : undefined;
+    if (!s || s.state !== "preparing") return;
+    const answer: AccompliceAnswer = outcomeId === "helped" ? "helped" : outcomeId === "betrayed" ? "betrayed" : "refused";
+    s.accompliceAnswer = answer;
+    if (answer === "helped") s.success = Math.min(0.95, Math.round((s.success + 0.25) * 100) / 100);
+    const a = this.char(s.accomplice as string).name;
+    this.schemeNotice(
+      s,
+      answer === "helped"
+        ? `${a} is in. Chance it works: ${Math.round(s.success * 100)} %.`
+        : answer === "betrayed"
+          ? `${a} said yes… and then went straight to ${this.char(s.targetId).name}.`
+          : `${a} wants nothing to do with it.`,
+    );
+  }
+
+  /** T8, step 3: the scheme is carried out. */
+  private onScheme(id: string): void {
+    const s = this.schemes.get(id);
+    if (!s || s.state !== "preparing" || this.now() < s.readyAt) return; // a stale timer (the scheme waited)
+    const def = this.content.mischief.get(s.mischiefId)!;
+    const plotter = this.char(s.plotter);
+    const target = this.char(s.targetId);
+    s.state = "done";
+    if (plotter.status !== "active" || target.status !== "active" || this.finale !== "none" || !this.accepting) {
+      s.result = "failed";
+      this.schemeNotice(s, `Your plan against ${target.name} never happened. Life got in the way.`);
+      return;
+    }
+    const worked = this.rngChaos.chance(s.success);
+    const discovered = s.accompliceAnswer === "betrayed" || this.rngChaos.chance(s.risk);
+    s.result = worked ? "worked" : "failed";
+    s.discovered = discovered;
+    if (discovered) target.facts.add(factKey("spotted", s.plotter));
+    this.log.push({ t: this.now(), type: "scheme_result", schemeId: s.id, characterId: s.plotter, targetId: s.targetId, result: s.result, discovered });
+    (this.tracking.get(s.plotter) as CharacterTracking).played.push({
+      mischief: def.label,
+      on: s.targetId,
+      result: s.result,
+      ...(s.boost ? { boost: s.boost } : {}),
+      ...(s.accomplice ? { accomplice: s.accomplice } : {}),
+      ...(s.accompliceAnswer ? { accompliceAnswer: s.accompliceAnswer } : {}),
+    });
+    if (worked || discovered) (this.tracking.get(s.targetId) as CharacterTracking).suffered.push({ mischief: def.label, by: s.plotter, discovered });
+    // The victim's event: the prank itself, or (if it failed but they caught you) being caught at it.
+    const eventId = worked ? def.event : discovered ? CAUGHT_EVENT : null;
+    if (eventId && this.content.events.has(eventId)) {
+      const [d0, d1] = def.delaySeconds === undefined ? [5, 15] : typeof def.delaySeconds === "number" ? [def.delaySeconds, def.delaySeconds] : def.delaySeconds;
+      const dueAt = this.now() + Math.round(this.rngChaos.range(Math.min(d0, 4), Math.min(d1, 8) + 1e-9) * MS);
+      const preset = { victim: [s.targetId], culprit: [s.plotter] };
+      this.pending.push({ seq: ++this.pendingSeq, dueAt, eventId, preset, sourceInstanceId: s.id, sourceBindings: preset });
+      this.pending.sort((a, b) => a.dueAt - b.dueAt || a.seq - b.seq);
+      this.scheduleTick(dueAt);
+      this.stats.followUpsScheduled++;
+    }
+    this.schemeNotice(
+      s,
+      worked && !discovered
+        ? `"${def.label}": it worked, and nobody saw a thing.`
+        : worked
+          ? `"${def.label}": it worked… but ${target.name} saw you.`
+          : discovered
+            ? `"${def.label}" went wrong, and ${target.name} caught you at it.`
+            : `"${def.label}" did not work out. At least nobody noticed.`,
+    );
+  }
+
+  private schemeView(s: Scheme): SchemeView {
+    const { plotter: _p, ...view } = s;
+    return { ...view };
+  }
+
+  private schemeNotice(s: Scheme, text: string): void {
+    this.onNotice(s.plotter, { kind: "scheme", t: this.now(), scheme: this.schemeView(s), text });
   }
 
   private age(id: string): number {
@@ -1337,6 +1538,7 @@ export class Session {
       participants,
       publicText: this.interpolate(inst.ev.text.public, inst.bindings),
       place: inst.place.placeId ? (({ id, name, kind }) => ({ id, name, kind }))(this.content.map.place(inst.place.placeId)!) : null,
+      ...this.clueFor(inst, characterId),
       tile: [...inst.place.tile] as TilePos,
       ...(privateText ? { privateText: this.interpolate(privateText, inst.bindings) } : {}),
       choices: structuredClone(inst.offered.get(characterId) ?? []),
@@ -1358,6 +1560,16 @@ export class Session {
       offer,
       mischief: this.mischiefState(characterId),
     };
+  }
+
+  /** T8: a victim who caught the culprit sees what gave them away. */
+  private clueFor(inst: Instance, characterId: string): { clue?: string } {
+    if (inst.roleOf.get(characterId) !== "victim") return {};
+    const culprit = inst.bindings.culprit?.[0];
+    if (!culprit || !this.char(characterId).facts.has(factKey("spotted", culprit))) return {};
+    const def = [...this.content.mischief.values()].find((m) => m.event === inst.ev.id);
+    const clue = def?.clue ?? "You caught {culprit} at it.";
+    return { clue: this.interpolate(clue, inst.bindings) };
   }
 
   /** Everyone else, with the viewer's relationship to them. */
@@ -1521,6 +1733,9 @@ export class Session {
     }
     this.stats.eventsResolved++;
     this.log.push({ t: this.now(), type: "event_resolved", instanceId: inst.id, eventId: ev.id, outcomeId: outcome.id, changes });
+    // T8: the accomplice answered; and a victim who caught their culprit only "sees" them in this event.
+    if (ev.id === ACCOMPLICE_EVENT) this.onAccompliceAnswer(inst, outcome.id);
+    for (const v of inst.bindings.victim ?? []) for (const c of inst.bindings.culprit ?? []) this.char(v).facts.delete(factKey("spotted", c));
 
     // 6. Tracking for the Life Recap, notices, and freeing the participants.
     const important = outcome.important === true || ev.importance === "important";

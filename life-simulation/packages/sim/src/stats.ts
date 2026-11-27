@@ -40,6 +40,8 @@ export interface BatchStats {
   knownShare: number;
   /** T2: share of event instances with at least two characters deciding. */
   multiDeciderShare: number;
+  /** T8: schemes — planned, worked, found out, boosts, accomplice answers, revenge planned by victims. */
+  schemes: { planned: number; worked: number; discovered: number; boosts: Counter; accomplice: Counter; revenge: number; caughtOutcomes: Counter };
   /** T7b: share of characters with at least one real tie (partner, friend, family, rival, enemy, a debt) before the finale. */
   tiedShare: number;
   /** T7b: share of sessions in which these events happen. */
@@ -81,6 +83,7 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
     soloPerCharacter: 0,
     moodShare: {},
     tiedShare: 0,
+    schemes: { planned: 0, worked: 0, discovered: 0, boosts: {}, accomplice: {}, revenge: 0, caughtOutcomes: {} },
     sessionsWith: {},
     soloRepeats: {},
     followUps: { scheduled: 0, activated: 0, dropped: {} },
@@ -143,6 +146,18 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
       }
     }
     for (const id of endOf.keys()) if ((ties.get(id)?.size ?? 0) > 0) tied++;
+    for (const e of result.log) {
+      if (e.type === "mischief") s.schemes.planned++;
+      else if (e.type === "scheme_boost") inc(s.schemes.boosts, e.boost);
+      else if (e.type === "scheme_result") {
+        if (e.result === "worked") s.schemes.worked++;
+        if (e.discovered) s.schemes.discovered++;
+      } else if (e.type === "event_resolved" && e.eventId === "scheme_accomplice") inc(s.schemes.accomplice, e.outcomeId);
+      else if (e.type === "event_resolved" && (e.eventId.startsWith("mischief_") || e.eventId === "scheme_caught") && ["confronted", "reported", "revenge_planned"].includes(e.outcomeId)) {
+        inc(s.schemes.caughtOutcomes, e.outcomeId);
+        if (e.outcomeId === "revenge_planned") s.schemes.revenge++;
+      }
+    }
     const seenEvents = new Set(result.log.flatMap((e) => (e.type === "event_started" ? [e.eventId] : [])));
     for (const id of seenEvents) inc(s.sessionsWith, id);
     const archetypeOf = new Map(bots.map((b) => [b.characterId, b.controller.profile.archetype]));
@@ -294,6 +309,7 @@ export function formatReport(s: BatchStats, title = "Simulation report"): string
     `| Death rate | ${pct(s.deathRate)} of characters, ${pct(s.sessionsWithDeath / Math.max(1, s.sessions))} of sessions |`,
     `| Event repetition | ${pct(s.repetitionRate)} of a character's events repeat a template |`,
     `| Shared events | ${pct(s.sharedShare)} of a character's events have someone else deciding too; ${pct(s.multiDeciderShare)} of events have ≥ 2 deciders; ${pct(s.knownShare)} of shared events are with someone they have a relationship with |`,
+    `| Schemes | ${(s.schemes.planned / Math.max(1, s.sessions)).toFixed(1)} per session; ${pct(s.schemes.worked / Math.max(1, s.schemes.planned))} worked, ${pct(s.schemes.discovered / Math.max(1, s.schemes.planned))} found out; boosts: ${top(s.schemes.boosts).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}; accomplices: ${top(s.schemes.accomplice).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}; caught culprits: ${top(s.schemes.caughtOutcomes).map(([k, v]) => `${k} ${v}`).join(", ") || "none"} |`,
     `| Real ties before the finale | ${pct(s.tiedShare)} of characters have a partner, friend, family, rival, enemy or debt |`,
     `| Relationship events | ${["relationships_first_date", "relationships_jealousy", "relationships_crisis_talk", "financial_loan_due"].map((id) => `${id.replace(/^[a-z]+_/, "")} in ${pct(s.sessionsWith[id] ?? 0)} of sessions`).join(", ")} |`,
     `| Moods (share of time) | ${top(s.moodShare, 10).map(([k, v]) => `${k} ${pct(v)}`).join(", ")} |`,

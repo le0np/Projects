@@ -8,7 +8,10 @@
       "delaySeconds": [
         8,
         20
-      ]
+      ],
+      "success": 0.75,
+      "risk": 0.3,
+      "clue": "Two people at the café went quiet when you walked in. One of them was {culprit}."
     },
     {
       "id": "complaint",
@@ -21,7 +24,10 @@
       ],
       "targetCondition": {
         "fact": "employed"
-      }
+      },
+      "success": 0.7,
+      "risk": 0.25,
+      "clue": "The complaint mentions things only {culprit} could know."
     },
     {
       "id": "flat_tyres",
@@ -31,7 +37,10 @@
       "delaySeconds": [
         6,
         15
-      ]
+      ],
+      "success": 0.8,
+      "risk": 0.35,
+      "clue": "Your neighbour's camera shows {culprit} crouching by your car."
     },
     {
       "id": "stolen_credit",
@@ -44,7 +53,58 @@
       ],
       "targetCondition": {
         "fact": "employed"
-      }
+      },
+      "success": 0.65,
+      "risk": 0.35,
+      "clue": "Your notes were on {culprit}'s desk this morning."
+    },
+    {
+      "id": "fake_news",
+      "label": "Publish a fake story",
+      "description": "A small, anonymous article. Nobody checks sources anyway.",
+      "event": "mischief_fake_news",
+      "delaySeconds": [
+        5,
+        12
+      ],
+      "careers": [
+        "journalist"
+      ],
+      "success": 0.6,
+      "risk": 0.3,
+      "clue": "The \"anonymous\" article uses {culprit}'s favourite phrase."
+    },
+    {
+      "id": "dodgy_repair",
+      "label": "\"Fix\" their car",
+      "description": "A quick favour at the garage. A slow leak for them.",
+      "event": "mischief_dodgy_repair",
+      "delaySeconds": [
+        5,
+        12
+      ],
+      "careers": [
+        "mechanic"
+      ],
+      "success": 0.65,
+      "risk": 0.25,
+      "clue": "The garage receipt has {culprit}'s signature on it."
+    },
+    {
+      "id": "fake_lawsuit",
+      "label": "Send a fake lawsuit",
+      "description": "Very official paper. Very scary. Very fake.",
+      "event": "mischief_fake_lawsuit",
+      "delaySeconds": [
+        5,
+        12
+      ],
+      "careers": [
+        "lawyer"
+      ],
+      "success": 0.6,
+      "risk": 0.3,
+      "clue": "The \"law firm\" on the letterhead is {culprit}'s home address."
     }
   ]
 }

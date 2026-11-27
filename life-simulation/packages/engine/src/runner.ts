@@ -2,7 +2,7 @@
  * Runs a whole session in virtual time with synchronous controllers.
  * Used by tests and the simulator; the multiplayer server will drive `Session` with a real clock instead.
  */
-import { Rng, TimerQueue, VirtualClock, type CharacterView, type Controller, type Decision, type Notice } from "@lifesim/core";
+import { Rng, TimerQueue, VirtualClock, type CharacterView, type Controller, type Decision, type Notice, type SchemeBoost } from "@lifesim/core";
 import type { ContentBundle } from "@lifesim/content";
 import { resolveConfig, type SessionConfig } from "./config";
 import { Session, type ParticipantSpec, type PublicEntry, type SessionResult } from "./session";
@@ -23,11 +23,14 @@ export interface RunOptions {
   onPublic?: (entry: PublicEntry) => void;
   /** Pranks to play at fixed times (replays). */
   mischief?: { t: number; characterId: string; mischiefId: string; targetId: string }[];
+  /** T8: scheme boosts at fixed times (replays). */
+  boosts?: { t: number; characterId: string; schemeId: string; boost: SchemeBoost; accompliceId?: string }[];
 }
 
 type Submission =
   | { kind: "decision"; characterId: string; instanceId: string; choiceId: string }
-  | { kind: "mischief"; characterId: string; mischiefId: string; targetId: string };
+  | { kind: "mischief"; characterId: string; mischiefId: string; targetId: string }
+  | { kind: "boost"; characterId: string; schemeId: string; boost: SchemeBoost; accompliceId?: string };
 
 export function runSession(opts: RunOptions): SessionResult {
   const clock = new VirtualClock();
@@ -37,6 +40,7 @@ export function runSession(opts: RunOptions): SessionResult {
   const controllers = new Map(opts.participants.map((p, i) => [ids[i] as string, p.controller]));
   const submissions = new TimerQueue<Submission>();
   for (const m of opts.mischief ?? []) submissions.push(m.t, { kind: "mischief", characterId: m.characterId, mischiefId: m.mischiefId, targetId: m.targetId });
+  for (const b of opts.boosts ?? []) submissions.push(b.t, { kind: "boost", ...b });
 
   session.onNotice = (characterId, notice) => {
     opts.onNotice?.(characterId, notice);
@@ -53,6 +57,10 @@ export function runSession(opts: RunOptions): SessionResult {
           choiceId: d.choiceId,
         });
       }
+    }
+    if (notice.kind === "scheme" && ctrl.planBoost) {
+      const plan = ctrl.planBoost(notice);
+      if (plan) submissions.push(clock.now() + 800, { kind: "boost", characterId, ...plan });
     }
     if (notice.kind === "resolved" && ctrl.planMischief) {
       const plan = ctrl.planMischief();
@@ -74,6 +82,7 @@ export function runSession(opts: RunOptions): SessionResult {
     // Decisions arriving exactly at a deadline still count.
     for (const s of submissions.popDue(t)) {
       if (s.kind === "decision") session.submitDecision(s.characterId, s.instanceId, s.choiceId);
+      else if (s.kind === "boost") session.boostScheme(s.characterId, s.schemeId, s.boost, s.accompliceId);
       else session.mischief(s.characterId, s.mischiefId, s.targetId);
     }
     session.processTimers();

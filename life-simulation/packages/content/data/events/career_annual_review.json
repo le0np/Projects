@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "career_annual_review",
-  "version": 2,
+  "version": 3,
   "title": "The Annual Review",
   "category": "career",
   "trigger": "director",
@@ -111,6 +111,46 @@
           "ignore"
         ],
         "default": true
+      },
+      {
+        "id": "leverage",
+        "label": "Remind {employee} what you know about them",
+        "tags": [
+          "threaten"
+        ],
+        "condition": {
+          "fact": "knows_secret",
+          "about": "role:employee"
+        },
+        "perceived": {
+          "career": 1,
+          "relation": {
+            "employee": -2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "role:employee",
+            "delta": {
+              "reputation": -4,
+              "mental": -6
+            }
+          },
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": 3
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:employee",
+            "affinity": -10
+          }
+        ]
       }
     ]
   },

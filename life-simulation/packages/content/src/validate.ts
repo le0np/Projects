@@ -278,7 +278,11 @@ export function validateContent(raw: RawContent): ValidationResult {
         if (culprit.aware !== false) report("error", `${path}.event`, "the culprit role must be unaware (the prank stays secret)");
       }
       if (ev.trigger !== "followup_only" || !ev.hidden) report("error", `${path}.event`, `"${m.event}" must be followup_only and hidden`);
+      for (const id of m.careers ?? []) if (!reg.careers.has(id)) report("error", `${path}.careers`, `unknown career "${id}"`);
     });
+    // T8: the scheme machinery starts these itself, and sets "spotted" when a victim catches the culprit.
+    for (const id of ["scheme_accomplice", "scheme_caught"]) if (reg.events.has(id)) reg.followUpTargets.add(id);
+    reg.factsSet.add("spotted");
   }
 
   // --- global checks

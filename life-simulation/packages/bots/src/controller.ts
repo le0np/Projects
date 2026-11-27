@@ -2,7 +2,7 @@
  * Rule-based bot (BOT_SYSTEM §2, §6): reads the view, scores choices,
  * applies controlled randomness, and submits through the same interface as a human.
  */
-import type { CharacterView, Controller, Decision, Notice, Rng } from "@lifesim/core";
+import type { CharacterView, Controller, Decision, Notice, Rng, SchemeBoost } from "@lifesim/core";
 import { BotMemory } from "./memory";
 import { TARGETED_MOTIVES, type BotProfile } from "./personality";
 import { DEFAULT_WEIGHTS, scoreChoices, softmax, type ChoiceScore, type ScoringWeights } from "./scoring";
@@ -78,6 +78,22 @@ export class BotController implements Controller {
     this.pranked.add(`${mischiefId}|${targetId}`);
     this.playedSinceView++;
     return { mischiefId, targetId };
+  }
+
+  /**
+   * T8: one boost per scheme, by personality: cautious bots cover their tracks, bots with a good
+   * friend (or colleague) ask them for help, the rest wait for the right moment.
+   */
+  planBoost(notice: Extract<Notice, { kind: "scheme" }>): { schemeId: string; boost: SchemeBoost; accompliceId?: string } | null {
+    const s = notice.scheme;
+    if (s.state !== "preparing" || s.boost) return null;
+    const p = this.profile.personality;
+    if (p.caution >= 60) return { schemeId: s.id, boost: "cover" };
+    const friend = (this.lastView?.others ?? [])
+      .filter((o) => o.status === "active" && o.id !== s.targetId && o.relation.affinity >= 20)
+      .sort((a, b) => b.relation.affinity - a.relation.affinity || a.id.localeCompare(b.id))[0];
+    if (friend && p.trusting >= 40) return { schemeId: s.id, boost: "accomplice", accompliceId: friend.id };
+    return { schemeId: s.id, boost: "wait" };
   }
 
   /** Free time follows personality: impulsive and aggressive → bar, cautious → home/park, social → café. */

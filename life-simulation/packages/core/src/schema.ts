@@ -363,6 +363,13 @@ export const MischiefSchema = z.strictObject({
   delaySeconds: Delay.optional(),
   /** Who can be targeted, evaluated with `self` = the target. */
   targetCondition: ConditionSchema.optional(),
+  /** T8: base chance that the scheme works, and that the target finds out who did it. */
+  success: Probability.default(0.7),
+  risk: Probability.default(0.3),
+  /** T8: career schemes can only be planned by these careers (and they are good at them). */
+  careers: z.array(Id).min(1).optional(),
+  /** T8: what the target noticed when they find out (`{culprit}` is replaced), shown with the event. */
+  clue: NonEmptyText.optional(),
 });
 export type Mischief = z.infer<typeof MischiefSchema>;
 export const MischiefFileSchema = z.strictObject({ mischief: z.array(MischiefSchema) });

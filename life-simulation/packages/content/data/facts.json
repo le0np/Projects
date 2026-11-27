@@ -106,6 +106,16 @@
       "key": "blackout",
       "scope": "session",
       "description": "The town has no electricity."
+    },
+    {
+      "key": "spotted",
+      "scope": "pair",
+      "description": "T8: this character caught the other one behind a scheme against them (only for the event that follows)."
+    },
+    {
+      "key": "revenge_on",
+      "scope": "pair",
+      "description": "T8: this character may plan one free scheme against the other one."
     }
   ]
 }
