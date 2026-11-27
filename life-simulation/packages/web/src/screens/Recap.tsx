@@ -113,6 +113,18 @@ export function RecapView({ recap }: { recap: LifeRecap }) {
           </ul>
         </>
       )}
+      {recap.goals && recap.goals.length > 0 && (
+        <>
+          <h2>Your goals</h2>
+          <ul className="plain goals-recap">
+            {recap.goals.map((g) => (
+              <li key={g.id} className={g.done ? "good" : "bad"}>
+                {g.done ? "✓" : "✗"} {g.label}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {recap.oracle && recap.oracle.guesses > 0 && (
         <p className="oracle">
           {recap.oracle.correct >= 3 ? "🔮 Town Oracle: " : "Guesses about other people: "}

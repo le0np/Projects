@@ -110,6 +110,15 @@ export interface MischiefState {
   revengeOn?: string[];
 }
 
+/** T10: a personal goal as its owner sees it during the session. */
+export interface GoalView {
+  id: string;
+  label: string;
+  mode: "ever" | "end" | "never";
+  /** "done" for "end" goals is provisional until the end; "broken"/"failed" are final. */
+  state: "open" | "done" | "broken";
+}
+
 export type SchemeBoost = "cover" | "wait" | "accomplice";
 export type AccompliceAnswer = "helped" | "refused" | "betrayed";
 export type SchemeResult = "worked" | "failed";
@@ -149,6 +158,8 @@ export type Reaction = "joy" | "angry" | "sad" | "shock" | "neutral";
 /** Messages the engine sends to one character. */
 export type Notice =
   | { kind: "event"; t: number; view: CharacterView }
+  /** T10: your goals changed (one reached, one broken). */
+  | { kind: "goals"; t: number; goals: GoalView[] }
   /** T9: someone else is deciding right now; you may guess what they will do. */
   | { kind: "guessable"; t: number; instanceId: string; title: string; deciderId: string; name: string; choices: { id: string; label: string }[]; deadlineAt: number }
   /** T9: how your guess turned out. */
@@ -234,6 +245,8 @@ export interface LifeRecap {
     played: { mischief: string; on: string; result?: SchemeResult; boost?: SchemeBoost; accomplice?: string; accompliceAnswer?: AccompliceAnswer }[];
     suffered: { mischief: string; by: string; discovered?: boolean }[];
   };
+  /** T10: the two personal goals and whether they were reached. */
+  goals: { id: string; label: string; done: boolean }[];
   /** T9: guesses about other people's decisions while waiting. */
   oracle: { guesses: number; correct: number };
   /** Internal balancing metric; not shown to players as a "win". */

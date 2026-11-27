@@ -1,5 +1,6 @@
 /** Life Recap (GDD §9): derived at session end from character state and tracked history. */
-import { ATTRIBUTES, type Fact, type KeyMoment, type LifeRecap, type OutcomeTag, type RelationType } from "@lifesim/core";
+import { ATTRIBUTES, type Fact, type Goal, type KeyMoment, type LifeRecap, type OutcomeTag, type RelationType } from "@lifesim/core";
+import type { GoalTrack } from "./goals";
 import type { CharacterState, Relations } from "./state";
 
 export interface CharacterTracking {
@@ -10,6 +11,8 @@ export interface CharacterTracking {
   played: LifeRecap["secrets"]["played"];
   suffered: LifeRecap["secrets"]["suffered"];
   oracle: LifeRecap["oracle"];
+  goalTrack: GoalTrack;
+  goals: { goal: Goal; state: "open" | "done" | "broken" }[];
 }
 
 const POSITIVE = new Set<RelationType>(["friend", "partner", "family"]);
@@ -106,6 +109,7 @@ export function computeRecaps(input: {
         suffered: track.suffered.map((p) => ({ ...p, by: byId.get(p.by)?.name ?? p.by })),
       },
       oracle: { ...track.oracle },
+      goals: track.goals.map((g) => ({ id: g.goal.id, label: g.goal.label, done: g.state === "done" })),
       lifeScore,
     };
   });

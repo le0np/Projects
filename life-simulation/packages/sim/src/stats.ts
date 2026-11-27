@@ -42,6 +42,8 @@ export interface BatchStats {
   multiDeciderShare: number;
   /** T8: schemes — planned, worked, found out, boosts, accomplice answers, revenge planned by victims. */
   schemes: { planned: number; worked: number; discovered: number; boosts: Counter; accomplice: Counter; revenge: number; caughtOutcomes: Counter };
+  /** T10: per goal, how many lives had it and reached it. */
+  goals: Record<string, { n: number; done: number }>;
   /** T7b: share of characters with at least one real tie (partner, friend, family, rival, enemy, a debt) before the finale. */
   tiedShare: number;
   /** T7b: share of sessions in which these events happen. */
@@ -83,6 +85,7 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
     soloPerCharacter: 0,
     moodShare: {},
     tiedShare: 0,
+    goals: {},
     schemes: { planned: 0, worked: 0, discovered: 0, boosts: {}, accomplice: {}, revenge: 0, caughtOutcomes: {} },
     sessionsWith: {},
     soloRepeats: {},
@@ -246,6 +249,11 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
       inc(s.statusCounts, r.finalStatus);
       for (const t of r.outcomes) inc(s.outcomeTags, t);
       if (r.finalStatus === "dead") sessionDeaths++;
+      for (const g of r.goals ?? []) {
+        const x = (s.goals[g.id] ??= { n: 0, done: 0 });
+        x.n++;
+        if (g.done) x.done++;
+      }
       engagedSum += (busyMs.get(r.characterId) ?? 0) / Math.max(1, r.lifeDurationMs);
       lastActivitySum += (lastEnd.get(r.characterId) ?? 0) / 1000;
       const c = (s.career[r.career] ??= { n: 0, lifeScore: 0, deaths: 0, outcomes: {} });
@@ -319,6 +327,12 @@ export function formatReport(s: BatchStats, title = "Simulation report"): string
     `| Director found nothing | ${s.directorIdlePerSession.toFixed(0)} times per session |`,
     "",
   );
+  const goalRows = Object.entries(s.goals).sort((a, b) => b[1].done / b[1].n - a[1].done / a[1].n);
+  if (goalRows.length) {
+    lines.push("## Personal goals (T10)", "", "| Goal | Lives | Reached |", "| --- | --- | --- |");
+    for (const [id, g] of goalRows) lines.push(`| ${id} | ${g.n} | ${pct(g.done / g.n)} |`);
+    lines.push("");
+  }
   lines.push("## Final status and outcomes", "");
   lines.push(`Status: ${top(s.statusCounts, 10).map(([k, v]) => `${k} ${pct(v / s.characters)}`).join(", ")}`, "");
   lines.push(`Outcomes: ${top(s.outcomeTags, 20).map(([k, v]) => `${k} ${pct(v / s.characters)}`).join(", ")}`, "");

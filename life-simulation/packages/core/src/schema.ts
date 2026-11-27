@@ -372,4 +372,43 @@ export const MischiefSchema = z.strictObject({
   clue: NonEmptyText.optional(),
 });
 export type Mischief = z.infer<typeof MischiefSchema>;
+
+/**
+ * T10: personal goals for a session — about your own life, never against someone, never "live long".
+ * Each check is interpreted by the engine; the mode follows from the type:
+ * "ever" (done once reached), "end" (what counts is the state at the end), "never" (done unless broken).
+ */
+export const GoalCheckSchema = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("owed_money"), n: z.number().int().min(1) }),
+  z.strictObject({ type: z.literal("career_gain_before_age"), gain: z.number().int().min(1), age: z.number().int().min(19) }),
+  z.strictObject({ type: z.literal("stranger_to_friend") }),
+  z.strictObject({ type: z.literal("upheavals_unharmed"), minHealth: z.number().int().min(1).max(100) }),
+  z.strictObject({ type: z.literal("secret_scheme") }),
+  z.strictObject({ type: z.literal("partner") }),
+  z.strictObject({ type: z.literal("friends"), n: z.number().int().min(1) }),
+  z.strictObject({ type: z.literal("richer"), gain: z.number().int().min(1) }),
+  z.strictObject({ type: z.literal("attr_at_least"), attribute: z.enum(ATTRIBUTES), min: z.number().int().min(1).max(100) }),
+  z.strictObject({ type: z.literal("tag_count"), tag: z.enum(CHOICE_TAGS), n: z.number().int().min(1) }),
+  z.strictObject({ type: z.literal("never_tag"), tag: z.enum(CHOICE_TAGS) }),
+  z.strictObject({ type: z.literal("clean_record") }),
+  z.strictObject({ type: z.literal("oracle"), n: z.number().int().min(1) }),
+  z.strictObject({ type: z.literal("shared_events"), n: z.number().int().min(1) }),
+  z.strictObject({ type: z.literal("rival") }),
+  z.strictObject({ type: z.literal("saved_someone") }),
+  z.strictObject({ type: z.literal("caught_culprit") }),
+  z.strictObject({ type: z.literal("trusted"), min: z.number().int().min(1).max(100) }),
+  z.strictObject({ type: z.literal("met"), n: z.number().int().min(1) }),
+]);
+export type GoalCheck = z.infer<typeof GoalCheckSchema>;
+export const GoalSchema = z.strictObject({
+  id: Id,
+  label: NonEmptyText,
+  check: GoalCheckSchema,
+  /** Goals that do not go together in one life. */
+  conflicts: z.array(Id).optional(),
+  /** Only for human players (e.g. guessing, which bots do not do). */
+  humansOnly: z.boolean().optional(),
+});
+export type Goal = z.infer<typeof GoalSchema>;
+export const GoalsFileSchema = z.strictObject({ goals: z.array(GoalSchema) });
 export const MischiefFileSchema = z.strictObject({ mischief: z.array(MischiefSchema) });

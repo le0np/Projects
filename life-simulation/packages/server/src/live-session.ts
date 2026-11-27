@@ -182,6 +182,7 @@ export class LiveSession {
       positions: this.session.positions(),
       moods: this.session.moods(),
       marks: this.session.currentMarks(),
+      goals: seat ? this.session.goalsOf(seat.characterId) : [],
       // T5b R3: attributes, calendar and relationships (including starting ones) from the very first second.
       me: seat ? this.session.selfView(seat.characterId) : undefined,
       mischief: seat ? this.session.mischiefState(seat.characterId) : null,

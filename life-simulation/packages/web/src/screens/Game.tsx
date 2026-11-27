@@ -72,6 +72,15 @@ export function GameScreen({ game, connected, decide, playMischief, previewSchem
           <span className="muted">{finale ? "Finale" : `${clock(sessionTime)} / ${clock(game.durationSeconds * 1000)}`}</span>
         </div>
         {game.attrs && <Attributes attrs={game.attrs} />}
+        {game.goals.length > 0 && (
+          <ul className="goals" aria-label="Your goals for this life">
+            {game.goals.map((g) => (
+              <li key={g.id} className={`goal ${g.state}`} title={g.mode === "end" ? "Counts at the end" : g.mode === "never" ? "Reached unless you break it" : "Reached once you do it"}>
+                <span aria-hidden="true">{g.state === "done" ? "✓" : g.state === "broken" ? "✗" : "○"}</span> {g.label}
+              </li>
+            ))}
+          </ul>
+        )}
       </header>
 
       {game.upheaval && (
