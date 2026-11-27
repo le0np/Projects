@@ -195,3 +195,15 @@ describe("fairness", () => {
     }
   });
 });
+
+describe("T6: visible traits", () => {
+  it("every bot gets a readable trait, and they vary", async () => {
+    const { traitLabel, careerTrait, createBotProfile } = await import("../src");
+    const { Rng } = await import("@lifesim/core");
+    const rng = new Rng("traits");
+    const labels = new Set(Array.from({ length: 300 }, (_, i) => traitLabel(createBotProfile(rng.fork(`b${i}`)).personality)));
+    expect(labels.size).toBeGreaterThanOrEqual(12);
+    expect(careerTrait("journalist")).toBe("Nosy");
+    expect(careerTrait("unknown")).toBe("Newcomer");
+  });
+});

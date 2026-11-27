@@ -64,3 +64,30 @@ describe("T5: the event begins on the map", () => {
   });
 
 });
+
+describe("T6: moods and ties on the map", () => {
+  it("moods change after events and are published; everyone has one at any time", () => {
+    // Nobody answers: every event resolves with its defaults, which still changes people's moods.
+    const clock = new VirtualClock();
+    const session = new Session(content, resolveConfig({ seed: "t6" }), ["doctor", "teacher", "mechanic", "civilian"].map((career) => ({ career, isBot: true })), clock);
+    const moods: string[] = [];
+    session.onPublic = (e) => e.kind === "mood" && moods.push(e.mood);
+    session.start();
+    for (let i = 0; i < 3000 && session.state === "active"; i++) {
+      clock.advanceTo(session.nextWakeAt() ?? clock.now() + 1000);
+      session.processTimers();
+    }
+    expect(moods.length).toBeGreaterThan(5);
+    expect(new Set(moods).size).toBeGreaterThanOrEqual(3);
+    expect(session.moods()).toHaveLength(4);
+  });
+
+  it("debts show up as a tie between the two characters (both ways)", () => {
+    const { notices } = play("t6-debt");
+    const ties = notices.flatMap((x) => (x.n.kind === "resolved" ? (x.n.others ?? []).filter((o) => o.debt).map((o) => ({ viewer: x.id, other: o.id, debt: o.debt })) : []));
+    expect(ties.length).toBeGreaterThan(0);
+    // If A sees "you_owe" B, then B (at some point) sees "owes_you" A.
+    const t = ties.find((x) => x.debt === "you_owe");
+    if (t) expect(ties.some((x) => x.viewer === t.other && x.other === t.viewer && (x.debt === "owes_you" || x.debt === "both"))).toBe(true);
+  });
+});

@@ -8,7 +8,7 @@
  *   On reconnect the player receives the current offer and recent history (`snapshot`).
  */
 import { randomUUID } from "node:crypto";
-import { BotController, createBotProfile, type BotProfile } from "@lifesim/bots";
+import { BotController, careerTrait, createBotProfile, traitLabel, type BotProfile } from "@lifesim/bots";
 import { Rng, type Clock, type Notice, type OfferView } from "@lifesim/core";
 import type { ContentBundle } from "@lifesim/content";
 import { Session, humanPacing, resolveConfig, type LogEntry, type PublicEntry, type SessionConfig, type SessionResult, type SubmitResult } from "@lifesim/engine";
@@ -37,7 +37,7 @@ export class LiveSession {
   readonly session: Session;
   readonly humans = new Map<string, HumanSeat>(); // userId → seat
   readonly bots = new Map<string, BotController>(); // characterId → bot
-  readonly roster: { characterId: string; name: string; career: string; isBot: boolean; userId: string | null }[] = [];
+  readonly roster: { characterId: string; name: string; career: string; isBot: boolean; userId: string | null; trait: string }[] = [];
   readonly feed: PublicEntry[] = [];
   private readonly startedAtWall: number;
   private readonly timeScale: number;
@@ -100,7 +100,10 @@ export class LiveSession {
     if (started?.type === "session_started") {
       for (const c of started.characters) {
         const human = [...this.humans.values()].find((h) => h.characterId === c.id);
-        this.roster.push({ characterId: c.id, name: c.name, career: c.career, isBot: c.isBot, userId: human?.userId ?? null });
+        // T6: a visible trait next to the name (bots: personality; humans: career).
+        const bot = this.bots.get(c.id);
+        const trait = bot ? traitLabel(bot.profile.personality) : careerTrait(c.career);
+        this.roster.push({ characterId: c.id, name: c.name, career: c.career, isBot: c.isBot, userId: human?.userId ?? null, trait });
       }
     }
     for (const h of this.humans.values()) this.events.toUser(h.userId, "game:started", this.snapshot(h.userId));
@@ -138,6 +141,7 @@ export class LiveSession {
       timeScale: this.timeScale,
       roster: this.roster.map(({ userId: _u, ...r }) => r),
       positions: this.session.positions(),
+      moods: this.session.moods(),
       mischief: seat ? this.session.mischiefState(seat.characterId) : null,
       homes: this.roster.map((r) => ({ characterId: r.characterId, home: this.homeOf(r.characterId) })),
       pending: seat?.pending ?? null,

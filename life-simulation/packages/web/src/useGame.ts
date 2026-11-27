@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import type { Attribute, LifeRecap, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction } from "@lifesim/core";
+import type { Attribute, LifeRecap, Mood, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction } from "@lifesim/core";
 
 export type ComingEvent = Extract<Notice, { kind: "coming" }> & { receivedAt: number };
 
@@ -14,6 +14,7 @@ export type PublicEntry =
   | { kind: "season"; t: number; year: number; season: string }
   | { kind: "upheaval"; t: number; id: string; title: string; text: string; active: boolean }
   | { kind: "phase"; t: number; phase: "intro" | "growth" | "climax" | "respite" | "finale" }
+  | { kind: "mood"; t: number; characterId: string; mood: Mood }
   | { kind: "move"; t: number; characterId: string; from: [number, number]; path: [number, number][]; departAt: number; msPerTile: number; to: string | null };
 
 export interface Walk {
@@ -28,7 +29,8 @@ export interface Snapshot {
   sessionTime: number;
   durationSeconds: number;
   timeScale: number;
-  roster: { characterId: string; name: string; career: string; isBot: boolean }[];
+  roster: { characterId: string; name: string; career: string; isBot: boolean; trait?: string }[];
+  moods?: { characterId: string; mood: Mood }[];
   pending: OfferView | null;
   history: Notice[];
   feed: PublicEntry[];
@@ -60,6 +62,8 @@ export interface GameState {
   coming: ComingEvent | null;
   /** T5: wall-clock time each of your events was resolved (the reveal plays first, then the outcome). */
   resolvedWall: Record<string, number>;
+  /** T6: everyone's mood (emoji above their head). */
+  moods: Record<string, Mood>;
   /** T5: faces on the map right after an event, until `until` (wall clock). */
   reactions: Record<string, { reaction: Reaction; until: number }>;
   feed: PublicEntry[];
@@ -98,6 +102,7 @@ function stateFromSnapshot(s: Snapshot): GameState {
     submitted: null,
     history: s.history,
     coming: null,
+    moods: Object.fromEntries((s.moods ?? []).map((m) => [m.characterId, m.mood])),
     resolvedWall: {},
     reactions: {},
     feed: s.feed,
@@ -148,7 +153,9 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
       setGame((g) =>
         !g
           ? g
-          : entry.kind === "move" // positions feed the map, not the news list
+          : entry.kind === "mood" // moods feed the map, not the news list
+            ? { ...g, moods: { ...g.moods, [entry.characterId]: entry.mood } }
+            : entry.kind === "move" // positions feed the map, not the news list
             ? {
                 ...g,
                 walks: {

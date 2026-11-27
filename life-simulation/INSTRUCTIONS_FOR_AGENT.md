@@ -68,7 +68,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Na mobitelu kartica ostaje ispod mape, ali mapa se pomakne/zumira na mjesto eventa.
 - Nakon odluke: **istovremeno otkrivanje** svih izbora (sve karte se okrenu odjednom) i 2 s reakcije likova na mapi (lice, skok, ljutnja) prije nego se pokaže tekst ishoda.
 
-### [ ] T6. Raspoloženje i odnosi vidljivi na mapi
+### [x] T6. Raspoloženje i odnosi vidljivi na mapi
 - Iznad svakog lika emoji raspoloženja (sretan, ljut, tužan, zaljubljen, u dugovima…), izveden iz zadnjih promjena atributa i odnosa.
 - Linije odnosa od tvog lika prema drugima: prijatelj (zeleno), suparnik (crveno), dužnik/vjerovnik (žuto), partner (roza). Prikazuju se kad prijeđeš mišem/dodirneš lika ili kad ste zajedno u eventu.
 - Uz ime lika jedna osobina iz osobnosti bota/karijere („Gossip”, „Cheapskate”, „Hero complex”), da igrač može „čitati” likove.

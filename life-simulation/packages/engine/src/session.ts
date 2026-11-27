@@ -34,6 +34,7 @@ import {
   type OfferView,
   type ParticipantInfo,
   type Reaction,
+  type Mood,
   type VisibleChoice,
 } from "@lifesim/core";
 import type { ContentBundle } from "@lifesim/content";
@@ -58,6 +59,8 @@ export type PublicEntry =
   | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
   | { kind: "season"; t: number; year: number; season: string }
   | { kind: "upheaval"; t: number; id: string; title: string; text: string; active: boolean }
+  /** T6: someone's mood changed (an emoji above their head). */
+  | { kind: "mood"; t: number; characterId: string; mood: Mood }
   /** The tension curve moves on; `finale` also means everyone is about to gather (T3). */
   | { kind: "phase"; t: number; phase: StoryPhase }
   | { kind: "move"; t: number; characterId: string; from: TilePos; path: TilePos[]; departAt: number; msPerTile: number; to: string | null };
@@ -397,6 +400,7 @@ export class Session {
       this.onNotice(cid, { kind: "upheaval", t: this.now(), id: u.id, title: u.title, text: u.text, personal, selfChanges });
     }
     this.log.push({ t: this.now(), type: "upheaval_started", upheavalId: u.id, title: u.title, changes });
+    for (const cid of this.order) this.updateMood(cid, this.reaction(cid, changes), changes);
     this.onPublic({ kind: "upheaval", t: this.now(), id: u.id, title: u.title, text: u.text, active: true });
     for (const cid of this.order) {
       const c = this.char(cid);
@@ -1303,13 +1307,54 @@ export class Session {
 
   /** Everyone else, with the viewer's relationship to them. */
   private othersFor(characterId: string): CharacterView["others"] {
+    const me = this.char(characterId);
     return this.order
       .filter((id) => id !== characterId)
       .map((id) => {
         const o = this.char(id);
         const r = this.relations.get(characterId, id);
-        return { id, name: o.name, career: o.career.id, status: o.status, relation: { type: r.type, affinity: r.affinity, trust: r.trust } };
+        const youOwe = me.facts.has(factKey("owes_money", id));
+        const owesYou = o.facts.has(factKey("owes_money", characterId));
+        const debt = youOwe && owesYou ? "both" : youOwe ? "you_owe" : owesYou ? "owes_you" : undefined;
+        return { id, name: o.name, career: o.career.id, status: o.status, relation: { type: r.type, affinity: r.affinity, trust: r.trust }, ...(debt ? { debt } : {}) };
       });
+  }
+
+  /** T6: everyone's current mood (for (re)connecting clients). */
+  moods(): { characterId: string; mood: Mood }[] {
+    return this.order.map((id) => ({ characterId: id, mood: this.char(id).mood ?? "content" }));
+  }
+
+  /**
+   * T6: a lasting mood from the latest reaction and the character's situation. Strong news wins
+   * (shock, a new partner, a fight); otherwise the situation shows (debt, illness, stress).
+   */
+  private updateMood(id: string, reaction: Reaction | undefined, changes: readonly Change[]): void {
+    const c = this.char(id);
+    if (c.status !== "active") return;
+    const newPartner = changes.some((ch) => ch.kind === "relation" && ch.type === "partner" && (ch.from === id || ch.to === id));
+    const inDebt = [...c.facts].some((f) => f.startsWith("owes_money:"));
+    const mood: Mood =
+      reaction === "shock"
+        ? "shocked"
+        : newPartner
+          ? "in_love"
+          : reaction === "angry"
+            ? "angry"
+            : c.attrs.health < 30
+              ? "sick"
+              : inDebt
+                ? "in_debt"
+                : c.attrs.mental < 30
+                  ? "stressed"
+                  : reaction === "sad"
+                    ? "sad"
+                    : reaction === "joy"
+                      ? "happy"
+                      : (c.mood ?? "content");
+    if (mood === c.mood) return;
+    c.mood = mood;
+    this.onPublic({ kind: "mood", t: this.now(), characterId: id, mood });
   }
 
   // ================================================================== resolution
@@ -1383,6 +1428,7 @@ export class Session {
     // 6. Tracking for the Life Recap, notices, and freeing the participants.
     const important = outcome.important === true || ev.importance === "important";
     const reactionOf = (id: string) => this.reaction(id, changes);
+    for (const id of inst.participants) this.updateMood(id, reactionOf(id), changes);
     for (const id of inst.participants) {
       const c = this.char(id);
       const role = inst.roleOf.get(id) as string;

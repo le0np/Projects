@@ -71,6 +71,8 @@ export interface OtherCharacterView {
   status: Status;
   /** How THIS character feels about the other one (never the reverse). */
   relation: RelationSnapshot;
+  /** T6: money between you: they owe you, you owe them (relationship lines on the map). */
+  debt?: "owes_you" | "you_owe" | "both";
 }
 
 export interface CharacterView {
@@ -98,6 +100,9 @@ export interface RevealedChoice {
   label: string;
   tags: ChoiceTag[];
 }
+
+/** T6: how a character feels, shown as an emoji above their head on the map. */
+export type Mood = "content" | "happy" | "angry" | "sad" | "shocked" | "in_love" | "in_debt" | "sick" | "stressed";
 
 /** How someone visibly reacts to what just happened (T5: faces on the map before the outcome text). */
 export type Reaction = "joy" | "angry" | "sad" | "shock" | "neutral";

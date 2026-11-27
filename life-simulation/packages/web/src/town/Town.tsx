@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Attribute, Notice } from "@lifesim/core";
+import type { Attribute, Mood, Notice, OtherCharacterView } from "@lifesim/core";
 import { api } from "../api";
 import { ATTR_LABELS } from "../format";
 import type { GameState, Walk } from "../useGame";
@@ -40,14 +40,44 @@ export function useMapSize(): { width: number; height: number } | null {
   return size;
 }
 
+/** T6: mood emoji above a character's head ("content" shows nothing). */
+export const MOOD_EMOJI: Record<Mood, string> = {
+  content: "",
+  happy: "😄",
+  angry: "😠",
+  sad: "😢",
+  shocked: "😱",
+  in_love: "😍",
+  in_debt: "💸",
+  sick: "🤒",
+  stressed: "😩",
+};
+
+/** T6: the colour of the line between you and someone else. */
+export function tieColor(o: OtherCharacterView | undefined): string | null {
+  if (!o) return null;
+  if (o.relation.type === "partner") return "#e05a9b";
+  if (o.debt) return "#d9a400";
+  if (o.relation.type === "friend") return "#2c7a4b";
+  if (o.relation.type === "rival" || o.relation.type === "enemy") return "#b23b3b";
+  if (o.relation.type === "family") return "#7a5cc2";
+  if (o.relation.type === "colleague") return "#4a7bb0";
+  return null;
+}
+
 interface Floater {
   text: string;
   good: boolean;
   wall: number;
 }
 
-export function Town({ game }: { game: GameState }) {
+export function Town({ game, onSelect }: { game: GameState; onSelect?: (characterId: string | null) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  /** T6: who the pointer is over (relationship line + trait), and where everyone was drawn (CSS px). */
+  const hovered = useRef<string | null>(null);
+  const drawnAt = useRef(new Map<string, { x: number; y: number }>());
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
   const [map, setMap] = useState<MapData | null>(null);
   const gameRef = useRef(game);
   gameRef.current = game;
@@ -83,6 +113,36 @@ export function Town({ game }: { game: GameState }) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const dark = () => getComputedStyle(document.documentElement).colorScheme.includes("dark");
+
+    const hit = (e: PointerEvent): string | null => {
+      const rect = canvas.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      let best: string | null = null;
+      let bestD = 24;
+      for (const [id, p] of drawnAt.current) {
+        const d = Math.hypot(p.x - px, p.y - py);
+        if (d < bestD) {
+          best = id;
+          bestD = d;
+        }
+      }
+      return best;
+    };
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") hovered.current = hit(e);
+    };
+    const onLeave = () => {
+      hovered.current = null;
+    };
+    const onUp = (e: PointerEvent) => {
+      const id = hit(e);
+      hovered.current = id; // a tap shows the lines too
+      onSelectRef.current?.(id);
+    };
+    canvas.addEventListener("pointermove", onMove);
+    canvas.addEventListener("pointerleave", onLeave);
+    canvas.addEventListener("pointerup", onUp);
 
     let raf = 0;
     let lastFrame = -1;
@@ -130,6 +190,36 @@ export function Town({ game }: { game: GameState }) {
       const people = g.roster
         .map((r) => ({ r, at: placeOf(g.walks[r.characterId], t) }))
         .sort((a, b) => a.at.y - b.at.y);
+
+      // T6: lines from you to people you have a relationship with: the one under the pointer
+      // (all of them when it is you), and everyone in your current event.
+      const meAt = people.find((p) => p.r.characterId === g.characterId)?.at;
+      const h = hovered.current;
+      const lineTo = new Set<string>();
+      if (h && h === g.characterId) for (const o of g.others) lineTo.add(o.id);
+      else if (h) lineTo.add(h);
+      for (const p of g.pending?.participants ?? g.coming?.participants ?? []) lineTo.add(p.characterId);
+      if (meAt && !g.ended) {
+        for (const id of lineTo) {
+          if (id === g.characterId) continue;
+          const o = g.others.find((x) => x.id === id);
+          const col = tieColor(o);
+          const at = people.find((p) => p.r.characterId === id)?.at;
+          if (!col || !at || o?.status !== "active") continue;
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 3;
+          ctx.setLineDash(o?.debt && o.relation.type !== "partner" ? [6, 4] : []);
+          ctx.globalAlpha = 0.85;
+          ctx.beginPath();
+          ctx.moveTo(meAt.x * TILE + TILE / 2, meAt.y * TILE + TILE / 2);
+          ctx.lineTo(at.x * TILE + TILE / 2, at.y * TILE + TILE / 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 1;
+        }
+      }
+      const k = canvas.clientWidth / W;
+      drawnAt.current.clear();
       for (const { r, at } of people) {
         const other = g.others.find((o) => o.id === r.characterId);
         const mine = r.characterId === g.characterId;
@@ -157,9 +247,21 @@ export function Town({ game }: { game: GameState }) {
           age,
           gone,
         });
-        nameTag(ctx, cx, ground - 33, r.name, mine);
+        const showTrait = hovered.current === r.characterId && r.trait;
+        nameTag(ctx, cx, ground - 33, showTrait ? `${r.name} · ${r.trait}` : r.name, mine);
         if (inEvent && !gone) bubble(ctx, cx + 16, ground - 33, "!", "#c2502f");
+        const mood = gone ? "" : MOOD_EMOJI[g.moods[r.characterId] ?? "content"];
+        if (mood) {
+          ctx.font = "15px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(mood, cx, ground - 54);
+        }
+        drawnAt.current.set(r.characterId, { x: (cx * view.z + tx) * k, y: ((ground - 18) * view.z + ty) * k });
       }
+
+      // Where everyone is on screen (tests and assistive tooling use it; tiny and cheap at 8 fps).
+      canvas.dataset.people = JSON.stringify(Object.fromEntries([...drawnAt.current].map(([id, p]) => [id, [Math.round(p.x), Math.round(p.y)]])));
 
       // Floating attribute changes above your own head.
       const me = people.find((p) => p.r.characterId === g.characterId);
@@ -182,6 +284,9 @@ export function Town({ game }: { game: GameState }) {
     return () => {
       cancelAnimationFrame(raf);
       if (slow) clearInterval(slow);
+      canvas.removeEventListener("pointermove", onMove);
+      canvas.removeEventListener("pointerleave", onLeave);
+      canvas.removeEventListener("pointerup", onUp);
     };
   }, [map]);
 

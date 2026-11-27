@@ -132,6 +132,7 @@ export function GameScreen({ game, connected, decide, playMischief }: Props) {
                     <li key={r.characterId} className={o && o.status !== "active" ? "gone" : ""}>
                       <span>
                         {r.name} <span className="muted">· {careerName(r.career)}</span>
+                        {r.trait && <span className="trait">{r.trait}</span>}
                       </span>
                       <span className={`chip rel-${o?.relation.type ?? "stranger"}`}>
                         {o && o.status !== "active" ? o.status : RELATION_LABELS[o?.relation.type ?? "stranger"]}
@@ -140,6 +141,13 @@ export function GameScreen({ game, connected, decide, playMischief }: Props) {
                   );
                 })}
             </ul>
+            <p className="legend small muted" aria-label="Line colours on the map">
+              Hover or tap someone on the map:
+              <span className="tie" style={{ background: "#2c7a4b" }} /> friend
+              <span className="tie" style={{ background: "#b23b3b" }} /> rival
+              <span className="tie" style={{ background: "#d9a400" }} /> money
+              <span className="tie" style={{ background: "#e05a9b" }} /> partner
+            </p>
           </div>
           {game.mischief && !game.ended && <Pranks game={game} play={playMischief} />}
           <div className="card">

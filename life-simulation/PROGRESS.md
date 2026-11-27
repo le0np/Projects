@@ -433,6 +433,14 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **Nakon odluke:** 2,2 s **istovremenog otkrivanja**: kartice svih koji su odlučivali okrenu se odjednom (izbor se vidi ako ga ishod otkriva, inače „🤐 kept it to themselves”). U isto vrijeme likovi na mapi reagiraju: radost (skok, ruke gore), ljutnja (obrve u V, tresu se), tuga (suza), šok (velike oči, usta „O”). Tek onda dolazi tekst ishoda. Poruka `resolved` za to nosi `deciders` i `reactions`.
 - **Testovi:** `engine/test/sprint2.test.ts` (najava prije ponude na istom polju, `deciders` i `reactions`, javni eventi s poljem). Provjereno skriptom u browseru (desktop: 3 eventa, kartica ne prekriva sudionike, otkrivanje pa ishod; iPhone 13: zum i sheet), bez grešaka u konzoli.
 
+### T6: raspoloženje, odnosi i osobine na mapi (developer)
+
+- **Raspoloženje:** engine svakom liku vodi raspoloženje (`content`, `happy`, `angry`, `sad`, `shocked`, `in_love`, `in_debt`, `sick`, `stressed`) iz reakcije na zadnji event i stanja (novi partner, dug, zdravlje ispod 30, psiha ispod 30). Promjena se objavljuje javno (`{ kind: "mood" }`), a snapshot ima `moods`. Na mapi je emoji iznad imena (😄 😠 😢 😱 😍 💸 🤒 😩; za „content” ništa).
+- **Linije odnosa:** kad mišem prijeđeš preko lika (ili ga dodirneš), od tvog lika do njega ide linija u boji odnosa: prijatelj zeleno, suparnik/neprijatelj crveno, novac žuto (isprekidano), partner roza, obitelj ljubičasto, kolega plavo. Preko sebe vidiš linije do svih; za vrijeme zajedničkog eventa linije idu do sudionika. Legenda je u kartici „People”. `others` sada ima `debt` (`owes_you`, `you_owe`, `both`).
+- **Osobina uz ime:** botovi je dobiju iz osobnosti (najizraženija osobina, npr. „Cheapskate”, „Hothead”, „Gullible”, i kombinacije „Hero Complex” i „Gossip”; 21 oznaka, najčešća je 12 %), a ljudi iz karijere („Silver Tongue”, „Nosy”…). Prikazuje se u popisu „People” i u imenu na mapi kad prijeđeš preko lika.
+- Canvas ima `data-people` (pozicije likova na ekranu) za testove i za T9.
+- **Testovi:** engine (raspoloženja se mijenjaju i objavljuju, dug vidljiv s obje strane), bots (osobine se razlikuju). Provjereno u browseru: preko sebe plava linija do kolegice i crvena do neprijateljice, osobina u imenu, 😠 nakon ispuhanih guma.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 1, T1–T4):

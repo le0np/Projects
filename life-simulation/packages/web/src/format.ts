@@ -7,7 +7,8 @@ export type FeedEntry =
   | { kind: "upheaval"; active: boolean }
   | { kind: "phase"; phase: string }
   | { kind: "season" }
-  | { kind: "move" };
+  | { kind: "move" }
+  | { kind: "mood" };
 
 /**
  * B3: "Around town" is news, not a list of other people's errands: events with more than one person,

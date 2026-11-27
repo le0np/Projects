@@ -920,3 +920,26 @@ main.game {
     animation: none;
   }
 }
+
+/* ---------- T6: traits ---------- */
+.trait {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--private);
+  font-style: italic;
+}
+.town {
+  touch-action: manipulation;
+}
+.legend {
+  margin: 8px 0 0;
+  line-height: 1.8;
+}
+.tie {
+  display: inline-block;
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  margin: 0 3px 2px 8px;
+  vertical-align: middle;
+}

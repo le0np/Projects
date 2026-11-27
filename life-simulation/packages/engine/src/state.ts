@@ -5,6 +5,7 @@ import {
   type Attribute,
   type Career,
   type EventCategory,
+  type Mood,
   type RelationType,
   type Status,
 } from "@lifesim/core";
@@ -27,6 +28,8 @@ export interface CharacterState {
   /** Earliest time the director may give this character a new event. */
   availableAt: number;
   lastCategory?: EventCategory;
+  /** T6: how the character currently feels (shown above their head). */
+  mood?: Mood;
   eventsCompleted: number;
   /** Place ids of the character's home and workplace. */
   home: string;
