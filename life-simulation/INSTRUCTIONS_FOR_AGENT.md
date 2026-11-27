@@ -164,6 +164,12 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 - **27. 11. 2026. — T7 gotov** (`c69794c`). Efekt `mark` (+ validator, dokumentacija) i 8 vrsta tragova: zavoj, lisice (na liku); ispuhane gume, FOR SALE, cvijeće na grobu, srca (vjenčanje), razbijeni prozor (kod kuće); CLOSED (na poslu). Smrt/zatvor/bolnica ostave trag automatski. Tragovi su u 12 eventa; oni s vremenom nestaju sami. Za QA: najlakše se vide ispuhane gume (smicalica „Let their tyres down”), FOR SALE nakon „Panic Sale” i zavoj nakon nesreće/ozljede. Batch t7: smrtnost 5,3 %, replay identičan.
 - **27. 11. 2026. — T7b gotov** (`2600a33`). Batch 200 sesija (`docs/reports/t7b.report.md`, potvrđeno i na drugom seedu): **88 %** likova ima stvarnu vezu prije finala, **Jealousy 19 %**, **Crisis Talk 12,5 %** sesija (prije 0 % i 1 %). Kako: priče kao nastavci (First Date → Jealousy → Crisis Talk, kriza i nakon zaboravljene godišnjice/sumnje), sumnja ostaje i nakon „vjernog” ishoda, direktor **rezervira** sudionike nastavka dok se ostali ne oslobode, eventi koji stvaraju veze ×2 u ranim fazama, početni par u 40 % sesija. Batch izvještaj ima nove retke „Real ties” i „Relationship events”. Sljedeće: T6c, pa T8.
 - **27. 11. 2026. — T6c gotov** (`de93b0f`). `{witness} {witness|is|are} a few metres away` → „Maja and Ema are …”. Validator upozorava na „{višečlana uloga} is/has/was/does” (našao 4 teksta, ispravljeni); `card-fit.mjs` u `npm run e2e` traži „X and Y is” u svim popunjenim tekstovima: 0. Sljedeće: T8 (spletke).
+- **27. 11. 2026. — T8 gotov** (`e888b5b` engine, `ba1f259` sučelje).
+  - **Plan:** kartica „Schemes”: meta + spletka → odmah „75 % it works · 25 % they find out” (ovisi o spletki, karijeri, odnosu s metom, istom poslu).
+  - **Priprema** 30–60 s vremena sesije (1–2 godine): traka + krug iznad tvog lika; jedno pojačanje: „Cover your tracks” (rizik ×0,5), „Wait for the right moment” (+15 %), „Ask for help” (suučesnik dobije skriveni event: pomoći +25 % / odbiti / pristati pa upozoriti metu).
+  - **Izvršenje:** ako te uhvate, žrtva u kartici vidi „You noticed: …” i izbore suočiti se / prijaviti / **osveta** (besplatna spletka protiv tebe). Otkrivena tajna kasnije daje izbor „Remind X what you know” u 4 eventa.
+  - 3 spletke karijere (novinar, mehaničar, odvjetnik); botovi isto; Life Recap priča cijeli tok.
+  - Batch: 4,3 spletke po sesiji, 68 % uspije, 27 % otkriveno; replay identičan. **Za QA:** uz `TIME_SCALE=6` priprema traje 5–10 s; da vidiš stranu žrtve, najlakše je da te bot pogodi — botovi planiraju nakon svojih eventa.
 
 ## Dnevnik QA/PM
 
