@@ -189,6 +189,56 @@ Podloga: [`docs/research/market-research-2026-11-27.md`](docs/research/market-re
 
 Nakon Sprinta 4 (ako cilj „još jedna” ≥ 40 %): Discord Activity, način za streamere, paketi sadržaja, blagi način za portale.
 
+---
+
+## Sprint 5 — nova jezgra: „život u poglavljima” (odobrio vlasnik 27. 11. 2026.)
+
+**Odluke vlasnika:** prototip mu se sviđa (`prototype/index.html`), ali treba **više snova, mana i poslova**. Stalni ljudi su **varijanta A**: botovi s ručno pisanom osobnošću, a pravi igrači mogu preuzeti neke od tih uloga. Prototip je referenca za osjećaj, tempo i ton. Kad nešto nije jasno, igra se ponaša kao prototip.
+
+Radi u dva dijela. **5a** ide prvo i završava vlasnikovim testom. **5b** počinje tek kad QA i vlasnik prihvate 5a.
+
+### Sprint 5a — prototip u pravoj igri (jedan igrač + botovi)
+
+### [ ] T20. Poglavlja umjesto stvarnog vremena
+- Novi način igre **„Life in chapters”** postaje zadani. Stari način (grad u stvarnom vremenu) ostaje u kodu, ali skriven (zastavica / env), ne briši ga.
+- Život ima 6 poglavlja (18, 21, 24, 27, 30, 33). U poglavljima 0–4 igrač **bira fokus** (3 karte), igra event za taj fokus, vidi „What changed” i sam klikne „Go to age …”. Poglavlje 5 je finale.
+- Prije fokusa, ako su na redu: otkrivanje tajne (automatski) i gradski preokret u poglavlju 3 (kao poplava u prototipu).
+- **Bez timera za odluke.** Samo zaštita od AFK-a kasnije u 5b.
+- Deterministički replay mora ostati identičan (bacanja iz seedanog `Rng`).
+
+### [ ] T21. Stvaranje lika i stalni ljudi
+- Igrač bira **ime, san, manu i posao**. Vlasnik traži više izbora:
+  - **6 snova:** Become famous, Get rich, Find true love, **Become mayor** (finale: izbori, glasovi stalnih ljudi i ugled), **Run your own business** (finale: otvaranje vlastitog posla, novac + razina posla + partner u poslu), **Start a family** (finale: veliki obiteljski ručak, partner + djeca + odnosi).
+  - **6 mana:** Coward, Can't keep a secret, Can't say no, **Hot-headed** (mirni izbori −20 %, ponekad se ljutiš umjesto njih), **Lazy** (izbori s puno truda −20 %), **Show-off** (skromni izbori teže, troši novac da impresionira).
+  - **10 poslova:** svih 10 postojećih karijera. Svaki ima 2 razine posla (npr. Junior doctor → Head of A&E) i **poseban izbor u barem 2 eventa** (stara „Your expertise” ideja).
+- **Stalni ljudi (varijanta A):** 3 uloge, **best friend**, **crush** i **rival**. Za svaku ulogu napiši barem 2 bot-lika s ručno pisanom osobnošću (Marko/Ana/Vera su prvi), da se životi razlikuju. Tekstovi eventa koriste ulogu (`{friend}`, `{crush}`, `{rival}`).
+
+### [ ] T22. Mehanike iz prototipa
+- **Izgledi + bacanje** s modifikatorima mana; oznake izbora `brave`, `lie`, `refuse`, `effort`, `calm`, `modest`.
+- **„What changed”** nakon svake odluke (posao, kuća, partner, odnosi, tajne, brojke).
+- **Tajne s odbrojavanjem**: nastaju iz laži; kad dođe rok, automatski izlaze; fokus „Damage control” najviše 2× po životu.
+- **Odnosi sa stalnim ljudima** (−4…+4) s natpisima (Best friend … Enemy), i „cast decides”: prijatelj pomaže, uvrijeđeni uzvraća.
+- **Stanje života:** razina posla, dom, partner, brak, djeca, novac, ugled, slava.
+- **Finale prema snu** s izgledima zbrojenim iz cijelog života i **popisom razloga**.
+- **Recap:** titula (postojeći T11 sustav, nove titule po snu), red emojija po poglavljima, „Your life” (ključni trenuci), ljudi (pomogao/povrijedio), „Copy my life”.
+
+### [ ] T23. Sadržaj za 5a
+- Prenesi 11 eventa iz prototipa + Revenge + Damage control + poplavu + finala, **uz isti ton i poante**. Prototip je stilski vodič: konkretni apsurdni detalji, svaki ishod ima poantu, nikad „You feel happy”.
+- Dodaj toliko eventa da **svaki od 6 snova ima barem 2 eventa koji ga hrane** i da **svaka mana barem jednom promijeni ishod tekstom**, ne samo postotkom.
+- Validator: novi tagovi, uloge, rokovi tajni, finala za svih 6 snova.
+
+### [ ] T24. Sučelje 5a
+- Ekran kao u prototipu: **ploča života** (lik, san, mana, posao, dom, partner, novac, slava, ugled, crta vremena s emojijima, 3 stalna lika s odnosom, tajne s odbrojavanjem), **karte fokusa**, **event**, **bacanje**, **ishod s „What changed”**.
+- Mapa grada smije ostati kao mala pozadina ili se sakriti; u 5a nije potrebna.
+- Mobitel i desktop, bez horizontalnog skrolanja; e2e za cijeli život.
+
+**Prihvaćeno kad (QA):** solo život traje 6–10 min; nijedan event se ne ponavlja u istom životu; u 50 bot-života svaki san uspije u 25–65 % slučajeva; svaki život ima barem 2 „povratna poziva” (raniji izbor spomenut kasnije); `npm run check` i `npm run e2e` prolaze. **Na kraju vlasnik igra i daje sud.**
+
+### Sprint 5b — više igrača i više sadržaja (tek nakon prihvaćenog 5a)
+- **T25:** zajednički potez za 1–4 čovjeka u postojećim sobama (T14/T15): svi biraju fokus istovremeno, poglavlje završava kad svi završe, „Meanwhile” pokazuje što su drugi odabrali (bez tajni), AFK zaštita 90 s.
+- **T26:** pravi igrač preuzima ulogu (friend/crush/rival) drugog igrača; „cast decides” postaje njegova mala kartica u sljedećem potezu, a ako ne odgovori, odlučuje odnos.
+- **T27:** sadržaj do 40–60 eventa, spletke kao fokus „Revenge”, balans.
+
 ## Pitanja za QA/PM
 
 _(developer piše ovdje)_
@@ -212,6 +262,8 @@ _(developer piše ovdje)_
   - **Kako provjeriti brzo:** napravio bih vertikalni prototip (5 godina: fokus → event → posljedica → povratni poziv) s 10–15 novih eventa, uz postojeći engine (deterministički replay ostaje) i bez brisanja postojećeg. Vlasnik ga odigra i usporedi sa sadašnjom igrom. Čekam vašu odluku.
 
 ## Odgovori QA/PM
+
+- **27. 11. 2026. — Vlasnik: prototip mu se sviđa, treba više snova, mana i poslova; uloge: varijanta A.** Napisan je **Sprint 5** (iznad). Kreni sa **5a (T20–T24)**. 5b čeka prihvaćanje 5a. Tvoj prijedlog „isti prototip u engineu” je točno 5a, uz proširenje na 6 snova, 6 mana i 10 poslova.
 
 - **27. 11. 2026. — QA/PM na pregled prototipa:** odličan pregled, slažem se s procjenom i s prijedlogom prvog zadatka (isti prototip u engineu, 1–4 igrača, botovi kao stalni likovi, 6 poglavlja, postojeće sobe). Tvoje pitanje o ulogama (stalni ljudi kao botovi s ručno pisanom osobnošću, a ljudi popunjavaju dio uloga) prosljeđujem vlasniku zajedno s njegovim sudom o prototipu. I dalje čekamo, kod ne mijenjaj.
 
@@ -300,3 +352,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 - **27. 11. 2026.** — Vlasnik je odobrio Sprint 4 (MVP za objavu, prema istraživanju tržišta). Napisani T14–T19. Redoslijed: T13, pa T14 → T19.
 - **27. 11. 2026.** — ⛔ Sprint 4 zaustavljen nakon vlasnikovog testa (3 partije: monotono, nema veze s likom, odluke bez utjecaja, bez humora i napetosti, prebrzo). Slijedi dogovor s vlasnikom o jezgri igre.
 - **27. 11. 2026. — T15 (gost) dovršen prije STOP-a** (`54a79ee`). „Play as guest” na početnom ekranu (samo ime); link sobe vodi ravno na „You are invited to room KX4P. What is your name?” → upis imena + „Join the room” (1 klik) → čekaonica. Gost je privremeni račun (`is_guest`, token u localStorage), može ga u lobbyju spremiti s korisničkim imenom, emailom i lozinkom i zadržava titule i povijest. Limit `GUESTS_PER_IP_PER_HOUR` (20) u memoriji. e2e `room.mjs`: prijatelj ulazi kao gost (izmjereno: 1 klik + ime), igra, pa spremi račun. `npm run check` 156/156, `npm run e2e` sve prolazi. Dalje ne radim ništa iz Sprinta 4 dok ne javite; prijedlozi za jezgru su u „Pitanja za QA/PM”.
+- **27. 11. 2026.** — Vlasnik prihvatio prototip (varijanta A za uloge, više snova/mana/poslova). Napisan Sprint 5: 5a (T20–T24, jezgra u engineu, solo + botovi) pa 5b (T25–T27, više igrača i sadržaj).
