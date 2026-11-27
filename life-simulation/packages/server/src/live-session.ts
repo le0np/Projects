@@ -46,6 +46,7 @@ export class LiveSession {
   /** Bot decisions waiting for their think time, per event: sent at once when every human has decided. */
   private readonly botPending = new Map<string, Map<string, { handle: NodeJS.Timeout; choiceId: string }>>();
   private logCursor = 0;
+  private readonly qaSchemeOnHuman: boolean;
   private finished = false;
 
   constructor(
@@ -53,9 +54,10 @@ export class LiveSession {
     config: Partial<SessionConfig>,
     seats: Seat[],
     private readonly events: LiveSessionEvents,
-    options: { timeScale?: number; seed?: string; paceScale?: number } = {},
+    options: { timeScale?: number; seed?: string; paceScale?: number; qaSchemeOnHuman?: boolean } = {},
   ) {
     this.timeScale = options.timeScale ?? 1;
+    this.qaSchemeOnHuman = options.qaSchemeOnHuman === true;
     this.startedAtWall = performance.now();
     const seed = options.seed ?? this.id;
     const clock: Clock = { now: () => (performance.now() - this.startedAtWall) * this.timeScale };
@@ -108,6 +110,18 @@ export class LiveSession {
     }
     for (const h of this.humans.values()) this.events.toUser(h.userId, "game:started", this.snapshot(h.userId));
     this.afterChange();
+    // T8b (QA only): a bot plots against the first human right away, so the victim's side can be seen.
+    const human = [...this.humans.values()][0];
+    const bot = [...this.bots.keys()][0];
+    if (this.qaSchemeOnHuman && human && bot) {
+      const handle = setTimeout(() => {
+        this.botTimers.delete(handle);
+        if (this.finished) return;
+        this.session.mischief(bot, "flat_tyres", human.characterId);
+        this.afterChange();
+      }, 2000);
+      this.botTimers.add(handle);
+    }
   }
 
   submit(userId: string, instanceId: string, choiceId: string): SubmitResult {

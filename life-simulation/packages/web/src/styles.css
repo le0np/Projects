@@ -1110,3 +1110,7 @@ main.game {
   font-weight: 600;
   color: var(--private);
 }
+.prank.used {
+  text-decoration: line-through;
+  opacity: 0.55;
+}

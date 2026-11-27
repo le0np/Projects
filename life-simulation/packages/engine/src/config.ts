@@ -44,6 +44,8 @@ export interface SessionConfig {
     followUpBoost: number;
     /** T8: how long a scheme is prepared before it is carried out (1–2 years of the life calendar). */
     schemePrepSeconds: [number, number];
+    /** T8b (QA only): every scheme works and its culprit is caught, so the victim's side can be tested. */
+    qaForceSchemes?: boolean;
   };
   /** Movement on the town map (concept v2 §2). */
   walkTilesPerSecond: number;

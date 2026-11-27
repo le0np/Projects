@@ -337,3 +337,25 @@ describe("T9: guessing while you wait", () => {
     expect(JSON.stringify(run().log)).toBe(JSON.stringify(run().log));
   });
 });
+
+describe("T8b: QA can make the victim's side certain", () => {
+  it("with chaos.qaForceSchemes every scheme works and its culprit is caught", () => {
+    const clock = new VirtualClock();
+    const session = new Session(
+      content,
+      resolveConfig({ seed: "qa-force", chaos: { upheavals: [0, 0], mischiefCharges: 2, followUpBoost: 1, schemePrepSeconds: [5, 5], qaForceSchemes: true } }),
+      ["teacher", "doctor", "mechanic"].map((career) => ({ career, isBot: false })),
+      clock,
+    );
+    session.start();
+    expect(session.mischief("c1", "rumour", "c2")).toEqual({ ok: true });
+    expect(session.mischief("c3", "flat_tyres", "c2")).toEqual({ ok: true });
+    for (let i = 0; i < 200 && clock.now() < 20_000; i++) {
+      clock.advanceTo(session.nextWakeAt() ?? clock.now() + 1000);
+      session.processTimers();
+    }
+    const results = session.log.filter((e) => e.type === "scheme_result");
+    expect(results).toHaveLength(2);
+    for (const r of results) expect(r).toMatchObject({ result: "worked", discovered: true });
+  });
+});

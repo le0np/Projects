@@ -19,7 +19,7 @@ npm run sim:batch    # 200 sesija → statistika i balansni izvještaj u sim-out
 npm run start        # izgradi web klijent i pokrene server → otvori http://localhost:3000
 npm run server       # samo server na :3000 (bez .env: ugrađeni PGlite u ./data/pglite)
 npm run web:dev      # razvoj klijenta s hot reloadom na :5173 (uz pokrenut server)
-npm run e2e          # browser test (Chromium/Playwright) na desktopu i mobitelu; prije toga npm run web:build
+npm run e2e          # browser testovi (Chromium/Playwright): igra na desktopu i mobitelu, strana žrtve spletke, kartice svih eventa; prije toga npm run web:build
 ```
 
 Za brzi probni krug: `TIME_SCALE=6 FILL_AFTER_SECONDS=2 npm run start`. Sesija od 8 minuta tada traje oko 80 sekundi, a botovi popune prazna mjesta nakon 2 sekunde.

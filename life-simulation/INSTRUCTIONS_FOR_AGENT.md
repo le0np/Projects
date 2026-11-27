@@ -102,7 +102,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Dodaj 2–3 nove smicalice vezane uz karijere (npr. novinar objavi lažnu vijest, mehaničar „popravi” auto, odvjetnik pošalje lažnu tužbu).
 - Botovi koriste isto (prema osobnosti). Life Recap prikazuje cijeli tok spletke.
 
-### [ ] T8b. Sitnice iz QA T8
+### [x] T8b. Sitnice iz QA T8
 - **S1:** Nakon što spletka završi, ispod gumba stalno piše „Not possible: they already had this one”, a odabrana je ista spletka, pa je gumb siv. Igrač ne zna što napraviti. Nakon spletke automatski odaberi drugu dostupnu vrstu (ili drugu metu), a poruku promijeni u „Kim already got this one, pick another scheme.” Već iskorištene vrste za tu metu prikaži prekrižene ili sive.
 - **S2:** QA nije mogao vidjeti **stranu žrtve** (trag „You noticed: …” i izbor osvete), jer to ovisi o tome hoće li bot slučajno odabrati čovjeka i biti otkriven. Dodaj u `npm run e2e` (ili kao opciju za QA, npr. env `QA_FORCE_SCHEME_ON_HUMAN=1`) scenarij u kojem bot izvede spletku na čovjeka i bude otkriven. E2E neka provjeri da se pojave trag, tri izbora i besplatna osveta u kartici „Schemes”.
 

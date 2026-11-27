@@ -693,8 +693,9 @@ export class Session {
       this.schemeNotice(s, `Your plan against ${target.name} never happened. Life got in the way.`);
       return;
     }
-    const worked = this.rngChaos.chance(s.success);
-    const discovered = s.accompliceAnswer === "betrayed" || this.rngChaos.chance(s.risk);
+    const forced = this.config.chaos.qaForceSchemes === true;
+    const worked = this.rngChaos.chance(s.success) || forced;
+    const discovered = this.rngChaos.chance(s.risk) || s.accompliceAnswer === "betrayed" || forced;
     s.result = worked ? "worked" : "failed";
     s.discovered = discovered;
     if (discovered) target.facts.add(factKey("spotted", s.plotter));

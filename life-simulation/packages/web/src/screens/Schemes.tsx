@@ -43,6 +43,22 @@ export function Schemes({ game, sessionTime, plan, preview, boost }: Props) {
     };
   }, [kind, target, preview, m.charges, m.schemes?.length]);
 
+  // T8b S1: schemes already used on this victim (by you, or found out from the server) are crossed out,
+  // and the selection moves on to one that is still possible.
+  const [usedElsewhere, setUsedElsewhere] = useState<Record<string, string[]>>({});
+  const used = new Set([...(m.schemes ?? []).filter((s) => s.targetId === target).map((s) => s.mischiefId), ...(usedElsewhere[target] ?? [])]);
+  useEffect(() => {
+    if (odds && !odds.ok && odds.reason === "they already had this one" && !(usedElsewhere[target] ?? []).includes(kind)) {
+      setUsedElsewhere((u) => ({ ...u, [target]: [...(u[target] ?? []), kind] }));
+    }
+  }, [odds, target, kind, usedElsewhere]);
+  useEffect(() => {
+    if (kind && used.has(kind)) {
+      const next = m.options.find((o) => !used.has(o.id));
+      if (next) setKind(next.id);
+    }
+  }, [kind, target, m.schemes?.length, usedElsewhere]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const schemes = [...(m.schemes ?? [])].reverse();
   const preparing = schemes.filter((s) => s.state === "preparing");
   const done = schemes.filter((s) => s.state === "done");
@@ -75,7 +91,15 @@ export function Schemes({ game, sessionTime, plan, preview, boost }: Props) {
         </select>
         <div className="prank-list" role="radiogroup" aria-label="Scheme">
           {m.options.map((o) => (
-            <button key={o.id} role="radio" aria-checked={o.id === kind} className={`ghost prank${o.id === kind ? " active" : ""}${o.career ? " special" : ""}`} title={o.description} onClick={() => setKind(o.id)}>
+            <button
+              key={o.id}
+              role="radio"
+              aria-checked={o.id === kind}
+              disabled={used.has(o.id)}
+              className={`ghost prank${o.id === kind ? " active" : ""}${o.career ? " special" : ""}${used.has(o.id) ? " used" : ""}`}
+              title={used.has(o.id) ? `${nameOf(target)} already got this one` : o.description}
+              onClick={() => setKind(o.id)}
+            >
               {o.label}
             </button>
           ))}
@@ -87,7 +111,13 @@ export function Schemes({ game, sessionTime, plan, preview, boost }: Props) {
             {odds.free && <span className="odd free">free: revenge</span>}
           </p>
         ) : odds ? (
-          <p className="small muted">Not possible: {odds.reason}</p>
+          <p className="small muted">
+            {odds.reason === "they already had this one"
+              ? `${nameOf(target)} already got this one, pick another scheme.`
+              : m.options.every((o) => used.has(o.id))
+                ? `You have tried everything on ${nameOf(target)}. Pick someone else.`
+                : `Not possible: ${odds.reason}`}
+          </p>
         ) : null}
         <button
           className="primary"

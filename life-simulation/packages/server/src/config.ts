@@ -17,6 +17,8 @@ export interface ServerConfig {
   sessionDurationSeconds: number;
   /** Speeds up session time (1 = real time). Useful for demos and tests. */
   timeScale: number;
+  /** T8b (QA only): a bot schemes against the first human right away, and every scheme works and is found out. */
+  qaForceSchemeOnHuman: boolean;
   /** Shortens every real-time duration for humans (deadlines, rests); 1 = normal. Only for tests. */
   paceScale: number;
   /** Directory with the built web client to serve, if any. */
@@ -37,6 +39,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): ServerConfi
     sessionDurationSeconds: num(env.SESSION_DURATION_SECONDS, 480),
     timeScale: num(env.TIME_SCALE, 1),
     paceScale: num(env.PACE_SCALE, 1),
+    qaForceSchemeOnHuman: env.QA_FORCE_SCHEME_ON_HUMAN === "1",
     webDist: env.WEB_DIST || (existsSync(DEFAULT_WEB_DIST) ? DEFAULT_WEB_DIST : undefined),
   };
 }

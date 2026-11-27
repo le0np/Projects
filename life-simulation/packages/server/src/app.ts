@@ -10,7 +10,7 @@ import { Server as SocketServer, type Socket } from "socket.io";
 import { z } from "zod";
 import { Rng } from "@lifesim/core";
 import type { ContentBundle } from "@lifesim/content";
-import { formatLog } from "@lifesim/engine";
+import { DEFAULT_CONFIG, formatLog } from "@lifesim/engine";
 import type { ServerConfig } from "./config";
 import type { Database } from "./db/database";
 import { LiveSession, type Seat } from "./live-session";
@@ -92,7 +92,10 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
     while (seats.length < config.sessionSize) seats.push({ kind: "bot", career: seatRng.pick(careerIds) });
     const session = new LiveSession(
       content,
-      { durationSeconds: config.sessionDurationSeconds },
+      {
+        durationSeconds: config.sessionDurationSeconds,
+        ...(config.qaForceSchemeOnHuman ? { chaos: { ...DEFAULT_CONFIG.chaos, qaForceSchemes: true } } : {}),
+      },
       seats,
       {
         toUser,
@@ -107,7 +110,7 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
             .finally(broadcastLobby);
         },
       },
-      { timeScale: config.timeScale, paceScale: config.paceScale },
+      { timeScale: config.timeScale, paceScale: config.paceScale, qaSchemeOnHuman: config.qaForceSchemeOnHuman },
     );
     live.set(session.id, session);
     for (const t of tickets) liveByUser.set(t.userId, session);

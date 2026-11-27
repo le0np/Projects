@@ -504,6 +504,11 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **Klik na lika:** mala kartica u kutu mape: ime, karijera, osobina, odnos s tobom (i dug), raspoloženje i što trenutno radi („Busy: Car Trouble.”, „On the way to Bean There Café.”, „At …”, „In hospital.”, „Gone. Flowers by their door.”). Klik na sebe pokazuje tebe.
 - **Testovi:** engine (ponuda nikad sudioniku, pravila pogađanja, rezultati, Oracle u Life Recapu, replay s pogocima). Provjereno u browseru (4 pogotka, oba ishoda, kartica lika), bez grešaka u konzoli.
 
+### T8b: sitnice iz QA T8 (developer)
+
+- **S1:** nakon spletke kartica „Schemes” sama odabere sljedeću još moguću spletku; spletke već iskorištene na toj meti su prekrižene i onemogućene. Ako server javi da je meta tu spletku već dobila (od nekog drugog), poruka je „Kim already got this one, pick another scheme.” i odabir se pomakne; kad je sve iskorišteno: „You have tried everything on Kim. Pick someone else.”
+- **S2:** QA opcija `QA_FORCE_SCHEME_ON_HUMAN=1` (`.env.example`): 2 s nakon početka bot planira „Let their tyres down” na prvog čovjeka, a postavka enginea `chaos.qaForceSchemes` (zapisana u logu, replay ostaje identičan) čini da svaka spletka uspije i krivac bude otkriven. Novi e2e `packages/web/e2e/scheme-victim.mjs` (dio `npm run e2e`) provjerava trag „You noticed …”, tri izbora (javno suočavanje, prijava, osveta) i „Your revenge is free.” u kartici „Schemes”. Test enginea za opciju.
+
 ### Sprint 2 gotov
 
 - T5, T5b, T6, T6b, T6c, T7, T7b, T8 i T9. Batch 200 sesija (`docs/reports/sprint2.report.md`): 65 % eventa s ≥ 2 lika koji odlučuju (80 % po liku), ponavljanje 0,8 %, smrtnost 3,4 %, stvarne veze 87 %, Jealousy 19 %, Crisis Talk 13 %, 4,4 spletke po sesiji (70 % uspije, 27 % otkriveno), mir 62 % i tuga 11 % vremena; replay identičan.
@@ -514,8 +519,9 @@ Provedeno 27. studenog 2026. (nakon Sprinta 2, T5–T9):
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm run check` | typecheck čist; 75 eventa, 0 grešaka, 0 upozorenja; **138/138 testova** |
+| `npm run check` | typecheck čist; 75 eventa, 0 grešaka, 0 upozorenja; **139/139 testova** (nakon T8b) |
 | `npm run e2e` | ✓ desktop 1280×800 i ✓ iPhone 13: spletka (plan + pojačanje), cijela sesija s finalom, recap, log, lobby; za svaki event izbori, privatni i javni tekst cijeli; zaglavlje puno od početka |
+| `scheme-victim.mjs` (dio `npm run e2e`, T8b) | strana žrtve: trag, tri izbora, besplatna osveta |
 | `card-fit.mjs` (dio `npm run e2e`) | svih 125 kombinacija event/uloga (i skriveni eventi, s tragom) bez skrolanja na 1280×800 i 390×664; 0 gramatičkih grešaka „X and Y is” |
 | `npm run sim:batch -- --sessions 200 --seed sprint2` | brojke gore; replay 3/3 identičan |
 | Skripte u browseru (T5–T9) | najava i karta uz mjesto, otkrivanje i reakcije, zum na mobitelu, raspoloženja i linije odnosa, tragovi (svih 8 iscrtano), spletka od plana do rezultata, pogađanje i kartica lika; bez grešaka u konzoli |
