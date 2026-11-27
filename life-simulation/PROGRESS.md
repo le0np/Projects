@@ -567,7 +567,7 @@ Provedeno 27. studenog 2026. (nakon Sprinta 3, T10–T12):
 | `npm run check` | typecheck čist; 75 eventa, 0 grešaka, 0 upozorenja; **149/149 testova** |
 | `npm run e2e` | ✓ desktop i ✓ iPhone 13 (spletka, kartica lika, cijela sesija, recap s titulom i „Copy my life”, kolekcija titula u lobbyju); ✓ strana žrtve spletke; ✓ duh (oporuka pročitana u recapu); ✓ 133 kartice bez skrolanja na 1280×800 i 390×664; ✓ 0 gramatičkih grešaka |
 | `npm run sim:batch -- --sessions 200 --seed sprint3` | brojke gore; replay 3/3 identičan |
-| Svjež `git clone` + `npm install` + `npm run check` + server | vidi zapis ispod tablice |
+| Svjež `git clone` grane `dev` (`38d7ef9`) + `npm install` + `npm run check` + `web:build` + server | 149/149, build čist, `/api/health` i web stranica rade |
 
 ## Poznata ograničenja
 
