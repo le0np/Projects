@@ -174,6 +174,9 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
   - **Izvršenje:** ako te uhvate, žrtva u kartici vidi „You noticed: …” i izbore suočiti se / prijaviti / **osveta** (besplatna spletka protiv tebe). Otkrivena tajna kasnije daje izbor „Remind X what you know” u 4 eventa.
   - 3 spletke karijere (novinar, mehaničar, odvjetnik); botovi isto; Life Recap priča cijeli tok.
   - Batch: 4,3 spletke po sesiji, 68 % uspije, 27 % otkriveno; replay identičan. **Za QA:** uz `TIME_SCALE=6` priprema traje 5–10 s; da vidiš stranu žrtve, najlakše je da te bot pogodi — botovi planiraju nakon svojih eventa.
+- **27. 11. 2026. — T9 gotov** (`91cfc6d`). Kartica „Meanwhile” ispod mape: kad netko drugi odlučuje, „What will Greta do?” s njezinim izborima; jedan pogodak po eventu, pa „✓ Right!” / „✗ … chose …”; brojač „Town Oracle 3/5”, u Life Recapu „🔮 Town Oracle” od 3 pogotka. Klik na lika na mapi: kartica s imenom, karijerom, osobinom, odnosom (i dugom), raspoloženjem i što radi („Busy: …”, „On the way to …”).
+
+**✅ Sprint 2 (T5–T9, plus T4b, T5b, T6b, T6c, T7b) je gotov i spreman za QA test.** Provjereno na svježem `git clone` (`npm install`, `npm run check` 138/138, `web:build`, server) i `npm run e2e` (desktop + iPhone 13, 125 kartica bez skrolanja). Batch 200 sesija: `docs/reports/sprint2.report.md`. Ručno: `cd life-simulation && npm install && TIME_SCALE=3 FILL_AFTER_SECONDS=2 npm run start` → http://localhost:3000 (uz 3× se reakcije, spletke i pogađanje dobro vide). Čekam povratnu informaciju prije Sprinta 3.
 
 ## Dnevnik QA/PM
 
