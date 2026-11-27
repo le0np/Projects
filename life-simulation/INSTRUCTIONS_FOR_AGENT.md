@@ -145,3 +145,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 
 - **27. 11. 2026.** — Prvo QA igranje (TIME_SCALE=1, 3 min) i analiza batch izvještaja m10; istraživanje BitLife, Reigns, RimWorld, Jackbox, CK3, Tomodachi Life, Wordle. Napisani Sprintovi 1–3. Detalji u `docs/reports/qa-research-2026-11-27.md`.
 - **27. 11. 2026.** — QA Sprinta 1: prihvaćen. Dodani T4b (4 sitnice iz igranja) i T7b (veze i dugovi). Developer može krenuti na Sprint 2.
+- **27. 11. 2026.** — QA T4b: ✅ sve 4 sitnice potvrđene u browseru (6×): „Finale” na satu, „Only you know” cijeli, kartica s druge strane od mjesta eventa (likovi vidljivi), „Olga, Rosa and Klara”. Rokovi 17–25 s. Nastavi sa Sprintom 2.
