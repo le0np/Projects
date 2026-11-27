@@ -113,6 +113,12 @@ export function RecapView({ recap }: { recap: LifeRecap }) {
           </ul>
         </>
       )}
+      {recap.oracle && recap.oracle.guesses > 0 && (
+        <p className="oracle">
+          {recap.oracle.correct >= 3 ? "🔮 Town Oracle: " : "Guesses about other people: "}
+          {recap.oracle.correct} of {recap.oracle.guesses} right.
+        </p>
+      )}
       {recap.influencedBy.length > 0 && (
         <>
           <h2>People who shaped your life</h2>

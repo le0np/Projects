@@ -287,3 +287,53 @@ describe("T8: a prank becomes a scheme in three steps", () => {
     expect(["worked", "failed"]).toContain(played?.result);
   });
 });
+
+describe("T9: guessing while you wait", () => {
+  it("others may guess once what a decider will choose, and hear how it turned out; the recap counts it", () => {
+    const clock = new VirtualClock();
+    const session = new Session(content, resolveConfig({ seed: "t9", durationSeconds: 200 }), ["doctor", "teacher", "mechanic", "civilian", "lawyer", "journalist"].map((career) => ({ career, isBot: false })), clock);
+    const notices: { id: string; n: Notice }[] = [];
+    const tried: string[] = [];
+    session.onNotice = (id, n) => {
+      notices.push({ id, n });
+      if (n.kind === "guessable" && id === "c1" && !tried.includes(n.instanceId)) {
+        tried.push(n.instanceId);
+        const first = n.choices[0]!.id;
+        expect(session.guess("c1", n.instanceId, n.deciderId, "no_such_choice")).toEqual({ ok: false, reason: "not one of their choices" });
+        expect(session.guess("c1", n.instanceId, n.deciderId, first)).toEqual({ ok: true });
+        expect(session.guess("c1", n.instanceId, n.deciderId, first)).toEqual({ ok: false, reason: "you already guessed" });
+        expect(session.guess(n.deciderId, n.instanceId, n.deciderId, first)).toEqual({ ok: false, reason: "you are in it" });
+      }
+    };
+    session.start();
+    for (let i = 0; i < 20_000 && session.state === "active"; i++) {
+      clock.advanceTo(session.nextWakeAt() ?? clock.now() + 1000);
+      session.processTimers();
+    }
+    const offers = notices.filter((x) => x.n.kind === "guessable");
+    // Never offered to someone who is in that event.
+    for (const { id, n } of offers) {
+      if (n.kind !== "guessable") continue;
+      const started = session.log.find((e) => e.type === "event_started" && e.instanceId === n.instanceId) as { bindings: Record<string, string[]> };
+      expect(Object.values(started.bindings).flat()).not.toContain(id);
+    }
+    const results = notices.filter((x) => x.id === "c1" && x.n.kind === "guess_result");
+    expect(tried.length).toBeGreaterThan(3);
+    expect(results.length).toBeGreaterThan(3);
+    const recap = notices.find((x) => x.id === "c1" && x.n.kind === "session_completed");
+    const oracle = recap?.n.kind === "session_completed" ? recap.n.recap.oracle : undefined;
+    expect(oracle?.guesses).toBe(tried.length);
+    expect(oracle?.correct).toBe(results.filter((x) => x.n.kind === "guess_result" && x.n.correct).length);
+  });
+
+  it("guesses replay identically", () => {
+    const run = () =>
+      runSession({
+        content,
+        config: { seed: "t9-replay", durationSeconds: 120 },
+        participants: ["doctor", "teacher", "mechanic"].map((career, i) => ({ career, isBot: true, controller: new RandomController(new Rng(`g${i}`), 0) })),
+        guesses: [{ t: 30_000, characterId: "c1", instanceId: "E2", deciderId: "c2", choiceId: "x" }],
+      });
+    expect(JSON.stringify(run().log)).toBe(JSON.stringify(run().log));
+  });
+});

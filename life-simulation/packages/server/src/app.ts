@@ -43,6 +43,7 @@ const CharacterName = z
 const FindMatch = z.object({ career: z.string(), name: CharacterName.optional() });
 const Decide = z.object({ sessionId: z.string(), instanceId: z.string(), choiceId: z.string() });
 const Prank = z.object({ sessionId: z.string(), mischiefId: z.string(), targetId: z.string() });
+const Guess = z.object({ sessionId: z.string(), instanceId: z.string(), deciderId: z.string(), choiceId: z.string() });
 const Boost = z.object({ sessionId: z.string(), schemeId: z.string(), boost: z.enum(["cover", "wait", "accomplice"]), accompliceId: z.string().optional() });
 
 type Ack = (response: unknown) => void;
@@ -273,6 +274,15 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
       if (!s || s.id !== body.data.sessionId) return ack({ ok: false, reason: "not in this session" });
       const result = s.mischief(user.id, body.data.mischiefId, body.data.targetId);
       ack({ ...result, state: s.session.mischiefState(s.humans.get(user.id)!.characterId) });
+    });
+
+    // T9: guessing what someone else will do while you wait.
+    socket.on("game:guess", (raw: unknown, ack: Ack = () => {}) => {
+      const body = Guess.safeParse(raw);
+      if (!body.success) return ack({ ok: false, reason: "invalid request" });
+      const s = liveByUser.get(user.id);
+      if (!s || s.id !== body.data.sessionId) return ack({ ok: false, reason: "not in this session" });
+      ack(s.guess(user.id, body.data.instanceId, body.data.deciderId, body.data.choiceId));
     });
 
     // T8: what a scheme would look like (chance and risk), and boosting one while it is prepared.

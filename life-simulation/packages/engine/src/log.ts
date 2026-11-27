@@ -51,6 +51,9 @@ export type LogEntry = { t: number } & (
   | { type: "upheaval_ended"; upheavalId: string }
   /** A secret prank (revealed only in the Life Recap). */
   | { type: "mischief"; characterId: string; targetId: string; mischiefId: string; dueAt: number; schemeId?: string }
+  /** T9: a waiting player guesses what someone else will choose (and how it turned out). */
+  | { type: "guess"; characterId: string; instanceId: string; deciderId: string; choiceId: string }
+  | { type: "guess_rejected"; characterId: string; instanceId: string; deciderId: string; choiceId: string; reason: string }
   /** T8: a scheme gets help (or covers its tracks, or waits for the right moment), and how it ends. */
   | { type: "scheme_boost"; characterId: string; schemeId: string; boost: SchemeBoost; accompliceId?: string }
   | { type: "scheme_rejected"; characterId: string; schemeId: string; boost: SchemeBoost; accompliceId?: string; reason: string }
@@ -143,6 +146,9 @@ export function formatLog(log: readonly LogEntry[]): string {
         break;
       case "mischief_rejected":
       case "scheme_rejected":
+      case "guess_rejected":
+        break;
+      case "guess":
         break;
       case "scheme_boost":
         lines.push(`${at} - (secret) ${name(e.characterId)} ${e.boost === "cover" ? "covers their tracks" : e.boost === "wait" ? "waits for the right moment" : `asks ${name(e.accompliceId ?? "?")} for help`} (${e.schemeId})`);

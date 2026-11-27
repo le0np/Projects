@@ -102,7 +102,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Dodaj 2–3 nove smicalice vezane uz karijere (npr. novinar objavi lažnu vijest, mehaničar „popravi” auto, odvjetnik pošalje lažnu tužbu).
 - Botovi koriste isto (prema osobnosti). Life Recap prikazuje cijeli tok spletke.
 
-### [ ] T9. Kad čekaš, imaš što raditi
+### [x] T9. Kad čekaš, imaš što raditi
 - Dok nisi u eventu, možeš **pogađati** što će odlučiti drugi u tekućem eventu („Što će Greta napraviti?”). Točni pogoci se broje i nagrađuju u recapu (titula „Town Oracle”).
 - Klik na lika na mapi → mala kartica: tko je, osobina, odnos s tobom, što trenutno radi.
 

@@ -1070,3 +1070,43 @@ main.game {
   margin: 0;
   flex: none;
 }
+
+/* ---------- T9: meanwhile ---------- */
+.guess {
+  display: grid;
+  gap: 6px;
+}
+.guess p {
+  margin: 0;
+}
+.guess-result.good {
+  color: var(--good);
+  font-weight: 600;
+}
+.guess-result.bad {
+  color: var(--bad);
+  font-weight: 600;
+}
+.person {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: min(280px, calc(100% - 24px));
+  padding: 10px 12px;
+  display: grid;
+  gap: 2px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.18);
+}
+.person p {
+  margin: 0;
+}
+.person .close {
+  position: absolute;
+  right: 6px;
+  top: 4px;
+  padding: 2px 8px;
+}
+.oracle {
+  font-weight: 600;
+  color: var(--private);
+}

@@ -32,6 +32,9 @@ export function replaySession(content: ContentBundle, log: readonly LogEntry[]):
     content,
     config: start.config,
     mischief: mischief.map((m) => ({ t: m.t, characterId: m.characterId, mischiefId: m.mischiefId, targetId: m.targetId })),
+    guesses: log
+      .filter((e): e is LogEntryOf<"guess"> | LogEntryOf<"guess_rejected"> => e.type === "guess" || e.type === "guess_rejected")
+      .map((g) => ({ t: g.t, characterId: g.characterId, instanceId: g.instanceId, deciderId: g.deciderId, choiceId: g.choiceId })),
     boosts: log
       .filter((e): e is LogEntryOf<"scheme_boost"> | LogEntryOf<"scheme_rejected"> => e.type === "scheme_boost" || e.type === "scheme_rejected")
       .map((b) => ({ t: b.t, characterId: b.characterId, schemeId: b.schemeId, boost: b.boost, ...(b.accompliceId ? { accompliceId: b.accompliceId } : {}) })),

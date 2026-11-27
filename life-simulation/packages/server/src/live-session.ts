@@ -129,6 +129,15 @@ export class LiveSession {
     return result;
   }
 
+  /** T9: guess what someone else will choose. */
+  guess(userId: string, instanceId: string, deciderId: string, choiceId: string): SubmitResult {
+    const seat = this.humans.get(userId);
+    if (!seat) return { ok: false, reason: "not a player in this session" };
+    const result = this.session.guess(seat.characterId, instanceId, deciderId, choiceId);
+    this.afterChange();
+    return result;
+  }
+
   /** T8: what a scheme would look like before you commit to it. */
   schemePreview(userId: string, mischiefId: string, targetId: string) {
     const seat = this.humans.get(userId);
@@ -232,8 +241,11 @@ export class LiveSession {
     if (!seat) return;
     if (notice.kind === "event") seat.pending = notice.view.offer.choices.length > 0 ? notice.view.offer : undefined;
     if (notice.kind === "resolved" && seat.pending?.instanceId === notice.instanceId) seat.pending = undefined;
-    seat.history.push(notice);
-    if (seat.history.length > HISTORY_LIMIT) seat.history.shift();
+    // T9: guessing offers are frequent and short-lived; they would push the story out of the history.
+    if (notice.kind !== "guessable") {
+      seat.history.push(notice);
+      if (seat.history.length > HISTORY_LIMIT) seat.history.shift();
+    }
     this.events.toUser(seat.userId, notice.kind === "session_completed" ? "game:ended" : "game:notice", notice);
     if (notice.kind === "resolved" || notice.kind === "scheme") this.events.toUser(seat.userId, "game:mischief_state", this.session.mischiefState(characterId));
   }

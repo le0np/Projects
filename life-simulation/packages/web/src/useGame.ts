@@ -21,6 +21,8 @@ export type PublicEntry =
 
 export interface Walk {
   pos: [number, number];
+  /** Where they are heading (a place id), if anywhere in particular. */
+  to?: string | null;
   trip: { from: [number, number]; path: [number, number][]; departAt: number; msPerTile: number } | null;
 }
 
@@ -66,6 +68,10 @@ export interface GameState {
   coming: ComingEvent | null;
   /** T5: wall-clock time each of your events was resolved (the reveal plays first, then the outcome). */
   resolvedWall: Record<string, number>;
+  /** T9: events you may guess about (newest last), what you guessed, and how you are doing. */
+  guessables: Extract<Notice, { kind: "guessable" }>[];
+  guessed: Record<string, string>;
+  oracle: { guesses: number; correct: number };
   /** T6: everyone's mood (emoji above their head). */
   moods: Record<string, Mood>;
   /** T7: lasting traces on the map. */
@@ -108,6 +114,12 @@ function stateFromSnapshot(s: Snapshot): GameState {
     submitted: null,
     history: s.history,
     coming: null,
+    guessables: [],
+    guessed: {},
+    oracle: {
+      guesses: s.history.filter((n) => n.kind === "guess_result").length,
+      correct: s.history.filter((n) => n.kind === "guess_result" && n.correct).length,
+    },
     moods: Object.fromEntries((s.moods ?? []).map((m) => [m.characterId, m.mood])),
     marks: s.marks ?? [],
     resolvedWall: {},
@@ -173,6 +185,7 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
                   ...g.walks,
                   [entry.characterId]: {
                     pos: entry.path[entry.path.length - 1] ?? entry.from,
+                    to: entry.to,
                     trip: { from: entry.from, path: entry.path, departAt: entry.departAt, msPerTile: entry.msPerTile },
                   },
                 },
@@ -191,6 +204,14 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
         if (!g) return g;
         const history = [...g.history, n].slice(-30);
         if (n.kind === "coming") return { ...g, history, coming: { ...n, receivedAt: Date.now() } };
+        if (n.kind === "guessable") return { ...g, guessables: [...g.guessables.filter((x) => x.deadlineAt > n.t), n].slice(-6) };
+        if (n.kind === "guess_result")
+          return {
+            ...g,
+            history,
+            guessables: g.guessables.filter((x) => x.instanceId !== n.instanceId),
+            oracle: { guesses: g.oracle.guesses + 1, correct: g.oracle.correct + (n.correct ? 1 : 0) },
+          };
         if (n.kind === "event") {
           return {
             ...g,
@@ -287,6 +308,18 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
     [game],
   );
 
+  /** T9: guess what someone else will choose. */
+  const guess = useCallback(
+    async (instanceId: string, deciderId: string, choiceId: string) => {
+      if (!game) return;
+      setGame((g) => (g ? { ...g, guessed: { ...g.guessed, [instanceId]: choiceId } } : g));
+      const res = (await socketRef.current?.emitWithAck("game:guess", { sessionId: game.sessionId, instanceId, deciderId, choiceId })) as { ok: boolean; reason?: string } | undefined;
+      if (!res?.ok) setGame((g) => (g ? { ...g, guessed: Object.fromEntries(Object.entries(g.guessed).filter(([k]) => k !== instanceId)) } : g));
+      return res;
+    },
+    [game?.sessionId],
+  );
+
   /** T8: the odds of a scheme before you commit to it. */
   const previewScheme = useCallback(
     async (mischiefId: string, targetId: string) => {
@@ -314,5 +347,5 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
 
   const leaveGame = useCallback(() => setGame(null), []);
 
-  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, playMischief, previewScheme, boostScheme, leaveGame };
+  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, playMischief, previewScheme, boostScheme, guess, leaveGame };
 }

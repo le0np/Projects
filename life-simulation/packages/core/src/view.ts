@@ -149,6 +149,10 @@ export type Reaction = "joy" | "angry" | "sad" | "shock" | "neutral";
 /** Messages the engine sends to one character. */
 export type Notice =
   | { kind: "event"; t: number; view: CharacterView }
+  /** T9: someone else is deciding right now; you may guess what they will do. */
+  | { kind: "guessable"; t: number; instanceId: string; title: string; deciderId: string; name: string; choices: { id: string; label: string }[]; deadlineAt: number }
+  /** T9: how your guess turned out. */
+  | { kind: "guess_result"; t: number; instanceId: string; deciderId: string; name: string; guessed: string; actual: string; correct: boolean }
   /** T8: news about one of your schemes (planned, boosted, carried out, found out). */
   | { kind: "scheme"; t: number; scheme: SchemeView; text: string }
   /** T5: something is about to happen to you; the participants are walking there (the offer comes at `offerAt`). */
@@ -230,6 +234,8 @@ export interface LifeRecap {
     played: { mischief: string; on: string; result?: SchemeResult; boost?: SchemeBoost; accomplice?: string; accompliceAnswer?: AccompliceAnswer }[];
     suffered: { mischief: string; by: string; discovered?: boolean }[];
   };
+  /** T9: guesses about other people's decisions while waiting. */
+  oracle: { guesses: number; correct: number };
   /** Internal balancing metric; not shown to players as a "win". */
   lifeScore: number;
 }

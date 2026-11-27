@@ -498,18 +498,28 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **Batch izvještaj** ima redak „Schemes”. 200 sesija (`docs/reports/t8.report.md`): 4,3 spletke po sesiji, 68 % uspije, 27 % otkriveno; pojačanja: čekanje 439, tragovi 250, suučesnik 125 (odbio 53, izdao 39, pomogao 28); uhvaćeni krivci: javno suočeni 58, osveta 40, prijavljeni 33.
 - **Testovi:** engine (izgledi po karijeri i odnosu, cijeli tok s jednim pojačanjem, trag + izbori + besplatna osveta, izdaja suučesnika, Life Recap), e2e (planiranje i pojačanje u browseru), `card-fit.mjs` sada provjerava i skrivene evente (125 kartica, s tragom u kartici žrtve).
 
+### T9: kad čekaš, imaš što raditi (developer)
+
+- **Pogađanje:** kad netko drugi odlučuje u (javnom) eventu, svi ostali živi dobiju ponudu `guessable` („What will Greta do?” s njezinim izborima). Kartica „Meanwhile” ispod mape (kad nisi u eventu): jedan pogodak po eventu, pa „✓ Right! Greta chose …” ili „✗ Greta chose …, not …”. Brojač „Town Oracle 3/5”; u Life Recapu „🔮 Town Oracle: 3 of 5 right.” (titula od 3 pogotka). Pogoci se zapisuju u log (`guess`) i replay ih ponavlja. Server ponude za pogađanje ne sprema u povijest (ne guraju priču iz nje).
+- **Klik na lika:** mala kartica u kutu mape: ime, karijera, osobina, odnos s tobom (i dug), raspoloženje i što trenutno radi („Busy: Car Trouble.”, „On the way to Bean There Café.”, „At …”, „In hospital.”, „Gone. Flowers by their door.”). Klik na sebe pokazuje tebe.
+- **Testovi:** engine (ponuda nikad sudioniku, pravila pogađanja, rezultati, Oracle u Life Recapu, replay s pogocima). Provjereno u browseru (4 pogotka, oba ishoda, kartica lika), bez grešaka u konzoli.
+
+### Sprint 2 gotov
+
+- T5, T5b, T6, T6b, T6c, T7, T7b, T8 i T9. Batch 200 sesija (`docs/reports/sprint2.report.md`): 65 % eventa s ≥ 2 lika koji odlučuju (80 % po liku), ponavljanje 0,8 %, smrtnost 3,4 %, stvarne veze 87 %, Jealousy 19 %, Crisis Talk 13 %, 4,4 spletke po sesiji (70 % uspije, 27 % otkriveno), mir 62 % i tuga 11 % vremena; replay identičan.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 27. studenog 2026. (nakon Sprinta 1, T1–T4):
+Provedeno 27. studenog 2026. (nakon Sprinta 2, T5–T9):
 
 | Provjera | Rezultat |
 | --- | --- |
-| Svjež `git clone` grane `dev` s GitHuba → `npm install`, `npm run check` | typecheck čist; 70 eventa, 0 grešaka, 0 upozorenja; **114/114 testova** |
-| Svjež klon: `npm run web:build`, server + curl | build čist (94 kB gzip); `/api/health`, `/api/careers` i web stranica rade |
-| `npm run e2e` | ✓ desktop 1280×800 i ✓ iPhone 13: cijela sesija s finalom, recap, log, lobby; za svaki event svi izbori na ekranu bez skrolanja; ime lika iz lobbyja |
-| `npm run sim:batch -- --sessions 200 --seed t3` | sve sesije završe finalom; 64,4 % eventa s ≥ 2 lika koji odlučuju; ponavljanje 1,0 %; smrtnost 3,5 %; replay 3/3 identičan (`docs/reports/t3.report.md`) |
-| Skripta u browseru (TIME_SCALE=6, 4 eventa po uređaju) | 0 izbora izvan ekrana, kartica 300 px na mapi od 856 px |
-| Ranije (13. 11.): PostgreSQL 16 | nije ponovljeno u ovom sprintu (nema promjena u bazi) |
+| `npm run check` | typecheck čist; 75 eventa, 0 grešaka, 0 upozorenja; **138/138 testova** |
+| `npm run e2e` | ✓ desktop 1280×800 i ✓ iPhone 13: spletka (plan + pojačanje), cijela sesija s finalom, recap, log, lobby; za svaki event izbori, privatni i javni tekst cijeli; zaglavlje puno od početka |
+| `card-fit.mjs` (dio `npm run e2e`) | svih 125 kombinacija event/uloga (i skriveni eventi, s tragom) bez skrolanja na 1280×800 i 390×664; 0 gramatičkih grešaka „X and Y is” |
+| `npm run sim:batch -- --sessions 200 --seed sprint2` | brojke gore; replay 3/3 identičan |
+| Skripte u browseru (T5–T9) | najava i karta uz mjesto, otkrivanje i reakcije, zum na mobitelu, raspoloženja i linije odnosa, tragovi (svih 8 iscrtano), spletka od plana do rezultata, pogađanje i kartica lika; bez grešaka u konzoli |
+| Svjež `git clone` + `npm install` + `npm run check` + server | vidi zapis ispod tablice |
 
 ## Poznata ograničenja
 
@@ -527,7 +537,7 @@ Provedeno 27. studenog 2026. (nakon Sprinta 1, T1–T4):
 
 ## Sljedeći koraci
 
-1. **QA testira Sprint 1** (`INSTRUCTIONS_FOR_AGENT.md`). Nakon njegove povratne informacije: Sprint 2 (T5–T9: event počinje na mapi, raspoloženje i odnosi na mapi, trajni tragovi, spletke u 3 koraka, pogađanje dok čekaš), pa Sprint 3 (T10–T12).
+1. **QA testira Sprint 2** (`INSTRUCTIONS_FOR_AGENT.md`). Nakon povratne informacije: Sprint 3 (T10 osobni ciljevi, T11 titula života i „Copy my life”, T12 duh nakon smrti).
 2. Nakon toga, po planu §9: M12 Sadržaj (humorističan ton, životne faze) i M13 Balans.
 
 ## Handoff za novi chat
