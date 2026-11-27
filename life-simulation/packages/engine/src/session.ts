@@ -126,6 +126,11 @@ type Timer =
   | { kind: "upheaval_end"; id: string }
   | { kind: "phase"; phase: StoryPhase };
 
+/** "Ana", "Ana and Ben", "Ana, Ben and Clara" (T4b N4). */
+export function listNames(names: readonly string[]): string {
+  return names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
 const LEISURE: PlaceKind[] = ["cafe", "park", "shop", "bar", "home"];
 
 const MS = 1000;
@@ -1609,7 +1614,7 @@ export class Session {
   private interpolate(text: string, bindings: Record<string, string[]>): string {
     return text.replace(/\{([a-z][a-z0-9_]*)\}/g, (m, role: string) => {
       const ids = bindings[role];
-      return ids ? ids.map((id) => this.char(id).name).join(" and ") : m;
+      return ids ? listNames(ids.map((id) => this.char(id).name)) : m;
     });
   }
 

@@ -57,7 +57,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 
 ## Sprint 2 — grad nosi priču, smicalice postaju spletke
 
-### [ ] T4b. Sitnice iz QA Sprinta 1 (napravi prvo)
+### [x] T4b. Sitnice iz QA Sprinta 1 (napravi prvo)
 - **N1:** U finalu je tekst „Only you know” odrezan (vidi se jedan red, ostatak se skrola unutar kartice). Privatna informacija je najvažniji dio eventa — mora biti cijela vidljiva. Ako ne stane, skraćuj javni tekst, ne privatni.
 - **N2:** Kartica eventa prekriva baš mjesto eventa (finale na tržnici: tržnica i svi likovi su ispod kartice, na mapi se ne vidi nitko). Kartica neka ide na stranu mape suprotnu od mjesta eventa. (Konačno rješenje je T5, ali ovo je brz popravak.)
 - **N3:** Sat sesije pokazuje „8:09 / 8:00” tijekom finala. Umjesto toga prikaži „Finale”.

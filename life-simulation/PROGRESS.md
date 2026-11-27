@@ -416,6 +416,15 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **B3, „Around town”:** prikazuje samo evente s više ljudi, početak preokreta, smrti, bolnicu i zatvor te najavu finala (`isNewsworthy` u `web/src/format.ts`, test `web/test/feed.test.ts`). Smrt od starosti i u preokretu sada se objavljuje javno (prije se nije).
 - **B4, ime lika:** u lobbyju je polje „Your character's name” s nasumičnim prijedlogom (🎲) i pamćenjem u pregledniku. Server prima `name` u `match:find` (2–16 slova, razmak, apostrof, crtica; inače `invalid_name`); bez imena ostaje korisničko ime. Botovi nikad ne dobiju isto ime kao igrač. Testovi: server (ime u rosteru, neispravna imena odbijena), engine (30 sesija bez duplih imena), e2e (ime u zaglavlju igre).
 
+### QA prihvatio Sprint 1; T4b: sitnice iz QA igranja (developer)
+
+- QA je Sprint 1 prihvatio (vidi `INSTRUCTIONS_FOR_AGENT.md`, Odgovori QA/PM) i dodao T4b i T7b.
+- **N1:** „Only you know” je uvijek cijeli: u kartici se smije skrolati samo javni tekst; naslov, privatni tekst, „With” i izbori su fiksni. `npm run e2e` to provjerava za svaki event.
+- **N2:** kartica ide na stranu mape suprotnu od mjesta eventa (kad se kartica otvori, tvoj lik već stoji na mjestu eventa, pa se strana određuje iz njegove pozicije).
+- **N3:** tijekom finala sat pokazuje „Finale” umjesto „8:09 / 8:00”.
+- **N4:** popis imena u tekstu: „Filip, Clara, Ana, Lana and Maja” (`listNames` u engineu; test).
+- Provjereno skriptom u browseru na finalu (desktop i iPhone 13): sat „Finale”, privatni tekst cijeli, kartica na suprotnoj strani, gomila na mapi vidljiva.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 1, T1–T4):

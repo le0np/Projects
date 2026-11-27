@@ -31,6 +31,15 @@ function placeOf(walk: Walk | undefined, t: number): { x: number; y: number; dir
   return { x: a[0] + (b[0] - a[0]) * f, y: a[1] + (b[1] - a[1]) * f, dir: b[0] < a[0] ? -1 : 1, moving: true };
 }
 
+/** The town's size in tiles once loaded (for placing things over the map). */
+export function useMapSize(): { width: number; height: number } | null {
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  useEffect(() => {
+    loadMap().then((m) => setSize({ width: m.width, height: m.height }), () => setSize(null));
+  }, []);
+  return size;
+}
+
 interface Floater {
   text: string;
   good: boolean;

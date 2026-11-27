@@ -49,3 +49,32 @@ describe("B4: players name their character", () => {
     }
   });
 });
+
+describe("T4b N4: lists of names read naturally", () => {
+  it("joins names with commas and a final 'and'", async () => {
+    const { listNames } = await import("../src");
+    expect(listNames([])).toBe("");
+    expect(listNames(["Filip"])).toBe("Filip");
+    expect(listNames(["Filip", "Clara"])).toBe("Filip and Clara");
+    expect(listNames(["Filip", "Clara", "Ana", "Lana", "Maja"])).toBe("Filip, Clara, Ana, Lana and Maja");
+  });
+
+  it("is used in event texts (the finale names everyone)", () => {
+    const content = loadContent();
+    const texts: string[] = [];
+    runSession({
+      content,
+      config: { seed: "n4" },
+      participants: ["doctor", "teacher", "mechanic", "civilian", "journalist", "lawyer"].map((career) => ({
+        career,
+        isBot: true,
+        controller: scripted((v) => {
+          texts.push(v.offer.publicText);
+          return v.offer.choices[0]!.id;
+        }, 500),
+      })),
+    });
+    expect(texts.some((t) => / and [A-Z][a-z]+ and /.test(t))).toBe(false);
+    expect(texts.some((t) => /[A-Z][a-z]+, [A-Z][a-z]+(, [A-Z][a-z]+)* and [A-Z][a-z]+/.test(t))).toBe(true);
+  });
+});

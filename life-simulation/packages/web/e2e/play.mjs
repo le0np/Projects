@@ -103,13 +103,18 @@ async function playOnce(browser, label, contextOptions) {
         const vh = window.innerHeight;
         const choices = [...document.querySelectorAll("button.choice")].map((b) => b.getBoundingClientRect());
         const overlay = document.querySelector(".overlay");
+        const priv = document.querySelector(".card.event .private");
+        const pr = priv?.getBoundingClientRect();
         return {
+          // T4b N1: what only you know is always whole.
+          privateCut: priv && pr ? Math.max(0, priv.scrollHeight - priv.clientHeight) + (pr.bottom > vh + 0.5 || pr.top < -0.5 ? 1 : 0) : 0,
           offscreen: choices.filter((r) => r.top < -0.5 || r.bottom > vh + 0.5).length,
           overlayScroll: overlay ? overlay.scrollHeight - overlay.clientHeight : 0,
           title: document.querySelector("#event-title")?.textContent ?? "",
           me: document.querySelector(".game-header .who strong")?.textContent ?? "",
         };
       });
+      if (fit.privateCut > 0) throw new Error(`[${label}] "${fit.title}": the private text is cut off`);
       if (fit.offscreen > 0 || fit.overlayScroll > 1) throw new Error(`[${label}] "${fit.title}": ${fit.offscreen} choice(s) off screen, card scrolls by ${fit.overlayScroll}px`);
       if (fit.me !== characterName) throw new Error(`[${label}] character is called "${fit.me}", expected "${characterName}"`);
       checkedCards++;

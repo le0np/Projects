@@ -741,11 +741,17 @@ main.game {
   overflow: auto;
   flex: 0 1 auto;
 }
-.event-story h1 {
-  margin: 4px 0;
+.overlay .card.event > h1,
+.overlay .card.event > .private,
+.overlay .card.event > .with {
+  flex: none;
+  margin: 0;
+}
+.event-story {
+  min-height: 2.6em;
 }
 .event-story p {
-  margin: 0 0 6px;
+  margin: 0;
 }
 .overlay .choices {
   flex: none;
@@ -806,6 +812,10 @@ main.game {
     flex-direction: column;
     justify-content: flex-start;
     border-radius: var(--radius);
+  }
+  .overlay.side-left:not(.toast) {
+    right: auto;
+    left: 12px;
   }
   .overlay.toast {
     bottom: auto;

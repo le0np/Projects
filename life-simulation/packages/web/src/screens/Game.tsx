@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Attribute, Notice, OfferView } from "@lifesim/core";
 import { ATTR_LABELS, RELATION_LABELS, careerName, clock, hints, isNewsworthy } from "../format";
-import { Town } from "../town/Town";
+import { Town, useMapSize } from "../town/Town";
 import type { GameState } from "../useGame";
 
 const SEASON_LABELS: Record<string, string> = { spring: "🌱 Spring", summer: "☀ Summer", autumn: "🍂 Autumn", winter: "❄ Winter" };
@@ -29,6 +29,12 @@ export function GameScreen({ game, connected, decide, playMischief }: Props) {
   const progress = Math.min(1, sessionTime / (game.durationSeconds * 1000));
   const lastResolved = [...game.history].reverse().find((n): n is Extract<Notice, { kind: "resolved" }> => n.kind === "resolved");
   const news = [...game.feed].reverse().filter(isNewsworthy);
+  const mapSize = useMapSize();
+  // N2: the card goes on the side of the map away from the event (you are standing at it when the card opens).
+  const myTile = game.characterId ? game.walks[game.characterId]?.pos : undefined;
+  const cardSide = mapSize && myTile && myTile[0] + 0.5 > mapSize.width / 2 ? "left" : "right";
+  // N3: during the finale the clock would run past the end; show the finale instead.
+  const finale = game.feed.some((f) => f.kind === "phase" && f.phase === "finale");
   const recentOutcomes = game.history.filter((n): n is Extract<Notice, { kind: "resolved" }> => n.kind === "resolved").slice(-6).reverse();
 
   return (
@@ -49,9 +55,7 @@ export function GameScreen({ game, connected, decide, playMischief }: Props) {
           <div className="bar">
             <div className="bar-fill" style={{ width: `${progress * 100}%` }} />
           </div>
-          <span className="muted">
-            {clock(sessionTime)} / {clock(game.durationSeconds * 1000)}
-          </span>
+          <span className="muted">{finale ? "Finale" : `${clock(sessionTime)} / ${clock(game.durationSeconds * 1000)}`}</span>
         </div>
         {game.attrs && <Attributes attrs={game.attrs} />}
       </header>
@@ -73,7 +77,7 @@ export function GameScreen({ game, connected, decide, playMischief }: Props) {
           <div className="town-wrap">
             <Town game={game} />
             {game.pending ? (
-              <div className="overlay">
+              <div className={`overlay side-${cardSide}`}>
                 <EventCard offer={game.pending} game={game} now={now} decide={decide} />
               </div>
             ) : lastResolved && sessionTime - lastResolved.t < 7000 * game.timeScale ? (
@@ -230,18 +234,18 @@ function EventCard({ offer, game, now, decide }: { offer: OfferView; game: GameS
       <div className="bar thin">
         <div className="bar-fill urgent" style={{ width: `${(leftMs / totalMs) * 100}%` }} />
       </div>
-      {/* B1: the story may scroll if it is very long; the choices below always stay in view. */}
+      <h1 id="event-title">{offer.title}</h1>
+      {/* B1/N1: only the public text may scroll if it is very long; what only you know and the choices always stay whole. */}
       <div className="event-story">
-        <h1 id="event-title">{offer.title}</h1>
         <p className="lead">{offer.publicText}</p>
-        {offer.privateText && (
-          <p className="private">
-            <span className="private-label">Only you know</span>
-            {offer.privateText}
-          </p>
-        )}
-        {others.length > 0 && <p className="muted small">With: {others.map((o) => o.name).join(", ")}</p>}
       </div>
+      {offer.privateText && (
+        <p className="private">
+          <span className="private-label">Only you know</span>
+          {offer.privateText}
+        </p>
+      )}
+      {others.length > 0 && <p className="muted small with">With: {others.map((o) => o.name).join(", ")}</p>}
 
       {game.submitted ? (
         <p className="waiting" aria-live="polite">
