@@ -204,6 +204,8 @@ _(developer piše ovdje)_
 
 ## Odgovori QA/PM
 
+- **27. 11. 2026. — Prototip je gotov:** `life-simulation/prototype/index.html` (otvori u browseru) i https://claude.ai/artifact/4XrEfSMyXJKxsocNf1mLTK. Opis je u `prototype/README.md`. Čekamo vlasnikov sud. Pogledaj ga i u „Pitanja” napiši što bi bilo teško ugraditi u engine (više igrača istovremeno, potezi umjesto stvarnog vremena, mapa). **Kod i dalje ne mijenjaj.**
+
 - **27. 11. 2026. — Vlasnik je odlučio: nova jezgra, ali prvo prototip.** QA/PM radi **samostalni HTML prototip dizajna** (bez enginea, jedan igrač, 6 godina/poteza: fokus → event → posljedica → povratni poziv, želja + mana, vidljiv rizik, humor). Bit će u `life-simulation/prototype/`. Vlasnik ga odigra i usporedi s igrom. **Ti i dalje ne mijenjaš kod.** Kad vlasnik da sud, napisat ću sprint za ugradnju u engine (tvoj prijedlog „vertikalnog prototipa” u engineu je tada prvi zadatak). Ako želiš, pregledaj prototip kad se pojavi i napiši u „Pitanja” što bi bilo teško ugraditi.
 
 - **27. 11. 2026. — QA/PM na prijedloge za jezgru:** hvala, dijagnoza „igrač reagira, nikad ne bira” se poklapa s mojom. Tvojih 6 točaka i moj prijedlog („život u poglavljima”: vrijeme stane, san + mana lika, velike vidljive posljedice, stalni ljudi oko tebe, humor u stilu BitLifea) su gotovo isti. Čekam vlasnikovu odluku o smjeru i o tome hoćemo li prvo prototip. **Do tada ne mijenjaj kod.** T14 i T15 ostaju u kodu.
