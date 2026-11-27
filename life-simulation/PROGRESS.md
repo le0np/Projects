@@ -613,14 +613,23 @@ Titles: The People's Mayor 31, Everybody's Babysitter 26, Town Villain 25, Close
 
 Procjena trajanja zbraja čitanje (3,5 riječi/s) i klikove po ekranu, uz 60 s za stvaranje lika. Pravo trajanje treba izmjeriti s vlasnikom.
 
+### QA prihvatio 5a; T28: sitnice (developer)
+
+- **F1 oznake mana:** mana djeluje samo na izbore s odgovarajućim tagom; maknuti su tagovi koji nisu imali smisla (npr. „Bribe them with sweets” više nije `effort`, „Save your own things” nije `modest`, „Tell him it was Dora” nije `calm`; ukupno 8). Oznaka je uvijek „Hot-headed −20 %”; samo „Can't say no: 40 %” ostaje u starom obliku.
+- **F2 Show-off:** umjesto troška u svakom poglavlju sada je to `sometimes` (45 % po poglavlju, najviše 2× po životu), svaki put s drugom poantom („you bought a round for a bar full of strangers”…). Ima vlastiti `Rng` tok.
+- **F3 balans:** baza finala mayor 15 → 10, rich 20 → 26, fame i love 25 → 21, business 15 → 18. Na QA-ovom seedu `qa3` (300 života po snu): fame 55, rich 39, love 58, mayor 61, business 33, family 36 %.
+- **F4 „Dream chance”:** ploča života pokazuje „🎯 Dream chance: 37 %”, a klik otvara razloge (isti izračun kao finale, `ChapterLife.dreamChance()`, bez kocke). Test provjerava da je zadnja vrijednost na ploči jednaka izgledima u finalu.
+- **F5 izgled:** fontovi Fredoka i Atkinson Hyperlegible su u projektu (`@fontsource`, Vite ih pakira, bez CDN-a). U recapu lica stalnih likova prate odnos.
+- **Povratni pozivi:** svaki odigrani event ostavlja trenutak (ako sadržaj nije napisao `remember`, trenutak je sam ishod), a „život ti proleti pred očima” uvijek pokaže 2 trenutka. Na `qa3` sada svih 1800 života ima barem 2 poziva (prije 1798).
+
 ## Zadnja automatizirana provjera
 
-Provedeno 27. studenog 2026. (nakon Sprinta 5a):
+Provedeno 27. studenog 2026. (nakon T28):
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm run check` | typecheck čist; 75 eventa (stari način) i 34 eventa poglavlja, 0 grešaka, 0 upozorenja; **165/165 testova** |
-| `npm run sim:chapters` | svih 6 snova u 25–65 % (28–62 %); povratnih poziva min 2, prosjek 4,4; 0 ponovljenih eventa; replay 18/18 identičan; procjena 6,0–7,5 min |
+| `npm run check` | typecheck čist; 75 eventa (stari način) i 34 eventa poglavlja, 0 grešaka, 0 upozorenja; **166/166 testova** |
+| `npm run sim:chapters` | 50 po snu: 32–54 %; `--lives 300 --seed qa3`: 33–61 %; povratnih poziva min 2 (1800/1800), prosjek 4,6; 0 ponovljenih eventa; replay 18/18 identičan; procjena 5,9–7,4 min |
 | `npm run e2e` | ✓ život u poglavljima na desktopu i iPhone 13 (gost → lik → 5 fokusa → finale → recap → log → povijest, bez horizontalnog skrolanja); ✓ privatna soba: domaćin + gost preko linka (1 klik + ime), isti život, gost spremi račun; ✓ desktop i ✓ iPhone 13 (spletka, kartica lika, cijela sesija, recap s titulom i „Copy my life”, kolekcija titula u lobbyju); ✓ strana žrtve spletke; ✓ duh (oporuka pročitana u recapu); ✓ 133 kartice bez skrolanja na 1280×800 i 390×664; ✓ 0 gramatičkih grešaka |
 | `npm run sim:batch -- --sessions 200 --seed sprint3` | brojke gore; replay 3/3 identičan |
 | Svjež `git clone` grane `dev` (`38d7ef9`) + `npm install` + `npm run check` + `web:build` + server | 149/149, build čist, `/api/health` i web stranica rade |
@@ -647,7 +656,7 @@ Provedeno 27. studenog 2026. (nakon Sprinta 5a):
 
 ## Sljedeći koraci
 
-1. **Sprint 5a (T20–T24) je gotov i čeka QA i vlasnikov test.** Nakon prihvaćanja slijedi 5b: zajednički potez za 1–4 čovjeka u sobama (T25), pravi igrač u ulozi stalnog lika (T26) i 40–60 eventa sa spletkama kao „Revenge” (T27).
+1. **Sprint 5a (T20–T24) QA je prihvatio, T28 je gotov; čeka se vlasnikov test.** Nakon prihvaćanja slijedi 5b: zajednički potez za 1–4 čovjeka u sobama (T25), pravi igrač u ulozi stalnog lika (T26) i 40–60 eventa sa spletkama kao „Revenge” (T27).
 2. Nakon toga, po planu §9: M12 Sadržaj (humorističan ton, životne faze) i M13 Balans; QA je dodao istraživanje tržišta (`docs/research/market-research-2026-11-27.md`) s prijedlogom MVP-a za izlazak.
 
 ## Handoff za novi chat

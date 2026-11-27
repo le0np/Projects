@@ -59,6 +59,10 @@ async function playLife(page, label, { dream, flaw, job }) {
   await page.getByRole("heading", { name: "These three will be there the whole way." }).waitFor({ timeout: 10_000 });
   await snap("intro");
   await page.getByRole("button", { name: "Begin" }).click();
+  // T28 F4: the board shows the dream's chance, and its reasons on a tap.
+  await page.getByRole("button", { name: /Dream chance: \d+ %/ }).click();
+  await page.getByRole("region", { name: "Your dream's chance" }).getByText("Everyone starts with").waitFor({ timeout: 5_000 });
+  await snap("dream-chance");
 
   const seen = { focus: 0, events: 0, rolls: 0, changes: 0, recall: 0, finale: false };
   const titles = [];

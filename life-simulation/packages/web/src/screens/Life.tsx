@@ -7,6 +7,11 @@ import { useEffect, useRef, useState } from "react";
 import type { ChapterRecap, LifeBoard, LifeStep } from "@lifesim/core";
 import { api } from "../api";
 import type { LifeState } from "../useGame";
+// T28 F5: the prototype's fonts, bundled with the game (no CDN).
+import "@fontsource/fredoka/latin-600.css";
+import "@fontsource/fredoka/latin-700.css";
+import "@fontsource/atkinson-hyperlegible/latin-400.css";
+import "@fontsource/atkinson-hyperlegible/latin-700.css";
 import "./life.css";
 
 type Act = (a: { t: "next" } | { t: "focus" | "choose"; id: string }) => Promise<{ ok: boolean; error?: string } | undefined>;
@@ -218,6 +223,7 @@ function Board({ board }: { board: LifeBoard }) {
             <span className="lf-chip">★ {board.fame} fame</span>
             <span className="lf-chip">👍 {board.rep} reputation</span>
           </div>
+          <DreamChance board={board} />
         </div>
       </div>
       <div className="lf-timeline" aria-label="Your life so far">
@@ -249,6 +255,38 @@ function Board({ board }: { board: LifeBoard }) {
         </div>
       )}
     </section>
+  );
+}
+
+/** T28 F4: what your dream's chance would be if the finale were now, and why (tap to see). */
+function DreamChance({ board }: { board: LifeBoard }) {
+  const [open, setOpen] = useState(false);
+  const { odds, base, factors } = board.dreamChance;
+  const tone = odds >= 60 ? "good" : odds >= 40 ? "warn" : "bad";
+  return (
+    <div className="lf-dream">
+      <button className={`lf-chip odds ${tone}`} aria-expanded={open} onClick={() => setOpen((o) => !o)} title="What your dream depends on">
+        🎯 Dream chance: {odds} % {open ? "▴" : "▾"}
+      </button>
+      {open && (
+        <div className="lf-factors small" role="region" aria-label="Your dream's chance">
+          <div>
+            <span>Everyone starts with</span>
+            <b>{base} %</b>
+          </div>
+          {factors.map((f) => (
+            <div key={f.label}>
+              <span>{f.label}</span>
+              <b style={{ color: f.value >= 0 ? "var(--lf-teal)" : "var(--lf-tomato)" }}>
+                {f.value >= 0 ? "+" : ""}
+                {f.value} %
+              </b>
+            </div>
+          ))}
+          <p className="muted">The final roll at 33 uses these. They change with every choice.</p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -568,7 +606,7 @@ export function ChapterRecapView({ recap }: { recap: ChapterRecap }) {
       <div className="lf-rows">
         {recap.people.map((p) => (
           <div key={p.role} className="lf-row">
-            <Bean color={p.color} size={34} />
+            <Bean color={p.color} mood={p.rel === undefined ? "ok" : p.rel >= 1 ? "good" : p.rel <= -2 ? "bad" : "ok"} size={34} />
             <div>
               <b>{p.name}</b> · {p.relLabel}
               <p className="small muted">

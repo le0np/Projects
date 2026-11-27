@@ -234,7 +234,7 @@ Radi u dva dijela. **5a** ide prvo i završava vlasnikovim testom. **5b** počin
 
 **Prihvaćeno kad (QA):** solo život traje 6–10 min; nijedan event se ne ponavlja u istom životu; u 50 bot-života svaki san uspije u 25–65 % slučajeva; svaki život ima barem 2 „povratna poziva” (raniji izbor spomenut kasnije); `npm run check` i `npm run e2e` prolaze. **Na kraju vlasnik igra i daje sud.**
 
-### [ ] T28. Sitnice iz QA Sprinta 5a (napravi dok vlasnik igra)
+### [x] T28. Sitnice iz QA Sprinta 5a (napravi dok vlasnik igra)
 - **F1 (mane, zbunjujuće oznake):** Oznake tipa „Hot-headed: 75 %”, „Lazy: 75 %”, „Show-off: 75 %” pojavljuju se na izborima na koje mana logično ne utječe („Bribe them with sweets” uz Lazy, „Save your own things” uz Show-off, „Tell him it was Dora” uz Hot-headed). Mana smije djelovati **samo** na izbore s odgovarajućim tagom. Oznaka uvijek neka bude u obliku „Hot-headed −20 %”, kao kod „Knock over the gravy”. Oblik „X: 75 %” ostaje samo za Can't say no.
 - **F2 (Show-off spam):** „−3 € · Show-off: you spent 3 € impressing people” pojavi se nakon skoro svakog ishoda (4× u jednom životu). Neka se to dogodi najviše 1–2 puta po životu, svaki put s drukčijom poantom („You bought a round for a bar full of strangers.”).
 - **F3 (balans):** Na 300 bot-života po snu (seed `qa3`) mayor je 68 % (iznad 65), a rich 31 % (na donjem rubu). Malo spusti mayor, a rich podigni.

@@ -8,9 +8,6 @@
       {
         "id": "things",
         "label": "Save your own things",
-        "tags": [
-          "modest"
-        ],
         "ok": {
           "text": "You save your laptop and three plants. The plants are dead, but they're yours.",
           "emoji": "📦",

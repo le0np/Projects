@@ -124,3 +124,6 @@ body:has(main.lf) { background: #e9eef5; }
 @media (prefers-reduced-motion: reduce) { .lf-fade { animation: none; } }
 .lf .bean { flex: none; }
 .lf-error { color: var(--lf-tomato); }
+.lf-dream { display: grid; gap: 6px; justify-items: start; }
+.lf-dream > button { cursor: pointer; }
+.lf-dream .lf-factors { width: 100%; max-width: 460px; }

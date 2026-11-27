@@ -427,9 +427,6 @@
       {
         "id": "rival_pie",
         "label": "Give it to {rival}'s mum's pie, to make peace",
-        "tags": [
-          "modest"
-        ],
         "ok": {
           "text": "{rival}'s mum hugs you. {rival} looks at you like you're a stranger, then nods once. It's a start.",
           "emoji": "🤝",

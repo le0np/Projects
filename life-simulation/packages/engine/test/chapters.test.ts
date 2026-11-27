@@ -10,7 +10,11 @@ function advance(life: ChapterLife, until: (l: ChapterLife) => boolean, pick: (i
   for (let i = 0; i < 200 && !until(life); i++) {
     const step = life.view().step;
     const err =
-      step.kind === "focus" ? life.chooseFocus(pick(step.cards.map((c) => c.id))) : step.kind === "event" ? life.choose(pick(step.choices.map((c) => c.id))) : life.next();
+      step.kind === "focus"
+        ? life.chooseFocus(pick(step.cards.map((c) => c.id)))
+        : step.kind === "event"
+          ? life.choose(pick(step.choices.map((c) => c.id)))
+          : life.next();
     if (err) throw new Error(err);
   }
 }
@@ -26,7 +30,10 @@ describe("Sprint 5: life in chapters", () => {
 
   it("the validator catches unknown tokens, a missing fail outcome and a too-thin dream", () => {
     const raw = readChaptersDir();
-    const events = JSON.parse(JSON.stringify(raw.events)) as { file: string; data: { id: string; kind: string; text: string; choices: { base?: number; fail?: unknown }[] }[] }[];
+    const events = JSON.parse(JSON.stringify(raw.events)) as {
+      file: string;
+      data: { id: string; kind: string; text: string; choices: { base?: number; fail?: unknown }[] }[];
+    }[];
     const first = events[0]!.data[0]!;
     first.text = "Hello {nobody}";
     first.choices[0]!.base = 50;
@@ -108,10 +115,14 @@ describe("Sprint 5: life in chapters", () => {
     let kicked = false;
     for (let i = 0; i < 40 && !kicked; i++) {
       const life = new ChapterLife(content, { ...setup, dream: "rich", flaw: "pushover" }, `push-${i}`);
-      advance(life, (l) => {
-        const s = l.view().step;
-        return l.finished || (s.kind === "event" && s.eventId === "crypto") || (s.kind === "focus" && !s.cards.some((c) => c.id === "money"));
-      }, (ids) => (ids.includes("money") ? "money" : ids[0]!));
+      advance(
+        life,
+        (l) => {
+          const s = l.view().step;
+          return l.finished || (s.kind === "event" && s.eventId === "crypto") || (s.kind === "focus" && !s.cards.some((c) => c.id === "money"));
+        },
+        (ids) => (ids.includes("money") ? "money" : ids[0]!),
+      );
       const s = life.view().step;
       if (s.kind !== "event" || s.eventId !== "crypto") continue;
       const no = s.choices.find((c) => c.id === "no")!;
@@ -133,6 +144,40 @@ describe("Sprint 5: life in chapters", () => {
       revealed = life.state.moments.some((m) => m.text.startsWith("Secret came out"));
     }
     expect(revealed).toBe(true);
+  });
+
+  it("T28: flaw notes only on matching tags and as 'Flaw −N %'; Show-off costs money at most twice; the board's dream chance is the finale's", () => {
+    // Notes: play lives step by step and look at every choice shown.
+    for (const flaw of content.flaws)
+      for (let i = 0; i < 6; i++) {
+        const life = new ChapterLife(content, { ...setup, flaw: flaw.id }, `notes-${flaw.id}-${i}`);
+        advance(life, (l) => {
+          const s = l.view().step;
+          if (s.kind === "event")
+            for (const c of s.choices) {
+              const def = content.events.find((e) => e.id === s.eventId)?.choices.find((x) => x.id === c.id);
+              const flawNotes = c.notes.filter((n) => n.startsWith(flaw.label));
+              if (flawNotes.length) expect(def?.tags ?? []).toContain(flaw.tag);
+              for (const n of flawNotes) expect(n).toMatch(flaw.tag === "refuse" ? /^Can't say no: \d+ %$/ : new RegExp(`^${flaw.label} −\\d+ %$`));
+            }
+          return l.finished;
+        });
+      }
+    for (let i = 0; i < 20; i++) {
+      const life = playBotLife(content, { ...setup, flaw: "showoff" }, `showoff-${i}`);
+      expect(life.state.flags.filter((f) => f.startsWith("__flaw_hit")).length).toBeLessThanOrEqual(2);
+    }
+    const life = new ChapterLife(content, { ...setup, dream: "family" }, "chance");
+    let lastBoard = life.view().board.dreamChance.odds;
+    advance(life, (l) => {
+      const s = l.view().step;
+      lastBoard = l.view().board.dreamChance.odds;
+      return s.kind === "event" && s.eventKind === "finale";
+    });
+    const fin = life.view().step;
+    if (fin.kind !== "event") throw new Error("no finale");
+    expect(fin.choices[0]!.odds).toBe(lastBoard);
+    expect(life.view().board.dreamChance.factors.map((f) => f.label)).toEqual(fin.factors!.map((f) => f.label));
   });
 
   it("career choices appear only for that career ('Your expertise')", () => {

@@ -222,8 +222,11 @@ export const FlawSchema = z
     failEmoji: z.string().min(1),
     /** Your secrets come out this many chapters sooner. */
     secretsSooner: z.number().int().min(0).max(2).optional(),
-    /** Every chapter (from the second): these effects, with this line in "What changed". */
-    everyChapter: z.object({ effects: z.array(LifeEffectSchema), note: z.string() }).strict().optional(),
+    /** Now and then (from the second chapter, with this chance, at most `max` times): these effects, each time with the next line. */
+    sometimes: z
+      .object({ chance: z.number().min(0).max(1), max: z.number().int().min(1), effects: z.array(LifeEffectSchema), notes: z.array(z.string().min(1)).min(1) })
+      .strict()
+      .optional(),
   })
   .strict();
 export type Flaw = z.infer<typeof FlawSchema>;
@@ -317,6 +320,8 @@ export interface LifeBoard {
   cast: CastView[];
   secrets: { text: string; left: number }[];
   mood: "good" | "ok" | "bad";
+  /** T28 F4: the dream's chance if the finale were now, with its reasons. */
+  dreamChance: { odds: number; base: number; factors: { label: string; value: number }[] };
 }
 
 export interface ChoiceView {
@@ -379,7 +384,7 @@ export interface ChapterRecap {
   dream: { id: string; icon: string; label: string; done: boolean };
   flaw: string;
   moments: { age: number; text: string }[];
-  people: { role: CastRole; name: string; color: string; relLabel: string; helped: number; hurt: number }[];
+  people: { role: CastRole; name: string; color: string; relLabel: string; rel?: number; helped: number; hurt: number }[];
   secretsKept: string[];
   factors: { label: string; value: number }[];
   callbacks: number;

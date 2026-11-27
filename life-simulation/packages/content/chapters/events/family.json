@@ -128,9 +128,6 @@
       {
         "id": "bribe",
         "label": "Bribe them with sweets",
-        "tags": [
-          "effort"
-        ],
         "ok": {
           "text": "It works for exactly eleven minutes. Then the sugar arrives. You learn the word “bedlam”.",
           "emoji": "🍬",

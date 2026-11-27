@@ -15,9 +15,6 @@
       {
         "id": "truth",
         "label": "Tell {crush.him} it was {friend}",
-        "tags": [
-          "calm"
-        ],
         "ok": {
           "text": "{crush} laughs so hard wine comes out of {crush.his} nose. “Honest AND bad with plants.” It's a start.",
           "emoji": "🍷",

@@ -17,7 +17,7 @@
       "finale": {
         "title": "The Talent Show Final",
         "text": "The town talent show final. The whole town is watching, plus a man from national TV who looks bored.",
-        "base": 25,
+        "base": 21,
         "factors": [
           {
             "label": "Your fame ★{fame}",
@@ -138,7 +138,7 @@
       "finale": {
         "title": "The Investor Pitch",
         "text": "Your big idea, one meeting, one investor. The investor walks in. It's {rival}.",
-        "base": 20,
+        "base": 26,
         "factors": [
           {
             "label": "Your savings ({money} €)",
@@ -266,7 +266,7 @@
             "text": "{crush} is moving to another city tomorrow. You have one evening."
           }
         ],
-        "base": 25,
+        "base": 21,
         "factors": [
           {
             "label": "You're married to {crush}",
@@ -375,7 +375,7 @@
       "finale": {
         "title": "Election Night",
         "text": "Election night at the town hall. You against {rival}, who has a brass band. You have a pigeon on your shoulder that refuses to leave.",
-        "base": 15,
+        "base": 10,
         "factors": [
           {
             "label": "Your reputation ({rep})",
@@ -513,7 +513,7 @@
       "finale": {
         "title": "Opening Day",
         "text": "Opening day of your own place. The sign is up, the paint is almost dry, and the health inspector is early.",
-        "base": 15,
+        "base": 18,
         "factors": [
           {
             "label": "Your savings ({money} €)",
@@ -731,7 +731,7 @@
       "note": "Calm choices are 20 % less likely to work. Sometimes you shout instead.",
       "tag": "calm",
       "add": -20,
-      "certain": 75,
+      "certain": 80,
       "failText": "You meant to stay calm. You didn't. Somebody's chair is now in the pond.",
       "failEmoji": "🌶️"
     },
@@ -742,7 +742,7 @@
       "note": "Choices that take effort are 20 % less likely to work.",
       "tag": "effort",
       "add": -20,
-      "certain": 75,
+      "certain": 80,
       "failText": "You meant to do it. Then you sat down for a minute. The minute lasted a week.",
       "failEmoji": "🛋️"
     },
@@ -753,17 +753,22 @@
       "note": "Modest choices are harder, and impressing people costs money.",
       "tag": "modest",
       "add": -20,
-      "certain": 75,
-      "everyChapter": {
+      "certain": 80,
+      "failText": "You meant to keep it small. Then you hired a trumpeter.",
+      "failEmoji": "🦚",
+      "sometimes": {
+        "chance": 0.45,
+        "max": 2,
         "effects": [
           {
-            "money": -3
+            "money": -5
           }
         ],
-        "note": "🦚 Show-off: you spent 3 € impressing people"
-      },
-      "failText": "You meant to keep it small. Then you hired a trumpeter.",
-      "failEmoji": "🦚"
+        "notes": [
+          "Show-off: you bought a round for a bar full of strangers (−5 €).",
+          "Show-off: you hired a man to carry your shopping. Two bags. (−5 €)"
+        ]
+      }
     }
   ],
   "careers": [

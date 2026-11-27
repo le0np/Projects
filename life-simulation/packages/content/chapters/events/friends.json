@@ -57,9 +57,6 @@
       {
         "id": "pizza",
         "label": "Send pizza instead",
-        "tags": [
-          "modest"
-        ],
         "ok": {
           "text": "The pizza arrives. The cat eats it. {friend} appreciates the thought.",
           "emoji": "🍕",

@@ -67,9 +67,6 @@
       {
         "id": "little",
         "label": "Give {friend.him} a little, as a friend",
-        "tags": [
-          "modest"
-        ],
         "ok": {
           "text": "You never see the money again. You do see {friend} a lot more. {Friend.he} owes you one.",
           "emoji": "🤝",
@@ -155,9 +152,6 @@
       {
         "id": "return",
         "label": "Give it back",
-        "tags": [
-          "modest"
-        ],
         "ok": {
           "text": "{rival} stares at you like you're an alien. Then buys you a coffee. A small one, but still.",
           "emoji": "☕",

@@ -118,6 +118,7 @@ export class ChapterLife {
   private readonly rngEvents: Rng;
   private readonly rngRolls: Rng;
   private readonly rngCast: Rng;
+  private readonly rngFlaw: Rng;
 
   constructor(
     private readonly content: ChapterContent,
@@ -137,6 +138,7 @@ export class ChapterLife {
     this.rngEvents = rng.fork("events");
     this.rngRolls = rng.fork("rolls");
     this.rngCast = rng.fork("cast-decides");
+    this.rngFlaw = rng.fork("flaw");
     const members = {} as Record<CastRole, CastMember>;
     for (const role of CAST_ROLES) members[role] = rngPick.pick(content.cast.filter((c) => c.role === role));
     this.members = members;
@@ -257,7 +259,11 @@ export class ChapterLife {
     const text = this.render(flawText?.text ?? outcome.text, active);
     const emoji = flawText?.emoji ?? outcome.emoji;
     if (flawText && !flawKickedIn) this.change(`${this.flaw.icon} Your flaw: ${this.flaw.label}`, "warn");
+    const momentsBefore = this.state.moments.length;
     this.apply(flawText?.effects ?? outcome.effects ?? [], active);
+    // Every played event leaves a memory: if the content wrote none, the outcome itself is it.
+    if (this.state.moments.length === momentsBefore && active.kind !== "secret" && active.kind !== "finale")
+      this.moment(`${active.title}: ${text}`, this.rolesIn(flawText?.text ?? outcome.text, active));
     let cast: Extract<LifeStep, { kind: "outcome" }>["cast"];
     if (outcome.cast) {
       const role = this.person(outcome.cast.who, active);
@@ -310,10 +316,16 @@ export class ChapterLife {
         return this.startEvent(this.rngEvents.pick(twists), { auto: true });
       }
     }
-    if (s.chapter > 0 && this.flaw.everyChapter && !s.flags.includes(`__flaw_${s.chapter}`)) {
+    // T28 F2: a flaw that costs you something now and then (at most `max` times, each with its own line).
+    const sometimes = this.flaw.sometimes;
+    if (s.chapter > 0 && sometimes && !s.flags.includes(`__flaw_${s.chapter}`)) {
       s.flags.push(`__flaw_${s.chapter}`);
-      this.apply(this.flaw.everyChapter.effects, null);
-      this.change(this.flaw.everyChapter.note, "warn");
+      const hits = s.flags.filter((f) => f.startsWith("__flaw_hit")).length;
+      if (hits < sometimes.max && this.rngFlaw.chance(sometimes.chance)) {
+        s.flags.push(`__flaw_hit_${s.chapter}`);
+        this.apply(sometimes.effects, null);
+        this.change(`${this.flaw.icon} ${sometimes.notes[hits % sometimes.notes.length]}`, "warn");
+      }
     }
     const cards = this.drawFocus();
     if (cards.length === 0) {
@@ -408,19 +420,30 @@ export class ChapterLife {
     this.showEvent();
   }
 
-  private startFinale(): void {
+  /**
+   * The dream's chance right now: the finale's reasons, computed from the life so far (T28 F4: the
+   * board shows it after every chapter, so you know what you are doing for your dream).
+   */
+  dreamChance(): { odds: number; base: number; factors: { label: string; value: number; fromChoice: boolean }[] } {
     const f = this.dream.finale;
-    const factors: { label: string; value: number }[] = [];
+    const factors: { label: string; value: number; fromChoice: boolean }[] = [];
     for (const x of f.factors) {
       if (x.when && !this.cond(x.when)) continue;
       let v = (x.add ?? 0) + (x.per ? this.stat(x.per.stat) * x.per.mul : 0);
       if (x.cap !== undefined) v = Math.min(v, x.cap);
       if (x.floor !== undefined) v = Math.max(v, x.floor);
-      factors.push({ label: this.render(x.label, {}, false), value: Math.round(v) });
-      // A reason that comes from an earlier choice ("You fixed the pothole") is a callback.
-      if (x.when?.flags?.length) this.state.callbacks++;
+      factors.push({ label: this.render(x.label, {}, false), value: Math.round(v), fromChoice: !!x.when?.flags?.length });
     }
-    const odds = clamp(f.base + factors.reduce((a, b) => a + b.value, 0), 5, 95);
+    return { odds: clamp(f.base + factors.reduce((a, b) => a + b.value, 0), 5, 95), base: f.base, factors };
+  }
+
+  private startFinale(): void {
+    const f = this.dream.finale;
+    const chance = this.dreamChance();
+    // A reason that comes from an earlier choice ("You fixed the pothole") is a callback.
+    this.state.callbacks += chance.factors.filter((x) => x.fromChoice).length;
+    const factors = chance.factors.map(({ label, value }) => ({ label, value }));
+    const odds = chance.odds;
     const choice: LifeChoice = {
       id: "go",
       label: "Go for it",
@@ -471,8 +494,9 @@ export class ChapterLife {
     }
     if (c.tags?.includes(this.flaw.tag)) {
       if (odds === undefined || odds >= 100) {
+        // T28 F1: "Hot-headed −20 %"; only "Can't say no: 40 %" keeps the other form.
         odds = this.flaw.certain;
-        notes.push(`${this.flaw.label}: ${odds} %`);
+        notes.push(this.flaw.tag === "refuse" ? `${this.flaw.label}: ${odds} %` : `${this.flaw.label} −${100 - odds} %`);
       } else {
         odds += this.flaw.add;
         notes.push(`${this.flaw.label} −${Math.abs(this.flaw.add)} %`);
@@ -775,6 +799,13 @@ export class ChapterLife {
       s.callbacks++;
       out.push(`${s.moments[i]!.age}: ${s.moments[i]!.text}`);
     }
+    // A short life with few memories: earlier ones may flash by again.
+    for (let i = 0; i < s.moments.length && out.length < n; i++) {
+      const line = `${s.moments[i]!.age}: ${s.moments[i]!.text}`;
+      if (s.momentPeople[i]!.chapter >= FINALE_CHAPTER || out.includes(line)) continue;
+      s.callbacks++;
+      out.push(line);
+    }
     return out;
   }
 
@@ -802,6 +833,7 @@ export class ChapterLife {
       cast: this.castViews(),
       secrets: s.secrets.map((x) => ({ text: x.text, left: x.due - s.chapter })),
       mood: s.mood,
+      dreamChance: (({ odds, base, factors }) => ({ odds, base, factors: factors.map(({ label, value }) => ({ label, value })) }))(this.dreamChance()),
     };
   }
 
@@ -824,6 +856,7 @@ export class ChapterLife {
         name: this.members[role].name,
         color: this.members[role].color,
         relLabel: this.relLabel(role)[0],
+        rel: s.rel[role],
         helped: s.helped[role],
         hurt: s.hurt[role],
       })),

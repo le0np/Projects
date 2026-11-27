@@ -194,9 +194,6 @@
       {
         "id": "post",
         "label": "Post it",
-        "tags": [
-          "brave"
-        ],
         "ok": {
           "text": "4 million views. {friend} legally changes {friend.his} name to “Fountain”.",
           "emoji": "⛲",
