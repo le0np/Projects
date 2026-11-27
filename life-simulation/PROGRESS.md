@@ -341,6 +341,14 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - Pravilo je sada `/data/` (samo baza u korijenu projekta), a datoteke su commitane.
 - **Nova provjera prije završetka posla:** svjež `git clone` s GitHuba u scratchpad, pa `npm install`, `validate`, testovi, build i pokretanje servera. Prošlo je: 67 eventa, 97/97 testova, server poslužuje mapu.
 
+## Napravljeno 27. studenog 2026.
+
+### QA/PM pregled i plan poboljšanja
+
+- Na projektu sada rade dva agenta: **QA/PM** (testira, istražuje, piše zadatke) i **developer** (implementira). Komuniciraju kroz [`INSTRUCTIONS_FOR_AGENT.md`](INSTRUCTIONS_FOR_AGENT.md); zadaci su tamo, u tri sprinta.
+- QA je igrao u browseru na normalnoj brzini i analizirao batch izvještaj m10. Glavni nalazi: 74 % eventa je solo, svaki lik dobije istih 7 svakodnevnih eventa, rokovi se skraćuju s `TIME_SCALE` (uz 6× ostane 2–3 s), kartica eventa prekriva pola mape. Detalji i istraživanje sličnih igara: [`docs/reports/qa-research-2026-11-27.md`](docs/reports/qa-research-2026-11-27.md).
+- Kod nije mijenjan.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:
@@ -371,7 +379,7 @@ Provedeno 13. studenog 2026.:
 
 ## Sljedeći koraci
 
-1. **Riješiti povratnu informaciju vlasnika** (gore): monotonija, prekratko vrijeme za odgovor, prejednostavne smicalice, osjećaj „kartica”. Najprije razgovor s vlasnikom, tek onda kod.
+1. **Riješiti povratnu informaciju vlasnika** (gore) prema zadacima u `INSTRUCTIONS_FOR_AGENT.md` (Sprint 1 → 2 → 3).
 2. Nakon toga, po planu §9: M12 Sadržaj (humorističan ton, životne faze) i M13 Balans.
 
 ## Handoff za novi chat
