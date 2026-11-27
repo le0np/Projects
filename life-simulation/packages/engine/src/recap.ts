@@ -9,6 +9,7 @@ export interface CharacterTracking {
   startTypes: Map<string, RelationType>;
   played: LifeRecap["secrets"]["played"];
   suffered: LifeRecap["secrets"]["suffered"];
+  oracle: LifeRecap["oracle"];
 }
 
 const POSITIVE = new Set<RelationType>(["friend", "partner", "family"]);
@@ -104,6 +105,7 @@ export function computeRecaps(input: {
         played: track.played.map((p) => ({ ...p, on: byId.get(p.on)?.name ?? p.on, ...(p.accomplice ? { accomplice: byId.get(p.accomplice)?.name ?? p.accomplice } : {}) })),
         suffered: track.suffered.map((p) => ({ ...p, by: byId.get(p.by)?.name ?? p.by })),
       },
+      oracle: { ...track.oracle },
       lifeScore,
     };
   });

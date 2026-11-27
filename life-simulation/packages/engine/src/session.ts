@@ -219,6 +219,8 @@ export class Session {
   private mischiefSeq = 0;
   /** T3: the finale closes the session once everyone alive is free. */
   private finale: "none" | "waiting" | "running" | "done" = "none";
+  /** T9: guesses per event: guesser → what they guessed. */
+  private readonly guesses = new Map<string, Map<string, { deciderId: string; choiceId: string }>>();
   /** T8: schemes in preparation or done. */
   private readonly schemes = new Map<string, Scheme>();
   /** T7: lasting traces on the map. */
@@ -860,7 +862,7 @@ export class Session {
       ch.pos = [...home.door] as TilePos;
       ch.work = (this.content.map.nearest(career.workplace, ch.pos) ?? home).id;
       this.order.push(id);
-      this.tracking.set(id, { keyMoments: [], influence: new Map(), startTypes: new Map(), played: [], suffered: [] });
+      this.tracking.set(id, { keyMoments: [], influence: new Map(), startTypes: new Map(), played: [], suffered: [], oracle: { guesses: 0, correct: 0 } });
     });
   }
 
@@ -1477,6 +1479,56 @@ export class Session {
       if (inst.ev.roles[inst.roleOf.get(c) as string]?.aware === false) continue; // involved without knowing it
       this.onNotice(c, { kind: "event", t: this.now(), view: this.view(c, inst) });
     }
+    // T9: everyone else (alive, not in it) may guess what one of the deciders will do.
+    const decider = inst.deciders[0];
+    if (inst.ev.hidden || !decider) return;
+    const guessable = {
+      kind: "guessable" as const,
+      t: this.now(),
+      instanceId,
+      title: this.interpolate(inst.ev.title, inst.bindings),
+      deciderId: decider,
+      name: this.char(decider).name,
+      choices: (inst.offered.get(decider) ?? []).map((c) => ({ id: c.id, label: c.label })),
+      deadlineAt: inst.deadlineAt,
+    };
+    for (const id of this.order) if (!inst.participants.includes(id) && this.char(id).status === "active") this.onNotice(id, guessable);
+  }
+
+  /** T9: guess what someone in another event will choose (one guess per event). */
+  guess(characterId: string, instanceId: string, deciderId: string, choiceId: string): SubmitResult {
+    const reject = (reason: string): SubmitResult => {
+      this.log.push({ t: this.now(), type: "guess_rejected", characterId, instanceId, deciderId, choiceId, reason });
+      return { ok: false, reason };
+    };
+    const inst = this.instances.get(instanceId);
+    if (this._state !== "active") return reject("session is not active");
+    if (!inst || inst.resolved || inst.startedAt > this.now()) return reject("nothing to guess");
+    if (inst.participants.includes(characterId)) return reject("you are in it");
+    if (!inst.deciders.includes(deciderId) || inst.ev.hidden) return reject("they do not decide here");
+    if (!inst.offered.get(deciderId)?.some((c) => c.id === choiceId)) return reject("not one of their choices");
+    const mine = this.guesses.get(instanceId) ?? new Map<string, { deciderId: string; choiceId: string }>();
+    if (mine.has(characterId)) return reject("you already guessed");
+    mine.set(characterId, { deciderId, choiceId });
+    this.guesses.set(instanceId, mine);
+    (this.tracking.get(characterId) as CharacterTracking).oracle.guesses++;
+    this.log.push({ t: this.now(), type: "guess", characterId, instanceId, deciderId, choiceId });
+    return { ok: true };
+  }
+
+  /** T9: tell everyone who guessed how it turned out. */
+  private settleGuesses(inst: Instance): void {
+    const all = this.guesses.get(inst.id);
+    if (!all) return;
+    this.guesses.delete(inst.id);
+    for (const [characterId, g] of all) {
+      const actual = inst.decisions.get(g.deciderId)?.choiceId;
+      if (!actual) continue;
+      const correct = actual === g.choiceId;
+      if (correct) (this.tracking.get(characterId) as CharacterTracking).oracle.correct++;
+      const label = (id: string) => inst.offered.get(g.deciderId)?.find((c) => c.id === id)?.label ?? id;
+      this.onNotice(characterId, { kind: "guess_result", t: this.now(), instanceId: inst.id, deciderId: g.deciderId, name: this.char(g.deciderId).name, guessed: label(g.choiceId), actual: label(actual), correct });
+    }
   }
 
   private visibleChoices(inst: Instance, characterId: string): VisibleChoice[] {
@@ -1733,6 +1785,7 @@ export class Session {
     }
     this.stats.eventsResolved++;
     this.log.push({ t: this.now(), type: "event_resolved", instanceId: inst.id, eventId: ev.id, outcomeId: outcome.id, changes });
+    this.settleGuesses(inst);
     // T8: the accomplice answered; and a victim who caught their culprit only "sees" them in this event.
     if (ev.id === ACCOMPLICE_EVENT) this.onAccompliceAnswer(inst, outcome.id);
     for (const v of inst.bindings.victim ?? []) for (const c of inst.bindings.culprit ?? []) this.char(v).facts.delete(factKey("spotted", c));

@@ -65,6 +65,15 @@ export function tieColor(o: OtherCharacterView | undefined): string | null {
   return null;
 }
 
+/** The town's places once loaded (names for "on the way to …"). */
+export function useMapPlaces(): { id: string; name: string }[] {
+  const [places, setPlaces] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    loadMap().then((m) => setPlaces(m.places.map((p) => ({ id: p.id, name: p.name }))), () => setPlaces([]));
+  }, []);
+  return places;
+}
+
 interface Floater {
   text: string;
   good: boolean;

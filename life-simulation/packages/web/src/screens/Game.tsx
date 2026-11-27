@@ -1,8 +1,9 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import type { Attribute, Notice, OfferView } from "@lifesim/core";
 import { ATTR_LABELS, RELATION_LABELS, careerName, clock, hints, isNewsworthy, quoted } from "../format";
-import { Town, useMapSize } from "../town/Town";
+import { Town, useMapPlaces, useMapSize } from "../town/Town";
 import { Schemes } from "./Schemes";
+import { GuessCard, PersonCard } from "./Meanwhile";
 import type { GameState } from "../useGame";
 
 const SEASON_LABELS: Record<string, string> = { spring: "🌱 Spring", summer: "☀ Summer", autumn: "🍂 Autumn", winter: "❄ Winter" };
@@ -23,9 +24,12 @@ interface Props {
   playMischief: (mischiefId: string, targetId: string) => Promise<{ ok: boolean; reason?: string } | undefined>;
   previewScheme: Parameters<typeof Schemes>[0]["preview"];
   boostScheme: Parameters<typeof Schemes>[0]["boost"];
+  guess: (instanceId: string, deciderId: string, choiceId: string) => void;
 }
 
-export function GameScreen({ game, connected, decide, playMischief, previewScheme, boostScheme }: Props) {
+export function GameScreen({ game, connected, decide, playMischief, previewScheme, boostScheme, guess }: Props) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const places = useMapPlaces();
   const now = useNow();
   const me = game.roster.find((r) => r.characterId === game.characterId);
   const sessionTime = game.sync.sessionTime + (now - game.sync.wall) * game.timeScale;
@@ -85,7 +89,8 @@ export function GameScreen({ game, connected, decide, playMischief, previewSchem
       <div className="game-grid">
         <section className="stage">
           <div className="town-wrap">
-            <Town game={game} />
+            <Town game={game} onSelect={setSelected} />
+            {selected && !game.pending && <PersonCard game={game} id={selected} sessionTime={sessionTime} places={places} close={() => setSelected(null)} />}
             {game.pending ? (
               <div className="overlay beside" style={cardStyle}>
                 <EventCard offer={game.pending} game={game} now={now} decide={decide} />
@@ -108,6 +113,8 @@ export function GameScreen({ game, connected, decide, playMischief, previewSchem
               </div>
             ) : null}
           </div>
+
+          <GuessCard game={game} sessionTime={sessionTime} now={now} guess={guess} />
 
           {recentOutcomes.length > 1 && (
             <div className="card">

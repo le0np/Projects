@@ -23,6 +23,8 @@ export interface RunOptions {
   onPublic?: (entry: PublicEntry) => void;
   /** Pranks to play at fixed times (replays). */
   mischief?: { t: number; characterId: string; mischiefId: string; targetId: string }[];
+  /** T9: guesses at fixed times (replays). */
+  guesses?: { t: number; characterId: string; instanceId: string; deciderId: string; choiceId: string }[];
   /** T8: scheme boosts at fixed times (replays). */
   boosts?: { t: number; characterId: string; schemeId: string; boost: SchemeBoost; accompliceId?: string }[];
 }
@@ -30,7 +32,8 @@ export interface RunOptions {
 type Submission =
   | { kind: "decision"; characterId: string; instanceId: string; choiceId: string }
   | { kind: "mischief"; characterId: string; mischiefId: string; targetId: string }
-  | { kind: "boost"; characterId: string; schemeId: string; boost: SchemeBoost; accompliceId?: string };
+  | { kind: "boost"; characterId: string; schemeId: string; boost: SchemeBoost; accompliceId?: string }
+  | { kind: "guess"; characterId: string; instanceId: string; deciderId: string; choiceId: string };
 
 export function runSession(opts: RunOptions): SessionResult {
   const clock = new VirtualClock();
@@ -41,6 +44,7 @@ export function runSession(opts: RunOptions): SessionResult {
   const submissions = new TimerQueue<Submission>();
   for (const m of opts.mischief ?? []) submissions.push(m.t, { kind: "mischief", characterId: m.characterId, mischiefId: m.mischiefId, targetId: m.targetId });
   for (const b of opts.boosts ?? []) submissions.push(b.t, { kind: "boost", ...b });
+  for (const g of opts.guesses ?? []) submissions.push(g.t, { kind: "guess", ...g });
 
   session.onNotice = (characterId, notice) => {
     opts.onNotice?.(characterId, notice);
@@ -83,6 +87,7 @@ export function runSession(opts: RunOptions): SessionResult {
     for (const s of submissions.popDue(t)) {
       if (s.kind === "decision") session.submitDecision(s.characterId, s.instanceId, s.choiceId);
       else if (s.kind === "boost") session.boostScheme(s.characterId, s.schemeId, s.boost, s.accompliceId);
+      else if (s.kind === "guess") session.guess(s.characterId, s.instanceId, s.deciderId, s.choiceId);
       else session.mischief(s.characterId, s.mischiefId, s.targetId);
     }
     session.processTimers();
