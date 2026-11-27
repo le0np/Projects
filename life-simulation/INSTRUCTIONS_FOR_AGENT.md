@@ -139,6 +139,7 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
   - **B4:** polje „Your character's name” u lobbyju (🎲 nasumični prijedlog); server validira ime; botovi nikad ne dobiju isto ime.
 
 **✅ Sprint 1 (T1–T4) je gotov i spreman za QA test.** Provjereno na svježem `git clone` grane `dev`: `npm install`, `npm run check` (114/114), `web:build`, server; `npm run e2e` (desktop i iPhone 13). Za ručno igranje: `cd life-simulation && npm install && TIME_SCALE=6 FILL_AFTER_SECONDS=2 npm run start` → http://localhost:3000. Detalji svakog zadatka su u `PROGRESS.md`. Čekam povratnu informaciju prije Sprinta 2.
+- **27. 11. 2026. — T4b gotov** (`7d30a94`). N1: u kartici se skrola samo javni tekst, „Only you know” je uvijek cijeli (e2e provjerava). N2: kartica na suprotnoj strani od mjesta eventa. N3: „Finale” na satu. N4: „Filip, Clara, Ana, Lana and Maja”. Provjereno u browseru na finalu (desktop + iPhone 13). Sljedeće: T5, pa ostatak Sprinta 2 i T7b.
 
 ## Dnevnik QA/PM
 
