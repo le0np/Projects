@@ -110,7 +110,10 @@ export function RecapView({ recap }: { recap: LifeRecap }) {
                 {p.accomplice
                   ? `, asked ${p.accomplice} for help (${p.accompliceAnswer === "helped" ? "they helped" : p.accompliceAnswer === "betrayed" ? "they warned " + p.on : "they said no"})`
                   : ""}
-                {p.result === "worked" ? " — and it worked." : p.result === "failed" ? " — and it failed." : "."}
+                {p.result === "worked" ? " — and it worked" : p.result === "failed" ? " — and it failed" : ""}
+                {p.discovered
+                  ? `, but ${p.on} found out${p.response === "reported" ? " and reported you" : p.response === "confronted" ? " and confronted you in public" : p.response === "revenge" ? " and swore revenge" : ""}.`
+                  : "."}
               </li>
             ))}
 

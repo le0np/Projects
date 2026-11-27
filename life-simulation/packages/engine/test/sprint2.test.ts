@@ -544,3 +544,44 @@ describe("T12: a ghost after death", async () => {
     expect(wills.size).toBeGreaterThan(0);
   });
 });
+
+describe("T13: the end of a scheme and of a life, told properly", () => {
+  it("the dead stop walking: no more moves after death", () => {
+    const clock = new VirtualClock();
+    const s = new Session(content, resolveConfig({ seed: "t13-dead", qaEndFirstHumanAtSeconds: 20 }), [{ career: "lawyer", isBot: false }, ...["doctor", "teacher"].map((career) => ({ career, isBot: true }))], clock);
+    s.start();
+    for (let i = 0; i < 20_000 && s.state === "active"; i++) {
+      clock.advanceTo(s.nextWakeAt() ?? clock.now() + 1000);
+      s.processTimers();
+    }
+    const died = s.log.find((e) => e.type === "character_ended" && e.characterId === "c1")!;
+    expect(died).toBeDefined();
+    expect(s.log.filter((e) => e.type === "moved" && e.characterId === "c1" && e.t > died.t)).toEqual([]);
+    expect(s.positions().find((p) => p.characterId === "c1")?.trip).toBeNull();
+  });
+
+  it("a caught culprit's recap says they were found out, how the victim answered, and calls the moment 'Caught'", () => {
+    const w = new Session(
+      content,
+      resolveConfig({ seed: "t13-caught", chaos: { upheavals: [0, 0], mischiefCharges: 2, followUpBoost: 1, schemePrepSeconds: [5, 5], qaForceSchemes: true } }),
+      ["teacher", "doctor", "mechanic"].map((career) => ({ career, isBot: false })),
+      new VirtualClock(),
+    );
+    const clock = (w as unknown as { clock: VirtualClock }).clock;
+    w.onNotice = (id, n) => {
+      if (id === "c2" && n.kind === "event") {
+        const report = n.view.offer.choices.find((c) => c.id === "report");
+        if (report) w.submitDecision("c2", n.view.offer.instanceId, report.id); // the victim is the only one deciding here
+      }
+    };
+    w.start();
+    expect(w.mischief("c1", "flat_tyres", "c2")).toEqual({ ok: true });
+    for (let i = 0; i < 20_000 && w.state === "active"; i++) {
+      clock.advanceTo(w.nextWakeAt() ?? clock.now() + 1000);
+      w.processTimers();
+    }
+    const recap = w.result().recaps.find((r) => r.characterId === "c1")!;
+    expect(recap.secrets.played[0]).toMatchObject({ result: "worked", discovered: true, response: "reported" });
+    expect(recap.keyMoments.some((m) => m.eventTitle === "Caught: Flat Tyres")).toBe(true);
+  });
+});

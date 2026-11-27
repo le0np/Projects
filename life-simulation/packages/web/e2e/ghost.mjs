@@ -61,7 +61,11 @@ try {
     await page.waitForTimeout(150);
   }
   if (!(await page.locator(".ghost-card").isVisible())) throw new Error("no ghost card after the story ended");
-  if (process.env.SCREENSHOTS) await page.locator(".ghost-card").screenshot({ path: `${process.env.SCREENSHOTS}/ghost-card.png` });
+  if (process.env.SCREENSHOTS) {
+    await page.locator(".ghost-card").screenshot({ path: `${process.env.SCREENSHOTS}/ghost-card.png` });
+    await page.waitForTimeout(3000);
+    await page.locator("canvas.town").screenshot({ path: `${process.env.SCREENSHOTS}/ghost-map.png` });
+  }
   const will = await page.getByLabel("Your will").inputValue();
   await page.getByRole("button", { name: "Leave this will" }).click();
   await page.getByText("(read out at the end)").waitFor({ timeout: 5_000 });

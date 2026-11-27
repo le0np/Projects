@@ -262,6 +262,8 @@ export interface LifeRecap {
       on: string;
       result?: SchemeResult;
       discovered?: boolean;
+      /** T13: what the victim did once they found out. */
+      response?: "confronted" | "reported" | "revenge";
       revenge?: boolean;
       boost?: SchemeBoost;
       accomplice?: string;

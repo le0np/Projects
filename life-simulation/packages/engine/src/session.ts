@@ -2019,6 +2019,14 @@ export class Session {
     this.stats.eventsResolved++;
     this.log.push({ t: this.now(), type: "event_resolved", instanceId: inst.id, eventId: ev.id, outcomeId: outcome.id, changes });
     this.settleGuesses(inst);
+    // T13: the victim of a scheme answered; the culprit's recap will say how.
+    const response = ({ confronted: "confronted", reported: "reported", revenge_planned: "revenge" } as const)[outcome.id as "confronted" | "reported" | "revenge_planned"];
+    if (response && inst.bindings.victim?.[0] && inst.bindings.culprit?.[0]) {
+      const victim = inst.bindings.victim[0];
+      const played = (this.tracking.get(inst.bindings.culprit[0]) as CharacterTracking).played;
+      const entry = [...played].reverse().find((p) => p.on === victim && p.discovered && !p.response);
+      if (entry) entry.response = response;
+    }
     // T10: what this event means for everyone's goals.
     for (const id of inst.deciders) {
       const tr = this.tracking.get(id) as CharacterTracking;
@@ -2053,7 +2061,8 @@ export class Session {
         track.keyMoments.push({
           t: this.now(),
           instanceId: inst.id,
-          eventTitle: this.interpolate(ev.title, inst.bindings),
+          // T13: the culprit of a scheme learns about it as being caught.
+          eventTitle: `${this.isUnaware(ev, role) && role === "culprit" ? "Caught: " : ""}${this.interpolate(ev.title, inst.bindings)}`,
           ...(choice ? { choiceLabel: this.interpolate(choice.label, inst.bindings), choiceTags: [...choice.tags] } : {}),
           ...(text ? { text } : {}),
         });
@@ -2316,6 +2325,13 @@ export class Session {
     // T12: a bot may leave a will (a human chooses their own as a ghost).
     if ((status === "dead" || status === "imprisoned") && c.isBot && this.content.wills.length > 0 && this.rngGhost.chance(0.5)) {
       this.ghostWills.set(c.id, this.rngGhost.pick(this.content.wills));
+    }
+    // T13: the dead stop where they are (no more walking around town).
+    if (status === "dead") {
+      const at = positionAt(c, this.now());
+      if (c.trip) this.onPublic({ kind: "move", t: this.now(), characterId: c.id, from: at, path: [], departAt: this.now(), msPerTile: 1, to: null });
+      c.pos = at;
+      c.trip = null;
     }
     // T7: how the town remembers you.
     if (status === "dead") {

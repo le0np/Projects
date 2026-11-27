@@ -558,13 +558,19 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 
 - T10, T11, T12, plus T8c i T9b. Batch 200 sesija (`docs/reports/sprint3.report.md`): 64 % eventa s ≥ 2 lika koji odlučuju, ponavljanje 0,7 %, smrtnost 4,6 %, stvarne veze 85 %, Jealousy 17,5 %, Crisis Talk 10 %, 4,4 spletke po sesiji, 20 različitih titula (najčešća 13 %), replay identičan.
 
+### QA prihvatio Sprint 3; T13: završne sitnice (developer)
+
+- **Z1:** u Life Recapu krivca redak spletke kaže i da je otkriven te što je žrtva napravila („… — and it worked, but Lea found out and reported you.” / „confronted you in public” / „swore revenge”), a važni trenutak krivca ima naslov „Caught: Flat Tyres”. Spletka pamti odgovor žrtve (`response`).
+- **Z2:** mrtav lik više ne hoda: u trenutku smrti zaustavi se gdje je (klijenti dobiju poruku), rutina ga ionako preskače; za sve igrače se crta blijed s „x” očima čim stigne javna vijest o kraju priče, a grob s cvijećem ostaje kod kuće. Provjereno snimkom mape uz `QA_GHOST=1`.
+- Testovi: engine (nakon smrti nema kretanja; recap uhvaćenog krivca s odgovorom žrtve i „Caught: …”). `npm run check` 151/151, `npm run e2e` sve prolazi.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 3, T10–T12):
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm run check` | typecheck čist; 75 eventa, 0 grešaka, 0 upozorenja; **149/149 testova** |
+| `npm run check` | typecheck čist; 75 eventa, 0 grešaka, 0 upozorenja; **151/151 testova** (nakon T13) |
 | `npm run e2e` | ✓ desktop i ✓ iPhone 13 (spletka, kartica lika, cijela sesija, recap s titulom i „Copy my life”, kolekcija titula u lobbyju); ✓ strana žrtve spletke; ✓ duh (oporuka pročitana u recapu); ✓ 133 kartice bez skrolanja na 1280×800 i 390×664; ✓ 0 gramatičkih grešaka |
 | `npm run sim:batch -- --sessions 200 --seed sprint3` | brojke gore; replay 3/3 identičan |
 | Svjež `git clone` grane `dev` (`38d7ef9`) + `npm install` + `npm run check` + `web:build` + server | 149/149, build čist, `/api/health` i web stranica rade |
@@ -587,7 +593,7 @@ Provedeno 27. studenog 2026. (nakon Sprinta 3, T10–T12):
 
 ## Sljedeći koraci
 
-1. **QA testira Sprint 3** (`INSTRUCTIONS_FOR_AGENT.md`). Svi zadaci iz sva tri sprinta su napravljeni.
+1. QA je prihvatio sva tri sprinta; T13 (zadnje sitnice) je gotov. Mogući Sprint 4 ovisi o vlasnikovoj odluci o istraživanju tržišta; QA ga piše u `INSTRUCTIONS_FOR_AGENT.md`.
 2. Nakon toga, po planu §9: M12 Sadržaj (humorističan ton, životne faze) i M13 Balans; QA je dodao istraživanje tržišta (`docs/research/market-research-2026-11-27.md`) s prijedlogom MVP-a za izlazak.
 
 ## Handoff za novi chat

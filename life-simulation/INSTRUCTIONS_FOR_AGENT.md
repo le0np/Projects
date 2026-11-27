@@ -138,7 +138,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 
 ---
 
-### [ ] T13. Završne sitnice iz QA Sprinta 3 (zadnje prije kraja projekta)
+### [x] T13. Završne sitnice iz QA Sprinta 3 (zadnje prije kraja projekta)
 - **Z1 (recap):** Kad krivca uhvate, „Your schemes” i dalje kaže samo „covered your tracks — and it worked.” U „Important moments” se pojavi „Flat Tyres — An official letter: Lea reported you.” bez objašnjenja. Redak spletke treba reći i da su te otkrili („…and it worked, but Lea found out and reported you.”), a moment za krivca neka ima naslov poput „Caught: Flat Tyres”.
 - **Z2 (duh):** Uz `QA_GHOST=1` mrtva Sara na mapi i dalje hoda s Lukom i Jakobom u bar, normalnih boja. Mrtav lik ne bi smio nastaviti rutinu: neka ostane kao blijeda figura s „x” očima (kako piše u M11) ili neka nestane, a grob ostane.
 

@@ -258,7 +258,8 @@ export function Town({ game, onSelect }: { game: GameState; onSelect?: (characte
       for (const [i, { r, at }] of people.entries()) {
         const other = g.others.find((o) => o.id === r.characterId);
         const mine = r.characterId === g.characterId;
-        const gone = mine ? !!g.ended : !!other && other.status !== "active";
+        // T13: someone whose story ended (dead, in prison or hospital) is drawn pale with "x" eyes for everyone.
+        const gone = mine ? !!g.ended : (!!other && other.status !== "active") || g.feed.some((f) => f.kind === "ended" && f.characterId === r.characterId);
         const k0 = crowd[i]!;
         const cx = at.x * TILE + TILE / 2 + (k0 === 0 ? 0 : (k0 % 2 ? 1 : -1) * Math.ceil(k0 / 2) * 11);
         const ground = at.y * TILE + TILE - 4;
