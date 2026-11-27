@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 1,
+  "version": 2,
   "id": "storm_tree_on_car",
   "title": "A Tree on the Car",
   "category": "everyday",
@@ -156,6 +156,18 @@
           "from": "role:owner",
           "to": "role:neighbor",
           "affinity": 15
+        },
+        {
+          "type": "mark",
+          "target": "role:owner",
+          "mark": "broken_window",
+          "seconds": 120
+        },
+        {
+          "type": "mark",
+          "target": "role:neighbor",
+          "mark": "bandage",
+          "seconds": 60
         }
       ],
       "text": {
@@ -186,6 +198,12 @@
           "affinity": 25,
           "trust": 15,
           "mutual": true
+        },
+        {
+          "type": "mark",
+          "target": "role:owner",
+          "mark": "broken_window",
+          "seconds": 60
         }
       ],
       "text": {
@@ -215,6 +233,12 @@
           "delta": {
             "mental": -4
           }
+        },
+        {
+          "type": "mark",
+          "target": "role:owner",
+          "mark": "broken_window",
+          "seconds": 120
         }
       ],
       "text": {
@@ -232,6 +256,12 @@
             "money": -6,
             "mental": -3
           }
+        },
+        {
+          "type": "mark",
+          "target": "role:owner",
+          "mark": "broken_window",
+          "seconds": 120
         }
       ],
       "text": {

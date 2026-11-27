@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "critical_robbery",
-  "version": 3,
+  "version": 4,
   "title": "The Robbery",
   "category": "critical",
   "trigger": "director",
@@ -200,6 +200,18 @@
           "target": "role:witness",
           "to": "hospital",
           "staySeconds": 10
+        },
+        {
+          "type": "mark",
+          "target": "role:victim",
+          "mark": "bandage",
+          "seconds": 150
+        },
+        {
+          "type": "mark",
+          "target": "role:witness",
+          "mark": "bandage",
+          "seconds": 120
         }
       ],
       "text": {

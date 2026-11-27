@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 1,
+  "version": 2,
   "id": "mischief_flat_tyres",
   "title": "Flat Tyres",
   "category": "everyday",
@@ -97,6 +97,12 @@
           "setType": "enemy",
           "affinity": -35,
           "trust": -30
+        },
+        {
+          "type": "mark",
+          "target": "role:victim",
+          "mark": "flat_tyres",
+          "seconds": 90
         }
       ],
       "text": {
@@ -117,6 +123,12 @@
           "delta": {
             "mental": 3
           }
+        },
+        {
+          "type": "mark",
+          "target": "role:victim",
+          "mark": "flat_tyres",
+          "seconds": 90
         }
       ],
       "text": {
@@ -135,6 +147,12 @@
             "health": 2,
             "mental": -3
           }
+        },
+        {
+          "type": "mark",
+          "target": "role:victim",
+          "mark": "flat_tyres",
+          "seconds": 90
         }
       ],
       "text": {

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "finale_wedding",
-  "version": 1,
+  "version": 2,
   "title": "A Wedding in the Park",
   "category": "relationships",
   "trigger": "finale",
@@ -470,6 +470,16 @@
           "trust": 20,
           "mutual": true,
           "setType": "partner"
+        },
+        {
+          "type": "mark",
+          "target": "role:bride",
+          "mark": "just_married"
+        },
+        {
+          "type": "mark",
+          "target": "role:groom",
+          "mark": "just_married"
         }
       ],
       "text": {

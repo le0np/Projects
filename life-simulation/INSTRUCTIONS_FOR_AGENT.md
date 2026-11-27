@@ -83,7 +83,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - **M2:** Javni tekst eventa je odrezan usred rečenice („…and asks Marko to”), jer je kartica najviše 38 % mape, a privatni tekst i izbori su uvijek cijeli. Na desktopu ima mjesta: neka kartica smije biti viša (do visine mape), ili smanji razmake/oznake izbora. Javni tekst mora biti cijeli bez skrolanja barem na 1280×800. Dodaj u e2e.
 - **M3 (sadržaj):** „The Charity Drive” kao zadani izbor (ako ne odgovoriš) ima „Push hard, mention who else gave”, agresivan izbor. Zadani izbor treba biti pasivan i neutralan. Provjeri sve evente (validator može upozoriti ako default ima tag `risk`, `lie` ili cilja drugog lika negativno).
 
-### [ ] T7. Trajni tragovi na mapi
+### [x] T7. Trajni tragovi na mapi
 - Posljedice ostaju vidljive: ispuhane gume na autu, zavoj na liku, natpis „FOR SALE” na kući, zatvoren dućan, cvijeće na grobu, lisice/rešetke kod policije. **Najmanje 6 vrsta.**
 - Efekt u formatu eventa (npr. `{ type: "mark", ... }`) + validator + render.
 

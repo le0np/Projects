@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "health_sports_injury",
-  "version": 3,
+  "version": 4,
   "title": "Five-a-Side",
   "category": "health",
   "trigger": "director",
@@ -135,6 +135,12 @@
           "target": "role:player",
           "to": "home",
           "staySeconds": 8
+        },
+        {
+          "type": "mark",
+          "target": "role:player",
+          "mark": "bandage",
+          "seconds": 90
         }
       ],
       "text": {
@@ -172,6 +178,12 @@
           "target": "role:player",
           "to": "hospital",
           "staySeconds": 15
+        },
+        {
+          "type": "mark",
+          "target": "role:player",
+          "mark": "bandage",
+          "seconds": 150
         }
       ],
       "text": {
@@ -194,6 +206,12 @@
           "from": "role:player",
           "to": "role:teammate",
           "affinity": 5
+        },
+        {
+          "type": "mark",
+          "target": "role:player",
+          "mark": "bandage",
+          "seconds": 60
         }
       ],
       "text": {

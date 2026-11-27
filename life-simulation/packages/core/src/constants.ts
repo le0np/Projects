@@ -9,6 +9,23 @@ export type Attribute = (typeof ATTRIBUTES)[number];
 export const ATTRIBUTE_MIN = 0;
 export const ATTRIBUTE_MAX = 100;
 
+/**
+ * T7: lasting traces of what happened, drawn on the map. Character marks follow the person;
+ * home marks sit at their front door; work marks at their workplace.
+ */
+export const MARK_KINDS = ["bandage", "handcuffs", "flat_tyres", "for_sale", "flowers", "just_married", "broken_window", "closed"] as const;
+export type MarkKind = (typeof MARK_KINDS)[number];
+export const MARK_PLACE: Record<MarkKind, "character" | "home" | "work"> = {
+  bandage: "character",
+  handcuffs: "character",
+  flat_tyres: "home",
+  for_sale: "home",
+  flowers: "home",
+  just_married: "home",
+  broken_window: "home",
+  closed: "work",
+};
+
 export const RELATION_TYPES = [
   "stranger",
   "acquaintance",

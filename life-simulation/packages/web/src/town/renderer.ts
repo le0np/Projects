@@ -210,6 +210,9 @@ export interface Pose {
   gone: boolean;
   /** T5: a short visible reaction after an event (overrides `reacting`). */
   reaction?: "joy" | "angry" | "sad" | "shock" | "neutral";
+  /** T7: lasting marks on the person. */
+  bandage?: boolean;
+  handcuffs?: boolean;
 }
 
 const INK = "#3a2a22";
@@ -395,7 +398,148 @@ export function drawCharacter(ctx: CanvasRenderingContext2D, look: Look, x: numb
     stroke(ctx, [[side * w, -h * 0.35], [side * (w + s * 0.32), -h * 0.2 + armUp * (side === pose.dir ? 1 : 0.6)]], outline, 2.5);
   }
   face(ctx, 0, -h * 0.58, s * 0.62, pose, look);
+  if (pose.bandage) {
+    // A white head bandage with a small red stain.
+    ctx.fillStyle = "#fbfbf7";
+    ctx.strokeStyle = "#c9c4b8";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(-w - 1, -h * 0.92, w * 2 + 2, h * 0.13, 3);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#d24b3e";
+    ctx.beginPath();
+    ctx.arc(w * 0.45, -h * 0.855, s * 0.07, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (pose.handcuffs) {
+    ctx.strokeStyle = "#8a8f96";
+    ctx.lineWidth = 2;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.arc(side * s * 0.18, -h * 0.28, s * 0.12, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    stroke(ctx, [[-s * 0.06, -h * 0.28], [s * 0.06, -h * 0.28]], "#8a8f96", 2);
+  }
   ctx.restore();
+}
+
+/** T7: a lasting trace at a place (a home or a workplace), drawn by its front door. `slot` spreads several. */
+export function drawPlaceMark(
+  ctx: CanvasRenderingContext2D,
+  place: MapData["places"][number],
+  kind: string,
+  slot: number,
+  frame: number,
+): void {
+  const dx = place.door[0] * TILE + TILE / 2;
+  const dy = place.door[1] * TILE + TILE / 2;
+  const left = place.x * TILE;
+  const top = place.y * TILE;
+  const right = (place.x + place.w) * TILE;
+  const side = slot % 2 === 0 ? 1 : -1;
+  const ox = dx + side * (TILE * 0.9 + Math.floor(slot / 2) * 18);
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  switch (kind) {
+    case "for_sale": {
+      stroke(ctx, [[ox, dy + 10], [ox, dy - 16]], "#6b4b2f", 3);
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#b23b3b";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(ox - 20, dy - 28, 40, 16, 3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#b23b3b";
+      ctx.font = "800 7.5px system-ui, sans-serif";
+      ctx.fillText("FOR SALE", ox, dy - 20);
+      break;
+    }
+    case "flowers": {
+      ctx.fillStyle = "#9aa0a6";
+      ctx.beginPath();
+      ctx.roundRect(ox - 7, dy - 14, 14, 20, [7, 7, 2, 2]);
+      ctx.fill();
+      stroke(ctx, [[ox - 3, dy - 7], [ox + 3, dy - 7]], "#6f757b", 1.5);
+      stroke(ctx, [[ox, dy - 10], [ox, dy - 3]], "#6f757b", 1.5);
+      for (const [fx, col] of [[-8, "#e05a9b"], [-4, "#f2c230"], [8, "#d24b3e"]] as const) {
+        stroke(ctx, [[ox + fx, dy + 8], [ox + fx, dy + 1]], "#3f8a46", 1.5);
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(ox + fx, dy, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    }
+    case "just_married": {
+      const cx = (left + right) / 2;
+      for (let i = 0; i < 3; i++) {
+        const bob = frame % 2 === i % 2 ? -2 : 0;
+        heart(ctx, cx - 14 + i * 14, top + 6 + bob, 6, "#e05a9b");
+      }
+      break;
+    }
+    case "broken_window": {
+      const wx = Math.min(right - 14, Math.max(left + 14, dx + side * 14));
+      const wy = top + place.h * TILE * 0.55;
+      ctx.fillStyle = "#cfe3ee";
+      ctx.fillRect(wx - 9, wy - 8, 18, 16);
+      stroke(ctx, [[wx - 6, wy - 6], [wx, wy], [wx - 3, wy + 6]], "#2c3e50", 1.4);
+      stroke(ctx, [[wx, wy], [wx + 7, wy - 4]], "#2c3e50", 1.4);
+      ctx.save();
+      ctx.translate(wx, wy);
+      ctx.rotate(-0.35);
+      ctx.fillStyle = "#a9773f";
+      ctx.fillRect(-12, -3, 24, 6);
+      ctx.restore();
+      break;
+    }
+    case "flat_tyres": {
+      // A little car with two squashed tyres, and the sound it makes.
+      ctx.fillStyle = "#4a7bb0";
+      ctx.beginPath();
+      ctx.roundRect(ox - 15, dy - 9, 30, 11, 4);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(ox - 8, dy - 16, 16, 8, 3);
+      ctx.fill();
+      ctx.fillStyle = "#222";
+      for (const wx of [ox - 9, ox + 9]) {
+        ctx.beginPath();
+        ctx.ellipse(wx, dy + 3, 5, 2.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#4a3b33";
+      ctx.font = "700 8px system-ui, sans-serif";
+      ctx.fillText(frame % 2 ? "pfff" : "pff", ox, dy - 22);
+      break;
+    }
+    case "closed": {
+      ctx.save();
+      ctx.translate((left + right) / 2, top + place.h * TILE * 0.6);
+      ctx.rotate(-0.12);
+      ctx.fillStyle = "#b23b3b";
+      ctx.fillRect(-26, -8, 52, 16);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 9px system-ui, sans-serif";
+      ctx.fillText("CLOSED", 0, 1);
+      ctx.restore();
+      break;
+    }
+  }
+  ctx.restore();
+}
+
+function heart(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, col: string): void {
+  ctx.fillStyle = col;
+  ctx.beginPath();
+  ctx.moveTo(x, y + r);
+  ctx.bezierCurveTo(x - r * 1.6, y - r * 0.2, x - r * 0.7, y - r * 1.4, x, y - r * 0.4);
+  ctx.bezierCurveTo(x + r * 0.7, y - r * 1.4, x + r * 1.6, y - r * 0.2, x, y + r);
+  ctx.fill();
 }
 
 /** T5: a pulsing ring where an event is about to happen (`strong` for your own). */

@@ -128,8 +128,11 @@ Zadnji ishod mora biti bezuvjetan (bez `when` i bez `chance`). Ishod bez oba pri
 | `fact` | `target`, `key`, `about` (za pair), `remove` | `{ "type": "fact", "target": "role:borrower", "key": "owes_money", "about": "role:lender" }` |
 | `move` | `target`, `to` (vrsta mjesta, `home`, `work`, `street`), `staySeconds` | `{ "type": "move", "target": "role:patient", "to": "hospital", "staySeconds": 10 }` |
 | `status` | `target`, `status`, `cause` | `{ "type": "status", "target": "role:patient", "status": "dead", "cause": "..." }` |
+| `mark` (T7) | `target`, `mark`, `seconds` (izostavljeno = do kraja sesije) | `{ "type": "mark", "target": "role:seller", "mark": "for_sale", "seconds": 120 }` |
 
 Sposobnosti karijere (`effect_multiplier`) skaliraju `attr` efekte lika koji ih prima.
+
+Tragovi (`mark`, T7) ostaju vidljivi na mapi: na liku (`bandage`, `handcuffs`), kod njegove kuće (`flat_tyres`, `for_sale`, `flowers`, `just_married`, `broken_window`) ili na poslu (`closed`). Isti trag na istom liku zamjenjuje stari. Smrt automatski ostavi cvijeće kod kuće, zatvor lisice, bolnica zavoj.
 
 ### Nastavci (follow-ups)
 

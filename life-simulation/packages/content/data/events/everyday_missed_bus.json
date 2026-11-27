@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "everyday_missed_bus",
-  "version": 2,
+  "version": 3,
   "title": "Missed Bus",
   "category": "everyday",
   "trigger": "director",
@@ -262,6 +262,12 @@
             "health": -10,
             "career": -3
           }
+        },
+        {
+          "type": "mark",
+          "target": "role:commuter",
+          "mark": "bandage",
+          "seconds": 45
         }
       ],
       "text": {

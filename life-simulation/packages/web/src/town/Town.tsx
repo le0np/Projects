@@ -3,7 +3,7 @@ import type { Attribute, Mood, Notice, OtherCharacterView } from "@lifesim/core"
 import { api } from "../api";
 import { ATTR_LABELS } from "../format";
 import type { GameState, Walk } from "../useGame";
-import { TILE, bubble, drawCharacter, drawMap, lookFor, nameTag, pulse, type MapData, type Season } from "./renderer";
+import { TILE, bubble, drawCharacter, drawMap, drawPlaceMark, lookFor, nameTag, pulse, type MapData, type Season } from "./renderer";
 
 const FPS = 8; // stepped, cut-out animation (concept v2 §7)
 
@@ -172,6 +172,17 @@ export function Town({ game, onSelect }: { game: GameState; onSelect?: (characte
       ctx.setTransform(dpr * view.z, 0, 0, dpr * view.z, dpr * tx, dpr * ty);
       drawMap(ctx, map, season, dark());
 
+      // T7: lasting traces at homes and workplaces.
+      const perPlace = new Map<string, number>();
+      for (const m of g.marks) {
+        if (!m.placeId) continue;
+        const place = map.places.find((p) => p.id === m.placeId);
+        if (!place) continue;
+        const slot = perPlace.get(m.placeId) ?? 0;
+        perPlace.set(m.placeId, slot + 1);
+        drawPlaceMark(ctx, place, m.kind, slot, frame);
+      }
+
       // T5: places where something is happening pulse (yours strongly).
       const wallNow = Date.now();
       for (const f of g.feed) {
@@ -243,6 +254,8 @@ export function Town({ game, onSelect }: { game: GameState; onSelect?: (characte
           talking: inEvent && !at.moving && !reduce,
           reacting: false,
           ...(reacting && !gone ? { reaction: reacting } : {}),
+          bandage: g.marks.some((m) => m.characterId === r.characterId && m.kind === "bandage"),
+          handcuffs: g.marks.some((m) => m.characterId === r.characterId && m.kind === "handcuffs"),
           blink: (frame + r.characterId.charCodeAt(1)) % 23 === 0,
           age,
           gone,

@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import type { Attribute, LifeRecap, Mood, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction } from "@lifesim/core";
+import type { Attribute, LifeRecap, Mark, Mood, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction } from "@lifesim/core";
 
 export type ComingEvent = Extract<Notice, { kind: "coming" }> & { receivedAt: number };
 
@@ -15,6 +15,8 @@ export type PublicEntry =
   | { kind: "upheaval"; t: number; id: string; title: string; text: string; active: boolean }
   | { kind: "phase"; t: number; phase: "intro" | "growth" | "climax" | "respite" | "finale" }
   | { kind: "mood"; t: number; characterId: string; mood: Mood }
+  | { kind: "mark"; t: number; mark: Mark }
+  | { kind: "unmark"; t: number; id: string }
   | { kind: "move"; t: number; characterId: string; from: [number, number]; path: [number, number][]; departAt: number; msPerTile: number; to: string | null };
 
 export interface Walk {
@@ -31,6 +33,7 @@ export interface Snapshot {
   timeScale: number;
   roster: { characterId: string; name: string; career: string; isBot: boolean; trait?: string }[];
   moods?: { characterId: string; mood: Mood }[];
+  marks?: Mark[];
   me?: Pick<Extract<Notice, { kind: "event" }>["view"], "self" | "others" | "calendar">;
   pending: OfferView | null;
   history: Notice[];
@@ -65,6 +68,8 @@ export interface GameState {
   resolvedWall: Record<string, number>;
   /** T6: everyone's mood (emoji above their head). */
   moods: Record<string, Mood>;
+  /** T7: lasting traces on the map. */
+  marks: Mark[];
   /** T5: faces on the map right after an event, until `until` (wall clock). */
   reactions: Record<string, { reaction: Reaction; until: number }>;
   feed: PublicEntry[];
@@ -104,6 +109,7 @@ function stateFromSnapshot(s: Snapshot): GameState {
     history: s.history,
     coming: null,
     moods: Object.fromEntries((s.moods ?? []).map((m) => [m.characterId, m.mood])),
+    marks: s.marks ?? [],
     resolvedWall: {},
     reactions: {},
     feed: s.feed,
@@ -156,7 +162,9 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
       setGame((g) =>
         !g
           ? g
-          : entry.kind === "mood" // moods feed the map, not the news list
+          : entry.kind === "mark" || entry.kind === "unmark" // traces feed the map, not the news list
+            ? { ...g, marks: entry.kind === "mark" ? [...g.marks.filter((m) => m.id !== entry.mark.id), entry.mark] : g.marks.filter((m) => m.id !== entry.id) }
+            : entry.kind === "mood" // moods feed the map, not the news list
             ? { ...g, moods: { ...g.moods, [entry.characterId]: entry.mood } }
             : entry.kind === "move" // positions feed the map, not the news list
             ? {

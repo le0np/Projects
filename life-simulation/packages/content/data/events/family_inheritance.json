@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "family_inheritance",
-  "version": 3,
+  "version": 4,
   "title": "Grandmother's House",
   "category": "family",
   "trigger": "director",
@@ -304,6 +304,12 @@
           "delta": {
             "money": 10
           }
+        },
+        {
+          "type": "mark",
+          "target": "role:heir_a",
+          "mark": "for_sale",
+          "seconds": 120
         }
       ],
       "text": {

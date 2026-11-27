@@ -530,6 +530,9 @@ function checkEffects(effects: readonly Effect[], path: string, reg: Registry, r
         checkRef(effect.target, `${p}.target`, nonFactScope, report);
         checkPlaceKind(effect.to, `${p}.to`, reg, report);
         break;
+      case "mark":
+        checkRef(effect.target, `${p}.target`, nonFactScope, report);
+        break;
       case "status": {
         checkRef(effect.target, `${p}.target`, nonFactScope, report);
         const set = statuses.get(effect.target) ?? new Set();

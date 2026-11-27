@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "finale_market_fire",
-  "version": 3,
+  "version": 4,
   "title": "Fire on Market Street",
   "category": "critical",
   "trigger": "finale",
@@ -337,6 +337,11 @@
             "health": -15,
             "mental": -5
           }
+        },
+        {
+          "type": "mark",
+          "target": "role:trapped",
+          "mark": "bandage"
         }
       ],
       "text": {
@@ -363,6 +368,11 @@
           "to": "role:neighbours",
           "affinity": -10,
           "trust": -10
+        },
+        {
+          "type": "mark",
+          "target": "role:trapped",
+          "mark": "bandage"
         }
       ],
       "text": {

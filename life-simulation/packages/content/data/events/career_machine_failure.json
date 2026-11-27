@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "career_machine_failure",
-  "version": 3,
+  "version": 4,
   "title": "Smoke from the Machine",
   "category": "career",
   "trigger": "director",
@@ -180,6 +180,18 @@
             "health": -8,
             "mental": -6
           }
+        },
+        {
+          "type": "mark",
+          "target": "role:operator",
+          "mark": "closed",
+          "seconds": 90
+        },
+        {
+          "type": "mark",
+          "target": "role:operator",
+          "mark": "bandage",
+          "seconds": 60
         }
       ],
       "text": {
