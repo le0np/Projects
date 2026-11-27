@@ -115,6 +115,10 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 ### [x] T9b. Sitnica iz QA T9
 - **P1:** Kad 3+ lika stoje zajedno (npr. ispred The Last Call), imena i emojiji se preklapaju („G Luka”) i ne mogu se pročitati. Raširi oznake lepezasto ili pomakni likove malo jedne od drugih kad stoje na istom mjestu.
 
+### [ ] T8c. Sitnice sa strane žrtve (QA uz `QA_FORCE_SCHEME_ON_HUMAN=1`)
+- **V1:** Kartica „Flat Tyres” s tragom ima 5 izbora i na 1280×800 donji red („If time runs out: …”) je odrezan. `card-fit.mjs` vjerojatno ne iscrtava kombinaciju „trag + svi izbori žrtve”; dodaj je i popravi.
+- **V2:** Kad žrtva već ima trag („Your neighbour's camera shows Lea…”), izbor „Check the neighbour's doorbell camera” nema smisla. Sakrij ga kad je krivac otkriven, ili ga promijeni u nešto drugo.
+
 ---
 
 ## Sprint 3 — razlog za još jednu partiju
@@ -203,3 +207,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 - **27. 11. 2026.** — QA T7b i T6c: ✅ prihvaćeno. `npm run check` 132/132. Vlastiti batch (100 sesija, seed `qa7b`) potvrđuje brojke: veze prije finala 88,3 %, Jealousy 13 %, Crisis Talk 11 %, Loan Due 29 %, eventi s drugima 79,4 %, ponavljanje 1,1 %, smrtnost 4,7 %, tuga 12,7 % vremena; replay 3/3 identičan. Sljedeće: T8 (spletke) — najvažniji preostali zadatak (vlasnikova točka 3).
 - **27. 11. 2026.** — QA T8: ✅ prihvaćeno uz **T8b**. `npm run check` 136/136, 75 eventa. Cijeli tok s nove QA skripte (6×): 5 vrsta spletki (uključujući „Send a fake lawsuit” za odvjetnika), izgledi se mijenjaju s vrstom (75/20 → 80/25 %), plan → traka pripreme → „Cover your tracks” (rizik 25 → 13 %) → „it worked, and nobody saw a thing” za ~30 s; žrtva Kim dobila je „Flat Tyres”, a Life Recap pod „Secrets revealed” priča cijeli tok. Vlasnikova točka 3 je riješena. Problemi: zbunjujuća poruka nakon spletke (S1), strana žrtve nije provjerljiva u QA (S2).
 - **27. 11. 2026.** — QA Sprinta 2: ✅ prihvaćen (detalji u „Odgovori QA/PM”). Dodana sitnica **T9b** (preklapanje imena). Developer kreće na Sprint 3 (T8b, T9b, pa T10–T12).
+- **27. 11. 2026.** — QA T8b i T9b: ✅ prihvaćeno. `npm run check` 139/139; `npm run e2e` prolazi sve (igra, strana žrtve, kartica lika, 125 kartica, gramatika). Ručno uz `QA_FORCE_SCHEME_ON_HUMAN=1`: „You noticed: … Lea crouching by your car”, izbori suočiti se / prijaviti / osveta rade. Dvije sitnice: **T8c** (odrezan donji red kartice, suvišan izbor „Check the camera”).
