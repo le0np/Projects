@@ -5,6 +5,7 @@
  * events or real outcome effects.
  */
 import type { Attribute, ChoiceTag, EventCategory, Importance, RelationType, Season, Status } from "./constants";
+import type { TilePos } from "./map";
 import type { Perceived } from "./schema";
 
 export interface VisibleChoice {
@@ -40,6 +41,8 @@ export interface OfferView {
   privateText?: string;
   /** Where it happens (null: on the street). */
   place: { id: string; name: string; kind: string } | null;
+  /** The tile where everyone gathers (T5: the card opens next to it). */
+  tile: TilePos;
   /** Empty for passive roles (the character is involved but does not decide). */
   choices: VisibleChoice[];
 }
@@ -96,9 +99,14 @@ export interface RevealedChoice {
   tags: ChoiceTag[];
 }
 
+/** How someone visibly reacts to what just happened (T5: faces on the map before the outcome text). */
+export type Reaction = "joy" | "angry" | "sad" | "shock" | "neutral";
+
 /** Messages the engine sends to one character. */
 export type Notice =
   | { kind: "event"; t: number; view: CharacterView }
+  /** T5: something is about to happen to you; the participants are walking there (the offer comes at `offerAt`). */
+  | { kind: "coming"; t: number; instanceId: string; title: string; tile: TilePos; placeName: string | null; offerAt: number; participants: ParticipantInfo[] }
   | {
       kind: "resolved";
       t: number;
@@ -115,6 +123,10 @@ export type Notice =
       selfChanges: Partial<Record<Attribute, number>>;
       /** Everyone else as the character sees them after this event (B2: relationships are current at once). */
       others?: CharacterView["others"];
+      /** T5: who (of the visible participants) made a choice — their cards are turned over together. */
+      deciders?: string[];
+      /** T5: how each visible participant reacts (shown on the map for a moment). */
+      reactions?: { characterId: string; reaction: Reaction }[];
     }
   | { kind: "ended"; t: number; status: Status; cause: string }
   /** A town-wide upheaval and what it did to you. */

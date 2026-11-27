@@ -63,7 +63,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - **N3:** Sat sesije pokazuje „8:09 / 8:00” tijekom finala. Umjesto toga prikaži „Finale”.
 - **N4:** Popis imena u tekstu: „Filip and Clara and Ana and Lana and Maja” → „Filip, Clara, Ana, Lana and Maja”.
 
-### [ ] T5. Event počinje na mapi, ne u kartici
+### [x] T5. Event počinje na mapi, ne u kartici
 - Kad event krene: mjesto na mapi pulsira, sudionici hodaju s „!”, a kartica se otvori tek kad stignu (`offerAt` već postoji) i to **uz mjesto eventa**, mala, ne preko pola mape.
 - Na mobitelu kartica ostaje ispod mape, ali mapa se pomakne/zumira na mjesto eventa.
 - Nakon odluke: **istovremeno otkrivanje** svih izbora (sve karte se okrenu odjednom) i 2 s reakcije likova na mapi (lice, skok, ljutnja) prije nego se pokaže tekst ishoda.

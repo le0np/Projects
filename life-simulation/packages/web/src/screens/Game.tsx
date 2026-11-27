@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import type { Attribute, Notice, OfferView } from "@lifesim/core";
 import { ATTR_LABELS, RELATION_LABELS, careerName, clock, hints, isNewsworthy } from "../format";
 import { Town, useMapSize } from "../town/Town";
@@ -30,9 +30,16 @@ export function GameScreen({ game, connected, decide, playMischief }: Props) {
   const lastResolved = [...game.history].reverse().find((n): n is Extract<Notice, { kind: "resolved" }> => n.kind === "resolved");
   const news = [...game.feed].reverse().filter(isNewsworthy);
   const mapSize = useMapSize();
-  // N2: the card goes on the side of the map away from the event (you are standing at it when the card opens).
-  const myTile = game.characterId ? game.walks[game.characterId]?.pos : undefined;
-  const cardSide = mapSize && myTile && myTile[0] + 0.5 > mapSize.width / 2 ? "left" : "right";
+  // T5 (and N2): the card opens right next to where the event happens, on the side away from it.
+  const cardStyle = cardBeside(game.pending?.tile, mapSize);
+  const reveal = lastResolved && now - (game.resolvedWall[lastResolved.instanceId] ?? 0) < REVEAL_MS ? lastResolved : null;
+  const showOutcome = lastResolved && !reveal && now - (game.resolvedWall[lastResolved.instanceId] ?? 0) < REVEAL_MS + 6000;
+  // Phones: bring the map into view when your event begins (it zooms to the spot).
+  const focusId = game.coming?.instanceId ?? game.pending?.instanceId;
+  useEffect(() => {
+    if (!focusId || window.innerWidth >= 760) return;
+    document.querySelector(".town")?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [focusId]);
   // N3: during the finale the clock would run past the end; show the finale instead.
   const finale = game.feed.some((f) => f.kind === "phase" && f.phase === "finale");
   const recentOutcomes = game.history.filter((n): n is Extract<Notice, { kind: "resolved" }> => n.kind === "resolved").slice(-6).reverse();
@@ -77,12 +84,24 @@ export function GameScreen({ game, connected, decide, playMischief }: Props) {
           <div className="town-wrap">
             <Town game={game} />
             {game.pending ? (
-              <div className={`overlay side-${cardSide}`}>
+              <div className="overlay beside" style={cardStyle}>
                 <EventCard offer={game.pending} game={game} now={now} decide={decide} />
               </div>
-            ) : lastResolved && sessionTime - lastResolved.t < 7000 * game.timeScale ? (
+            ) : reveal ? (
+              <div className="overlay toast">
+                <RevealCard notice={reveal} game={game} />
+              </div>
+            ) : showOutcome && lastResolved ? (
               <div className="overlay toast">
                 <OutcomeCard notice={lastResolved} waiting={false} />
+              </div>
+            ) : game.coming ? (
+              <div className="coming" role="status">
+                <span className="coming-dot" aria-hidden="true" />
+                <span>
+                  <strong>{game.coming.title}</strong>
+                  {game.coming.placeName ? ` at ${game.coming.placeName}` : " nearby"} — everyone is on the way…
+                </span>
               </div>
             ) : null}
           </div>
@@ -274,6 +293,49 @@ function EventCard({ offer, game, now, decide }: { offer: OfferView; game: GameS
         </ul>
       )}
       <p className="muted small default-note">If you do not choose in time: “{offer.choices.find((c) => c.isDefault)?.label}”.</p>
+    </article>
+  );
+}
+
+const REVEAL_MS = 2200;
+
+/** T5: the card sits next to the event's tile, on the side of the map with more room. */
+function cardBeside(tile: [number, number] | undefined, map: { width: number; height: number } | null): CSSProperties | undefined {
+  if (!tile || !map) return undefined;
+  const fx = (tile[0] + 0.5) / map.width;
+  const fy = (tile[1] + 0.5) / map.height;
+  const gap = 2.2; // tiles between the event spot and the card: the people gathered there stay visible
+  // CSS variables: only the desktop layout uses them (on phones the card is a sheet at the bottom).
+  const justify = fy < 0.34 ? "flex-start" : fy < 0.66 ? "center" : "flex-end";
+  const fromEdge = fx <= 0.5 ? tile[0] + 0.5 + gap : map.width - (tile[0] + 0.5) + gap;
+  const edge = `min(${((fromEdge / map.width) * 100).toFixed(2)}%, calc(100% - 312px))`;
+  return {
+    "--card-justify": justify,
+    "--card-left": fx <= 0.5 ? edge : "auto",
+    "--card-right": fx <= 0.5 ? "auto" : edge,
+  } as CSSProperties;
+}
+
+/** T5: everyone's cards are turned over at the same moment, while the faces on the map react. */
+function RevealCard({ notice, game }: { notice: Extract<Notice, { kind: "resolved" }>; game: GameState }) {
+  const deciders = notice.deciders ?? (notice.myChoice ? [game.characterId ?? ""] : []);
+  const nameOf = (id: string) => (id === game.characterId ? "You" : (notice.participants.find((p) => p.characterId === id)?.name ?? id));
+  const labelOf = (id: string) =>
+    id === game.characterId ? notice.myChoice?.label : notice.revealed.find((r) => r.characterId === id)?.label;
+  return (
+    <article className="card reveal" aria-live="polite">
+      <span className="muted small">{notice.title}</span>
+      <ul className="reveal-cards">
+        {deciders.map((id) => {
+          const label = labelOf(id);
+          return (
+            <li key={id} className={`flip ${label ? "" : "secret"}`}>
+              <span className="flip-who">{nameOf(id)}</span>
+              <span className="flip-what">{label ? `“${label}”` : "🤐 kept it to themselves"}</span>
+            </li>
+          );
+        })}
+      </ul>
     </article>
   );
 }

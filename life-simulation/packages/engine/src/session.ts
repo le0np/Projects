@@ -33,6 +33,7 @@ import {
   type Notice,
   type OfferView,
   type ParticipantInfo,
+  type Reaction,
   type VisibleChoice,
 } from "@lifesim/core";
 import type { ContentBundle } from "@lifesim/content";
@@ -53,7 +54,7 @@ export interface ParticipantSpec {
 }
 
 export type PublicEntry =
-  | { kind: "event"; t: number; instanceId: string; title: string; text: string; participants: ParticipantInfo[] }
+  | { kind: "event"; t: number; instanceId: string; title: string; text: string; participants: ParticipantInfo[]; tile: TilePos }
   | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
   | { kind: "season"; t: number; year: number; season: string }
   | { kind: "upheaval"; t: number; id: string; title: string; text: string; active: boolean }
@@ -1160,7 +1161,25 @@ export class Session {
         title: this.interpolate(ev.title, bindings),
         text: this.interpolate(ev.text.public, bindings),
         participants: participants.map((c) => ({ characterId: c, name: this.char(c).name, role: roleOf.get(c) as string })),
+        tile: inst.place.tile,
       });
+    }
+    if (inst.startedAt > this.now()) {
+      // T5: the event begins on the map; the card opens once everyone has arrived.
+      const placeName = inst.place.placeId ? (this.content.map.place(inst.place.placeId)?.name ?? null) : null;
+      for (const c of participants) {
+        if (this.isUnaware(ev, roleOf.get(c))) continue;
+        this.onNotice(c, {
+          kind: "coming",
+          t: this.now(),
+          instanceId: id,
+          title: this.interpolate(ev.title, bindings),
+          tile: inst.place.tile,
+          placeName,
+          offerAt: inst.startedAt,
+          participants: this.visibleParticipants(inst, c).map((p) => ({ characterId: p, name: this.char(p).name, role: roleOf.get(p) as string })),
+        });
+      }
     }
     if (inst.startedAt > this.now()) this.timers.push(inst.startedAt, { kind: "offer", instanceId: id });
     else this.offer(id);
@@ -1259,6 +1278,7 @@ export class Session {
       participants,
       publicText: this.interpolate(inst.ev.text.public, inst.bindings),
       place: inst.place.placeId ? (({ id, name, kind }) => ({ id, name, kind }))(this.content.map.place(inst.place.placeId)!) : null,
+      tile: [...inst.place.tile] as TilePos,
       ...(privateText ? { privateText: this.interpolate(privateText, inst.bindings) } : {}),
       choices: structuredClone(inst.offered.get(characterId) ?? []),
     };
@@ -1362,6 +1382,7 @@ export class Session {
 
     // 6. Tracking for the Life Recap, notices, and freeing the participants.
     const important = outcome.important === true || ev.importance === "important";
+    const reactionOf = (id: string) => this.reaction(id, changes);
     for (const id of inst.participants) {
       const c = this.char(id);
       const role = inst.roleOf.get(id) as string;
@@ -1408,6 +1429,8 @@ export class Session {
           ...(text ? { outcomeText: text } : {}),
           selfChanges,
           others: this.othersFor(id),
+          reactions: this.visibleParticipants(inst, id).map((p) => ({ characterId: p, reaction: reactionOf(p) })),
+          deciders: inst.deciders.filter((d) => this.visibleParticipants(inst, id).includes(d)),
         });
         continue;
       }
@@ -1454,6 +1477,8 @@ export class Session {
         ...(text ? { outcomeText: text } : {}),
         selfChanges,
         others: this.othersFor(id),
+        reactions: this.visibleParticipants(inst, id).map((p) => ({ characterId: p, reaction: reactionOf(p) })),
+        deciders: inst.deciders.filter((d) => this.visibleParticipants(inst, id).includes(d)),
       });
     }
     for (const ch of changes) {
@@ -1463,6 +1488,25 @@ export class Session {
         this.onPublic({ kind: "ended", t: this.now(), characterId: ch.characterId, name: this.char(ch.characterId).name, status: ch.status, cause: ch.cause });
       }
     }
+  }
+
+  /** T5: how a character visibly reacts to an event's changes. */
+  private reaction(id: string, changes: readonly Change[]): Reaction {
+    let sum = 0;
+    let hurt = false;
+    let fell = false;
+    for (const ch of changes) {
+      if (ch.kind === "attr" && ch.characterId === id) {
+        sum += ch.delta;
+        if (ch.attribute === "health" && ch.delta <= -10) hurt = true;
+      } else if (ch.kind === "status" && ch.characterId === id && ch.status !== "active") hurt = true;
+      else if (ch.kind === "relation" && ch.from === id && (ch.type === "rival" || ch.type === "enemy")) fell = true;
+    }
+    if (hurt) return "shock";
+    if (fell) return "angry";
+    if (sum >= 5) return "joy";
+    if (sum <= -5) return "sad";
+    return "neutral";
   }
 
   private afterResolution(): void {

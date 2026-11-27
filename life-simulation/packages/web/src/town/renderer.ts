@@ -208,6 +208,8 @@ export interface Pose {
   /** 0 young … 1 old. */
   age: number;
   gone: boolean;
+  /** T5: a short visible reaction after an event (overrides `reacting`). */
+  reaction?: "joy" | "angry" | "sad" | "shock" | "neutral";
 }
 
 const INK = "#3a2a22";
@@ -232,7 +234,47 @@ function face(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, po
     stroke(ctx, [[x - s * 0.15, y + s * 0.26], [x + s * 0.15, y + s * 0.26]], INK, 2);
     return;
   }
-  if (pose.reacting) {
+  if (pose.reaction === "angry") {
+    // Brows down to a V, narrow eyes, a tight frown.
+    stroke(ctx, [[x - gap - s * 0.14, browY - s * 0.06], [x - gap + s * 0.12, browY + s * 0.08]], INK, s * 0.08);
+    stroke(ctx, [[x + gap + s * 0.14, browY - s * 0.06], [x + gap - s * 0.12, browY + s * 0.08]], INK, s * 0.08);
+    for (const ex of [x - gap, x + gap]) stroke(ctx, [[ex - s * 0.07, y + s * 0.02], [ex + s * 0.07, y + s * 0.02]], INK, 2.5);
+    stroke(ctx, [[x - s * 0.22, y + s * 0.32], [x, y + s * 0.22], [x + s * 0.22, y + s * 0.32]], INK, 2.5);
+    return;
+  }
+  if (pose.reaction === "sad") {
+    stroke(ctx, [[x - gap - s * 0.12, browY - s * 0.04], [x - gap + s * 0.1, browY - s * 0.12]], browCol, s * 0.07);
+    stroke(ctx, [[x + gap + s * 0.12, browY - s * 0.04], [x + gap - s * 0.1, browY - s * 0.12]], browCol, s * 0.07);
+    for (const ex of [x - gap, x + gap]) stroke(ctx, [[ex - s * 0.07, y - s * 0.02], [ex, y + s * 0.03], [ex + s * 0.07, y - s * 0.02]], INK, 2.5);
+    stroke(ctx, [[x - s * 0.2, y + s * 0.32], [x, y + s * 0.22], [x + s * 0.2, y + s * 0.32]], INK, 2.5);
+    ctx.fillStyle = "#5aa9e6";
+    ctx.beginPath();
+    ctx.arc(x + gap, y + s * 0.14, s * 0.05, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+  if (pose.reaction === "shock") {
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.6;
+    for (const ex of [x - gap, x + gap]) {
+      ctx.beginPath();
+      ctx.arc(ex, y, s * 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = INK;
+      ctx.beginPath();
+      ctx.arc(ex, y, s * 0.035, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+    }
+    ctx.fillStyle = "#6b2a1f";
+    ctx.beginPath();
+    ctx.ellipse(x, y + s * 0.3, s * 0.1, s * 0.13, 0, 0, Math.PI * 2);
+    ctx.fill();
+    return;
+  }
+  if (pose.reacting || pose.reaction === "joy") {
     stroke(ctx, [[x - gap - s * 0.07, y - s * 0.05], [x - gap + s * 0.05, y], [x - gap - s * 0.07, y + s * 0.05]], INK, 2.5);
     stroke(ctx, [[x + gap + s * 0.07, y - s * 0.05], [x + gap - s * 0.05, y], [x + gap + s * 0.07, y + s * 0.05]], INK, 2.5);
     ctx.beginPath();
@@ -269,7 +311,9 @@ function face(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, po
 /** The bean puppet. (x, ground) is the point between the feet; s is the size unit. */
 export function drawCharacter(ctx: CanvasRenderingContext2D, look: Look, x: number, ground: number, s: number, pose: Pose): void {
   const hop = pose.walking ? (pose.frame % 2 ? -s * 0.22 : 0) : 0;
-  const jump = pose.reacting ? -s * 0.45 : 0;
+  const r = pose.reaction;
+  const jump = pose.reacting || r === "joy" || r === "shock" ? -s * (pose.frame % 2 ? 0.45 : 0.15) : 0;
+  const shake = r === "angry" ? (pose.frame % 2 ? 1.5 : -1.5) : 0;
   const squash = pose.walking && pose.frame % 2 === 0 ? 1.05 : 1;
   const w = s * 0.62;
   const h = s * 1.7;
@@ -277,7 +321,7 @@ export function drawCharacter(ctx: CanvasRenderingContext2D, look: Look, x: numb
   ctx.save();
   ctx.globalAlpha = pose.gone ? 0.55 : 1;
   oval(ctx, x + 3, ground + 2, s * 0.6 * (hop ? 0.8 : 1), s * 0.13, "rgba(0,0,0,.22)");
-  ctx.translate(x, ground + hop + jump);
+  ctx.translate(x + shake, ground + hop + jump);
   ctx.scale(squash, 1 / squash);
   ctx.rotate(pose.dir * pose.age * 0.1);
   const step = pose.walking ? (pose.frame % 2 ? 2 : -2) : 0;
@@ -346,12 +390,28 @@ export function drawCharacter(ctx: CanvasRenderingContext2D, look: Look, x: numb
     ctx.fillStyle = "#1a2850";
     ctx.fill();
   }
-  const armUp = pose.reacting ? -s * 0.7 : pose.talking && pose.frame % 2 ? -s * 0.35 : pose.walking ? (pose.frame % 2 ? -s * 0.1 : s * 0.1) : 0;
+  const armUp = pose.reacting || r === "joy" || r === "shock" ? -s * 0.7 : r === "sad" ? s * 0.2 : pose.talking && pose.frame % 2 ? -s * 0.35 : pose.walking ? (pose.frame % 2 ? -s * 0.1 : s * 0.1) : 0;
   for (const side of [-1, 1] as const) {
     stroke(ctx, [[side * w, -h * 0.35], [side * (w + s * 0.32), -h * 0.2 + armUp * (side === pose.dir ? 1 : 0.6)]], outline, 2.5);
   }
   face(ctx, 0, -h * 0.58, s * 0.62, pose, look);
   ctx.restore();
+}
+
+/** T5: a pulsing ring where an event is about to happen (`strong` for your own). */
+export function pulse(ctx: CanvasRenderingContext2D, tile: [number, number], wallMs: number, strong: boolean): void {
+  const cx = tile[0] * TILE + TILE / 2;
+  const cy = tile[1] * TILE + TILE / 2;
+  for (const offset of strong ? [0, 0.5] : [0]) {
+    const k = ((wallMs / 1400 + offset) % 1 + 1) % 1;
+    ctx.globalAlpha = (strong ? 0.85 : 0.45) * (1 - k);
+    ctx.strokeStyle = strong ? "#c2502f" : "#2f6f62";
+    ctx.lineWidth = strong ? 4 : 2.5;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, TILE * (0.4 + k * 1.3), TILE * (0.25 + k * 0.8), 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
 }
 
 /** Speech/emote bubble above a character. */

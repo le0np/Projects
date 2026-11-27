@@ -425,6 +425,14 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **N4:** popis imena u tekstu: „Filip, Clara, Ana, Lana and Maja” (`listNames` u engineu; test).
 - Provjereno skriptom u browseru na finalu (desktop i iPhone 13): sat „Finale”, privatni tekst cijeli, kartica na suprotnoj strani, gomila na mapi vidljiva.
 
+### T5: event počinje na mapi (developer)
+
+- **Najava:** kad event krene, sudionici dobiju poruku `coming` (naslov, mjesto, polje, `offerAt`, sudionici). Mjesto na mapi pulsira (tvoje jako, tuđi eventi slabije; javni event sada ima `tile`), sudionici hodaju s „!”, a iznad mape piše „{event} at {mjesto} — everyone is on the way…”.
+- **Kartica** se otvara kad svi stignu (`offerAt`), **uz mjesto eventa**: 2,2 polja od mjesta, na strani mape gdje ima više mjesta, vertikalno poravnata s mjestom (zamjenjuje privremeni N2). Ponuda sada ima `tile`.
+- **Mobitel:** kad event krene, stranica se pomakne na mapu, a mapa se zumira (1,9×) na mjesto eventa; kartica je i dalje sheet na dnu.
+- **Nakon odluke:** 2,2 s **istovremenog otkrivanja**: kartice svih koji su odlučivali okrenu se odjednom (izbor se vidi ako ga ishod otkriva, inače „🤐 kept it to themselves”). U isto vrijeme likovi na mapi reagiraju: radost (skok, ruke gore), ljutnja (obrve u V, tresu se), tuga (suza), šok (velike oči, usta „O”). Tek onda dolazi tekst ishoda. Poruka `resolved` za to nosi `deciders` i `reactions`.
+- **Testovi:** `engine/test/sprint2.test.ts` (najava prije ponude na istom polju, `deciders` i `reactions`, javni eventi s poljem). Provjereno skriptom u browseru (desktop: 3 eventa, kartica ne prekriva sudionike, otkrivanje pa ishod; iPhone 13: zum i sheet), bez grešaka u konzoli.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 1, T1–T4):

@@ -29,6 +29,7 @@ function view(choices: { id: string; tags: ChoiceTag[]; perceived?: Perceived }[
       ],
       publicText: "",
       place: null,
+      tile: [0, 0],
       choices: choices.map((c, i) => ({ id: c.id, label: c.id, tags: c.tags, perceived: c.perceived ?? {}, special: false, isDefault: i === 0 })),
     },
   };

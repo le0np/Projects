@@ -813,9 +813,10 @@ main.game {
     justify-content: flex-start;
     border-radius: var(--radius);
   }
-  .overlay.side-left:not(.toast) {
-    right: auto;
-    left: 12px;
+  .overlay.beside {
+    left: var(--card-left, auto);
+    right: var(--card-right, 12px);
+    justify-content: var(--card-justify, flex-start);
   }
   .overlay.toast {
     bottom: auto;
@@ -836,5 +837,86 @@ main.game {
   .overlay .private {
     font-size: 0.88rem;
     padding: 8px 10px;
+  }
+}
+
+/* ---------- T5: the event begins on the map ---------- */
+.coming {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  max-width: min(420px, calc(100% - 24px));
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.88rem;
+  box-shadow: var(--shadow);
+}
+.coming-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #c2502f;
+  animation: coming-pulse 1.4s ease-out infinite;
+}
+@keyframes coming-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(194 80 47 / 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgb(194 80 47 / 0);
+  }
+}
+.reveal-cards {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  perspective: 600px;
+}
+.flip {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  transform-origin: center;
+  animation: flip-over 0.6s ease-out both;
+}
+.flip.secret {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.flip-who {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.flip-what {
+  font-weight: 600;
+}
+@keyframes flip-over {
+  0% {
+    transform: rotateY(180deg);
+    opacity: 0.2;
+  }
+  100% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flip,
+  .coming-dot {
+    animation: none;
   }
 }

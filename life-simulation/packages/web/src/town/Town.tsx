@@ -3,7 +3,7 @@ import type { Attribute, Notice } from "@lifesim/core";
 import { api } from "../api";
 import { ATTR_LABELS } from "../format";
 import type { GameState, Walk } from "../useGame";
-import { TILE, bubble, drawCharacter, drawMap, lookFor, nameTag, type MapData, type Season } from "./renderer";
+import { TILE, bubble, drawCharacter, drawMap, lookFor, nameTag, pulse, type MapData, type Season } from "./renderer";
 
 const FPS = 8; // stepped, cut-out animation (concept v2 §7)
 
@@ -86,6 +86,8 @@ export function Town({ game }: { game: GameState }) {
 
     let raf = 0;
     let lastFrame = -1;
+    // T5 (phones): the map zooms to where your event happens; this eases towards the target view.
+    const view = { z: 1, cx: (map.width * TILE) / 2, cy: (map.height * TILE) / 2 };
     const render = (now: number) => {
       const frame = Math.floor((now / 1000) * FPS);
       if (frame === lastFrame && !reduce) {
@@ -96,11 +98,31 @@ export function Town({ game }: { game: GameState }) {
       const g = gameRef.current;
       const t = g.sync.sessionTime + (Date.now() - g.sync.wall) * g.timeScale;
       const season = (g.calendar?.season ?? "spring") as Season;
+      const W = map.width * TILE;
+      const H = map.height * TILE;
+      const focus = g.pending?.tile ?? g.coming?.tile;
+      const small = canvas.clientWidth > 0 && canvas.clientWidth < 520;
+      const target = small && focus ? { z: 1.9, cx: focus[0] * TILE + TILE / 2, cy: focus[1] * TILE + TILE / 2 } : { z: 1, cx: W / 2, cy: H / 2 };
+      const ease = reduce ? 1 : 0.35;
+      view.z += (target.z - view.z) * ease;
+      view.cx += (target.cx - view.cx) * ease;
+      view.cy += (target.cy - view.cy) * ease;
+      const tx = Math.min(0, Math.max(W - W * view.z, W / 2 - view.cx * view.z));
+      const ty = Math.min(0, Math.max(H - H * view.z, H / 2 - view.cy * view.z));
+      ctx.setTransform(dpr * view.z, 0, 0, dpr * view.z, dpr * tx, dpr * ty);
       drawMap(ctx, map, season, dark());
+
+      // T5: places where something is happening pulse (yours strongly).
+      const wallNow = Date.now();
+      for (const f of g.feed) {
+        if (f.kind === "event" && f.tile && t - f.t < 9000 && t >= f.t) pulse(ctx, f.tile, wallNow, false);
+      }
+      if (focus) pulse(ctx, focus, wallNow, true);
 
       // Who is in an event right now (shown with "!"): your pending offer, plus recent public events.
       const busy = new Set<string>();
       for (const p of g.pending?.participants ?? []) busy.add(p.characterId);
+      for (const p of g.coming?.participants ?? []) busy.add(p.characterId);
       for (const f of g.feed) {
         if (f.kind === "event" && t - f.t < 9000 && t >= f.t) for (const p of f.participants) busy.add(p.characterId);
       }
@@ -114,7 +136,9 @@ export function Town({ game }: { game: GameState }) {
         const gone = mine ? !!g.ended : !!other && other.status !== "active";
         const cx = at.x * TILE + TILE / 2;
         const ground = at.y * TILE + TILE - 4;
-        const inEvent = busy.has(r.characterId);
+        const reaction = g.reactions[r.characterId];
+        const reacting = reaction && reaction.until > wallNow ? reaction.reaction : undefined;
+        const inEvent = busy.has(r.characterId) && !reacting;
         if (mine) {
           ctx.strokeStyle = "#2f6f62";
           ctx.lineWidth = 3;
@@ -128,6 +152,7 @@ export function Town({ game }: { game: GameState }) {
           walking: at.moving && !reduce,
           talking: inEvent && !at.moving && !reduce,
           reacting: false,
+          ...(reacting && !gone ? { reaction: reacting } : {}),
           blink: (frame + r.characterId.charCodeAt(1)) % 23 === 0,
           age,
           gone,

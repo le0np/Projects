@@ -4,10 +4,12 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import type { Attribute, LifeRecap, Notice, OfferView, OtherCharacterView, ParticipantInfo } from "@lifesim/core";
+import type { Attribute, LifeRecap, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction } from "@lifesim/core";
+
+export type ComingEvent = Extract<Notice, { kind: "coming" }> & { receivedAt: number };
 
 export type PublicEntry =
-  | { kind: "event"; t: number; instanceId: string; title: string; text: string; participants: ParticipantInfo[] }
+  | { kind: "event"; t: number; instanceId: string; title: string; text: string; participants: ParticipantInfo[]; tile?: [number, number] }
   | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
   | { kind: "season"; t: number; year: number; season: string }
   | { kind: "upheaval"; t: number; id: string; title: string; text: string; active: boolean }
@@ -54,6 +56,12 @@ export interface GameState {
   pendingReceivedAt: number;
   submitted: string | null;
   history: Notice[];
+  /** T5: your next event, announced while everyone walks there. */
+  coming: ComingEvent | null;
+  /** T5: wall-clock time each of your events was resolved (the reveal plays first, then the outcome). */
+  resolvedWall: Record<string, number>;
+  /** T5: faces on the map right after an event, until `until` (wall clock). */
+  reactions: Record<string, { reaction: Reaction; until: number }>;
   feed: PublicEntry[];
   attrs?: Record<Attribute, number>;
   /** Life calendar; age is derived from the last view's age plus the years since. */
@@ -89,6 +97,9 @@ function stateFromSnapshot(s: Snapshot): GameState {
     pendingReceivedAt: Date.now() - (s.pending ? (s.sessionTime - s.pending.offeredAt) / s.timeScale : 0),
     submitted: null,
     history: s.history,
+    coming: null,
+    resolvedWall: {},
+    reactions: {},
     feed: s.feed,
     attrs: lastView?.self.attrs,
     calendar: [...s.feed].reverse().find((f): f is Extract<PublicEntry, { kind: "season" }> => f.kind === "season") ?? lastView?.calendar,
@@ -161,10 +172,12 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
       setGame((g) => {
         if (!g) return g;
         const history = [...g.history, n].slice(-30);
+        if (n.kind === "coming") return { ...g, history, coming: { ...n, receivedAt: Date.now() } };
         if (n.kind === "event") {
           return {
             ...g,
             history,
+            coming: g.coming?.instanceId === n.view.offer.instanceId ? null : g.coming,
             attrs: n.view.self.attrs,
             calendar: n.view.calendar,
             ageBase: { age: n.view.self.age, year: n.view.calendar.year },
@@ -179,10 +192,16 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
           const attrs = g.attrs ? { ...g.attrs } : undefined;
           if (attrs) for (const [a, d] of Object.entries(n.selfChanges) as [Attribute, number][]) attrs[a] = Math.max(0, Math.min(100, attrs[a] + d));
           const clears = g.pending?.instanceId === n.instanceId;
+          const wall = Date.now();
+          const reactions = { ...g.reactions };
+          for (const r of n.reactions ?? []) if (r.reaction !== "neutral") reactions[r.characterId] = { reaction: r.reaction, until: wall + 2600 };
           return {
             ...g,
             history,
             attrs,
+            coming: g.coming?.instanceId === n.instanceId ? null : g.coming,
+            resolvedWall: { ...Object.fromEntries(Object.entries(g.resolvedWall).slice(-10)), [n.instanceId]: wall },
+            reactions,
             // B2: relationships change during the event; show them at once, not at the next offer.
             others: n.others ?? g.others,
             sync: { sessionTime: n.t, wall: Date.now() },
