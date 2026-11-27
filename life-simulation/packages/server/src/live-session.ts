@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
 import { BotController, createBotProfile, type BotProfile } from "@lifesim/bots";
 import { Rng, type Clock, type Notice, type OfferView } from "@lifesim/core";
 import type { ContentBundle } from "@lifesim/content";
-import { Session, resolveConfig, type LogEntry, type PublicEntry, type SessionConfig, type SessionResult, type SubmitResult } from "@lifesim/engine";
+import { Session, humanPacing, resolveConfig, type LogEntry, type PublicEntry, type SessionConfig, type SessionResult, type SubmitResult } from "@lifesim/engine";
 
 export type Seat = { kind: "human"; userId: string; name: string; career: string } | { kind: "bot"; career: string };
 
@@ -43,6 +43,8 @@ export class LiveSession {
   private readonly timeScale: number;
   private timer: NodeJS.Timeout | undefined;
   private readonly botTimers = new Set<NodeJS.Timeout>();
+  /** Bot decisions waiting for their think time, per event: sent at once when every human has decided. */
+  private readonly botPending = new Map<string, Map<string, { handle: NodeJS.Timeout; choiceId: string }>>();
   private logCursor = 0;
   private finished = false;
 
@@ -51,7 +53,7 @@ export class LiveSession {
     config: Partial<SessionConfig>,
     seats: Seat[],
     private readonly events: LiveSessionEvents,
-    options: { timeScale?: number; seed?: string } = {},
+    options: { timeScale?: number; seed?: string; paceScale?: number } = {},
   ) {
     this.timeScale = options.timeScale ?? 1;
     this.startedAtWall = performance.now();
@@ -64,7 +66,9 @@ export class LiveSession {
       isBot: seat.kind === "bot",
       ...(seat.kind === "human" ? { name: seat.name } : {}),
     }));
-    this.session = new Session(content, resolveConfig({ ...config, seed }), participants, clock);
+    // T1: human deadlines and rests are in real seconds, whatever the time scale.
+    const pacing = config.humanPacing ?? humanPacing(this.timeScale, options.paceScale ?? 1);
+    this.session = new Session(content, resolveConfig({ ...config, humanPacing: pacing, seed }), participants, clock);
 
     seats.forEach((seat, i) => {
       const characterId = `c${i + 1}`;
@@ -106,6 +110,7 @@ export class LiveSession {
     if (!seat) return { ok: false, reason: "not a player in this session" };
     const result = this.session.submitDecision(seat.characterId, instanceId, choiceId);
     if (result.ok && seat.pending?.instanceId === instanceId) seat.pending = undefined;
+    if (result.ok) this.flushBotsIfHumansDone(instanceId);
     this.afterChange();
     return result;
   }
@@ -158,13 +163,18 @@ export class LiveSession {
       if (notice.kind === "event" && notice.view.offer.choices.length > 0) {
         const decision = bot.decide(notice.view);
         if (decision) {
+          const instanceId = notice.view.offer.instanceId;
           const handle = setTimeout(() => {
             this.botTimers.delete(handle);
+            this.botPending.get(instanceId)?.delete(characterId);
             if (this.finished) return;
-            this.session.submitDecision(characterId, notice.view.offer.instanceId, decision.choiceId);
+            this.session.submitDecision(characterId, instanceId, decision.choiceId);
             this.afterChange();
           }, decision.thinkMs / this.timeScale);
           this.botTimers.add(handle);
+          const waiting = this.botPending.get(instanceId) ?? new Map();
+          waiting.set(characterId, { handle, choiceId: decision.choiceId });
+          this.botPending.set(instanceId, waiting);
         }
       }
       if (notice.kind === "resolved") {
@@ -189,6 +199,23 @@ export class LiveSession {
     if (seat.history.length > HISTORY_LIMIT) seat.history.shift();
     this.events.toUser(seat.userId, notice.kind === "session_completed" ? "game:ended" : "game:notice", notice);
     if (notice.kind === "resolved") this.events.toUser(seat.userId, "game:mischief_state", this.session.mischiefState(characterId));
+  }
+
+  /** T1: once every human in an event has decided, the bots still "thinking" answer at once. */
+  private flushBotsIfHumansDone(instanceId: string): void {
+    const waiting = this.botPending.get(instanceId);
+    if (!waiting) return;
+    const undecided = this.session.undecided(instanceId);
+    if (undecided.length === 0 || !undecided.every((id) => waiting.has(id))) {
+      if (undecided.length === 0) this.botPending.delete(instanceId);
+      return;
+    }
+    this.botPending.delete(instanceId);
+    for (const [characterId, { handle, choiceId }] of [...waiting].sort(([a], [b]) => a.localeCompare(b))) {
+      clearTimeout(handle);
+      this.botTimers.delete(handle);
+      this.session.submitDecision(characterId, instanceId, choiceId);
+    }
   }
 
   /** Persist new decisions, re-arm the engine timer, detect the end. */

@@ -39,6 +39,54 @@ export interface SessionConfig {
     familyChance: number;
     partnerChance: number;
   };
+  /**
+   * Pacing for human players in real (wall-clock) seconds. Set by the live server; unset in
+   * simulations, so bot-only runs keep their speed. Events with a human decider get a deadline
+   * that depends on the text length, and humans rest a little longer between events.
+   */
+  humanPacing?: HumanPacing;
+}
+
+export interface HumanPacing {
+  /** Session milliseconds per wall-clock millisecond (the server's TIME_SCALE). */
+  timeScale: number;
+  /** Deadline = base + perWord × words (public + private text + choice labels), clamped, + bonus if several humans decide. */
+  deadline: {
+    baseSeconds: number;
+    perWordSeconds: number;
+    minSeconds: number;
+    importantMinSeconds: number;
+    maxSeconds: number;
+    multiHumanBonusSeconds: number;
+  };
+  /** Breather after an event (wall seconds), and after an important one. */
+  restSeconds: [number, number];
+  restAfterImportantSeconds: [number, number];
+}
+
+export const DEFAULT_HUMAN_PACING: Omit<HumanPacing, "timeScale"> = {
+  deadline: { baseSeconds: 8, perWordSeconds: 0.25, minSeconds: 15, importantMinSeconds: 25, maxSeconds: 35, multiHumanBonusSeconds: 10 },
+  restSeconds: [5, 9],
+  restAfterImportantSeconds: [10, 14],
+};
+
+/** Pacing for a live server running at `timeScale`; `scale` shortens every wall-clock duration (tests). */
+export function humanPacing(timeScale: number, scale = 1): HumanPacing {
+  const d = DEFAULT_HUMAN_PACING.deadline;
+  const r = (x: [number, number]): [number, number] => [x[0] * scale, x[1] * scale];
+  return {
+    timeScale,
+    deadline: {
+      baseSeconds: d.baseSeconds * scale,
+      perWordSeconds: d.perWordSeconds * scale,
+      minSeconds: d.minSeconds * scale,
+      importantMinSeconds: d.importantMinSeconds * scale,
+      maxSeconds: d.maxSeconds * scale,
+      multiHumanBonusSeconds: d.multiHumanBonusSeconds * scale,
+    },
+    restSeconds: r(DEFAULT_HUMAN_PACING.restSeconds),
+    restAfterImportantSeconds: r(DEFAULT_HUMAN_PACING.restAfterImportantSeconds),
+  };
 }
 
 export const DEFAULT_CONFIG: Omit<SessionConfig, "seed"> = {

@@ -16,7 +16,7 @@ beforeAll(async () => {
   app = await buildApp({
     db,
     content,
-    config: { ...configFromEnv({}), sessionSize: 4, maxHumans: 2, fillAfterSeconds: 0.3, sessionDurationSeconds: 150, timeScale: 30 },
+    config: { ...configFromEnv({}), sessionSize: 4, maxHumans: 2, fillAfterSeconds: 0.3, sessionDurationSeconds: 150, timeScale: 30, paceScale: 0.05 },
   });
   await app.http.listen({ port: 0, host: "127.0.0.1" });
   const addr = app.http.server.address();

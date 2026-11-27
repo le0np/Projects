@@ -480,6 +480,13 @@ export class Session {
     return { ok: true };
   }
 
+  /** Deciders of a running event who have not decided yet (empty if the event is unknown or over). */
+  undecided(instanceId: string): string[] {
+    const inst = this.instances.get(instanceId);
+    if (!inst || inst.resolved) return [];
+    return inst.deciders.filter((id) => !inst.decisions.has(id));
+  }
+
   private onDeadline(instanceId: string): void {
     const inst = this.instances.get(instanceId);
     if (!inst || inst.resolved) return;
@@ -970,7 +977,7 @@ export class Session {
       ch.seen.set(ev.id, (ch.seen.get(ev.id) ?? 0) + 1);
     }
     inst.startedAt = this.gather(inst);
-    inst.deadlineAt = inst.startedAt + duration;
+    inst.deadlineAt = inst.startedAt + (this.humanDeadline(inst) ?? duration);
     inst.deadlineTimer = this.timers.push(inst.deadlineAt, { kind: "deadline", instanceId: id });
     this.log.push({
       t: this.now(),
@@ -998,6 +1005,29 @@ export class Session {
     if (inst.startedAt > this.now()) this.timers.push(inst.startedAt, { kind: "offer", instanceId: id });
     else this.offer(id);
     return inst;
+  }
+
+  /**
+   * T1: events with a human decider get a deadline in real seconds that depends on how much there is
+   * to read. Returned in session milliseconds; undefined without human pacing or human deciders.
+   */
+  private humanDeadline(inst: Instance): number | undefined {
+    const pacing = this.config.humanPacing;
+    if (!pacing) return undefined;
+    const humans = inst.deciders.filter((id) => !this.char(id).isBot);
+    if (humans.length === 0) return undefined;
+    const d = pacing.deadline;
+    const words = (text: string | undefined) => (text ? this.interpolate(text, inst.bindings).split(/\s+/).filter(Boolean).length : 0);
+    let seconds = 0;
+    for (const id of humans) {
+      const role = inst.roleOf.get(id) as string;
+      const n =
+        words(inst.ev.text.public) + words(inst.ev.text.private?.[role]) + (inst.offered.get(id) ?? []).reduce((sum, c) => sum + words(c.label), 0);
+      const min = inst.ev.importance === "important" ? d.importantMinSeconds : d.minSeconds;
+      seconds = Math.max(seconds, Math.min(d.maxSeconds, Math.max(min, d.baseSeconds + d.perWordSeconds * n)));
+    }
+    if (humans.length > 1) seconds += d.multiHumanBonusSeconds;
+    return Math.round(seconds * MS * pacing.timeScale);
   }
 
   /** Everyone has arrived: show the event to the participants who know about it. */
@@ -1214,7 +1244,13 @@ export class Session {
       c.lastCategory = ev.category;
       c.eventsCompleted++;
       const [r0, r1] = this.config.restSeconds;
-      c.availableAt = this.now() + Math.round(this.rngTiming.range(r0, r1) * MS);
+      let rest = this.rngTiming.range(r0, r1) * MS;
+      const pacing = this.config.humanPacing;
+      if (pacing && !c.isBot) {
+        const [p0, p1] = important ? pacing.restAfterImportantSeconds : pacing.restSeconds;
+        rest = this.rngTiming.range(p0, p1) * MS * pacing.timeScale;
+      }
+      c.availableAt = this.now() + Math.round(rest);
       c.stayUntil = this.now();
       this.afterEventMovement(c);
       if (c.status === "active") this.scheduleTick(Math.max(c.availableAt, c.stayUntil));

@@ -349,6 +349,17 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - QA je igrao u browseru na normalnoj brzini i analizirao batch izvještaj m10. Glavni nalazi: 74 % eventa je solo, svaki lik dobije istih 7 svakodnevnih eventa, rokovi se skraćuju s `TIME_SCALE` (uz 6× ostane 2–3 s), kartica eventa prekriva pola mape. Detalji i istraživanje sličnih igara: [`docs/reports/qa-research-2026-11-27.md`](docs/reports/qa-research-2026-11-27.md).
 - Kod nije mijenjan.
 
+### T1: rok za odluku u stvarnim sekundama (developer)
+
+- **Uzrok:** rokovi su bili u vremenu sesije, pa ih je `TIME_SCALE` dijelio (uz 6× ostane 2–3 s).
+- **Rješenje:** nova opcija enginea `humanPacing` (`engine/src/config.ts`). Postavlja je samo `LiveSession` na serveru, s vlastitim `timeScale`; simulacija i batch je nemaju, pa su sesije samo s botovima nepromijenjene (test to provjerava).
+  - Ako u eventu odlučuje čovjek, rok je `8 s + 0,25 s po riječi` (javni + privatni tekst + izbori), ograničeno na 15–35 s (važni najmanje 25 s), +10 s ako odlučuje više ljudi. Računa se u stvarnim sekundama i pretvara u vrijeme sesije (× `timeScale`).
+  - Odmor čovjeka nakon eventa je također u stvarnim sekundama (5–9 s, nakon važnog 10–14 s); dovršava se u T3.
+  - Konfiguracija se zapisuje u `session_started`, pa je replay i dalje identičan.
+- **Odmah razrješavanje:** kad svi ljudi u eventu odluče, botovi koji još „razmišljaju” odgovore odmah (`LiveSession.flushBotsIfHumansDone`, `Session.undecided`).
+- `PACE_SCALE` (samo za testove) skraćuje sva stvarna trajanja za ljude; serverski test koristi 0,05.
+- **Testovi:** `engine/test/pacing.test.ts` (rokovi uz 1× i 6×, bot-only nepromijenjen, determinizam) i `server/test/pacing.test.ts` (prvi rok uživo uz 6× i 1×, razrješenje u istom trenutku kad čovjek odluči, i s dva čovjeka). Provjereno da test pada kad se odmah razrješavanje isključi.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:

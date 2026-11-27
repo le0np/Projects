@@ -98,7 +98,7 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
             .finally(broadcastLobby);
         },
       },
-      { timeScale: config.timeScale },
+      { timeScale: config.timeScale, paceScale: config.paceScale },
     );
     live.set(session.id, session);
     for (const t of tickets) liveByUser.set(t.userId, session);

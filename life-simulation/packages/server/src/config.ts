@@ -17,6 +17,8 @@ export interface ServerConfig {
   sessionDurationSeconds: number;
   /** Speeds up session time (1 = real time). Useful for demos and tests. */
   timeScale: number;
+  /** Shortens every real-time duration for humans (deadlines, rests); 1 = normal. Only for tests. */
+  paceScale: number;
   /** Directory with the built web client to serve, if any. */
   webDist: string | undefined;
 }
@@ -34,6 +36,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): ServerConfi
     fillAfterSeconds: num(env.FILL_AFTER_SECONDS, 10),
     sessionDurationSeconds: num(env.SESSION_DURATION_SECONDS, 480),
     timeScale: num(env.TIME_SCALE, 1),
+    paceScale: num(env.PACE_SCALE, 1),
     webDist: env.WEB_DIST || (existsSync(DEFAULT_WEB_DIST) ? DEFAULT_WEB_DIST : undefined),
   };
 }
