@@ -96,12 +96,18 @@ export function RecapView({ recap }: { recap: LifeRecap }) {
           <ul className="plain">
             {recap.secrets.played.map((p, i) => (
               <li key={`p-${i}`}>
-                You secretly played <strong>{p.mischief}</strong> on {p.on}.
+                You schemed <strong>{p.mischief}</strong> against {p.on}
+                {p.boost === "cover" ? ", covered your tracks" : p.boost === "wait" ? ", waited for the right moment" : ""}
+                {p.accomplice
+                  ? `, asked ${p.accomplice} for help (${p.accompliceAnswer === "helped" ? "they helped" : p.accompliceAnswer === "betrayed" ? "they warned " + p.on : "they said no"})`
+                  : ""}
+                {p.result === "worked" ? " — and it worked." : p.result === "failed" ? " — and it failed." : "."}
               </li>
             ))}
             {recap.secrets.suffered.map((p, i) => (
               <li key={`s-${i}`} className="bad">
-                <strong>{p.by}</strong> was behind {quoted(p.mischief)}.
+                <strong>{p.by}</strong> was behind {quoted(p.mischief)}
+                {p.discovered ? " (you caught them)." : "."}
               </li>
             ))}
           </ul>

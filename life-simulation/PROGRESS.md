@@ -486,6 +486,18 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - `card-fit.mjs` usput traži „X and Y is/has/was” u svim popunjenim tekstovima: 0.
 - Testovi: engine (jedan svjedok „is”, više njih „are”), validator (upozorenje i oblici).
 
+### T8: smicalica postaje spletka u 3 koraka (developer)
+
+- **1. Plan:** igrač bira metu i spletku i odmah vidi **šansu uspjeha** i **rizik otkrivanja** (`Session.schemePreview`, socket `game:scheme_preview`). Ovise o spletki (`success`, `risk` u `mischief.json`), karijeri (spletke karijere +15 % uspjeha, −5 % rizika), odnosu (prijatelj/partner/obitelj: +10 % uspjeha jer ti vjeruju, +15 % rizika jer te poznaju; suparnik +10 % rizika; stranac −10 % rizika) i istom radnom mjestu (+10 % rizika).
+- **2. Priprema** (30–60 s vremena sesije = 1–2 godine): krug iznad tvog lika na mapi (vidiš samo ti) i traka napretka u kartici „Schemes”. **Jedno** pojačanje (`game:scheme_boost`): zamesti tragove (rizik ×0,5), pričekati pravi trenutak (+15 % uspjeha, +15 s) ili nagovoriti suučesnika. Suučesnik dobije skriveni event „A Little Favour” i bira: pomoći (+25 %), odbiti ili pristati pa upozoriti metu (izdaja → meta sigurno sazna). Nitko ne može biti pitan dvaput.
+- **3. Izvršenje:** engine baca uspjeh i otkrivanje. Uspjela spletka pokreće event žrtve (kao prije); ako je krivac otkriven, žrtva u kartici vidi trag („You noticed: Your neighbour's camera shows Kim crouching by your car.”) i izbore: suočiti se javno, prijaviti ili **planirati osvetu** (besplatna dodatna spletka protiv krivca, bez trošenja naboja). Neuspjela, a otkrivena spletka daje žrtvi event „Caught in the Act”.
+- **Tajna kao poluga:** otkriveni krivac postaje tajna (`knows_secret`), a žrtva u kasnijim eventima s njim (natjecanje za unaprjeđenje, zajam, poslovno partnerstvo, godišnja ocjena) dobije izbor „Remind {X} what you know about them”.
+- **3 nove spletke karijere:** novinar „Publish a fake story”, mehaničar „\"Fix\" their car” (spori curenje ulja), odvjetnik „Send a fake lawsuit”.
+- **Botovi** koriste isto: planiraju prema osobnosti, a pojačanje biraju po osobnosti (oprezni zametaju tragove, povjerljivi s dobrim prijateljem traže pomoć, ostali čekaju). Replay ponavlja i pojačanja (`scheme_boost`, `scheme_rejected` u logu).
+- **Life Recap** prikazuje cijeli tok: „You schemed Start a rumour against Kim, asked Sven for help (they warned Kim) — and it failed.” i „Kim was behind “Let their tyres down” (you caught them).”
+- **Batch izvještaj** ima redak „Schemes”. 200 sesija (`docs/reports/t8.report.md`): 4,3 spletke po sesiji, 68 % uspije, 27 % otkriveno; pojačanja: čekanje 439, tragovi 250, suučesnik 125 (odbio 53, izdao 39, pomogao 28); uhvaćeni krivci: javno suočeni 58, osveta 40, prijavljeni 33.
+- **Testovi:** engine (izgledi po karijeri i odnosu, cijeli tok s jednim pojačanjem, trag + izbori + besplatna osveta, izdaja suučesnika, Life Recap), e2e (planiranje i pojačanje u browseru), `card-fit.mjs` sada provjerava i skrivene evente (125 kartica, s tragom u kartici žrtve).
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 1, T1–T4):

@@ -60,6 +60,7 @@ Validacija drugog direktorija sa sadržajem: `npm run validate -- <putanja>`. Ak
   - izbor karijere s opisom sposobnosti; matchmaking s odbrojavanjem do popune botovima;
   - event s javnim i privatnim tekstom, odbrojavanjem i izborima koji pokazuju percipirane posljedice (isto što vide botovi), uz posebne izbore karijere;
   - ishodi, ljudi i odnosi, javni feed, spectator nakon smrti;
+  - spletke u tri koraka: plan sa šansom i rizikom, priprema s jednim pojačanjem (tragovi, čekanje, suučesnik), izvršenje; uhvaćeni krivac može dobiti osvetu;
   - Life Recap i cijeli log sesije.
 - Multiplayer server: registracija i prijava, profil sa statistikom i zadnjim životima, lobby (broj igrača online), matchmaking koji nakon kratkog čekanja popunjava mjesta botovima, igra preko WebSocketa, reconnect, javni feed za spectator mode, logovi sesija, PostgreSQL.
 - Batch simulaciju stotina sesija sa statistikom (smrtnost, karijere, arhetipovi, izbori, ishodi, ponavljanje, nastavci, tempo) i replay sesije iz loga.

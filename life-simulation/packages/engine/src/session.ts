@@ -613,7 +613,7 @@ export class Session {
     this.timers.push(scheme.readyAt, { kind: "scheme", id: scheme.id });
     this.log.push({ t: this.now(), type: "mischief", characterId, targetId, mischiefId, dueAt: scheme.readyAt, schemeId: scheme.id });
     const pct = (x: number) => `${Math.round(x * 100)} %`;
-    this.schemeNotice(scheme, `${free ? "Revenge, for free: " : ""}you start planning "${def.label}" against ${this.char(targetId).name}: ${pct(success)} chance it works, ${pct(risk)} risk they find out.`);
+    this.schemeNotice(scheme, `${free ? "Revenge, for free: you" : "You"} start planning "${def.label}" against ${this.char(targetId).name}: ${pct(success)} chance it works, ${pct(risk)} risk they find out.`);
     return { ok: true };
   }
 

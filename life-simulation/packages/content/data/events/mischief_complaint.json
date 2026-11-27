@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 2,
+  "version": 3,
   "id": "mischief_complaint",
   "title": "A Letter to the Boss",
   "category": "career",
@@ -35,7 +35,7 @@
     "victim": [
       {
         "id": "investigate",
-        "label": "Compare the handwriting with everyone's",
+        "label": "Compare the handwriting",
         "tags": [
           "truth",
           "risk"
@@ -57,7 +57,7 @@
       },
       {
         "id": "rights",
-        "label": "Demand the letter and cite workplace harassment policy",
+        "label": "Demand the letter, cite the harassment policy",
         "tags": [
           "negotiate",
           "truth"
@@ -71,7 +71,7 @@
       },
       {
         "id": "confront",
-        "label": "Confront {culprit} in front of everyone",
+        "label": "Confront {culprit} in public",
         "tags": [
           "threaten",
           "truth"
@@ -106,7 +106,7 @@
       },
       {
         "id": "revenge",
-        "label": "Smile, and start planning your revenge on {culprit}",
+        "label": "Smile and plan your revenge on {culprit}",
         "tags": [
           "risk"
         ],

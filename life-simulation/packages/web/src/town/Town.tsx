@@ -273,6 +273,24 @@ export function Town({ game, onSelect }: { game: GameState; onSelect?: (characte
         drawnAt.current.set(r.characterId, { x: (cx * view.z + tx) * k, y: ((ground - 18) * view.z + ty) * k });
       }
 
+      // T8: a ring above your head fills up while one of your schemes is being prepared (only you see it).
+      const plotting = (g.mischief?.schemes ?? []).find((s) => s.state === "preparing");
+      const meNow = people.find((p) => p.r.characterId === g.characterId);
+      if (meNow && plotting) {
+        const k2 = Math.min(1, Math.max(0, (t - plotting.startedAt) / Math.max(1, plotting.readyAt - plotting.startedAt)));
+        const rx = meNow.at.x * TILE + TILE / 2 + 18;
+        const ry = meNow.at.y * TILE - 30;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(75,63,143,.25)";
+        ctx.beginPath();
+        ctx.arc(rx, ry, 7, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = "#4b3f8f";
+        ctx.beginPath();
+        ctx.arc(rx, ry, 7, -Math.PI / 2, -Math.PI / 2 + k2 * Math.PI * 2);
+        ctx.stroke();
+      }
+
       // Where everyone is on screen (tests and assistive tooling use it; tiny and cheap at 8 fps).
       canvas.dataset.people = JSON.stringify(Object.fromEntries([...drawnAt.current].map(([id, p]) => [id, [Math.round(p.x), Math.round(p.y)]])));
 

@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
-import type { Attribute, LifeRecap, Mark, Mood, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction } from "@lifesim/core";
+import type { Attribute, LifeRecap, Mark, MischiefState, Mood, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction, SchemeBoost } from "@lifesim/core";
 
 export type ComingEvent = Extract<Notice, { kind: "coming" }> & { receivedAt: number };
 
@@ -39,7 +39,7 @@ export interface Snapshot {
   history: Notice[];
   feed: PublicEntry[];
   positions?: { characterId: string; pos: [number, number]; trip: Walk["trip"]; status: string }[];
-  mischief?: { charges: number; options: { id: string; label: string; description: string }[] } | null;
+  mischief?: MischiefState | null;
 }
 
 export interface MatchStatus {
@@ -287,7 +287,32 @@ export function useGame(token: string | null, onUnauthorized: () => void) {
     [game],
   );
 
+  /** T8: the odds of a scheme before you commit to it. */
+  const previewScheme = useCallback(
+    async (mischiefId: string, targetId: string) => {
+      if (!game) return undefined;
+      return (await socketRef.current?.emitWithAck("game:scheme_preview", { sessionId: game.sessionId, mischiefId, targetId })) as
+        | { ok: true; success: number; risk: number; free: boolean }
+        | { ok: false; reason: string }
+        | undefined;
+    },
+    [game?.sessionId],
+  );
+
+  /** T8: one boost for a scheme in preparation. */
+  const boostScheme = useCallback(
+    async (schemeId: string, boost: SchemeBoost, accompliceId?: string) => {
+      if (!game) return;
+      const res = (await socketRef.current?.emitWithAck("game:scheme_boost", { sessionId: game.sessionId, schemeId, boost, ...(accompliceId ? { accompliceId } : {}) })) as
+        | { ok: boolean; reason?: string; state?: GameState["mischief"] }
+        | undefined;
+      if (res?.state) setGame((g) => (g ? { ...g, mischief: res.state } : g));
+      return res;
+    },
+    [game?.sessionId],
+  );
+
   const leaveGame = useCallback(() => setGame(null), []);
 
-  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, playMischief, leaveGame };
+  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, playMischief, previewScheme, boostScheme, leaveGame };
 }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 3,
+  "version": 4,
   "id": "mischief_flat_tyres",
   "title": "Flat Tyres",
   "category": "everyday",
@@ -74,7 +74,7 @@
       },
       {
         "id": "confront",
-        "label": "Confront {culprit} in front of everyone",
+        "label": "Confront {culprit} in public",
         "tags": [
           "threaten",
           "truth"
@@ -109,7 +109,7 @@
       },
       {
         "id": "revenge",
-        "label": "Smile, and start planning your revenge on {culprit}",
+        "label": "Smile and plan your revenge on {culprit}",
         "tags": [
           "risk"
         ],

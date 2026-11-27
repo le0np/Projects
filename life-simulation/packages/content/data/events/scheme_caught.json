@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "scheme_caught",
-  "version": 1,
+  "version": 2,
   "title": "Caught in the Act",
   "category": "everyday",
   "trigger": "followup_only",
@@ -41,7 +41,7 @@
       },
       {
         "id": "confront",
-        "label": "Confront {culprit} in front of everyone",
+        "label": "Confront {culprit} in public",
         "tags": [
           "threaten",
           "truth"
@@ -76,7 +76,7 @@
       },
       {
         "id": "revenge",
-        "label": "Smile, and start planning your revenge on {culprit}",
+        "label": "Smile and plan your revenge on {culprit}",
         "tags": [
           "risk"
         ],

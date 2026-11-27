@@ -94,7 +94,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Eventi koji stvaraju partnere, dugove i usluge ranije u sesiji (faza upoznavanja), da Jealousy, Crisis Talk, Loan Due i finale imaju na čemu raditi.
 - **Prihvaćeno kad:** batch pokaže da ≥ 50 % likova do finala ima barem jedan „pravi” odnos (partner, prijatelj, suparnik, dug), a Jealousy i Crisis Talk se pojave u ≥ 10 % sesija.
 
-### [ ] T8. Smicalica postaje spletka u 3 koraka (vlasnikova točka 3)
+### [x] T8. Smicalica postaje spletka u 3 koraka (vlasnikova točka 3)
 1. **Plan:** odabir mete i vrste; prikaži **šansu uspjeha** i **rizik otkrivanja** (ovise o karijeri, odnosu s metom, mjestu).
 2. **Priprema (1–2 godine u igri):** krug napretka iznad tvog lika (vidiš samo ti). Tijekom pripreme možeš jednom pojačati spletku: nagovoriti suučesnika (skriveni event drugom liku: pristati / odbiti / izdati te), pričekati pravo mjesto (meta je na poslu → gume) ili zamesti tragove.
 3. **Izvršenje:** meta dobije event; ako rizik „pogodi”, meta dobije trag („Vidio si Kim kraj svog auta”) i izbor: suočiti se, prijaviti ili **planirati osvetu** (osveta je besplatna dodatna smicalica protiv krivca).

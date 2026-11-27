@@ -98,6 +98,13 @@ async function playOnce(browser, label, contextOptions) {
   }));
   if (!header.offer && (header.attrs !== 5 || !/year/.test(header.season))) throw new Error(`[${label}] empty header at the start: ${JSON.stringify(header)}`);
 
+  // T8: plan a scheme (the odds show up, then the preparation with its boosts).
+  await page.locator(".schemes .odds").waitFor({ timeout: 10_000 });
+  await page.getByRole("button", { name: "Start planning" }).click();
+  await page.locator(".schemes .scheme").first().waitFor({ timeout: 5_000 });
+  await page.getByRole("button", { name: "Cover your tracks" }).click();
+  await page.getByText("You covered your tracks.").waitFor({ timeout: 5_000 });
+
   // Play: answer every offer with the first choice until the recap appears.
   let decisions = 0;
   let checkedCards = 0;

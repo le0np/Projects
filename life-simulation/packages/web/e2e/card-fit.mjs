@@ -17,11 +17,12 @@ const css = readFileSync(join(dist, readdirSync(dist).find((f) => f.endsWith(".c
 const dir = join(root, "packages/content/data/events");
 const NAMES = ["Alexandra", "Maximilian", "Konstantin", "Gabriela", "Valentina", "Sebastian", "Henrietta"];
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+// T8: a victim who caught the culprit also sees a clue in the card.
+const clues = new Map(JSON.parse(readFileSync(join(root, "packages/content/data/mischief.json"), "utf8")).mischief.map((m) => [m.event, m.clue ?? "You caught {culprit} at it."]));
 const cards = [];
 const grammar = []; // T6c: "Maja and Ema is …"
 for (const f of readdirSync(dir)) {
   const e = JSON.parse(readFileSync(join(dir, f), "utf8"));
-  if (e.hidden) continue;
   let k = 0; const names = {};
   for (const [r, def] of Object.entries(e.roles)) { const n = typeof def.count === "number" ? def.count : Math.min(def.count[1], 3); names[r] = NAMES.slice(k, k + n); k += n; }
   const fill = (t) =>
@@ -36,7 +37,8 @@ for (const f of readdirSync(dir)) {
   }
   for (const [role, choices] of Object.entries(e.choices ?? {})) {
     const visible = [...choices.filter((c) => !c.careers && !c.condition), ...choices.filter((c) => c.condition && !c.careers).slice(0, 1), ...choices.filter((c) => c.careers).slice(0, 1)];
-    cards.push({ id: `${e.id}/${role}`, title: fill(e.title), cat: e.category, important: e.importance === "important",
+    const clue = role === "victim" && (clues.has(e.id) || e.id === "scheme_caught") ? fill(clues.get(e.id) ?? "You caught {culprit} at it.") : null;
+    cards.push({ id: `${e.id}/${role}`, clue, title: fill(e.title), cat: e.category, important: e.importance === "important",
       pub: fill(e.text.public), priv: e.text.private?.[role] ? fill(e.text.private[role]) : null,
       with: Object.entries(names).filter(([r]) => r !== role).flatMap(([, n]) => n).join(", "),
       choices: visible.map((c) => ({ label: fill(c.label), special: !!c.careers, note: c.insight?.note, hints: Object.keys(c.perceived ?? {}).length })), def: fill(choices.find((c) => c.default).label) });
@@ -44,7 +46,7 @@ for (const f of readdirSync(dir)) {
 }
 const card = (c) => `<div class="overlay beside"><article class="card event"><div class="event-meta"><span class="chip cat-${c.cat}">${c.cat}</span>${c.important ? '<span class="chip risk">Important</span>' : ""}<span class="countdown">25s</span></div>
 <div class="bar thin"><div class="bar-fill urgent" style="width:80%"></div></div><h1 id="event-title">${esc(c.title)}</h1><div class="event-story"><p class="lead">${esc(c.pub)}</p></div>
-${c.priv ? `<p class="private"><span class="private-label">Only you know</span>${esc(c.priv)}</p>` : ""}${c.with ? `<p class="muted small with">With: ${esc(c.with)}</p>` : ""}
+${c.clue ? `<p class="clue"><span class="private-label">You noticed</span>${esc(c.clue)}</p>` : ""}${c.priv ? `<p class="private"><span class="private-label">Only you know</span>${esc(c.priv)}</p>` : ""}${c.with ? `<p class="muted small with">With: ${esc(c.with)}</p>` : ""}
 <ul class="choices">${c.choices.map((x) => `<li><button class="choice${x.special ? " special" : ""}"><span class="choice-label">${x.special ? '<span class="special-tag">Your expertise</span>' : ""}${esc(x.label)}</span>${x.note ? `<span class="insight">${esc(x.note)}</span>` : ""}<span class="hints">${Array.from({ length: Math.min(3, x.hints) }, (_, i) => `<span class="hint ${i % 2 ? "bad" : "good"}">${["€ Money ↑", "Alexandra ↓", "Risky"][i]}</span>`).join("")}</span></button></li>`).join("")}</ul>
 <p class="muted small default-note">If time runs out: “${esc(c.def)}”</p></article></div>`;
 const browser = await pw.chromium.launch();
