@@ -78,6 +78,11 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Linije odnosa od tvog lika prema drugima: prijatelj (zeleno), suparnik (crveno), dužnik/vjerovnik (žuto), partner (roza). Prikazuju se kad prijeđeš mišem/dodirneš lika ili kad ste zajedno u eventu.
 - Uz ime lika jedna osobina iz osobnosti bota/karijere („Gossip”, „Cheapskate”, „Hero complex”), da igrač može „čitati” likove.
 
+### [ ] T6b. Sitnice iz QA T6
+- **M1:** Na mapi su skoro svi tužni (u 3:00 četiri od šest likova 😢, i Igor nakon neutralnog „You drive on.”). Grad izgleda depresivno, a ton treba biti humorističan. Provjeri raspodjelu raspoloženja u batchu: 😢 neka bude najviše ~30 % vremena, a neutralan ishod ne smije dati tužno lice. Možda dodati „😐/🙂” kao neutralno.
+- **M2:** Javni tekst eventa je odrezan usred rečenice („…and asks Marko to”), jer je kartica najviše 38 % mape, a privatni tekst i izbori su uvijek cijeli. Na desktopu ima mjesta: neka kartica smije biti viša (do visine mape), ili smanji razmake/oznake izbora. Javni tekst mora biti cijeli bez skrolanja barem na 1280×800. Dodaj u e2e.
+- **M3 (sadržaj):** „The Charity Drive” kao zadani izbor (ako ne odgovoriš) ima „Push hard, mention who else gave”, agresivan izbor. Zadani izbor treba biti pasivan i neutralan. Provjeri sve evente (validator može upozoriti ako default ima tag `risk`, `lie` ili cilja drugog lika negativno).
+
 ### [ ] T7. Trajni tragovi na mapi
 - Posljedice ostaju vidljive: ispuhane gume na autu, zavoj na liku, natpis „FOR SALE” na kući, zatvoren dućan, cvijeće na grobu, lisice/rešetke kod policije. **Najmanje 6 vrsta.**
 - Efekt u formatu eventa (npr. `{ type: "mark", ... }`) + validator + render.
@@ -154,3 +159,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 - **27. 11. 2026.** — QA Sprinta 1: prihvaćen. Dodani T4b (4 sitnice iz igranja) i T7b (veze i dugovi). Developer može krenuti na Sprint 2.
 - **27. 11. 2026.** — QA T4b: ✅ sve 4 sitnice potvrđene u browseru (6×): „Finale” na satu, „Only you know” cijeli, kartica s druge strane od mjesta eventa (likovi vidljivi), „Olga, Rosa and Klara”. Rokovi 17–25 s. Nastavi sa Sprintom 2.
 - **27. 11. 2026.** — QA T5: ✅ prihvaćeno uz sitnice **T5b**. `npm run check` 119/119. Igranje uz 2×: najava radi (pulsira MegaMart, „everyone is on the way”), kartica se otvara kraj mjesta, sve odluke se otkrivaju odjednom, rokovi 16–21 s, 5 od 6 eventa s drugim ljudima. Problemi: reakcije se ne vide jer likovi odlaze prerano (R2), dvostruki navodnici (R1), prazno zaglavlje i krivi odnosi na početku (R3).
+- **27. 11. 2026.** — QA T6: ✅ prihvaćeno uz **T6b**. `npm run check` 122/122. Emoji iznad glava, osobine u „People” i legenda linija rade; 7 eventa u 110 s uz 3×. Problemi: skoro svi su tužni (M1), javni tekst odrezan usred rečenice (M2), agresivan zadani izbor u Charity Drive (M3).
