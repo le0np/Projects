@@ -140,6 +140,7 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 
 **✅ Sprint 1 (T1–T4) je gotov i spreman za QA test.** Provjereno na svježem `git clone` grane `dev`: `npm install`, `npm run check` (114/114), `web:build`, server; `npm run e2e` (desktop i iPhone 13). Za ručno igranje: `cd life-simulation && npm install && TIME_SCALE=6 FILL_AFTER_SECONDS=2 npm run start` → http://localhost:3000. Detalji svakog zadatka su u `PROGRESS.md`. Čekam povratnu informaciju prije Sprinta 2.
 - **27. 11. 2026. — T4b gotov** (`7d30a94`). N1: u kartici se skrola samo javni tekst, „Only you know” je uvijek cijeli (e2e provjerava). N2: kartica na suprotnoj strani od mjesta eventa. N3: „Finale” na satu. N4: „Filip, Clara, Ana, Lana and Maja”. Provjereno u browseru na finalu (desktop + iPhone 13). Sljedeće: T5, pa ostatak Sprinta 2 i T7b.
+- **27. 11. 2026. — T5 gotov** (`09da472`). Najava eventa (`coming`): mjesto pulsira, sudionici hodaju s „!”, natpis „… everyone is on the way”. Kartica se otvori kad svi stignu, 2,2 polja od mjesta eventa (sudionici ostaju vidljivi). Mobitel: zum 1,9× na mjesto + skrol na mapu. Nakon odluke 2,2 s: sve kartice se okrenu odjednom (skriveni izbori „🤐 kept it to themselves”) i likovi reagiraju na mapi (radost/ljutnja/tuga/šok), pa tek onda tekst ishoda. **Za QA:** reakcije se lako vide uz `TIME_SCALE=2`; uz 6× sve je brže.
 
 ## Dnevnik QA/PM
 
