@@ -240,12 +240,29 @@ export function Town({ game, onSelect }: { game: GameState; onSelect?: (characte
       }
       const k = canvas.clientWidth / W;
       drawnAt.current.clear();
-      for (const { r, at } of people) {
+      // T9b: people standing together are fanned out a little, and their name tags stacked, so every name stays readable.
+      // Clusters of people close to each other (union-find); within a cluster, rank by height on screen.
+      const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) * TILE < 48 && Math.abs(a.y - b.y) * TILE < 40;
+      const parent = people.map((_, i) => i);
+      const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
+      people.forEach((a, i) => people.forEach((b, j) => j > i && near(a.at, b.at) && (parent[find(j)] = find(i))));
+      const crowd: number[] = [];
+      const crowdTop: number[] = [];
+      const crowded: boolean[] = [];
+      people.forEach((_, i) => {
+        const members = people.map((p, j) => ({ j, y: p.at.y })).filter(({ j }) => find(j) === find(i)).sort((a, b) => a.y - b.y || a.j - b.j);
+        crowd[i] = members.findIndex((m) => m.j === i);
+        crowdTop[i] = (members[0]?.y ?? people[i]!.at.y) * TILE + TILE - 4 - 33;
+        crowded[i] = members.length > 1;
+      });
+      for (const [i, { r, at }] of people.entries()) {
         const other = g.others.find((o) => o.id === r.characterId);
         const mine = r.characterId === g.characterId;
         const gone = mine ? !!g.ended : !!other && other.status !== "active";
-        const cx = at.x * TILE + TILE / 2;
+        const k0 = crowd[i]!;
+        const cx = at.x * TILE + TILE / 2 + (k0 === 0 ? 0 : (k0 % 2 ? 1 : -1) * Math.ceil(k0 / 2) * 11);
         const ground = at.y * TILE + TILE - 4;
+
         const reaction = g.reactions[r.characterId];
         const reacting = reaction && reaction.until > wallNow ? reaction.reaction : undefined;
         const inEvent = busy.has(r.characterId) && !reacting;
@@ -270,14 +287,29 @@ export function Town({ game, onSelect }: { game: GameState; onSelect?: (characte
           gone,
         });
         const showTrait = hovered.current === r.characterId && r.trait;
-        nameTag(ctx, cx, ground - 33, showTrait ? `${r.name} · ${r.trait}` : r.name, mine);
-        if (inEvent && !gone) bubble(ctx, cx + 16, ground - 33, "!", "#c2502f");
+        const label = showTrait ? `${r.name} · ${r.trait}` : r.name;
+        const tagY = crowded[i] ? crowdTop[i]! - (crowd[i]! === 0 ? 0 : crowd[i]! * 15) : ground - 33;
+        if (tagY < ground - 40) {
+          // A raised name (in a crowd) gets a faint line down to its owner's head.
+          ctx.strokeStyle = "rgba(31,35,40,.35)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(cx, tagY + 1);
+          ctx.lineTo(cx, ground - 30);
+          ctx.stroke();
+        }
+        nameTag(ctx, cx, tagY, label, mine);
+        ctx.font = "600 10px system-ui, sans-serif";
+        const half = ctx.measureText(label).width / 2 + 4;
+        if (inEvent && !gone && (!crowded[i] || crowd[i] === 0)) bubble(ctx, cx + half + 6, tagY, "!", "#c2502f");
         const mood = gone ? "" : MOOD_EMOJI[g.moods[r.characterId] ?? "content"];
         if (mood) {
           ctx.font = "15px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
-          ctx.fillText(mood, cx, ground - 54);
+          // Alone: above the name. In a crowd: beside it, so it does not sit on the next name up.
+          if (crowded[i]) ctx.fillText(mood, cx - half - 9, tagY - 6);
+          else ctx.fillText(mood, cx, ground - 54);
         }
         drawnAt.current.set(r.characterId, { x: (cx * view.z + tx) * k, y: ((ground - 18) * view.z + ty) * k });
       }

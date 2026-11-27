@@ -509,6 +509,11 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **S1:** nakon spletke kartica „Schemes” sama odabere sljedeću još moguću spletku; spletke već iskorištene na toj meti su prekrižene i onemogućene. Ako server javi da je meta tu spletku već dobila (od nekog drugog), poruka je „Kim already got this one, pick another scheme.” i odabir se pomakne; kad je sve iskorišteno: „You have tried everything on Kim. Pick someone else.”
 - **S2:** QA opcija `QA_FORCE_SCHEME_ON_HUMAN=1` (`.env.example`): 2 s nakon početka bot planira „Let their tyres down” na prvog čovjeka, a postavka enginea `chaos.qaForceSchemes` (zapisana u logu, replay ostaje identičan) čini da svaka spletka uspije i krivac bude otkriven. Novi e2e `packages/web/e2e/scheme-victim.mjs` (dio `npm run e2e`) provjerava trag „You noticed …”, tri izbora (javno suočavanje, prijava, osveta) i „Your revenge is free.” u kartici „Schemes”. Test enginea za opciju.
 
+### T9b: imena u gužvi (developer)
+
+- Kad više likova stoji zajedno (unutar 1,5 polja), crtaju se kao jedna grupa: likovi se malo rašire lijevo-desno, imena se slažu jedno iznad drugog od najvišeg lika prema gore, a podignuto ime ima tanku crtu do glave svog lika. Emoji je u gužvi pokraj imena (ne iznad), a „!” se crta samo jednom po grupi (mjesto ionako pulsira). Provjereno na finalu (svi na jednom mjestu): sva imena čitljiva.
+- `npm run e2e` sada klikne drugog lika na mapi (pozicije iz `data-people`) i provjeri karticu lika, na desktopu i mobitelu (QA je pitao ima li e2e za to).
+
 ### Sprint 2 gotov
 
 - T5, T5b, T6, T6b, T6c, T7, T7b, T8 i T9. Batch 200 sesija (`docs/reports/sprint2.report.md`): 65 % eventa s ≥ 2 lika koji odlučuju (80 % po liku), ponavljanje 0,8 %, smrtnost 3,4 %, stvarne veze 87 %, Jealousy 19 %, Crisis Talk 13 %, 4,4 spletke po sesiji (70 % uspije, 27 % otkriveno), mir 62 % i tuga 11 % vremena; replay identičan.

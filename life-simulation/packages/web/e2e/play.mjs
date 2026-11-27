@@ -105,6 +105,23 @@ async function playOnce(browser, label, contextOptions) {
   await page.getByRole("button", { name: "Cover your tracks" }).click();
   await page.getByText("You covered your tracks.").waitFor({ timeout: 5_000 });
 
+  // T9: click someone on the map → a card about them (positions come from the canvas' data-people).
+  let personCard = "";
+  for (let tries = 0; tries < 20 && !personCard; tries++) {
+    if (await page.locator("button.choice").first().isVisible().catch(() => false)) await page.locator("button.choice").first().click().catch(() => {});
+    const box = await page.locator("canvas.town").boundingBox();
+    const people = JSON.parse((await page.locator("canvas.town").getAttribute("data-people")) ?? "{}");
+    const other = Object.keys(people).find((id) => id !== "c1");
+    if (box && other && !(await page.locator("button.choice").first().isVisible().catch(() => false))) {
+      const [x, y] = people[other];
+      await page.mouse.click(box.x + x, box.y + y);
+      if (await page.locator(".person").isVisible().catch(() => false)) personCard = await page.locator(".person").innerText();
+    }
+    await page.waitForTimeout(200);
+  }
+  if (!/·/.test(personCard)) throw new Error(`[${label}] clicking someone on the map showed no card`);
+  await page.getByRole("button", { name: "Close" }).click();
+
   // Play: answer every offer with the first choice until the recap appears.
   let decisions = 0;
   let checkedCards = 0;
