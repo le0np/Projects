@@ -412,6 +412,10 @@ export class Session {
     if (!target || target.status !== "active" || targetId === characterId) return reject("invalid target");
     if (this.mischiefState(characterId).charges <= 0) return reject("no pranks left");
     if (def.targetCondition && !evaluate(def.targetCondition, makeContext(this.world, {}, targetId))) return reject("this prank does not work on them");
+    // T2: nobody gets the same prank twice (it would be the same solo event again).
+    if (target.seen.has(def.event) || this.pending.some((p) => p.eventId === def.event && p.preset.victim?.[0] === targetId)) {
+      return reject("they already had this one");
+    }
     this.mischiefUsed.set(characterId, (this.mischiefUsed.get(characterId) ?? 0) + 1);
     const [d0, d1] = def.delaySeconds === undefined ? [5, 15] : typeof def.delaySeconds === "number" ? [def.delaySeconds, def.delaySeconds] : def.delaySeconds;
     const dueAt = this.now() + Math.round(this.rngChaos.range(d0, d1 + 1e-9) * MS);
@@ -616,12 +620,16 @@ export class Session {
     this.runRoutine();
   }
 
-  /** Free characters ordered by distance to `anchor` (with jitter): events draw in the people nearby. */
+  /**
+   * Free characters ordered by distance to `anchor` (with jitter): events draw in the people nearby,
+   * and people the anchor has a relationship with count as closer (T2: relationship chains).
+   */
   private nearbyPool(anchor: string): string[] {
     const at = this.posOf(anchor);
+    const pull = this.config.director.relatedPullTiles;
     return this.order
       .filter((id) => id !== anchor && this.isFree(id))
-      .map((id) => ({ id, d: manhattan(this.posOf(id), at) + this.rngSelect.range(0, 6) }))
+      .map((id) => ({ id, d: manhattan(this.posOf(id), at) + this.rngSelect.range(0, 6) - (this.isRelated(anchor, id) ? pull : 0) }))
       .sort((a, b) => a.d - b.d)
       .map((x) => x.id);
   }
@@ -783,6 +791,17 @@ export class Session {
     return arrival;
   }
 
+  /**
+   * A real relationship: more than strangers or people who have only met — or something between them,
+   * like a debt, a favour or a secret (a pair fact either way).
+   */
+  private isRelated(a: string, b: string): boolean {
+    const type = this.relations.get(a, b).type;
+    if (type !== "stranger" && type !== "acquaintance") return true;
+    const linked = (x: string, y: string) => [...this.char(x).facts].some((f) => f.endsWith(`:${y}`));
+    return linked(a, b) || linked(b, a);
+  }
+
   private isFree(id: string): boolean {
     const c = this.char(id);
     return c.status === "active" && c.busyWith === null && c.availableAt <= this.now();
@@ -870,7 +889,11 @@ export class Session {
     w *= 0.35 ** (c.seen.get(ev.id) ?? 0);
     if (c.lastCategory === ev.category) w *= 0.5;
     const others = Object.values(bindings).flat().filter((id) => id !== anchor);
-    if (others.some((o) => this.relations.get(anchor, o).type !== "stranger")) w *= 1.5;
+    const dir = this.config.director;
+    if (others.some((o) => this.isRelated(anchor, o))) w *= dir.relationBoost;
+    else if (others.some((o) => this.relations.get(anchor, o).type !== "stranger")) w *= dir.acquaintanceBoost;
+    const deciders = Object.entries(bindings).reduce((n, [role, ids]) => n + ((ev.choices[role]?.length ?? 0) > 0 ? ids.length : 0), 0);
+    if (deciders < 2) w *= dir.soloFactor;
     if (ev.category === "critical") w *= 0.4 + this.progress();
     const tied = this.eventSessionFacts.get(ev.id);
     if (tied && [...tied].some((f) => this.sessionFacts.has(f))) w *= 4;

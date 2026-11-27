@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "health_collapse_street",
-  "version": 3,
+  "version": 4,
   "title": "Collapse on the Street",
   "category": "critical",
   "trigger": "director",
   "importance": "important",
-  "weight": 5,
+  "weight": 3,
   "cooldown": {
-    "maxPerSession": 1
+    "maxPerSession": 1,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "everyday_neighbor_noise",
-  "version": 1,
+  "version": 2,
   "title": "Loud Music Next Door",
   "category": "everyday",
   "trigger": "director",
   "importance": "multi",
   "weight": 7,
   "cooldown": {
-    "maxPerSession": 1
+    "maxPerSession": 3,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

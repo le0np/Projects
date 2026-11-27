@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "social_gossip",
-  "version": 1,
+  "version": 2,
   "title": "Have You Heard?",
   "category": "social",
   "trigger": "director",
@@ -9,7 +9,8 @@
   "importance": "multi",
   "weight": 7,
   "cooldown": {
-    "maxPerSession": 2
+    "maxPerSession": 3,
+    "maxPerCharacter": 1
   },
   "tags": [
     "secret"

@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "id": "everyday_found_wallet",
-  "version": 1,
+  "version": 2,
   "title": "A Wallet on the Pavement",
   "category": "everyday",
   "trigger": "director",
   "importance": "simple",
-  "weight": 8,
+  "weight": 5,
   "cooldown": {
     "maxPerCharacter": 1,
     "maxPerSession": 2

@@ -32,6 +32,13 @@ export interface SessionConfig {
    * until `workEnd` employed people are at work, the rest is free time.
    */
   routine: { night: number; workEnd: number; leisureStaySeconds: [number, number] };
+  /**
+   * Director preferences (T2): events with people you already have a relationship with are more likely
+   * (`relationBoost` for colleagues/family/partners/friends/rivals/enemies, `acquaintanceBoost` for people you
+   * have only met), related people are pulled `relatedPullTiles` closer when roles are filled,
+   * and solo events weigh `soloFactor` as much.
+   */
+  director: { relationBoost: number; acquaintanceBoost: number; relatedPullTiles: number; soloFactor: number };
   /** Pre-existing relationships at session start (decision D3). */
   startingRelationships: {
     /** Number of colleague pairs = round(participants × ratio). */
@@ -99,6 +106,7 @@ export const DEFAULT_CONFIG: Omit<SessionConfig, "seed"> = {
   baseAttributes: { health: 75, mental: 70, money: 50, reputation: 50, career: 50 },
   attributeVariation: 8,
   startingRelationships: { colleaguePairRatio: 0.25, familyChance: 0.3, partnerChance: 0.25 },
+  director: { relationBoost: 3, acquaintanceBoost: 1.3, relatedPullTiles: 10, soloFactor: 0.6 },
   chaos: { upheavals: [2, 3], mischiefCharges: 2, followUpBoost: 1.25 },
   walkTilesPerSecond: 4,
   routine: { night: 0.15, workEnd: 0.6, leisureStaySeconds: [3, 8] },
@@ -117,5 +125,6 @@ export function resolveConfig(partial: Partial<SessionConfig> & { seed: string }
     aging: { ...DEFAULT_CONFIG.aging, ...partial.aging },
     routine: { ...DEFAULT_CONFIG.routine, ...partial.routine },
     chaos: { ...DEFAULT_CONFIG.chaos, ...partial.chaos },
+    director: { ...DEFAULT_CONFIG.director, ...partial.director },
   };
 }

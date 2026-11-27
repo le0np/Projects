@@ -34,6 +34,15 @@ export interface BatchStats {
   neverSelected: string[];
   /** Share of a character's events that repeat a template they already had. */
   repetitionRate: number;
+  /** T2: share of a character's events (that they know about) in which someone else decides too. */
+  sharedShare: number;
+  /** T2: of the shared events, the share with someone the character has a real relationship with (not stranger/acquaintance). */
+  knownShare: number;
+  /** T2: share of event instances with at least two characters deciding. */
+  multiDeciderShare: number;
+  /** T2: solo events (nobody else decides) per character, and how often one repeats for the same character. */
+  soloPerCharacter: number;
+  soloRepeats: Counter;
   followUps: { scheduled: number; activated: number; dropped: Counter };
   decisions: { submitted: number; defaulted: number; rejected: number };
   directorIdlePerSession: number;
@@ -60,6 +69,11 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
     outcomeCounts: {},
     neverSelected: [],
     repetitionRate: 0,
+    sharedShare: 0,
+    multiDeciderShare: 0,
+    knownShare: 0,
+    soloPerCharacter: 0,
+    soloRepeats: {},
     followUps: { scheduled: 0, activated: 0, dropped: {} },
     decisions: { submitted: 0, defaulted: 0, rejected: 0 },
     directorIdlePerSession: 0,
@@ -71,6 +85,14 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
   let repeats = 0;
   let charEvents = 0;
   let deaths = 0;
+  let awareEvents = 0;
+  let sharedEvents = 0;
+  let soloEvents = 0;
+  let instances = 0;
+  let knownEvents = 0;
+  let multiInstances = 0;
+  const decides = (eventId: string, role: string) => (content.events.get(eventId)?.choices[role]?.length ?? 0) > 0;
+  const aware = (eventId: string, role: string) => content.events.get(eventId)?.roles[role]?.aware !== false;
 
   for (const { result, bots } of runs) {
     const archetypeOf = new Map(bots.map((b) => [b.characterId, b.controller.profile.archetype]));
@@ -95,8 +117,13 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
     const busyMs = new Map<string, number>();
     const lastEnd = new Map<string, number>();
     const seenByChar = new Map<string, Set<string>>();
+    const soloByChar = new Map<string, Set<string>>();
+    const known = new Map<string, string>(); // pair → relationship type
+    const pair = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
     for (const e of result.log) {
-      if (e.type === "event_started") {
+      if (e.type === "session_started") {
+        for (const r of e.relations) known.set(pair(r.a, r.b), r.type);
+      } else if (e.type === "event_started") {
         started.set(e.instanceId, e);
         inc(s.eventCounts, e.eventId);
         for (const id of Object.values(e.bindings).flat()) {
@@ -106,8 +133,29 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
           seenByChar.set(id, seen);
           charEvents++;
         }
+        const deciders = Object.entries(e.bindings).flatMap(([role, ids]) => (decides(e.eventId, role) ? ids : []));
+        instances++;
+        if (deciders.length >= 2) multiInstances++;
+        for (const [role, ids] of Object.entries(e.bindings)) {
+          if (!aware(e.eventId, role)) continue;
+          for (const id of ids) {
+            awareEvents++;
+            if (deciders.some((d) => d !== id)) {
+              sharedEvents++;
+              const close = (o: string) => !["stranger", "acquaintance", undefined].includes(known.get(pair(id, o)));
+              if (Object.values(e.bindings).flat().some((o) => o !== id && close(o))) knownEvents++;
+            } else {
+              soloEvents++;
+              const solo = soloByChar.get(id) ?? new Set();
+              if (solo.has(e.eventId)) inc(s.soloRepeats, e.eventId);
+              solo.add(e.eventId);
+              soloByChar.set(id, solo);
+            }
+          }
+        }
       } else if (e.type === "event_resolved") {
         const st = started.get(e.instanceId)!;
+        for (const c of e.changes) if (c.kind === "relation") known.set(pair(c.from, c.to), c.type);
         (s.outcomeCounts[e.eventId] ??= {}) && inc(s.outcomeCounts[e.eventId]!, e.outcomeId);
         for (const id of Object.values(st.bindings).flat()) {
           busyMs.set(id, (busyMs.get(id) ?? 0) + (e.t - st.t));
@@ -161,6 +209,10 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
   s.lastActivitySeconds = lastActivitySum / Math.max(1, s.characters);
   s.deathRate = deaths / Math.max(1, s.characters);
   s.repetitionRate = repeats / Math.max(1, charEvents);
+  s.sharedShare = sharedEvents / Math.max(1, awareEvents);
+  s.multiDeciderShare = multiInstances / Math.max(1, instances);
+  s.knownShare = knownEvents / Math.max(1, sharedEvents);
+  s.soloPerCharacter = soloEvents / Math.max(1, s.characters);
   for (const c of Object.values(s.career)) c.lifeScore /= c.n;
   for (const a of Object.values(s.archetype)) a.lifeScore /= Math.max(1, a.n);
   s.neverSelected = [...content.events.keys()].filter((id) => !s.eventCounts[id]).sort();
@@ -188,6 +240,8 @@ export function formatReport(s: BatchStats, title = "Simulation report"): string
     `| Last activity (mean) | ${s.lastActivitySeconds.toFixed(0)} s after start |`,
     `| Death rate | ${pct(s.deathRate)} of characters, ${pct(s.sessionsWithDeath / Math.max(1, s.sessions))} of sessions |`,
     `| Event repetition | ${pct(s.repetitionRate)} of a character's events repeat a template |`,
+    `| Shared events | ${pct(s.sharedShare)} of a character's events have someone else deciding too; ${pct(s.multiDeciderShare)} of events have ≥ 2 deciders; ${pct(s.knownShare)} of shared events are with someone they have a relationship with |`,
+    `| Solo events | ${s.soloPerCharacter.toFixed(1)} per character; ${Object.values(s.soloRepeats).reduce((a, b) => a + b, 0)} times a character got the same solo event again${Object.keys(s.soloRepeats).length ? ` (${top(s.soloRepeats).map(([k, v]) => `${k} ${v}`).join(", ")})` : ""} |`,
     `| Follow-ups | ${s.followUps.activated}/${s.followUps.scheduled} activated; dropped: ${top(s.followUps.dropped).map(([k, v]) => `${k} ${v}`).join(", ") || "none"} |`,
     `| Decisions | ${s.decisions.submitted} submitted, ${s.decisions.defaulted} defaulted, ${s.decisions.rejected} rejected |`,
     `| Director found nothing | ${s.directorIdlePerSession.toFixed(0)} times per session |`,

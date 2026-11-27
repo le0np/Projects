@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadContent } from "@lifesim/content";
-import { runBotSession } from "../src";
+import { aggregate, formatReport, replaySession, runBatch, runBotSession } from "../src";
 
 const content = loadContent();
 
@@ -30,8 +30,6 @@ describe("bot-only sessions", () => {
   });
 });
 
-import { aggregate, formatReport, replaySession, runBatch } from "../src";
-
 describe("batch, statistics and replay", () => {
   const runs = runBatch({ content, seed: "batch-test", sessions: 15, players: [2, 8] });
 
@@ -58,5 +56,30 @@ describe("batch, statistics and replay", () => {
     if (decision?.type !== "decision") throw new Error("no decision");
     decision.t += 1; // the same decision, one millisecond later
     expect(replaySession(content, log).identical).toBe(false);
+  });
+});
+
+describe("T2: variety and shared events", () => {
+  const runs = runBatch({ content, seed: "t2-test", sessions: 40, players: [4, 8] });
+  const stats = aggregate(runs, content);
+
+  it("most events involve someone else who decides", () => {
+    expect(stats.sharedShare).toBeGreaterThanOrEqual(0.55);
+    expect(stats.multiDeciderShare).toBeGreaterThanOrEqual(0.55);
+    expect(stats.repetitionRate).toBeLessThanOrEqual(0.05);
+  });
+
+  it("no solo event twice for a character, and at most 3 of the old daily seven stay solo", () => {
+    expect(stats.soloRepeats).toEqual({});
+    // Missed Bus, Scratch in the Car Park, Too Much Change and Annual Review now have two people deciding.
+    const stillSolo = ["career_overtime", "everyday_side_gig", "financial_tax_error"];
+    for (const { result } of runs) {
+      const perChar = new Map<string, number>();
+      for (const e of result.log) {
+        if (e.type !== "event_started" || !stillSolo.includes(e.eventId)) continue;
+        for (const id of Object.values(e.bindings).flat()) perChar.set(id, (perChar.get(id) ?? 0) + 1);
+      }
+      for (const n of perChar.values()) expect(n).toBeLessThanOrEqual(3);
+    }
   });
 });

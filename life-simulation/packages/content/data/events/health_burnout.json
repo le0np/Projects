@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "id": "health_burnout",
-  "version": 1,
+  "version": 2,
   "title": "Running on Empty",
   "category": "health",
   "trigger": "director",
   "importance": "simple",
-  "weight": 9,
+  "weight": 5,
   "cooldown": {
     "maxPerCharacter": 1
   },

@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "career_promotion_contest",
-  "version": 1,
+  "version": 2,
   "title": "One Spot at the Top",
   "category": "career",
   "trigger": "director",
   "importance": "important",
   "weight": 6,
   "cooldown": {
-    "maxPerSession": 1
+    "maxPerSession": 3,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

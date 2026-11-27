@@ -134,8 +134,8 @@ export class Relations {
     const avg = (ab.affinity + ba.affinity) / 2;
     let type: RelationType = ab.type;
     if (avg <= -60) type = "enemy";
-    else if (avg <= -25) type = "rival";
-    else if (avg >= 40) type = "friend";
+    else if (avg <= -15) type = "rival";
+    else if (avg >= 25) type = "friend";
     else if (type !== "stranger" && type !== "colleague") type = "acquaintance";
     ab.type = type;
     ba.type = type;

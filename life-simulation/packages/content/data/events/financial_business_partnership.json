@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "financial_business_partnership",
-  "version": 1,
+  "version": 2,
   "title": "Let's Open a Café",
   "category": "financial",
   "trigger": "director",
   "importance": "important",
   "weight": 6,
   "cooldown": {
-    "maxPerSession": 1
+    "maxPerSession": 3,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

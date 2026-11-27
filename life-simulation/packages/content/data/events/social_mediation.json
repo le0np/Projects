@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "social_mediation",
-  "version": 1,
+  "version": 2,
   "title": "The Fence Dispute",
   "category": "social",
   "trigger": "director",
   "importance": "important",
   "weight": 5,
   "cooldown": {
-    "maxPerSession": 1
+    "maxPerSession": 3,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

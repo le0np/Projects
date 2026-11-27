@@ -58,6 +58,8 @@ export class BotController implements Controller {
    * Pranks (concept v2 §5): selfish and aggressive bots play more, empathetic ones less;
    * a grudge makes it much more likely and picks the target.
    */
+  private readonly pranked = new Set<string>();
+
   planMischief(): { mischiefId: string; targetId: string } | null {
     const v = this.lastView;
     if (!v || v.mischief.charges - this.playedSinceView <= 0 || v.mischief.options.length === 0) return null;
@@ -69,8 +71,13 @@ export class BotController implements Controller {
     const chance = 0.015 + (p.selfishness / 100) * 0.04 + (p.aggression / 100) * 0.03 - (p.empathy / 100) * 0.03 + (grudge || rival ? 0.08 : 0);
     if (!this.rng.chance(chance)) return null;
     const targetId = grudge ?? rival ?? this.rng.pick(alive).id;
+    // Never the same prank on the same person twice.
+    const fresh = v.mischief.options.filter((o) => !this.pranked.has(`${o.id}|${targetId}`));
+    if (fresh.length === 0) return null;
+    const mischiefId = this.rng.pick(fresh).id;
+    this.pranked.add(`${mischiefId}|${targetId}`);
     this.playedSinceView++;
-    return { mischiefId: this.rng.pick(v.mischief.options).id, targetId };
+    return { mischiefId, targetId };
   }
 
   /** Free time follows personality: impulsive and aggressive → bar, cautious → home/park, social → café. */

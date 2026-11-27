@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
   "id": "critical_heart_attack",
-  "version": 3,
+  "version": 4,
   "title": "Heart Attack",
   "category": "critical",
   "trigger": "followup_only",
   "importance": "important",
   "cooldown": {
-    "maxPerSession": 2
+    "maxPerSession": 2,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

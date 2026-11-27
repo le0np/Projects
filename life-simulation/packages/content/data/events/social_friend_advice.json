@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "social_friend_advice",
-  "version": 1,
+  "version": 2,
   "title": "Should I Quit?",
   "category": "social",
   "trigger": "director",
   "importance": "multi",
   "weight": 7,
   "cooldown": {
-    "maxPerCharacter": 1
+    "maxPerCharacter": 1,
+    "maxPerSession": 3
   },
   "location": {
     "at": [

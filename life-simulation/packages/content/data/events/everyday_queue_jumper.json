@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "everyday_queue_jumper",
-  "version": 1,
+  "version": 2,
   "title": "Cutting the Queue",
   "category": "everyday",
   "trigger": "director",
   "importance": "multi",
   "weight": 7,
   "cooldown": {
-    "maxPerCharacter": 1
+    "maxPerCharacter": 1,
+    "maxPerSession": 3
   },
   "location": {
     "at": [

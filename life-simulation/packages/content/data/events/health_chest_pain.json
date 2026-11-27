@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "id": "health_chest_pain",
-  "version": 2,
+  "version": 3,
   "title": "A Twinge in the Chest",
   "category": "health",
   "trigger": "director",
   "importance": "simple",
-  "weight": 6,
+  "weight": 4,
   "cooldown": {
     "maxPerCharacter": 1,
     "maxPerSession": 2

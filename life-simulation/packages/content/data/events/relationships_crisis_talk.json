@@ -1,15 +1,16 @@
 {
   "schemaVersion": 1,
   "id": "relationships_crisis_talk",
-  "version": 2,
+  "version": 3,
   "title": "We Need to Talk",
   "category": "relationships",
   "trigger": "director",
   "importance": "important",
   "weight": 6,
   "cooldown": {
-    "maxPerSession": 2,
-    "minGapSeconds": 60
+    "maxPerSession": 3,
+    "minGapSeconds": 60,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

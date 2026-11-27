@@ -360,6 +360,35 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - `PACE_SCALE` (samo za testove) skraćuje sva stvarna trajanja za ljude; serverski test koristi 0,05.
 - **Testovi:** `engine/test/pacing.test.ts` (rokovi uz 1× i 6×, bot-only nepromijenjen, determinizam) i `server/test/pacing.test.ts` (prvi rok uživo uz 6× i 1×, razrješenje u istom trenutku kad čovjek odluči, i s dva čovjeka). Provjereno da test pada kad se odmah razrješavanje isključi.
 
+### T2: manje istih solo eventa, više eventa s drugim ljudima (developer)
+
+- **Uzrok monotonije:** solo eventi su bili ograničeni samo po liku (`maxPerCharacter`), pa ih je dobio svaki lik, a eventi s više ljudi po sesiji (`maxPerSession: 1`), pa su se brzo potrošili.
+- **Sadržaj:**
+  - 4 od 7 „obaveznih” solo eventa sada imaju 2 uloge u kojima drugi lik odlučuje o tebi (verzija 2): Missed Bus (vozač te poveze ili se pravi da te ne vidi), Scratch in the Car Park (vlasnik auta traži snimku kamere ili prijavi policiji), Too Much Change (blagajnik te zove natrag, pokrije manjak ili ga krive), Annual Review (kolega te pohvali ili ti potkopa povišicu).
+  - Svi solo eventi: najviše jednom po liku, težina ×0,6. Od starih 7 solo su ostali samo Overtime, Side Gig i Tax Refund, pa ih lik dobije najviše 3.
+  - Eventi s više ljudi (osim kritičnih i onih vezanih uz preokret): `maxPerCharacter: 1`, `maxPerSession: 3`.
+  - `critical_heart_attack`: najviše jednom po liku.
+- **Direktor** (`config.director`):
+  - ×3 težina ako je u eventu netko s kim lik ima pravi odnos (kolega, obitelj, partner, prijatelj, suparnik, neprijatelj ili par-činjenica poput duga, usluge, tajne), ×1,3 za poznanike;
+  - takvi ljudi su pri popunjavanju uloga „bliži” za 10 polja;
+  - solo eventi imaju težinu ×0,6.
+- **Pragovi odnosa:** prijatelj od prosječne naklonosti 25 (bilo 40), suparnik od −15 (bilo −25). Bez toga je bilo premalo pravih odnosa, pa direktor nije imao koga birati.
+- **Smicalice:** ista smicalica ne može dvaput pogoditi istu metu (engine je odbija, a bot pamti što je kome napravio). To je bio jedini izvor ponovljenih solo eventa.
+- **Batch izvještaj:** novi redovi „Shared events” (udio eventa lika u kojima odlučuje još netko, udio eventa s ≥ 2 lika koji odlučuju, udio zajedničkih eventa s nekim s kim imaš odnos) i „Solo events” (po liku i ponavljanja).
+- **Rezultat (200 sesija, `docs/reports/t2.report.md`)**, prije → poslije:
+
+  | Mjera | Prije | Poslije |
+  | --- | --- | --- |
+  | Eventi lika u kojima odlučuje još netko | 47,4 % | 73,2 % |
+  | Eventi s ≥ 2 lika koji odlučuju | 30,3 % | 57,4 % |
+  | Zajednički eventi s nekim s kim imaš odnos | 23,2 % | 29,8 % |
+  | Solo eventi po liku | 11,2 | 5,4 |
+  | Ponovljeni solo event istom liku | 1980 | 0 |
+  | Ponavljanje predloška | 9,1 % | 1,3 % |
+  | Smrtnost | 6,9 % | 4,0 % |
+
+- **Testovi:** `sim/test/sim.test.ts` (40 sesija: ≥ 55 % zajedničkih eventa, ponavljanje ≤ 5 %, nijedan solo event dvaput, najviše 3 stara solo eventa), engine test za istu smicalicu na istoj meti.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 13. studenog 2026.:

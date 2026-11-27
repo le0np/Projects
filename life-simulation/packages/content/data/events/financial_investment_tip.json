@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "financial_investment_tip",
-  "version": 1,
+  "version": 2,
   "title": "A Sure Thing",
   "category": "financial",
   "trigger": "director",
@@ -9,7 +9,7 @@
   "weight": 7,
   "cooldown": {
     "maxPerCharacter": 1,
-    "maxPerSession": 2
+    "maxPerSession": 3
   },
   "location": {
     "at": [

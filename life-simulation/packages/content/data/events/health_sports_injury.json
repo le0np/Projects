@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "health_sports_injury",
-  "version": 2,
+  "version": 3,
   "title": "Five-a-Side",
   "category": "health",
   "trigger": "director",
@@ -9,7 +9,7 @@
   "weight": 6,
   "cooldown": {
     "maxPerCharacter": 1,
-    "maxPerSession": 2
+    "maxPerSession": 3
   },
   "location": {
     "at": [

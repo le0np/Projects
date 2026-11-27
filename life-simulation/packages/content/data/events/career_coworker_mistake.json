@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "id": "career_coworker_mistake",
-  "version": 1,
+  "version": 2,
   "title": "A Coworker Needs Help",
   "category": "career",
   "trigger": "director",
   "importance": "multi",
   "weight": 8,
   "cooldown": {
-    "maxPerSession": 2,
+    "maxPerSession": 3,
     "maxPerCharacter": 1
   },
   "tags": [

@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "version": 1,
+  "version": 2,
   "id": "crash_panic_sale",
   "title": "Everything Must Go",
   "category": "financial",
   "trigger": "director",
   "importance": "multi",
-  "weight": 14,
+  "weight": 8,
   "cooldown": {
     "maxPerSession": 2,
     "maxPerCharacter": 1

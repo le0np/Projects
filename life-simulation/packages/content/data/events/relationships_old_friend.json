@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "relationships_old_friend",
-  "version": 1,
+  "version": 2,
   "title": "Long Time No See",
   "category": "relationships",
   "trigger": "director",
   "importance": "simple",
   "weight": 7,
   "cooldown": {
-    "maxPerCharacter": 1
+    "maxPerCharacter": 1,
+    "maxPerSession": 3
   },
   "location": {
     "at": [

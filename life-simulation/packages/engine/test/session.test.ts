@@ -670,6 +670,8 @@ describe("chaos (concept v2 §5)", () => {
     expect(session.mischief("c1", "tyres", "c1")).toEqual({ ok: false, reason: "invalid target" });
     expect(session.mischief("c1", "nope", "c2")).toEqual({ ok: false, reason: "unknown prank" });
     expect(session.mischief("c1", "tyres", "c2")).toEqual({ ok: true });
+    // T2: the same prank never hits the same person twice (it is the same solo event again).
+    expect(session.mischief("c3", "tyres", "c2")).toEqual({ ok: false, reason: "they already had this one" });
     expect(session.mischief("c1", "tyres", "c3")).toEqual({ ok: true });
     expect(session.mischief("c1", "tyres", "c2")).toEqual({ ok: false, reason: "no pranks left" });
     expect(session.mischiefState("c1").charges).toBe(0);

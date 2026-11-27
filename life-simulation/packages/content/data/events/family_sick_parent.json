@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "family_sick_parent",
-  "version": 1,
+  "version": 2,
   "title": "Mum Needs Help",
   "category": "family",
   "trigger": "director",
   "importance": "important",
   "weight": 8,
   "cooldown": {
-    "maxPerSession": 1
+    "maxPerSession": 3,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

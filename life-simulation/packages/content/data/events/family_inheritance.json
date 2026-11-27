@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "family_inheritance",
-  "version": 1,
+  "version": 2,
   "title": "Grandmother's House",
   "category": "family",
   "trigger": "director",
   "importance": "important",
   "weight": 7,
   "cooldown": {
-    "maxPerSession": 1
+    "maxPerSession": 3,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

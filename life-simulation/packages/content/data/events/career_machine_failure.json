@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "career_machine_failure",
-  "version": 1,
+  "version": 2,
   "title": "Smoke from the Machine",
   "category": "career",
   "trigger": "director",
   "importance": "multi",
   "weight": 6,
   "cooldown": {
-    "maxPerSession": 1
+    "maxPerSession": 3,
+    "maxPerCharacter": 1
   },
   "tags": [
     "technical"

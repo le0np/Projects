@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "financial_loan_request",
-  "version": 1,
+  "version": 2,
   "title": "Can You Lend Me Some Money?",
   "category": "financial",
   "trigger": "director",
   "importance": "multi",
   "weight": 8,
   "cooldown": {
-    "maxPerCharacter": 1
+    "maxPerCharacter": 1,
+    "maxPerSession": 3
   },
   "location": {
     "at": [

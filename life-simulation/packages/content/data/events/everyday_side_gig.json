@@ -1,15 +1,14 @@
 {
   "schemaVersion": 1,
   "id": "everyday_side_gig",
-  "version": 1,
+  "version": 2,
   "title": "Weekend Work",
   "category": "everyday",
   "trigger": "director",
   "importance": "simple",
-  "weight": 7,
+  "weight": 4,
   "cooldown": {
-    "maxPerCharacter": 2,
-    "minGapSeconds": 40
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

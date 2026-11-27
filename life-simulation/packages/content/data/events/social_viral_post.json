@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "social_viral_post",
-  "version": 1,
+  "version": 2,
   "title": "Gone Viral",
   "category": "social",
   "trigger": "director",
   "importance": "simple",
-  "weight": 6,
+  "weight": 4,
   "cooldown": {
-    "maxPerSession": 1
+    "maxPerSession": 1,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

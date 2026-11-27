@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "everyday_parking_scratch",
-  "version": 1,
+  "version": 2,
   "title": "A Scratch in the Car Park",
   "category": "everyday",
   "trigger": "director",
   "importance": "simple",
   "weight": 6,
   "cooldown": {
-    "maxPerCharacter": 1
+    "maxPerCharacter": 1,
+    "maxPerSession": 3
   },
   "tags": [
     "vehicle"
@@ -20,13 +21,19 @@
   },
   "roles": {
     "driver": {
-      "count": 1
+      "count": 1,
+      "description": "Scratched a parked car"
+    },
+    "owner": {
+      "count": 1,
+      "description": "Owns the scratched car"
     }
   },
   "text": {
-    "public": "{driver} is reversing out of a tight parking space.",
+    "public": "{driver} is reversing out of a tight parking space next to {owner}'s car.",
     "private": {
-      "driver": "Crunch. You have left a long scratch on an expensive car. Nobody seems to have seen it."
+      "driver": "Crunch. You have left a long scratch on {owner}'s car. Nobody seems to have seen it.",
+      "owner": "You come back from shopping to a long fresh scratch on your car. The shop has a camera over the car park."
     }
   },
   "choices": {
@@ -40,7 +47,10 @@
         ],
         "perceived": {
           "money": -1,
-          "reputation": 1
+          "reputation": 1,
+          "relation": {
+            "owner": 1
+          }
         },
         "effects": [
           {
@@ -74,7 +84,10 @@
           "mechanic"
         ],
         "perceived": {
-          "reputation": 1
+          "reputation": 1,
+          "relation": {
+            "owner": 1
+          }
         },
         "effects": [
           {
@@ -98,35 +111,52 @@
           "risk": 1
         }
       }
+    ],
+    "owner": [
+      {
+        "id": "footage",
+        "label": "Ask the shop for the camera footage",
+        "tags": [
+          "truth",
+          "risk"
+        ],
+        "perceived": {
+          "mental": -1,
+          "money": 1
+        }
+      },
+      {
+        "id": "police",
+        "label": "Report it to the police",
+        "tags": [
+          "take_responsibility"
+        ],
+        "perceived": {
+          "money": 1,
+          "reputation": -1
+        }
+      },
+      {
+        "id": "let_go",
+        "label": "Sigh and let it go",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "money": -1
+        }
+      }
     ]
   },
   "outcomes": [
-    {
-      "id": "noted",
-      "when": {
-        "chose": "note",
-        "role": "driver"
-      },
-      "effects": [
-        {
-          "type": "attr",
-          "target": "role:driver",
-          "delta": {
-            "reputation": 3,
-            "mental": 2
-          }
-        }
-      ],
-      "text": {
-        "driver": "The owner calls, surprised anyone left a note. You split the repair."
-      }
-    },
     {
       "id": "buffed",
       "when": {
         "chose": "buff",
         "role": "driver"
       },
+      "revealChoices": true,
       "effects": [
         {
           "type": "attr",
@@ -135,28 +165,67 @@
             "reputation": 5,
             "mental": 3
           }
+        },
+        {
+          "type": "relation",
+          "from": "role:owner",
+          "to": "role:driver",
+          "affinity": 15,
+          "trust": 10,
+          "mutual": true
         }
       ],
       "text": {
-        "driver": "Ten minutes with a polishing kit and it is barely visible. The owner is impressed."
+        "driver": "Ten minutes with a polishing kit and it is barely visible. {owner} is impressed.",
+        "owner": "{driver} buffed the scratch out and left a note. You can hardly see it."
       }
     },
     {
-      "id": "camera",
+      "id": "noted",
       "when": {
-        "any": [
-          {
-            "chose": "drive_off",
-            "role": "driver"
-          },
-          {
-            "chose": "pretend",
-            "role": "driver"
-          }
-        ]
+        "chose": "note",
+        "role": "driver"
       },
-      "chance": 0.25,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "reputation": 3,
+            "mental": 2
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:owner",
+          "delta": {
+            "money": 4
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:owner",
+          "to": "role:driver",
+          "affinity": 8,
+          "trust": 12,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "driver": "{owner} calls, surprised anyone left a note. You split the repair.",
+        "owner": "There is a note under the wiper: it was {driver}. You split the repair."
+      }
+    },
+    {
+      "id": "caught_on_camera",
+      "when": {
+        "chose": "footage",
+        "role": "owner"
+      },
+      "chance": 0.7,
       "important": true,
+      "revealChoices": true,
       "effects": [
         {
           "type": "attr",
@@ -165,10 +234,55 @@
             "money": -15,
             "reputation": -8
           }
+        },
+        {
+          "type": "attr",
+          "target": "role:owner",
+          "delta": {
+            "mental": 2
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:owner",
+          "to": "role:driver",
+          "affinity": -25,
+          "trust": -25
         }
       ],
       "text": {
-        "driver": "A letter arrives: a camera recorded your number plate. Repairs plus a fine."
+        "driver": "{owner} turns up with the camera footage. Repairs plus a very cold stare.",
+        "owner": "The footage is clear: it was {driver}. They pay for the repair."
+      }
+    },
+    {
+      "id": "police_letter",
+      "when": {
+        "chose": "police",
+        "role": "owner"
+      },
+      "chance": 0.35,
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "money": -15,
+            "reputation": -6
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:owner",
+          "delta": {
+            "mental": 1
+          }
+        }
+      ],
+      "text": {
+        "driver": "A letter arrives: a witness saw your number plate. Repairs plus a fine.",
+        "owner": "The police found the driver. The repair is paid for."
       }
     },
     {
@@ -180,10 +294,19 @@
           "delta": {
             "mental": -2
           }
+        },
+        {
+          "type": "attr",
+          "target": "role:owner",
+          "delta": {
+            "money": -10,
+            "mental": -3
+          }
         }
       ],
       "text": {
-        "driver": "Nobody ever finds out. You still think about it when you park."
+        "driver": "Nobody ever finds out. You still think about it when you park.",
+        "owner": "Nobody knows who did it. The repair is on you."
       }
     }
   ]

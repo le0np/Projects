@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "id": "social_party_invitation",
-  "version": 1,
+  "version": 2,
   "title": "The House Party",
   "category": "social",
   "trigger": "director",
   "importance": "multi",
   "weight": 8,
   "cooldown": {
-    "maxPerSession": 2,
+    "maxPerSession": 3,
     "maxPerCharacter": 1
   },
   "location": {

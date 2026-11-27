@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
   "id": "financial_tax_error",
-  "version": 1,
+  "version": 2,
   "title": "The Tax Refund",
   "category": "financial",
   "trigger": "director",
   "importance": "simple",
-  "weight": 6,
+  "weight": 4,
   "cooldown": {
     "maxPerCharacter": 1
   },

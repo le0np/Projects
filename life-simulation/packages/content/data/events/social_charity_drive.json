@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "social_charity_drive",
-  "version": 1,
+  "version": 2,
   "title": "The Charity Drive",
   "category": "social",
   "trigger": "director",
   "importance": "multi",
   "weight": 6,
   "cooldown": {
-    "maxPerSession": 1
+    "maxPerSession": 3,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

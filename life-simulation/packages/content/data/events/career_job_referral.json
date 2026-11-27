@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "career_job_referral",
-  "version": 1,
+  "version": 2,
   "title": "A Good Word",
   "category": "career",
   "trigger": "director",
   "importance": "multi",
   "weight": 7,
   "cooldown": {
-    "maxPerSession": 1
+    "maxPerSession": 3,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

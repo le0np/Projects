@@ -146,7 +146,7 @@ describe("validator catches", () => {
 
   it("outcome ordering problems", () => {
     expectError(mutate("everyday_missed_bus", (ev) => delete ev.outcomes[2].when), "unreachable");
-    expectError(mutate("everyday_missed_bus", (ev) => (ev.outcomes[4].when = { chose: "taxi", role: "commuter" })), "unconditional fallback");
+    expectError(mutate("everyday_missed_bus", (ev) => (ev.outcomes[ev.outcomes.length - 1].when = { chose: "taxi", role: "commuter" })), "unconditional fallback");
   });
 
   it("conflicting outcomes", () => {

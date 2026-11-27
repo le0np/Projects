@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "id": "relationships_first_date",
-  "version": 1,
+  "version": 2,
   "title": "A First Date",
   "category": "relationships",
   "trigger": "director",
   "importance": "multi",
   "weight": 6,
   "cooldown": {
-    "maxPerSession": 2,
+    "maxPerSession": 3,
     "maxPerCharacter": 1
   },
   "location": {

@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "relationships_jealousy",
-  "version": 1,
+  "version": 2,
   "title": "Too Friendly",
   "category": "relationships",
   "trigger": "director",
   "importance": "multi",
   "weight": 5,
   "cooldown": {
-    "maxPerSession": 1
+    "maxPerSession": 3,
+    "maxPerCharacter": 1
   },
   "location": {
     "at": [

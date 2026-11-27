@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "id": "everyday_overheard_call",
-  "version": 1,
+  "version": 2,
   "title": "Thin Walls",
   "category": "everyday",
   "trigger": "director",
   "hidden": true,
   "importance": "multi",
-  "weight": 6,
+  "weight": 4,
   "cooldown": {
     "maxPerSession": 2,
     "maxPerCharacter": 1

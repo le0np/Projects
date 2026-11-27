@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "everyday_car_breakdown",
-  "version": 1,
+  "version": 2,
   "title": "Car Trouble",
   "category": "everyday",
   "trigger": "director",
@@ -9,7 +9,7 @@
   "weight": 8,
   "cooldown": {
     "maxPerCharacter": 1,
-    "maxPerSession": 2
+    "maxPerSession": 3
   },
   "tags": [
     "vehicle"
