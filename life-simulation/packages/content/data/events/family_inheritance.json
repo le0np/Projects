@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "family_inheritance",
-  "version": 2,
+  "version": 3,
   "title": "Grandmother's House",
   "category": "family",
   "trigger": "director",
@@ -34,7 +34,7 @@
     }
   },
   "text": {
-    "public": "{heir_a} and {heir_b} have inherited their grandmother's house and must decide what to do with it.",
+    "public": "{heir_a} and {heir_b} have inherited their grandmother's house.",
     "private": {
       "heir_a": "Grandmother once said she wanted you to have the house. Nobody else heard it.",
       "heir_b": "You need money badly. Selling would solve a lot of problems."

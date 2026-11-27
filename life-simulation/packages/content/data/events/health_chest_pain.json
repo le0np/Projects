@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "health_chest_pain",
-  "version": 3,
+  "version": 4,
   "title": "A Twinge in the Chest",
   "category": "health",
   "trigger": "director",
@@ -59,7 +59,8 @@
               "career": -2
             }
           }
-        ]
+        ],
+        "default": true
       },
       {
         "id": "ignore",
@@ -68,7 +69,6 @@
           "ignore",
           "risk"
         ],
-        "default": true,
         "perceived": {
           "risk": 1
         }

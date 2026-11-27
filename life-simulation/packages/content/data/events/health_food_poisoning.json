@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "health_food_poisoning",
-  "version": 3,
+  "version": 5,
   "title": "The Leftovers",
   "category": "health",
   "trigger": "director",
@@ -45,7 +45,8 @@
         ],
         "perceived": {
           "reputation": -1
-        }
+        },
+        "default": true
       },
       {
         "id": "say_nothing",
@@ -53,7 +54,6 @@
         "tags": [
           "lie"
         ],
-        "default": true,
         "perceived": {
           "risk": 1
         }
@@ -66,7 +66,6 @@
         "tags": [
           "risk"
         ],
-        "default": true,
         "perceived": {
           "relation": {
             "cook": 1
@@ -84,7 +83,8 @@
           "relation": {
             "cook": -1
           }
-        }
+        },
+        "default": true
       },
       {
         "id": "check",

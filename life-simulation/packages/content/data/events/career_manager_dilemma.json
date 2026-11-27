@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "career_manager_dilemma",
-  "version": 1,
+  "version": 4,
   "title": "Your Report's Mistake",
   "category": "career",
   "trigger": "followup_only",
@@ -29,7 +29,7 @@
     "about": "role:report"
   },
   "text": {
-    "public": "{report} made an expensive mistake on a client project. {manager}, their manager, has to answer to the director.",
+    "public": "{report} made an expensive mistake. {manager}, their manager, has to answer to the director.",
     "private": {
       "manager": "The director wants a name. You remember how you and {report} got here.",
       "report": "It really was your mistake. Your new manager decides what happens next."
@@ -53,7 +53,7 @@
       },
       {
         "id": "fair",
-        "label": "Report it honestly but argue for a second chance",
+        "label": "Report it honestly, ask for a second chance",
         "tags": [
           "truth",
           "help"
@@ -79,7 +79,7 @@
       },
       {
         "id": "retaliate",
-        "label": "Use it to get rid of {report} for good",
+        "label": "Use it to get rid of {report}",
         "tags": [
           "threaten"
         ],
@@ -92,7 +92,7 @@
       },
       {
         "id": "stall",
-        "label": "Hope the director forgets about it",
+        "label": "Hope the director forgets",
         "tags": [
           "ignore"
         ],
@@ -134,10 +134,17 @@
           "lie",
           "avoid_responsibility"
         ],
-        "default": true,
         "perceived": {
           "risk": 1
         }
+      },
+      {
+        "id": "head_down",
+        "label": "Keep your head down and wait",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
       }
     ]
   },

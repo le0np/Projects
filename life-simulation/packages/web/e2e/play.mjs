@@ -115,6 +115,11 @@ async function playOnce(browser, label, contextOptions) {
         const priv = document.querySelector(".card.event .private");
         const pr = priv?.getBoundingClientRect();
         return {
+          // T6b M2: the public text is whole too (no scrolling inside the card).
+          storyCut: (() => {
+            const st = document.querySelector(".event-story");
+            return st ? Math.max(0, st.scrollHeight - st.clientHeight - 1) : 0;
+          })(),
           // T4b N1: what only you know is always whole.
           privateCut: priv && pr ? Math.max(0, priv.scrollHeight - priv.clientHeight) + (pr.bottom > vh + 0.5 || pr.top < -0.5 ? 1 : 0) : 0,
           offscreen: choices.filter((r) => r.top < -0.5 || r.bottom > vh + 0.5).length,
@@ -123,6 +128,7 @@ async function playOnce(browser, label, contextOptions) {
           me: document.querySelector(".game-header .who strong")?.textContent ?? "",
         };
       });
+      if (fit.storyCut > 0) throw new Error(`[${label}] "${fit.title}": the public text is cut off by ${fit.storyCut}px`);
       if (fit.privateCut > 0) throw new Error(`[${label}] "${fit.title}": the private text is cut off`);
       if (fit.offscreen > 0 || fit.overlayScroll > 1) throw new Error(`[${label}] "${fit.title}": ${fit.offscreen} choice(s) off screen, card scrolls by ${fit.overlayScroll}px`);
       if (fit.me !== characterName) throw new Error(`[${label}] character is called "${fit.me}", expected "${characterName}"`);

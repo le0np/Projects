@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "critical_accident_investigation",
-  "version": 1,
+  "version": 2,
   "title": "The Investigation",
   "category": "critical",
   "trigger": "followup_only",
@@ -64,7 +64,6 @@
           "lie",
           "avoid_responsibility"
         ],
-        "default": true,
         "perceived": {
           "risk": 2
         }
@@ -80,6 +79,14 @@
           "money": -1,
           "risk": 2
         }
+      },
+      {
+        "id": "silent",
+        "label": "Say nothing until you have a lawyer",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
       }
     ],
     "investigator": [

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "social_karaoke_bet",
-  "version": 2,
+  "version": 3,
   "title": "Karaoke Night",
   "category": "social",
   "trigger": "director",
@@ -51,6 +51,13 @@
         "label": "Keep teasing",
         "tags": [
           "threaten"
+        ]
+      },
+      {
+        "id": "drop_it",
+        "label": "Laugh and drop it",
+        "tags": [
+          "ignore"
         ],
         "default": true
       }

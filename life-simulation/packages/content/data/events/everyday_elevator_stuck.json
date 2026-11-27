@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "everyday_elevator_stuck",
-  "version": 2,
+  "version": 3,
   "title": "Stuck in the Lift",
   "category": "everyday",
   "trigger": "director",
@@ -28,7 +28,7 @@
     }
   },
   "text": {
-    "public": "The lift jolts and stops between floors with {trapped} inside.",
+    "public": "The lift stops between floors with {trapped} inside.",
     "private": {
       "trapped": "The emergency light flickers. It is getting warm."
     }

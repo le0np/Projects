@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "health_test_results",
-  "version": 2,
+  "version": 3,
   "title": "The Test Results",
   "category": "health",
   "trigger": "director",
@@ -50,7 +50,8 @@
           "relation": {
             "patient": 0
           }
-        }
+        },
+        "default": true
       },
       {
         "id": "soften",
@@ -58,7 +59,6 @@
         "tags": [
           "lie"
         ],
-        "default": true,
         "perceived": {
           "relation": {
             "patient": 1

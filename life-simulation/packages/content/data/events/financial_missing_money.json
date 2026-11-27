@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "financial_missing_money",
-  "version": 1,
+  "version": 2,
   "title": "The Books Don't Add Up",
   "category": "financial",
   "trigger": "followup_only",
@@ -60,7 +60,8 @@
               "money": -8
             }
           }
-        ]
+        ],
+        "default": true
       },
       {
         "id": "cover",
@@ -69,7 +70,6 @@
           "lie",
           "risk"
         ],
-        "default": true,
         "perceived": {
           "risk": 2
         }

@@ -17,6 +17,8 @@ export interface BotSessionOptions {
 
 export interface BotSessionRun {
   result: SessionResult;
+  /** T6b: every mood change, to measure how the town looks. */
+  moods: { t: number; characterId: string; mood: string }[];
   bots: { characterId: string; controller: BotController; career: string }[];
 }
 
@@ -37,6 +39,12 @@ export function createBotParticipants(opts: Omit<BotSessionOptions, "config">): 
 export function runBotSession(opts: BotSessionOptions): BotSessionRun {
   const bots = createBotParticipants(opts);
   const participants: ParticipantSetup[] = bots.map((b) => ({ id: b.characterId, career: b.career, isBot: true, controller: b.controller }));
-  const result = runSession({ content: opts.content, config: { ...opts.config, seed: opts.seed }, participants });
-  return { result, bots };
+  const moods: BotSessionRun["moods"] = [];
+  const result = runSession({
+    content: opts.content,
+    config: { ...opts.config, seed: opts.seed },
+    participants,
+    onPublic: (e) => e.kind === "mood" && moods.push({ t: e.t, characterId: e.characterId, mood: e.mood }),
+  });
+  return { result, bots, moods };
 }

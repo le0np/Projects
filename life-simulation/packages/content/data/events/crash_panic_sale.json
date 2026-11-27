@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 2,
+  "version": 3,
   "id": "crash_panic_sale",
   "title": "Everything Must Go",
   "category": "financial",
@@ -33,7 +33,7 @@
     }
   },
   "text": {
-    "public": "Panicking about the crash, {seller} tries to sell their car to {buyer} for almost nothing.",
+    "public": "Panicking about the crash, {seller} offers {buyer} their car for almost nothing.",
     "private": {
       "seller": "You are sure the world is ending.",
       "buyer": "The car is worth four times what they are asking."

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "social_charity_drive",
-  "version": 2,
+  "version": 3,
   "title": "The Charity Drive",
   "category": "social",
   "trigger": "director",
@@ -46,7 +46,8 @@
         ],
         "perceived": {
           "reputation": 1
-        }
+        },
+        "default": true
       },
       {
         "id": "skim",
@@ -65,7 +66,6 @@
         "tags": [
           "threaten"
         ],
-        "default": true,
         "perceived": {
           "relation": {
             "donor": -1

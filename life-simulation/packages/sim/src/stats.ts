@@ -40,6 +40,8 @@ export interface BatchStats {
   knownShare: number;
   /** T2: share of event instances with at least two characters deciding. */
   multiDeciderShare: number;
+  /** T6b: share of living time characters spend in each mood (what the town looks like). */
+  moodShare: Counter;
   /** T2: solo events (nobody else decides) per character, and how often one repeats for the same character. */
   soloPerCharacter: number;
   soloRepeats: Counter;
@@ -73,6 +75,7 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
     multiDeciderShare: 0,
     knownShare: 0,
     soloPerCharacter: 0,
+    moodShare: {},
     soloRepeats: {},
     followUps: { scheduled: 0, activated: 0, dropped: {} },
     decisions: { submitted: 0, defaulted: 0, rejected: 0 },
@@ -94,7 +97,22 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
   const decides = (eventId: string, role: string) => (content.events.get(eventId)?.choices[role]?.length ?? 0) > 0;
   const aware = (eventId: string, role: string) => content.events.get(eventId)?.roles[role]?.aware !== false;
 
-  for (const { result, bots } of runs) {
+  let moodTime = 0;
+  for (const { result, bots, moods } of runs) {
+    // Mood timelines: each character is "content" until their first change, up to the end of their life.
+    const endOf = new Map(result.recaps.map((r) => [r.characterId, r.lifeDurationMs]));
+    const current = new Map<string, { mood: string; since: number }>();
+    const close = (id: string, until: number) => {
+      const m = current.get(id) ?? { mood: "content", since: 0 };
+      const span = Math.max(0, Math.min(until, endOf.get(id) ?? until) - m.since);
+      inc(s.moodShare, m.mood, span);
+      moodTime += span;
+    };
+    for (const m of moods ?? []) {
+      close(m.characterId, m.t);
+      current.set(m.characterId, { mood: m.mood, since: m.t });
+    }
+    for (const id of endOf.keys()) close(id, result.durationMs);
     const archetypeOf = new Map(bots.map((b) => [b.characterId, b.controller.profile.archetype]));
     inc(s.endReasons, result.endReason ?? "unknown");
     const dur = result.durationMs / 1000;
@@ -213,6 +231,7 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
   s.multiDeciderShare = multiInstances / Math.max(1, instances);
   s.knownShare = knownEvents / Math.max(1, sharedEvents);
   s.soloPerCharacter = soloEvents / Math.max(1, s.characters);
+  for (const k of Object.keys(s.moodShare)) s.moodShare[k] = (s.moodShare[k] ?? 0) / Math.max(1, moodTime);
   for (const c of Object.values(s.career)) c.lifeScore /= c.n;
   for (const a of Object.values(s.archetype)) a.lifeScore /= Math.max(1, a.n);
   s.neverSelected = [...content.events.keys()].filter((id) => !s.eventCounts[id]).sort();
@@ -241,6 +260,7 @@ export function formatReport(s: BatchStats, title = "Simulation report"): string
     `| Death rate | ${pct(s.deathRate)} of characters, ${pct(s.sessionsWithDeath / Math.max(1, s.sessions))} of sessions |`,
     `| Event repetition | ${pct(s.repetitionRate)} of a character's events repeat a template |`,
     `| Shared events | ${pct(s.sharedShare)} of a character's events have someone else deciding too; ${pct(s.multiDeciderShare)} of events have ≥ 2 deciders; ${pct(s.knownShare)} of shared events are with someone they have a relationship with |`,
+    `| Moods (share of time) | ${top(s.moodShare, 10).map(([k, v]) => `${k} ${pct(v)}`).join(", ")} |`,
     `| Solo events | ${s.soloPerCharacter.toFixed(1)} per character; ${Object.values(s.soloRepeats).reduce((a, b) => a + b, 0)} times a character got the same solo event again${Object.keys(s.soloRepeats).length ? ` (${top(s.soloRepeats).map(([k, v]) => `${k} ${v}`).join(", ")})` : ""} |`,
     `| Follow-ups | ${s.followUps.activated}/${s.followUps.scheduled} activated; dropped: ${top(s.followUps.dropped).map(([k, v]) => `${k} ${v}`).join(", ") || "none"} |`,
     `| Decisions | ${s.decisions.submitted} submitted, ${s.decisions.defaulted} defaulted, ${s.decisions.rejected} rejected |`,

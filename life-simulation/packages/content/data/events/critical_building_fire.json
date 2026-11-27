@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "critical_building_fire",
-  "version": 3,
+  "version": 4,
   "title": "Fire!",
   "category": "critical",
   "trigger": "director",
@@ -34,7 +34,7 @@
     }
   },
   "text": {
-    "public": "Smoke fills the stairwell of the apartment block where {resident} live. {trapped} has not come out of the top-floor flat.",
+    "public": "Smoke fills the stairwell of {resident}'s block. {trapped} is still in the top-floor flat.",
     "private": {
       "trapped": "You took a sleeping pill tonight.",
       "resident": "The fire brigade is at least ten minutes away. The smoke is getting thicker."

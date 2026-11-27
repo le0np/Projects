@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "family_sick_parent",
-  "version": 2,
+  "version": 3,
   "title": "Mum Needs Help",
   "category": "family",
   "trigger": "director",
@@ -33,7 +33,7 @@
     }
   },
   "text": {
-    "public": "{sibling_a} and {sibling_b}'s mother has had a fall. She needs someone with her for the next few weeks.",
+    "public": "{sibling_a} and {sibling_b}'s mother has had a fall and needs someone with her for weeks.",
     "private": {
       "sibling_a": "You have a big project at work right now.",
       "sibling_b": "Last time, you were the one who looked after her for a month."

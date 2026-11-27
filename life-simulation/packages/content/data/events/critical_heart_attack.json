@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "critical_heart_attack",
-  "version": 4,
+  "version": 5,
   "title": "Heart Attack",
   "category": "critical",
   "trigger": "followup_only",
@@ -34,7 +34,7 @@
     "of": "role:patient"
   },
   "text": {
-    "public": "{patient} collapses in the supermarket, clutching their chest. {bystander} is in the same aisle.",
+    "public": "{patient} collapses in the supermarket, clutching their chest. {bystander} is right there.",
     "private": {
       "patient": "The pain from last week is back — ten times worse.",
       "bystander": "{patient} is grey and sweating, struggling to breathe."

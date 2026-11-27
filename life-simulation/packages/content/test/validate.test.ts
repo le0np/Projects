@@ -188,3 +188,15 @@ describe("validator catches", () => {
     expect(warnings.some((w) => w.includes("unreachable"))).toBe(true);
   });
 });
+
+describe("T6b M3: passive defaults", () => {
+  it("warns when the default choice is risky, a lie or a threat", () => {
+    const raw = readContentDir().raw;
+    const ev = raw.events.find((e) => (e.data as { id: string }).id === "social_charity_drive")!;
+    const data = structuredClone(ev.data) as { choices: Record<string, { id: string; default?: boolean }[]> };
+    for (const c of data.choices.organizer!) c.default = c.id === "guilt";
+    const { issues } = validateContent({ ...raw, events: [...raw.events.filter((e) => e !== ev), { file: ev.file, data }] });
+    expect(issues.some((i) => i.severity === "warning" && i.message.includes("passive and neutral") && i.path.includes("guilt"))).toBe(true);
+  });
+});
+

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 1,
+  "version": 2,
   "id": "blackout_candles",
   "title": "Candles on the Stairs",
   "category": "social",
@@ -68,6 +68,13 @@
         "label": "Keep your candles a secret",
         "tags": [
           "lie"
+        ]
+      },
+      {
+        "id": "wait",
+        "label": "Wait in the dark for the lights",
+        "tags": [
+          "ignore"
         ],
         "default": true
       }

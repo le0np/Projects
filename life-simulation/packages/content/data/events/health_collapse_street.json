@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "health_collapse_street",
-  "version": 4,
+  "version": 6,
   "title": "Collapse on the Street",
   "category": "critical",
   "trigger": "director",
@@ -39,7 +39,7 @@
     }
   },
   "text": {
-    "public": "{patient} suddenly collapses on a busy pavement. {bystander} is a few steps away.",
+    "public": "{patient} collapses on a busy pavement. {bystander} is a few steps away.",
     "private": {
       "patient": "Your chest tightens and the world goes grey.",
       "bystander": "{patient} is pale and barely responding. Nobody else seems to be stopping."
@@ -87,7 +87,7 @@
       },
       {
         "id": "walk_away",
-        "label": "Walk away — someone else will help",
+        "label": "Walk away, someone else will help",
         "tags": [
           "ignore",
           "avoid_responsibility"
@@ -98,7 +98,7 @@
       },
       {
         "id": "freeze",
-        "label": "Stand there, unsure what to do",
+        "label": "Freeze",
         "tags": [
           "ignore"
         ],
@@ -106,7 +106,7 @@
       },
       {
         "id": "diagnose",
-        "label": "Check airway and pulse, then treat properly",
+        "label": "Check airway and pulse, then treat",
         "tags": [
           "help"
         ],
@@ -131,7 +131,7 @@
       },
       {
         "id": "secure_scene",
-        "label": "Clear the crowd and radio for paramedics",
+        "label": "Clear the crowd, radio for paramedics",
         "tags": [
           "help"
         ],

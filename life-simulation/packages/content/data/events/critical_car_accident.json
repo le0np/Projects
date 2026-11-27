@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "critical_car_accident",
-  "version": 2,
+  "version": 3,
   "title": "The Accident",
   "category": "critical",
   "trigger": "director",
@@ -105,7 +105,8 @@
           "relation": {
             "driver": 1
           }
-        }
+        },
+        "default": true
       },
       {
         "id": "blame",
@@ -113,7 +114,6 @@
         "tags": [
           "lie"
         ],
-        "default": true,
         "perceived": {
           "relation": {
             "driver": -1

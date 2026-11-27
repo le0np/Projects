@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "critical_gas_leak",
-  "version": 2,
+  "version": 4,
   "title": "The Smell of Gas",
   "category": "critical",
   "trigger": "director",
@@ -27,7 +27,7 @@
     }
   },
   "text": {
-    "public": "{neighbors} smell gas in the stairwell of their building.",
+    "public": "{neighbors} smell gas in their stairwell.",
     "private": {
       "neighbors": "The smell is coming from the basement. An elderly couple lives on the ground floor."
     }
@@ -36,7 +36,7 @@
     "neighbors": [
       {
         "id": "evacuate",
-        "label": "Knock on every door and get everyone out",
+        "label": "Knock on every door, get everyone out",
         "tags": [
           "help",
           "risk"
@@ -75,7 +75,7 @@
       },
       {
         "id": "isolate",
-        "label": "Shut the main valve and ventilate safely",
+        "label": "Shut the main valve and ventilate",
         "tags": [
           "help"
         ],
@@ -94,7 +94,7 @@
           "perceived": {
             "risk": 0
           },
-          "note": "No sparks, no switches, close the valve by hand."
+          "note": "No sparks, no switches: close the valve by hand."
         },
         "effects": [
           {

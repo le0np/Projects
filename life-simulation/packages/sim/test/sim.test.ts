@@ -83,3 +83,12 @@ describe("T2: variety and shared events", () => {
     }
   });
 });
+
+describe("T6b M1: the town does not look depressed", () => {
+  it("nobody is sad more than ~30 % of the time, and calm is the most common mood", () => {
+    const stats = aggregate(runBatch({ content, seed: "moods-test", sessions: 30, players: [4, 8] }), content);
+    expect(stats.moodShare.sad ?? 0).toBeLessThanOrEqual(0.3);
+    const top = Object.entries(stats.moodShare).sort((a, b) => b[1] - a[1])[0]![0];
+    expect(top).toBe("content");
+  });
+});

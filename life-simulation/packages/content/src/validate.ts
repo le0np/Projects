@@ -381,6 +381,9 @@ function checkEvent(ev: EventDefinition, reg: Registry, report: Report): void {
     if (defaults.length !== 1) report("error", path, `exactly one default choice required, found ${defaults.length}`);
     for (const d of defaults) {
       if (d.careers || d.condition) report("error", `${path}.${d.id}`, "default choice must be available to everyone (no careers/condition)");
+      // T6b M3: whoever does not answer in time should do something passive and neutral.
+      const active = d.tags.filter((t) => t === "risk" || t === "lie" || t === "threaten");
+      if (active.length > 0) report("warning", `${path}.${d.id}`, `default choice should be passive and neutral, not ${active.join("/")}`);
     }
     const seen = new Set<string>();
     list.forEach((choice, i) => {

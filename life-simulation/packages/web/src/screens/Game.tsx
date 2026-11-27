@@ -300,7 +300,9 @@ function EventCard({ offer, game, now, decide }: { offer: OfferView; game: GameS
           ))}
         </ul>
       )}
-      <p className="muted small default-note">If you do not choose in time: {quoted(offer.choices.find((c) => c.isDefault)?.label)}.</p>
+      <p className="muted small default-note" title={`If you do not choose in time: ${quoted(offer.choices.find((c) => c.isDefault)?.label)}`}>
+        If time runs out: {quoted(offer.choices.find((c) => c.isDefault)?.label)}
+      </p>
     </article>
   );
 }
@@ -316,7 +318,7 @@ function cardBeside(tile: [number, number] | undefined, map: { width: number; he
   // CSS variables: only the desktop layout uses them (on phones the card is a sheet at the bottom).
   const justify = fy < 0.34 ? "flex-start" : fy < 0.66 ? "center" : "flex-end";
   const fromEdge = fx <= 0.5 ? tile[0] + 0.5 + gap : map.width - (tile[0] + 0.5) + gap;
-  const edge = `min(${((fromEdge / map.width) * 100).toFixed(2)}%, calc(100% - 312px))`;
+  const edge = `min(${((fromEdge / map.width) * 100).toFixed(2)}%, calc(100% - 352px))`;
   return {
     "--card-justify": justify,
     "--card-left": fx <= 0.5 ? edge : "auto",

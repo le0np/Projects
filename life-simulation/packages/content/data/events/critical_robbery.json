@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "critical_robbery",
-  "version": 2,
+  "version": 3,
   "title": "The Robbery",
   "category": "critical",
   "trigger": "director",
@@ -32,7 +32,7 @@
     }
   },
   "text": {
-    "public": "A man with a knife grabs {victim}'s bag at a tram stop. {witness} is standing a few metres away.",
+    "public": "A man with a knife grabs {victim}'s bag at a tram stop. {witness} is a few metres away.",
     "private": {
       "victim": "Your laptop with a year of work is in that bag.",
       "witness": "The man looks nervous. The knife is real."

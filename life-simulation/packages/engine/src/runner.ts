@@ -5,7 +5,7 @@
 import { Rng, TimerQueue, VirtualClock, type CharacterView, type Controller, type Decision, type Notice } from "@lifesim/core";
 import type { ContentBundle } from "@lifesim/content";
 import { resolveConfig, type SessionConfig } from "./config";
-import { Session, type ParticipantSpec, type SessionResult } from "./session";
+import { Session, type ParticipantSpec, type PublicEntry, type SessionResult } from "./session";
 
 export type { Controller, Decision } from "@lifesim/core";
 
@@ -19,6 +19,8 @@ export interface RunOptions {
   participants: ParticipantSetup[];
   /** Optional hook for every notice (e.g. tests asserting on what characters see). */
   onNotice?: (characterId: string, notice: Notice) => void;
+  /** Optional hook for the public feed (moods, events, phases…). */
+  onPublic?: (entry: PublicEntry) => void;
   /** Pranks to play at fixed times (replays). */
   mischief?: { t: number; characterId: string; mischiefId: string; targetId: string }[];
 }
@@ -58,6 +60,7 @@ export function runSession(opts: RunOptions): SessionResult {
     }
   };
 
+  if (opts.onPublic) session.onPublic = opts.onPublic;
   session.chooseLeisure = (characterId, options) => controllers.get(characterId)?.chooseLeisure?.(options) as never;
   session.start();
   let guard = 0;

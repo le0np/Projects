@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "career_job_referral",
-  "version": 2,
+  "version": 3,
   "title": "A Good Word",
   "category": "career",
   "trigger": "director",
@@ -105,7 +105,8 @@
         ],
         "perceived": {
           "career": -1
-        }
+        },
+        "default": true
       },
       {
         "id": "keep_cv",
@@ -113,7 +114,6 @@
         "tags": [
           "lie"
         ],
-        "default": true,
         "perceived": {
           "career": 1,
           "risk": 1

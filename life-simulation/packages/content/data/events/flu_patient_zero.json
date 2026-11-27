@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 1,
+  "version": 2,
   "id": "flu_patient_zero",
   "title": "Patient Zero",
   "category": "health",
@@ -51,7 +51,8 @@
         "perceived": {
           "career": -1,
           "health": 1
-        }
+        },
+        "default": true
       },
       {
         "id": "stay",
@@ -59,7 +60,6 @@
         "tags": [
           "risk"
         ],
-        "default": true,
         "perceived": {
           "career": 1,
           "relation": {

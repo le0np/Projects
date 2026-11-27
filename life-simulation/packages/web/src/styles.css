@@ -755,8 +755,8 @@ main.game {
 }
 .overlay .choices {
   flex: none;
-  margin: 4px 0 0;
-  gap: 6px;
+  margin: 2px 0 0;
+  gap: 5px;
 }
 .overlay .choice {
   display: flex;
@@ -784,13 +784,30 @@ main.game {
     right: 8px;
     bottom: 8px;
     z-index: 20;
-    max-height: 82vh;
-    max-height: 82dvh;
+    max-height: 90vh;
+    max-height: 90dvh;
     display: flex;
   }
   .overlay:not(.toast) .card.event {
     width: 100%;
-    padding: 12px;
+    padding: 10px 12px;
+    gap: 5px;
+  }
+  .overlay .card.event > .with {
+    display: none;
+  }
+  .overlay .default-note {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .overlay .choice {
+    padding: 6px 9px;
+    gap: 2px 8px;
+  }
+  .overlay .private {
+    padding: 6px 9px;
+    line-height: 1.4;
   }
   .overlay .event h1 {
     font-size: 1.1rem;
@@ -807,7 +824,7 @@ main.game {
     right: 12px;
     top: 12px;
     bottom: 12px;
-    width: min(300px, 38%);
+    width: min(340px, 40%);
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -817,6 +834,21 @@ main.game {
     left: var(--card-left, auto);
     right: var(--card-right, 12px);
     justify-content: var(--card-justify, flex-start);
+    /* T6b M2: a long event may reach below the map (down to the bottom of the screen) so its text stays whole. */
+    bottom: auto;
+    max-height: max(calc(100% - 24px), calc(100dvh - 200px));
+  }
+  .overlay.beside .card.event {
+    max-height: max(calc(100% - 0px), calc(100dvh - 200px));
+  }
+  /* T6b M2: on the map the people in the event are marked anyway; the space goes to the story. */
+  .overlay .card.event > .with {
+    display: none;
+  }
+  .overlay .default-note {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .overlay.toast {
     bottom: auto;
@@ -825,18 +857,26 @@ main.game {
     width: min(340px, 48%);
   }
   .overlay .card {
-    padding: 12px;
+    padding: 10px 12px;
   }
   .overlay .event h1,
   .overlay .outcome h1 {
-    font-size: 1.15rem;
+    font-size: 1.08rem;
+  }
+  .overlay .card.event {
+    gap: 5px;
   }
   .overlay .lead {
     font-size: 0.95rem;
   }
   .overlay .private {
-    font-size: 0.88rem;
-    padding: 8px 10px;
+    font-size: 0.86rem;
+    padding: 6px 9px;
+    line-height: 1.4;
+  }
+  .overlay .choice {
+    padding: 6px 9px;
+    gap: 2px 8px;
   }
 }
 

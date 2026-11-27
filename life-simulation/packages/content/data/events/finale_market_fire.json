@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "finale_market_fire",
-  "version": 1,
+  "version": 3,
   "title": "Fire on Market Street",
   "category": "critical",
   "trigger": "finale",
@@ -26,7 +26,7 @@
     }
   },
   "text": {
-    "public": "Late at night, smoke pours out of the flats above the market. {trapped} is still inside. The whole town is in the street: {neighbours}.",
+    "public": "Fire above the market! {trapped} is still inside, and the whole town is in the street.",
     "private": {
       "trapped": "The stairs are full of smoke. Through the window you can see everyone you have met in this town looking up at you.",
       "neighbours": "{trapped} is at the upstairs window. The fire brigade is ten minutes away."
@@ -251,7 +251,7 @@
       },
       {
         "id": "call",
-        "label": "Call the fire brigade and keep the crowd back",
+        "label": "Call the fire brigade, keep the crowd back",
         "tags": [
           "take_responsibility"
         ],

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "family_holiday_dinner",
-  "version": 2,
+  "version": 3,
   "title": "Holiday Dinner",
   "category": "family",
   "trigger": "director",
@@ -89,7 +89,8 @@
           "relation": {
             "host": 1
           }
-        }
+        },
+        "default": true
       },
       {
         "id": "push",
@@ -97,7 +98,6 @@
         "tags": [
           "threaten"
         ],
-        "default": true,
         "perceived": {
           "relation": {
             "host": -1

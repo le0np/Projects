@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "health_burnout",
-  "version": 2,
+  "version": 3,
   "title": "Running on Empty",
   "category": "health",
   "trigger": "director",
@@ -48,7 +48,8 @@
         "perceived": {
           "mental": 2,
           "career": -1
-        }
+        },
+        "default": true
       },
       {
         "id": "push",
@@ -57,7 +58,6 @@
           "sacrifice",
           "risk"
         ],
-        "default": true,
         "perceived": {
           "career": 1,
           "mental": -2

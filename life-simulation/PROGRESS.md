@@ -447,6 +447,17 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **R2:** nakon eventa u kojem je čovjek, svi sudionici ostaju na mjestu 5 stvarnih sekundi (otkrivanje kartica, reakcije i početak teksta ishoda), tek onda nastavljaju (timer `release` u engineu, `humanPacing.lingerSeconds`). Sesije samo s botovima su nepromijenjene. Test: nitko iz eventa ne krene prije isteka (pada kad je zadržavanje 0).
 - **R3:** potvrđeni uzrok: klijent je atribute, kalendar, dob i odnose uzimao samo iz zadnje ponude u povijesti, koja je na početku prazna; početni odnosi (npr. partner iz seeda) zato su se vidjeli tek uz prvi event. Snapshot (`game:started`, `game:state`) sada nosi `me` (`Session.selfView`): atribute, kalendar, dob i sve odnose. Testovi: server (prvi snapshot) i e2e (zaglavlje puno prije prvog eventa).
 
+### T6b: sitnice iz QA T6 (developer)
+
+- **M1, previše tužnih lica:** batch izvještaj sada mjeri udio vremena u svakom raspoloženju (`runSession` ima `onPublic`, `BotSessionRun.moods`). Prije: tužno 40 % vremena. Uzroci: neutralan ishod je ostavljao staro raspoloženje (tuga „ostaje”), a i mali gubici (−5) su davali tugu. Sada neutralan ishod vraća mir, tuga traži gubitak od barem 8, radost dobitak od barem 6. Mir se na mapi prikazuje kao 🙂. Batch (200 sesija, `docs/reports/t6b.report.md`): mir 62 %, sreća 13 %, tuga 12 %, ljutnja 4 %. Test: tuga ≤ 30 %, mir najčešći.
+- **M2, javni tekst odrezan:**
+  - na desktopu kartica smije prijeći ispod mape (do dna ekrana), široka je 340 px (do 40 % mape), razmaci i oznake izbora su manji, redak „With” se ne prikazuje (sudionici su označeni na mapi), napomena o zadanom izboru je u jednom retku („If time runs out: …”, cijela u tooltipu);
+  - na mobitelu sheet do 90 % visine, isto zbijeno;
+  - skraćen javni tekst i nekoliko oznaka izbora u 11 eventa (privatni tekst nije diran);
+  - **nova provjera `packages/web/e2e/card-fit.mjs`** (dio `npm run e2e`): s ugrađenim CSS-om iscrta karticu **svakog eventa i uloge** (109) s dugim imenima i najviše izbora koje jedan igrač može vidjeti, na 1280×800 i 390×664. Prije: 61 od 109 kartica je skrolalo; sada 0. Igra u e2e još provjerava i da se javni tekst ne skrola.
+- **M3, agresivni zadani izbori:** validator upozorava ako zadani izbor ima oznaku `risk`, `lie` ili `threaten` (test). Ispravljeno 17 uloga: 12 ih sada ima postojeći miran izbor kao zadani (npr. Charity Drive „Hand in every cent”, Chest Pain „Book a doctor's appointment”), a 5 je dobilo novi pasivan izbor („Wait in the dark for the lights”, „Keep your head down and wait”, „Say nothing until you have a lawyer”, „Smile and change the subject”, „Laugh and drop it”). Pasivno odbijanje ili ignoriranje (koje hladi odnos) ostaje dopušteno kao zadani izbor.
+- Smrtnost u batchu je 3,0 % (donja granica raspona 3–8 %), jer su zadani izbori sada sigurniji.
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 1, T1–T4):

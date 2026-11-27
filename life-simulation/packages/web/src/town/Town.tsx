@@ -40,9 +40,9 @@ export function useMapSize(): { width: number; height: number } | null {
   return size;
 }
 
-/** T6: mood emoji above a character's head ("content" shows nothing). */
+/** T6: mood emoji above a character's head (T6b: calm is 🙂, the town should look friendly). */
 export const MOOD_EMOJI: Record<Mood, string> = {
-  content: "",
+  content: "🙂",
   happy: "😄",
   angry: "😠",
   sad: "😢",

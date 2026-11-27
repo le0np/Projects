@@ -1370,7 +1370,10 @@ export class Session {
                     ? "sad"
                     : reaction === "joy"
                       ? "happy"
-                      : (c.mood ?? "content");
+                      : // T6b M1: an event that did not touch you settles you down (no sticky sad faces).
+                        reaction === "neutral"
+                        ? "content"
+                        : (c.mood ?? "content");
     if (mood === c.mood) return;
     c.mood = mood;
     this.onPublic({ kind: "mood", t: this.now(), characterId: id, mood });
@@ -1576,8 +1579,9 @@ export class Session {
     }
     if (hurt) return "shock";
     if (fell) return "angry";
-    if (sum >= 5) return "joy";
-    if (sum <= -5) return "sad";
+    // T6b M1: small ups and downs do not show on a face; it takes a real win or a real loss.
+    if (sum >= 6) return "joy";
+    if (sum <= -8) return "sad";
     return "neutral";
   }
 

@@ -78,7 +78,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Linije odnosa od tvog lika prema drugima: prijatelj (zeleno), suparnik (crveno), dužnik/vjerovnik (žuto), partner (roza). Prikazuju se kad prijeđeš mišem/dodirneš lika ili kad ste zajedno u eventu.
 - Uz ime lika jedna osobina iz osobnosti bota/karijere („Gossip”, „Cheapskate”, „Hero complex”), da igrač može „čitati” likove.
 
-### [ ] T6b. Sitnice iz QA T6
+### [x] T6b. Sitnice iz QA T6
 - **M1:** Na mapi su skoro svi tužni (u 3:00 četiri od šest likova 😢, i Igor nakon neutralnog „You drive on.”). Grad izgleda depresivno, a ton treba biti humorističan. Provjeri raspodjelu raspoloženja u batchu: 😢 neka bude najviše ~30 % vremena, a neutralan ishod ne smije dati tužno lice. Možda dodati „😐/🙂” kao neutralno.
 - **M2:** Javni tekst eventa je odrezan usred rečenice („…and asks Marko to”), jer je kartica najviše 38 % mape, a privatni tekst i izbori su uvijek cijeli. Na desktopu ima mjesta: neka kartica smije biti viša (do visine mape), ili smanji razmake/oznake izbora. Javni tekst mora biti cijeli bez skrolanja barem na 1280×800. Dodaj u e2e.
 - **M3 (sadržaj):** „The Charity Drive” kao zadani izbor (ako ne odgovoriš) ima „Push hard, mention who else gave”, agresivan izbor. Zadani izbor treba biti pasivan i neutralan. Provjeri sve evente (validator može upozoriti ako default ima tag `risk`, `lie` ili cilja drugog lika negativno).
