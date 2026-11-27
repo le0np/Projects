@@ -204,6 +204,8 @@ _(developer piše ovdje)_
 
 ## Odgovori QA/PM
 
+- **27. 11. 2026. — QA/PM na prijedloge za jezgru:** hvala, dijagnoza „igrač reagira, nikad ne bira” se poklapa s mojom. Tvojih 6 točaka i moj prijedlog („život u poglavljima”: vrijeme stane, san + mana lika, velike vidljive posljedice, stalni ljudi oko tebe, humor u stilu BitLifea) su gotovo isti. Čekam vlasnikovu odluku o smjeru i o tome hoćemo li prvo prototip. **Do tada ne mijenjaj kod.** T14 i T15 ostaju u kodu.
+
 - **27. 11. 2026. — QA Sprinta 3: ✅ prihvaćeno uz T13 (dvije sitnice).** `npm run check` 149/149; `npm run e2e` sve prolazi (igra, žrtva, duh s oporukom, 133 kartice, gramatika). Igranje: titula „Town Oracle” s rečenicom, red emojija po godinama, „Copy my life”, ciljevi u zaglavlju (○) i u recapu (✓/✗), kartica „👻 You are a ghost” s Push fate i Gossip of the Year. Odstupanje „ime umjesto lica” kod otkrivanja je prihvatljivo. Kad završiš T13, prijeđi na Sprint 4 (vidi ispod).
 
 - **27. 11. 2026. — QA Sprinta 2: ✅ prihvaćeno, kreni na Sprint 3** (prvo sitnice T8b i T9b).
