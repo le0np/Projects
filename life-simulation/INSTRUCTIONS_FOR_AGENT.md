@@ -142,13 +142,56 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - **Z1 (recap):** Kad krivca uhvate, „Your schemes” i dalje kaže samo „covered your tracks — and it worked.” U „Important moments” se pojavi „Flat Tyres — An official letter: Lea reported you.” bez objašnjenja. Redak spletke treba reći i da su te otkrili („…and it worked, but Lea found out and reported you.”), a moment za krivca neka ima naslov poput „Caught: Flat Tyres”.
 - **Z2 (duh):** Uz `QA_GHOST=1` mrtva Sara na mapi i dalje hoda s Lukom i Jakobom u bar, normalnih boja. Mrtav lik ne bi smio nastaviti rutinu: neka ostane kao blijeda figura s „x” očima (kako piše u M11) ili neka nestane, a grob ostane.
 
+---
+
+## Sprint 4 — MVP za objavu: igra za grupu prijatelja (odobrio vlasnik 27. 11. 2026.)
+
+Podloga: [`docs/research/market-research-2026-11-27.md`](docs/research/market-research-2026-11-27.md) (§5 gameplay, §6 MVP). Niša: **„BitLife za tvoju grupu prijatelja”**. Prvo privatne sobe, a javni matchmaking ostaje drugi put ulaska. Radi redom, nakon T13.
+
+### [ ] T14. Privatna soba s linkom (M1)
+- U lobbyju gumb **„Create a room”** → soba s kratkim kodom (npr. `KX4P`) i linkom `/r/KX4P`. Gumb „Copy link”.
+- Tko otvori link, ulazi u **čekaonicu sobe**: popis ljudi, izbor karijere i imena. Domaćin vidi „Start” (od 1 čovjeka naviše); prazna mjesta do `SESSION_SIZE` popune botovi.
+- Ulaz u sobu nakon starta nije moguć (poruka „This life has already started”). Soba se briše kad svi odu.
+- Postojeći matchmaking („Find a life”) ostaje.
+- **Prihvaćeno kad:** e2e s 2 browsera (domaćin + prijatelj preko linka) odigra partiju zajedno s botovima.
+
+### [ ] T15. Ulaz kao gost (M2)
+- Na početnom ekranu **„Play as guest”**: samo ime, bez emaila i lozinke. Link sobe vodi ravno na unos imena.
+- Gost dobije privremeni račun (token u `localStorage`). Kasnije ga može pretvoriti u pravi račun (email + lozinka) i zadržati titule i povijest.
+- Ograniči spam: najviše N gostiju po IP-u na sat (jednostavno, u memoriji).
+- **Prihvaćeno kad:** od otvaranja linka do ulaska u čekaonicu ide ≤ 2 klika + upis imena; e2e to pokriva.
+
+### [ ] T16. Postavke domaćina (M3)
+- U čekaonici domaćin bira **rok za odluke**: Normal (sadašnje), Relaxed (×1,5), No timer (čeka se dok svi ljudi ne odluče; botovi i dalje odluče odmah) i **duljinu**: 5, 8 ili 10 min.
+- Postavke se vide svima u čekaonici i u logu sesije; replay ostaje identičan.
+- Uz „No timer” igrač koji ne odgovara 60 s dobije podsjetnik, a nakon 120 s primjenjuje se zadani izbor (da AFK ne blokira sobu).
+
+### [ ] T17. „Play again” s istom sobom (M5)
+- Na Life Recapu gumb **„Play again with this group”**: svi iz sobe se vraćaju u istu čekaonicu (ista soba, isti link), s istim imenima; karijeru mogu promijeniti.
+- Recap ostaje dostupan iz povijesti u lobbyju.
+
+### [ ] T18. Mjerenja bez osobnih podataka (M8)
+- Tablica u bazi i jednostavan pregled `GET /api/stats` (samo za admina preko tajnog tokena iz `.env`): broj partija, završene partije, prosječan broj ljudi po sobi, % „Play again”, % klikova na „Copy my life”, % „Create room” u odnosu na „Find a life”.
+- Bez IP-ova, emailova i imena u tim podacima.
+- **Prihvaćeno kad:** nakon e2e brojke u `/api/stats` odgovaraju onome što se igralo.
+
+### [ ] T19. Spremno za javno postavljanje (M7, bez stvarnog deploya)
+- **Ne postavljaj ništa javno i ne otvaraj račune kod providera** — to odlučuje i plaća vlasnik.
+- Pripremi: `Dockerfile` (ili jednostavan opis), `PORT`/`HOST` iz okoline, PGlite u trajnoj mapi, `npm run start:prod` bez dev ovisnosti, health check, HTTPS iza proxyja (`trustProxy`), sigurni CORS i Socket.IO za vlastitu domenu.
+- U `README.md` odjeljak **„Javno postavljanje”** s točnim koracima za jedan jeftin server (npr. VPS ili Fly.io/Render) i procjenom troška, da vlasnik može odlučiti.
+- **Prihvaćeno kad:** `docker build` + `docker run` lokalno podigne igru koja radi u browseru i preživi restart (podaci ostaju).
+
+**Cilj nakon objave** (za vlasnika, mjerimo s T18 na prvih 100 partija): ≥ 80 % partija do kraja, ≥ 40 % grupa igra još jednu, ≥ 25 % igrača klikne „Copy my life”, ≥ 3 čovjeka po sobi.
+
+Nakon Sprinta 4 (ako cilj „još jedna” ≥ 40 %): Discord Activity, način za streamere, paketi sadržaja, blagi način za portale.
+
 ## Pitanja za QA/PM
 
 _(developer piše ovdje)_
 
 ## Odgovori QA/PM
 
-- **27. 11. 2026. — QA Sprinta 3: ✅ prihvaćeno uz T13 (dvije sitnice).** `npm run check` 149/149; `npm run e2e` sve prolazi (igra, žrtva, duh s oporukom, 133 kartice, gramatika). Igranje: titula „Town Oracle” s rečenicom, red emojija po godinama, „Copy my life”, ciljevi u zaglavlju (○) i u recapu (✓/✗), kartica „👻 You are a ghost” s Push fate i Gossip of the Year. Odstupanje „ime umjesto lica” kod otkrivanja je prihvatljivo. Kad završiš T13, projekt je za QA gotov. Mogući Sprint 4 ovisi o vlasnikovoj odluci o `docs/research/market-research-2026-11-27.md`; ne počinji ga dok ga ne napišem ovdje.
+- **27. 11. 2026. — QA Sprinta 3: ✅ prihvaćeno uz T13 (dvije sitnice).** `npm run check` 149/149; `npm run e2e` sve prolazi (igra, žrtva, duh s oporukom, 133 kartice, gramatika). Igranje: titula „Town Oracle” s rečenicom, red emojija po godinama, „Copy my life”, ciljevi u zaglavlju (○) i u recapu (✓/✗), kartica „👻 You are a ghost” s Push fate i Gossip of the Year. Odstupanje „ime umjesto lica” kod otkrivanja je prihvatljivo. Kad završiš T13, prijeđi na Sprint 4 (vidi ispod).
 
 - **27. 11. 2026. — QA Sprinta 2: ✅ prihvaćeno, kreni na Sprint 3** (prvo sitnice T8b i T9b).
   - `npm run check` 138/138, 75 eventa, 0 upozorenja; `npm run e2e`: desktop + iPhone 13, 125 kartica bez skrolanja na oba ekrana, 0 gramatičkih grešaka.
@@ -223,3 +266,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 - **27. 11. 2026.** — QA T8b i T9b: ✅ prihvaćeno. `npm run check` 139/139; `npm run e2e` prolazi sve (igra, strana žrtve, kartica lika, 125 kartica, gramatika). Ručno uz `QA_FORCE_SCHEME_ON_HUMAN=1`: „You noticed: … Lea crouching by your car”, izbori suočiti se / prijaviti / osveta rade. Dvije sitnice: **T8c** (odrezan donji red kartice, suvišan izbor „Check the camera”).
 - **27. 11. 2026. (nakon pauze)** — QA T10 i T8c: ✅ prihvaćeno. `npm run check` 141/141; `npm run e2e` prolazi (uključujući 133 kartice bez skrolanja i karticu žrtve s tragom 🔎). Igranje (4×): Life Recap ima „Your goals” (✓ Get to know five people, ✗ Have someone owe you money), „Relationships”, „Secrets revealed” i Town Oracle 13/25; iskorištena spletka je prekrižena. T11 je u tijeku (titula još nije u recapu), T12 čeka.
 - **27. 11. 2026.** — QA Sprinta 3: ✅ prihvaćen, ostaje **T13** (recap kad te uhvate, mrtav lik hoda).
+- **27. 11. 2026.** — Vlasnik je odobrio Sprint 4 (MVP za objavu, prema istraživanju tržišta). Napisani T14–T19. Redoslijed: T13, pa T14 → T19.
