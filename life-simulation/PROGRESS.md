@@ -458,6 +458,13 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **M3, agresivni zadani izbori:** validator upozorava ako zadani izbor ima oznaku `risk`, `lie` ili `threaten` (test). Ispravljeno 17 uloga: 12 ih sada ima postojeći miran izbor kao zadani (npr. Charity Drive „Hand in every cent”, Chest Pain „Book a doctor's appointment”), a 5 je dobilo novi pasivan izbor („Wait in the dark for the lights”, „Keep your head down and wait”, „Say nothing until you have a lawyer”, „Smile and change the subject”, „Laugh and drop it”). Pasivno odbijanje ili ignoriranje (koje hladi odnos) ostaje dopušteno kao zadani izbor.
 - Smrtnost u batchu je 3,0 % (donja granica raspona 3–8 %), jer su zadani izbori sada sigurniji.
 
+### T7: trajni tragovi na mapi (developer)
+
+- Novi efekt `{ "type": "mark", "target", "mark", "seconds"? }` (shema, validator, `docs/EVENT_FORMAT.md`) i **8 vrsta tragova**: na liku zavoj i lisice; kod kuće auto s ispuhanim gumama („pfff”), natpis FOR SALE, nadgrobni kamen s cvijećem, srca na krovu (vjenčanje), razbijeni prozor s daskom; na poslu CLOSED.
+- Engine vodi tragove (`currentMarks()`, javno `mark`/`unmark`, snapshot `marks`); trag s `seconds` nestaje sam. Smrt automatski ostavi cvijeće kod kuće (i skine zavoj/lisice), zatvor lisice, bolnica zavoj.
+- Sadržaj: tragovi u 12 eventa (ispuhane gume, ozljede u sportu, pljačka, nesreća s biciklom, panična prodaja i naplata duga → FOR SALE, prodana kuća iz nasljedstva, požar stroja → CLOSED + zavoj, stablo na autu → razbijen prozor, vjenčanje u finalu → srca, požar u finalu → zavoj, poskliznuće na putu do posla).
+- Testovi: engine (trag kod kuće, nestaje nakon zadanog vremena, trajni ostaje; u 40 sesija ≥ 6 vrsta, cvijeće nakon smrti), validator (nepoznat trag ili uloga). Svih 8 vrsta provjereno vizualno (renderer zapakiran esbuildom i iscrtan u pregledniku).
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 1, T1–T4):

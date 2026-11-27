@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "financial_loan_due",
-  "version": 1,
+  "version": 2,
   "title": "The Loan Is Due",
   "category": "financial",
   "trigger": "followup_only",
@@ -276,6 +276,12 @@
           "to": "role:creditor",
           "setType": "enemy",
           "affinity": -30
+        },
+        {
+          "type": "mark",
+          "target": "role:debtor",
+          "mark": "for_sale",
+          "seconds": 120
         }
       ],
       "text": {

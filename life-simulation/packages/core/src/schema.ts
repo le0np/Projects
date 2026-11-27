@@ -9,6 +9,7 @@ import {
   EVENT_CATEGORIES,
   ID_PATTERN,
   IMPORTANCE,
+  MARK_KINDS,
   RELATION_TYPES,
   SEASONS,
   STATUSES,
@@ -109,6 +110,14 @@ export const EffectSchema = z.discriminatedUnion("type", [
     to: z.enum(LOCATION_KINDS).exclude(["here"]),
     /** Session seconds they stay before their routine resumes. Default 10. */
     staySeconds: z.number().min(0).max(120).optional(),
+  }),
+  /** T7: a lasting trace on the map (a bandage, a FOR SALE sign…); without `seconds` it stays until the end. */
+  z.strictObject({
+    type: z.literal("mark"),
+    target: RefStr,
+    mark: z.enum(MARK_KINDS),
+    /** Session seconds it stays. Omitted = for the rest of the session. */
+    seconds: z.number().min(5).max(900).optional(),
   }),
   z.strictObject({
     type: z.literal("status"),

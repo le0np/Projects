@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 3,
+  "version": 4,
   "id": "crash_panic_sale",
   "title": "Everything Must Go",
   "category": "financial",
@@ -149,6 +149,12 @@
           "target": "role:buyer",
           "key": "knows_secret",
           "about": "role:seller"
+        },
+        {
+          "type": "mark",
+          "target": "role:seller",
+          "mark": "for_sale",
+          "seconds": 120
         }
       ],
       "followUps": [
@@ -217,6 +223,12 @@
           "from": "role:seller",
           "to": "role:buyer",
           "trust": 10
+        },
+        {
+          "type": "mark",
+          "target": "role:seller",
+          "mark": "for_sale",
+          "seconds": 60
         }
       ],
       "text": {

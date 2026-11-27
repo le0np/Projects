@@ -200,3 +200,10 @@ describe("T6b M3: passive defaults", () => {
   });
 });
 
+describe("T7: mark effects", () => {
+  it("rejects unknown marks and refs", () => {
+    expectError(mutate("everyday_missed_bus", (ev) => ev.outcomes[0].effects = [{ type: "mark", target: "role:commuter", mark: "graffiti" }]), "Invalid option");
+    expectError(mutate("everyday_missed_bus", (ev) => ev.outcomes[0].effects = [{ type: "mark", target: "role:nobody", mark: "bandage" }]), "nobody");
+  });
+});
+

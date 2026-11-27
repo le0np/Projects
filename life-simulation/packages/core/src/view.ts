@@ -4,7 +4,18 @@
  * (BOT_SYSTEM §8): no other characters' private info, hidden conditions, future
  * events or real outcome effects.
  */
-import type { Attribute, ChoiceTag, EventCategory, Importance, RelationType, Season, Status } from "./constants";
+import type { Attribute, ChoiceTag, EventCategory, Importance, MarkKind, RelationType, Season, Status } from "./constants";
+
+/** T7: a lasting trace on the map: on a person (`placeId` null) or at a place (their home or workplace). */
+export interface Mark {
+  id: string;
+  kind: MarkKind;
+  characterId: string;
+  placeId: string | null;
+  since: number;
+  /** Session time it disappears; undefined = stays until the end. */
+  until?: number;
+}
 import type { TilePos } from "./map";
 import type { Perceived } from "./schema";
 

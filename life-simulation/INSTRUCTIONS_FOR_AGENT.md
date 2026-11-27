@@ -86,7 +86,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 ### [ ] T6c. Gramatika kod uloga s više ljudi (sitno)
 - „Maja and Ema **is** a few metres away” (The Robbery). Kad uloga ima 2+ člana, glagol mora biti u množini. Najjednostavnije: u predlošku teksta podrži oblik poput `{witness|is|are}` ili prepiši rečenice tako da ne ovise o broju („…, a few metres away.”). Provjeri sve evente s višečlanim ulogama (card-fit skripta već iscrtava sve kombinacije, može usput tražiti „and X is”).
 
-### [ ] T7. Trajni tragovi na mapi
+### [x] T7. Trajni tragovi na mapi
 - Posljedice ostaju vidljive: ispuhane gume na autu, zavoj na liku, natpis „FOR SALE” na kući, zatvoren dućan, cvijeće na grobu, lisice/rešetke kod policije. **Najmanje 6 vrsta.**
 - Efekt u formatu eventa (npr. `{ type: "mark", ... }`) + validator + render.
 
@@ -161,6 +161,7 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
   - **M2:** nova provjera `packages/web/e2e/card-fit.mjs` u `npm run e2e` iscrta karticu **svih 109 kombinacija event/uloga** (duga imena, najviše izbora) na 1280×800 i 390×664: bilo je 61 skrolanje, sada 0. Kartica na desktopu smije ispod mape, 340 px, zbijenija; „With” se ne prikazuje u kartici; skraćen javni tekst u 11 eventa (privatni nije diran).
   - **M3:** validator upozorava na zadani izbor s `risk`/`lie`/`threaten`; ispravljeno 17 uloga (Charity Drive sada „Hand in every cent”). Pasivno odbijanje ostaje dopušteno.
   - Smrtnost je pala na 3,0 % (sigurniji zadani izbori) — na donjoj granici.
+- **27. 11. 2026. — T7 gotov** (`c69794c`). Efekt `mark` (+ validator, dokumentacija) i 8 vrsta tragova: zavoj, lisice (na liku); ispuhane gume, FOR SALE, cvijeće na grobu, srca (vjenčanje), razbijeni prozor (kod kuće); CLOSED (na poslu). Smrt/zatvor/bolnica ostave trag automatski. Tragovi su u 12 eventa; oni s vremenom nestaju sami. Za QA: najlakše se vide ispuhane gume (smicalica „Let their tyres down”), FOR SALE nakon „Panic Sale” i zavoj nakon nesreće/ozljede. Batch t7: smrtnost 5,3 %, replay identičan.
 
 ## Dnevnik QA/PM
 

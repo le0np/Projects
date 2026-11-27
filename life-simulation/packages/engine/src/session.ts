@@ -35,6 +35,9 @@ import {
   type ParticipantInfo,
   type Reaction,
   type Mood,
+  type Mark,
+  type MarkKind,
+  MARK_PLACE,
   type VisibleChoice,
 } from "@lifesim/core";
 import type { ContentBundle } from "@lifesim/content";
@@ -59,6 +62,9 @@ export type PublicEntry =
   | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
   | { kind: "season"; t: number; year: number; season: string }
   | { kind: "upheaval"; t: number; id: string; title: string; text: string; active: boolean }
+  /** T7: a lasting trace appears on the map, or goes away. */
+  | { kind: "mark"; t: number; mark: Mark }
+  | { kind: "unmark"; t: number; id: string }
   /** T6: someone's mood changed (an emoji above their head). */
   | { kind: "mood"; t: number; characterId: string; mood: Mood }
   /** The tension curve moves on; `finale` also means everyone is about to gather (T3). */
@@ -129,7 +135,8 @@ type Timer =
   | { kind: "upheaval"; id: string }
   | { kind: "upheaval_end"; id: string }
   | { kind: "phase"; phase: StoryPhase }
-  | { kind: "release"; characterId: string };
+  | { kind: "release"; characterId: string }
+  | { kind: "unmark"; id: string };
 
 /** "Ana", "Ana and Ben", "Ana, Ben and Clara" (T4b N4). */
 export function listNames(names: readonly string[]): string {
@@ -199,6 +206,9 @@ export class Session {
   private mischiefSeq = 0;
   /** T3: the finale closes the session once everyone alive is free. */
   private finale: "none" | "waiting" | "running" | "done" = "none";
+  /** T7: lasting traces on the map. */
+  private readonly marks = new Map<string, Mark>();
+  private markSeq = 0;
   private readonly finaleEvents: EventDefinition[];
   private readonly timeline: Record<StoryPhase, number>;
   /** Session facts each event refers to (events tied to an upheaval get a boost while it lasts). */
@@ -308,6 +318,9 @@ export class Session {
           break;
         case "phase":
           this.onPhase(timer.phase);
+          break;
+        case "unmark":
+          this.removeMark(timer.id);
           break;
         case "release": {
           // T5b R2: the lingering after an event is over; now go wherever life takes you.
@@ -1339,6 +1352,34 @@ export class Session {
     };
   }
 
+  /** T7: the traces currently on the map. */
+  currentMarks(): Mark[] {
+    return [...this.marks.values()];
+  }
+
+  /** T7: put a trace on the map (one of a kind per person: a new one replaces the old). */
+  private addMark(kind: MarkKind, characterId: string, seconds?: number): void {
+    const c = this.char(characterId);
+    for (const m of this.marks.values()) if (m.kind === kind && m.characterId === characterId) this.removeMark(m.id);
+    const where = MARK_PLACE[kind];
+    const mark: Mark = {
+      id: `K${++this.markSeq}`,
+      kind,
+      characterId,
+      placeId: where === "home" ? c.home : where === "work" ? c.work : null,
+      since: this.now(),
+      ...(seconds !== undefined ? { until: this.now() + seconds * MS } : {}),
+    };
+    this.marks.set(mark.id, mark);
+    if (mark.until !== undefined) this.timers.push(mark.until, { kind: "unmark", id: mark.id });
+    this.onPublic({ kind: "mark", t: this.now(), mark });
+  }
+
+  private removeMark(id: string): void {
+    if (!this.marks.delete(id)) return;
+    this.onPublic({ kind: "unmark", t: this.now(), id });
+  }
+
   /** T6: everyone's current mood (for (re)connecting clients). */
   moods(): { characterId: string; mood: Mood }[] {
     return this.order.map((id) => ({ characterId: id, mood: this.char(id).mood ?? "content" }));
@@ -1696,6 +1737,9 @@ export class Session {
       case "move":
         for (const id of resolve(effect.target)) this.pendingMoves.set(id, { to: effect.to, stay: (effect.staySeconds ?? 10) * MS });
         break;
+      case "mark":
+        for (const id of resolve(effect.target)) this.addMark(effect.mark, id, effect.seconds);
+        break;
     }
   }
 
@@ -1718,6 +1762,12 @@ export class Session {
     c.status = status;
     c.cause = cause;
     if (status !== "active") c.endedAt = this.now();
+    // T7: how the town remembers you.
+    if (status === "dead") {
+      for (const m of [...this.marks.values()]) if (m.characterId === c.id && MARK_PLACE[m.kind] === "character") this.removeMark(m.id);
+      this.addMark("flowers", c.id);
+    } else if (status === "imprisoned") this.addMark("handcuffs", c.id);
+    else if (status === "hospitalized") this.addMark("bandage", c.id);
     changes.push({ kind: "status", characterId: c.id, status, cause });
   }
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "critical_car_accident",
-  "version": 3,
+  "version": 4,
   "title": "The Accident",
   "category": "critical",
   "trigger": "director",
@@ -162,6 +162,12 @@
           "target": "role:driver",
           "to": "home",
           "staySeconds": 8
+        },
+        {
+          "type": "mark",
+          "target": "role:cyclist",
+          "mark": "bandage",
+          "seconds": 120
         }
       ],
       "followUps": [
@@ -216,6 +222,12 @@
           "target": "role:cyclist",
           "to": "hospital",
           "staySeconds": 10
+        },
+        {
+          "type": "mark",
+          "target": "role:cyclist",
+          "mark": "bandage",
+          "seconds": 120
         }
       ],
       "text": {
@@ -263,6 +275,12 @@
           "target": "role:driver",
           "to": "police",
           "staySeconds": 6
+        },
+        {
+          "type": "mark",
+          "target": "role:cyclist",
+          "mark": "bandage",
+          "seconds": 120
         }
       ],
       "text": {
@@ -299,6 +317,12 @@
           "target": "role:cyclist",
           "to": "hospital",
           "staySeconds": 15
+        },
+        {
+          "type": "mark",
+          "target": "role:cyclist",
+          "mark": "bandage",
+          "seconds": 120
         }
       ],
       "text": {

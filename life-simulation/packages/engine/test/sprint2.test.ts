@@ -119,3 +119,54 @@ describe("T5b R2: people stay at the spot while the cards are revealed", () => {
     expect(checked).toBeGreaterThan(3);
   });
 });
+
+describe("T7: lasting traces on the map", () => {
+  it("a mark effect puts a trace at the person's home, and it goes away after its time", async () => {
+    const { buildContent, event } = await import("./helpers");
+    const bundle = buildContent([
+      event({
+        id: "sale",
+        cooldown: { maxPerSession: 1 },
+        roles: { a: { count: 1 } },
+        choices: { a: [{ id: "ok", label: "OK", tags: ["help"] }, { id: "no", label: "No", tags: ["refuse"], default: true }] },
+        outcomes: [{ id: "done", effects: [{ type: "mark", target: "role:a", mark: "for_sale", seconds: 20 }, { type: "mark", target: "role:a", mark: "bandage" }] }],
+      }),
+    ]);
+    const clock = new VirtualClock();
+    const session = new Session(bundle, resolveConfig({ seed: "marks", durationSeconds: 120 }), [{ career: "civilian", isBot: true }], clock);
+    const entries: { kind: string; t: number; mark?: { kind: string; placeId: string | null; until?: number } }[] = [];
+    session.onPublic = (e) => (e.kind === "mark" || e.kind === "unmark") && entries.push(e as never);
+    session.start();
+    const home = (session.log[0] as { characters: { home: string }[] }).characters[0]!.home;
+    for (let i = 0; i < 2000 && session.state === "active"; i++) {
+      clock.advanceTo(session.nextWakeAt() ?? clock.now() + 1000);
+      session.processTimers();
+    }
+    const sale = entries.find((e) => e.kind === "mark" && e.mark!.kind === "for_sale")!;
+    expect(sale.mark!.placeId).toBe(home);
+    expect(sale.mark!.until! - sale.t).toBe(20_000);
+    expect(entries.some((e) => e.kind === "unmark" && e.t === sale.mark!.until)).toBe(true);
+    const bandage = entries.find((e) => e.kind === "mark" && e.mark!.kind === "bandage")!;
+    expect(bandage.mark!.placeId).toBeNull();
+    expect(session.currentMarks().map((m) => m.kind)).toEqual(["bandage"]); // no end time: stays
+  });
+
+  it("death leaves flowers at home; at least 6 kinds of traces appear across sessions", () => {
+    const kinds = new Set<string>();
+    let deaths = 0;
+    for (let k = 0; k < 40; k++) {
+      runSession({
+        content,
+        config: { seed: `traces-${k}` },
+        participants: ["doctor", "teacher", "mechanic", "civilian", "journalist", "lawyer"].map((career, i) => ({ career, isBot: true, controller: new RandomController(new Rng(`tr${k}-${i}`), 0) })),
+        mischief: [{ t: 60_000, characterId: "c1", mischiefId: "flat_tyres", targetId: "c2" }],
+        onPublic: (e) => {
+          if (e.kind === "mark") kinds.add(e.mark.kind);
+          if (e.kind === "ended" && e.status === "dead") deaths++;
+        },
+      });
+    }
+    if (deaths > 0) expect(kinds.has("flowers")).toBe(true);
+    expect(kinds.size).toBeGreaterThanOrEqual(6);
+  });
+});
