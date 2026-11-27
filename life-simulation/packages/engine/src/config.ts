@@ -137,7 +137,7 @@ export const DEFAULT_CONFIG: Omit<SessionConfig, "seed"> = {
   followUpMaxWaitSeconds: 90,
   baseAttributes: { health: 75, mental: 70, money: 50, reputation: 50, career: 50 },
   attributeVariation: 8,
-  startingRelationships: { colleaguePairRatio: 0.25, familyChance: 0.3, partnerChance: 0.25 },
+  startingRelationships: { colleaguePairRatio: 0.25, familyChance: 0.3, partnerChance: 0.4 },
   director: { relationBoost: 3, acquaintanceBoost: 1.3, relatedPullTiles: 10, soloFactor: 0.5 },
   story: { introShare: 0.15, climaxShare: 0.6, climaxUpheaval: [0.62, 0.7], respiteSeconds: 30, finaleSeconds: 75 },
   chaos: { upheavals: [2, 3], mischiefCharges: 2, followUpBoost: 1.25 },

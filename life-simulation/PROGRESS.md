@@ -465,6 +465,20 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - Sadržaj: tragovi u 12 eventa (ispuhane gume, ozljede u sportu, pljačka, nesreća s biciklom, panična prodaja i naplata duga → FOR SALE, prodana kuća iz nasljedstva, požar stroja → CLOSED + zavoj, stablo na autu → razbijen prozor, vjenčanje u finalu → srca, požar u finalu → zavoj, poskliznuće na putu do posla).
 - Testovi: engine (trag kod kuće, nestaje nakon zadanog vremena, trajni ostaje; u 40 sesija ≥ 6 vrsta, cvijeće nakon smrti), validator (nepoznat trag ili uloga). Svih 8 vrsta provjereno vizualno (renderer zapakiran esbuildom i iscrtan u pregledniku).
 
+### T7b: više veza, dugova i partnera (developer)
+
+- **Mjerenje:** batch izvještaj ima „Real ties before the finale” (udio likova s partnerom, prijateljem, obitelji, suparnikom, neprijateljem ili dugom prije finala) i „Relationship events” (udio sesija s First Date, Jealousy, Crisis Talk, Loan Due).
+- **Prije:** stvarnih veza je već bilo 87 % (zbog nižih pragova iz T2), ali Jealousy se pojavio u 0 %, a Crisis Talk u 1 % sesija: trebaju par i treću osobu slobodne u istom trenutku.
+- **Što je napravljeno:**
+  - priče kao nastavci: First Date (iskra) → Jealousy → Crisis Talk; Crisis Talk i nakon zaboravljene godišnjice i nakon „krčkanja” sumnje (Secret Message);
+  - nakon ljubomore partner dobije sumnju (`suspects_partner`), pa i „vjerni” ishod može dovesti do krize (40 %);
+  - Crisis Talk je moguć uz naklonost do 30 ili povjerenje do 45 (bilo 15 / 30);
+  - **rezervacija za nastavke:** kad je nastavak na redu, direktor njegove sudionike ne uzima u druge evente dok se ostali ne oslobode (prije je većina nastavaka propala jer par nikad nije bio slobodan istovremeno);
+  - u fazama upoznavanja i rasta eventi koji stvaraju veze (partner, prijatelj, dug, usluga, spašen život) imaju dvostruku težinu;
+  - par na početku u 40 % sesija (bilo 25 %).
+- **Rezultat (200 sesija, `docs/reports/t7b.report.md`; isto i na drugom seedu):** stvarne veze 88 %, Jealousy 19 %, Crisis Talk 12,5 %, First Date 66 %, Loan Due 23 % sesija; smrtnost 4,1 %.
+- Test: `sim/test/sim.test.ts` (100 sesija, sva tri kriterija).
+
 ## Zadnja automatizirana provjera
 
 Provedeno 27. studenog 2026. (nakon Sprinta 1, T1–T4):

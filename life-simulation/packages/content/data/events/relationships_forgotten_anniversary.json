@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "id": "relationships_forgotten_anniversary",
-  "version": 2,
+  "version": 4,
   "title": "The Anniversary",
   "category": "relationships",
   "trigger": "director",
   "importance": "simple",
   "weight": 4,
   "cooldown": {
-    "maxPerSession": 1,
+    "maxPerSession": 2,
     "maxPerCharacter": 1
   },
   "location": {
@@ -113,7 +113,21 @@
       "text": {
         "forgetter": "The price tag from the petrol station is still on the flowers.",
         "waiting": "Petrol station flowers. They forgot — and lied about it."
-      }
+      },
+      "followUps": [
+        {
+          "event": "relationships_crisis_talk",
+          "roles": {
+            "a": "role:waiting",
+            "b": "role:forgetter"
+          },
+          "delaySeconds": [
+            15,
+            50
+          ],
+          "chance": 0.8
+        }
+      ]
     },
     {
       "id": "saved",
@@ -174,7 +188,21 @@
       "text": {
         "forgetter": "Your partner goes to bed early without saying why.",
         "waiting": "You eat at the restaurant alone."
-      }
+      },
+      "followUps": [
+        {
+          "event": "relationships_crisis_talk",
+          "roles": {
+            "a": "role:waiting",
+            "b": "role:forgetter"
+          },
+          "delaySeconds": [
+            15,
+            50
+          ],
+          "chance": 0.8
+        }
+      ]
     }
   ]
 }

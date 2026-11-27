@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "relationships_jealousy",
-  "version": 2,
+  "version": 5,
   "title": "Too Friendly",
   "category": "relationships",
   "trigger": "director",
@@ -224,13 +224,33 @@
           "from": "role:flirt_target",
           "to": "role:partner",
           "affinity": -10
+        },
+        {
+          "type": "fact",
+          "target": "role:partner",
+          "key": "suspects_partner",
+          "about": "role:flirt_target"
         }
       ],
       "text": {
         "partner": "You tell {admirer} to back off. Loudly.",
         "flirt_target": "{partner} makes a scene. You are mortified.",
         "admirer": "{partner} confronts you in front of everyone."
-      }
+      },
+      "followUps": [
+        {
+          "event": "relationships_crisis_talk",
+          "roles": {
+            "a": "role:partner",
+            "b": "role:flirt_target"
+          },
+          "delaySeconds": [
+            8,
+            30
+          ],
+          "chance": 0.75
+        }
+      ]
     },
     {
       "id": "loyal",
@@ -245,13 +265,33 @@
           "to": "role:flirt_target",
           "trust": 10,
           "mutual": true
+        },
+        {
+          "type": "fact",
+          "target": "role:partner",
+          "key": "suspects_partner",
+          "about": "role:flirt_target"
         }
       ],
       "text": {
         "partner": "{flirt_target} comes back and takes your hand.",
         "flirt_target": "You go back to {partner}.",
         "admirer": "{flirt_target} goes back to {partner}."
-      }
+      },
+      "followUps": [
+        {
+          "event": "relationships_crisis_talk",
+          "roles": {
+            "a": "role:partner",
+            "b": "role:flirt_target"
+          },
+          "delaySeconds": [
+            8,
+            30
+          ],
+          "chance": 0.4
+        }
+      ]
     },
     {
       "id": "awkward",
@@ -262,13 +302,33 @@
           "delta": {
             "mental": -4
           }
+        },
+        {
+          "type": "fact",
+          "target": "role:partner",
+          "key": "suspects_partner",
+          "about": "role:flirt_target"
         }
       ],
       "text": {
         "partner": "An awkward evening.",
         "flirt_target": "An awkward evening.",
         "admirer": "Nothing happens."
-      }
+      },
+      "followUps": [
+        {
+          "event": "relationships_crisis_talk",
+          "roles": {
+            "a": "role:partner",
+            "b": "role:flirt_target"
+          },
+          "delaySeconds": [
+            8,
+            30
+          ],
+          "chance": 0.75
+        }
+      ]
     }
   ]
 }

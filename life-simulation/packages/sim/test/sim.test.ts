@@ -92,3 +92,12 @@ describe("T6b M1: the town does not look depressed", () => {
     expect(top).toBe("content");
   });
 });
+
+describe("T7b: relationships to work with", () => {
+  it("most characters have a real tie before the finale; jealousy and crisis talks happen in ≥ 10 % of sessions", () => {
+    const stats = aggregate(runBatch({ content, seed: "t7b-test", sessions: 100, players: [4, 8] }), content);
+    expect(stats.tiedShare).toBeGreaterThanOrEqual(0.5);
+    expect(stats.sessionsWith.relationships_jealousy ?? 0).toBeGreaterThanOrEqual(0.1);
+    expect(stats.sessionsWith.relationships_crisis_talk ?? 0).toBeGreaterThanOrEqual(0.1);
+  }, 60_000);
+});

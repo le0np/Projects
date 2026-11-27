@@ -40,6 +40,10 @@ export interface BatchStats {
   knownShare: number;
   /** T2: share of event instances with at least two characters deciding. */
   multiDeciderShare: number;
+  /** T7b: share of characters with at least one real tie (partner, friend, family, rival, enemy, a debt) before the finale. */
+  tiedShare: number;
+  /** T7b: share of sessions in which these events happen. */
+  sessionsWith: Counter;
   /** T6b: share of living time characters spend in each mood (what the town looks like). */
   moodShare: Counter;
   /** T2: solo events (nobody else decides) per character, and how often one repeats for the same character. */
@@ -76,6 +80,8 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
     knownShare: 0,
     soloPerCharacter: 0,
     moodShare: {},
+    tiedShare: 0,
+    sessionsWith: {},
     soloRepeats: {},
     followUps: { scheduled: 0, activated: 0, dropped: {} },
     decisions: { submitted: 0, defaulted: 0, rejected: 0 },
@@ -98,6 +104,8 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
   const aware = (eventId: string, role: string) => content.events.get(eventId)?.roles[role]?.aware !== false;
 
   let moodTime = 0;
+  let tied = 0;
+  const REAL = new Set(["partner", "friend", "family", "rival", "enemy"]);
   for (const { result, bots, moods } of runs) {
     // Mood timelines: each character is "content" until their first change, up to the end of their life.
     const endOf = new Map(result.recaps.map((r) => [r.characterId, r.lifeDurationMs]));
@@ -113,6 +121,30 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
       current.set(m.characterId, { mood: m.mood, since: m.t });
     }
     for (const id of endOf.keys()) close(id, result.durationMs);
+
+    // T7b: real ties before the finale (relationship types from the log, debts from facts).
+    const ties = new Map<string, Set<string>>();
+    const tie = (a: string, b: string, on: boolean, kind: string) => {
+      for (const [x, y] of [[a, b], [b, a]] as const) {
+        const set = ties.get(x) ?? new Set<string>();
+        if (on) set.add(`${kind}:${y}`);
+        else set.delete(`${kind}:${y}`);
+        ties.set(x, set);
+      }
+    };
+    for (const e of result.log) {
+      if (e.type === "event_started" && e.eventId.startsWith("finale_")) break;
+      if (e.type === "session_started") for (const r of e.relations) tie(r.a, r.b, REAL.has(r.type), "rel");
+      if (e.type === "event_resolved") {
+        for (const c of e.changes) {
+          if (c.kind === "relation") tie(c.from, c.to, REAL.has(c.type), "rel");
+          if (c.kind === "fact" && c.key === "owes_money" && c.about) tie(c.target, c.about, !c.removed, "debt");
+        }
+      }
+    }
+    for (const id of endOf.keys()) if ((ties.get(id)?.size ?? 0) > 0) tied++;
+    const seenEvents = new Set(result.log.flatMap((e) => (e.type === "event_started" ? [e.eventId] : [])));
+    for (const id of seenEvents) inc(s.sessionsWith, id);
     const archetypeOf = new Map(bots.map((b) => [b.characterId, b.controller.profile.archetype]));
     inc(s.endReasons, result.endReason ?? "unknown");
     const dur = result.durationMs / 1000;
@@ -231,6 +263,8 @@ export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle
   s.multiDeciderShare = multiInstances / Math.max(1, instances);
   s.knownShare = knownEvents / Math.max(1, sharedEvents);
   s.soloPerCharacter = soloEvents / Math.max(1, s.characters);
+  s.tiedShare = tied / Math.max(1, s.characters);
+  for (const k of Object.keys(s.sessionsWith)) s.sessionsWith[k] = (s.sessionsWith[k] ?? 0) / n;
   for (const k of Object.keys(s.moodShare)) s.moodShare[k] = (s.moodShare[k] ?? 0) / Math.max(1, moodTime);
   for (const c of Object.values(s.career)) c.lifeScore /= c.n;
   for (const a of Object.values(s.archetype)) a.lifeScore /= Math.max(1, a.n);
@@ -260,6 +294,8 @@ export function formatReport(s: BatchStats, title = "Simulation report"): string
     `| Death rate | ${pct(s.deathRate)} of characters, ${pct(s.sessionsWithDeath / Math.max(1, s.sessions))} of sessions |`,
     `| Event repetition | ${pct(s.repetitionRate)} of a character's events repeat a template |`,
     `| Shared events | ${pct(s.sharedShare)} of a character's events have someone else deciding too; ${pct(s.multiDeciderShare)} of events have ≥ 2 deciders; ${pct(s.knownShare)} of shared events are with someone they have a relationship with |`,
+    `| Real ties before the finale | ${pct(s.tiedShare)} of characters have a partner, friend, family, rival, enemy or debt |`,
+    `| Relationship events | ${["relationships_first_date", "relationships_jealousy", "relationships_crisis_talk", "financial_loan_due"].map((id) => `${id.replace(/^[a-z]+_/, "")} in ${pct(s.sessionsWith[id] ?? 0)} of sessions`).join(", ")} |`,
     `| Moods (share of time) | ${top(s.moodShare, 10).map(([k, v]) => `${k} ${pct(v)}`).join(", ")} |`,
     `| Solo events | ${s.soloPerCharacter.toFixed(1)} per character; ${Object.values(s.soloRepeats).reduce((a, b) => a + b, 0)} times a character got the same solo event again${Object.keys(s.soloRepeats).length ? ` (${top(s.soloRepeats).map(([k, v]) => `${k} ${v}`).join(", ")})` : ""} |`,
     `| Follow-ups | ${s.followUps.activated}/${s.followUps.scheduled} activated; dropped: ${top(s.followUps.dropped).map(([k, v]) => `${k} ${v}`).join(", ") || "none"} |`,

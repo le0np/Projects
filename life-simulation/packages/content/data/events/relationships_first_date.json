@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "relationships_first_date",
-  "version": 2,
+  "version": 3,
   "title": "A First Date",
   "category": "relationships",
   "trigger": "director",
@@ -161,7 +161,21 @@
       "text": {
         "a": "You talk until the restaurant closes. You are together now.",
         "b": "You talk until the restaurant closes. You are together now."
-      }
+      },
+      "followUps": [
+        {
+          "event": "relationships_jealousy",
+          "roles": {
+            "partner": "role:a",
+            "flirt_target": "role:b"
+          },
+          "delaySeconds": [
+            15,
+            50
+          ],
+          "chance": 0.45
+        }
+      ]
     },
     {
       "id": "pleasant",
@@ -191,7 +205,21 @@
       "text": {
         "a": "A lovely evening. Something about it felt a bit like a performance.",
         "b": "A lovely evening. You hope they never find out how much you pretended."
-      }
+      },
+      "followUps": [
+        {
+          "event": "relationships_jealousy",
+          "roles": {
+            "partner": "role:a",
+            "flirt_target": "role:b"
+          },
+          "delaySeconds": [
+            15,
+            50
+          ],
+          "chance": 0.45
+        }
+      ]
     },
     {
       "id": "mixed",

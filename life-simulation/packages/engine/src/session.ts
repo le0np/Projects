@@ -715,7 +715,9 @@ export class Session {
     if (!this.accepting) return;
     this.activateFollowUps();
 
-    const free = this.rngSelect.shuffle(this.order.filter((id) => this.isFree(id)));
+    // T7b: people a due follow-up is waiting for are kept free for it (its story continues as soon as the others are free too).
+    const reserved = this.reservedForFollowUps();
+    const free = this.rngSelect.shuffle(this.order.filter((id) => this.isFree(id) && !reserved.has(id)));
     for (const anchor of free) {
       if (!this.isFree(anchor)) continue; // grabbed by an earlier event in this loop
       const candidates: { ev: EventDefinition; bindings: Record<string, string[]>; weight: number }[] = [];
@@ -752,8 +754,9 @@ export class Session {
       const c = this.char(id);
       return this.isFree(id) || (human && c.isBot && c.status === "active" && c.busyWith === null);
     };
+    const reserved = this.reservedForFollowUps();
     return this.order
-      .filter((id) => id !== anchor && available(id))
+      .filter((id) => id !== anchor && available(id) && !reserved.has(id))
       .map((id) => ({ id, d: manhattan(this.posOf(id), at) + this.rngSelect.range(0, 6) - (this.isRelated(anchor, id) ? pull : 0) }))
       .sort((a, b) => a.d - b.d)
       .map((x) => x.id);
@@ -1052,10 +1055,14 @@ export class Session {
    * together, nothing critical; climax: drama; respite: nothing critical or important.
    */
   private phaseFactor(ev: EventDefinition): number {
+    // T7b: early on, events that create ties (partners, friends, debts, favours) come first, so later events have something to work with.
+    const ties = this.createsTies(ev) ? 2 : 1;
     switch (this.phase()) {
       case "intro":
         if (ev.category === "critical" || ev.importance === "important") return 0;
-        return ev.category === "everyday" || ev.category === "social" ? 1.5 : 1;
+        return (ev.category === "everyday" || ev.category === "social" ? 1.5 : 1) * ties;
+      case "growth":
+        return ties;
       case "climax":
         return ev.category === "critical" ? 2 : ev.importance === "important" ? 1.5 : 1;
       case "respite":
@@ -1063,6 +1070,33 @@ export class Session {
       default:
         return 1;
     }
+  }
+
+  /** Characters a due (not yet expired) follow-up is waiting for. */
+  private reservedForFollowUps(): Set<string> {
+    const out = new Set<string>();
+    for (const p of this.pending) {
+      if (p.dueAt > this.now() || this.now() - p.dueAt > this.config.followUpMaxWaitSeconds * MS) continue;
+      const ev = this.content.events.get(p.eventId) as EventDefinition;
+      for (const [role, ids] of Object.entries(p.preset)) if (!this.isUnaware(ev, role)) for (const id of ids) out.add(id);
+    }
+    return out;
+  }
+
+  private readonly tieEvents = new Map<string, boolean>();
+
+  /** Whether some outcome can make a partner or friend, or leave a debt, a favour or a life saved. */
+  private createsTies(ev: EventDefinition): boolean {
+    let known = this.tieEvents.get(ev.id);
+    if (known === undefined) {
+      known = ev.outcomes.some((o) =>
+        (o.effects ?? []).some(
+          (e) => (e.type === "relation" && (e.setType === "partner" || e.setType === "friend")) || (e.type === "fact" && ["owes_money", "owes_favor", "saved_by"].includes(e.key)),
+        ),
+      );
+      this.tieEvents.set(ev.id, known);
+    }
+    return known;
   }
 
   private activateFollowUps(): void {

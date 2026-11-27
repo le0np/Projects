@@ -90,7 +90,7 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - Posljedice ostaju vidljive: ispuhane gume na autu, zavoj na liku, natpis „FOR SALE” na kući, zatvoren dućan, cvijeće na grobu, lisice/rešetke kod policije. **Najmanje 6 vrsta.**
 - Efekt u formatu eventa (npr. `{ type: "mark", ... }`) + validator + render.
 
-### [ ] T7b. Više veza, dugova i partnera (prijedlog developera, prihvaćen)
+### [x] T7b. Više veza, dugova i partnera (prijedlog developera, prihvaćen)
 - Eventi koji stvaraju partnere, dugove i usluge ranije u sesiji (faza upoznavanja), da Jealousy, Crisis Talk, Loan Due i finale imaju na čemu raditi.
 - **Prihvaćeno kad:** batch pokaže da ≥ 50 % likova do finala ima barem jedan „pravi” odnos (partner, prijatelj, suparnik, dug), a Jealousy i Crisis Talk se pojave u ≥ 10 % sesija.
 
