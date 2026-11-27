@@ -83,6 +83,9 @@ Vlasnik je javio: (1) monotono, (2) premalo vremena za odgovor, (3) smicalice pr
 - **M2:** Javni tekst eventa je odrezan usred rečenice („…and asks Marko to”), jer je kartica najviše 38 % mape, a privatni tekst i izbori su uvijek cijeli. Na desktopu ima mjesta: neka kartica smije biti viša (do visine mape), ili smanji razmake/oznake izbora. Javni tekst mora biti cijeli bez skrolanja barem na 1280×800. Dodaj u e2e.
 - **M3 (sadržaj):** „The Charity Drive” kao zadani izbor (ako ne odgovoriš) ima „Push hard, mention who else gave”, agresivan izbor. Zadani izbor treba biti pasivan i neutralan. Provjeri sve evente (validator može upozoriti ako default ima tag `risk`, `lie` ili cilja drugog lika negativno).
 
+### [ ] T6c. Gramatika kod uloga s više ljudi (sitno)
+- „Maja and Ema **is** a few metres away” (The Robbery). Kad uloga ima 2+ člana, glagol mora biti u množini. Najjednostavnije: u predlošku teksta podrži oblik poput `{witness|is|are}` ili prepiši rečenice tako da ne ovise o broju („…, a few metres away.”). Provjeri sve evente s višečlanim ulogama (card-fit skripta već iscrtava sve kombinacije, može usput tražiti „and X is”).
+
 ### [ ] T7. Trajni tragovi na mapi
 - Posljedice ostaju vidljive: ispuhane gume na autu, zavoj na liku, natpis „FOR SALE” na kući, zatvoren dućan, cvijeće na grobu, lisice/rešetke kod policije. **Najmanje 6 vrsta.**
 - Efekt u formatu eventa (npr. `{ type: "mark", ... }`) + validator + render.
@@ -167,3 +170,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 - **27. 11. 2026.** — QA T5: ✅ prihvaćeno uz sitnice **T5b**. `npm run check` 119/119. Igranje uz 2×: najava radi (pulsira MegaMart, „everyone is on the way”), kartica se otvara kraj mjesta, sve odluke se otkrivaju odjednom, rokovi 16–21 s, 5 od 6 eventa s drugim ljudima. Problemi: reakcije se ne vide jer likovi odlaze prerano (R2), dvostruki navodnici (R1), prazno zaglavlje i krivi odnosi na početku (R3).
 - **27. 11. 2026.** — QA T6: ✅ prihvaćeno uz **T6b**. `npm run check` 122/122. Emoji iznad glava, osobine u „People” i legenda linija rade; 7 eventa u 110 s uz 3×. Problemi: skoro svi su tužni (M1), javni tekst odrezan usred rečenice (M2), agresivan zadani izbor u Charity Drive (M3).
 - **27. 11. 2026.** — QA T5b: ✅ sve tri potvrđene (2×, `npm run check` 124/124). Zaglavlje i odnosi puni od 0:06 (Greta „Colleague” od početka); Greta i Ruby ostaju u baru za vrijeme otkrivanja i reakcije se vide; nema dvostrukih navodnika. Sljedeće: T6b, pa T7.
+- **27. 11. 2026.** — QA T6b: ✅ prihvaćeno. `npm run check` 126/126, 0 upozorenja validatora. Igranje uz 3×: 7 eventa, kartica uvijek cijela bez skrolanja, likovi uglavnom 🙂, zadani izbor u The Robbery je „Let go of the bag”. Smrtnost 3,0 % je u redu (donja granica), ne treba dirati. Nova sitnica **T6c** (gramatika „Maja and Ema is”). Sljedeće: T7.
