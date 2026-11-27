@@ -12,7 +12,11 @@ export interface UserRow {
   id: string;
   username: string;
   email: string;
+  isGuest: boolean;
 }
+
+/** T15: guests get a placeholder email on a reserved domain that can never receive mail. */
+const GUEST_EMAIL_DOMAIN = "guest.invalid";
 
 export interface ParticipantRecord {
   characterKey: string;
@@ -37,17 +41,41 @@ export class Repo {
       await tx.query("INSERT INTO users (id, username, email, password_hash) VALUES ($1, $2, $3, $4)", [id, username, email, hash]);
       await tx.query("INSERT INTO player_profiles (user_id) VALUES ($1)", [id]);
     });
-    return { user: { id, username, email }, token: await this.issueToken(id) };
+    return { user: { id, username, email, isGuest: false }, token: await this.issueToken(id) };
+  }
+
+  /** T15: a temporary account with only a generated username; the token is all the guest has. */
+  async createGuest(): Promise<{ user: UserRow; token: string }> {
+    const id = randomUUID();
+    const username = `guest_${id.slice(0, 8)}`;
+    const email = `${id}@${GUEST_EMAIL_DOMAIN}`;
+    const hash = await hashPassword(newToken());
+    await this.db.transaction(async (tx) => {
+      await tx.query("INSERT INTO users (id, username, email, password_hash, is_guest) VALUES ($1, $2, $3, $4, true)", [id, username, email, hash]);
+      await tx.query("INSERT INTO player_profiles (user_id) VALUES ($1)", [id]);
+    });
+    return { user: { id, username, email: "", isGuest: true }, token: await this.issueToken(id) };
+  }
+
+  /** T15: a guest saves the account; the same user id keeps its titles and history. */
+  async upgradeGuest(userId: string, username: string, email: string, password: string): Promise<{ user: UserRow } | { error: "taken" | "not_guest" }> {
+    const me = await this.db.query<{ is_guest: boolean }>("SELECT is_guest FROM users WHERE id = $1", [userId]);
+    if (!me.rows[0]?.is_guest) return { error: "not_guest" };
+    const existing = await this.db.query("SELECT 1 FROM users WHERE id <> $3 AND (lower(username) = lower($1) OR lower(email) = lower($2))", [username, email, userId]);
+    if (existing.rows.length > 0) return { error: "taken" };
+    const hash = await hashPassword(password);
+    await this.db.query("UPDATE users SET username = $2, email = $3, password_hash = $4, is_guest = false WHERE id = $1", [userId, username, email, hash]);
+    return { user: { id: userId, username, email, isGuest: false } };
   }
 
   async login(login: string, password: string): Promise<{ user: UserRow; token: string } | null> {
-    const { rows } = await this.db.query<UserRow & { password_hash: string }>(
-      "SELECT id, username, email, password_hash FROM users WHERE lower(username) = lower($1) OR lower(email) = lower($1)",
+    const { rows } = await this.db.query<{ id: string; username: string; email: string; password_hash: string }>(
+      "SELECT id, username, email, password_hash FROM users WHERE is_guest = false AND (lower(username) = lower($1) OR lower(email) = lower($1))",
       [login],
     );
     const row = rows[0];
     if (!row || !(await verifyPassword(password, row.password_hash))) return null;
-    return { user: { id: row.id, username: row.username, email: row.email }, token: await this.issueToken(row.id) };
+    return { user: { id: row.id, username: row.username, email: row.email, isGuest: false }, token: await this.issueToken(row.id) };
   }
 
   private async issueToken(userId: string): Promise<string> {
@@ -60,11 +88,12 @@ export class Repo {
   }
 
   async userByToken(token: string): Promise<UserRow | null> {
-    const { rows } = await this.db.query<UserRow>(
-      "SELECT u.id, u.username, u.email FROM auth_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = $1 AND t.expires_at > now()",
+    const { rows } = await this.db.query<{ id: string; username: string; email: string; is_guest: boolean }>(
+      "SELECT u.id, u.username, u.email, u.is_guest FROM auth_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = $1 AND t.expires_at > now()",
       [hashToken(token)],
     );
-    return rows[0] ?? null;
+    const r = rows[0];
+    return r ? { id: r.id, username: r.username, email: r.is_guest ? "" : r.email, isGuest: r.is_guest } : null;
   }
 
   async revokeToken(token: string): Promise<void> {

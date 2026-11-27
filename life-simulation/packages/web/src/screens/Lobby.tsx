@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { LifeRecap } from "@lifesim/core";
-import { api, type Career, type Profile } from "../api";
+import { api, ApiError, type AuthResult, type Career, type Profile } from "../api";
 import { AVATARS, GOOD_OUTCOMES, OUTCOME_LABELS, careerName, randomName } from "../format";
 import type { Lobby, MatchStatus } from "../useGame";
 import { RecapView } from "./Recap";
@@ -93,7 +93,13 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
         <span className="online" title="Players online">
           <span className={connected ? "dot on" : "dot"} /> {lobby.online} online · {lobby.activeSessions} lives in progress
         </span>
-        <button className="ghost" onClick={onLogout}>
+        <button
+          className="ghost"
+          onClick={() => {
+            // T15: a guest has no password, so logging out loses the account.
+            if (!profile?.isGuest || window.confirm("You are a guest: if you log out, this account and its titles are gone. Log out anyway?")) onLogout();
+          }}
+        >
           Log out
         </button>
       </header>
@@ -112,7 +118,7 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
           </div>
         </div>
         <div>
-          <h2>{profile?.username ?? "…"}</h2>
+          <h2>{profile ? (profile.isGuest ? `${name} (guest)` : profile.username) : "…"}</h2>
           <div className="stats">
             <Stat label="Lives lived" value={profile?.stats.gamesPlayed ?? 0} />
             <Stat label="Avg. life score" value={profile?.stats.averageLifeScore ?? "–"} />
@@ -121,6 +127,8 @@ export function LobbyScreen({ token, onLogout, connected, lobby, match, searchin
           </div>
         </div>
       </section>
+
+      {profile?.isGuest && <SaveAccount token={token} onSaved={(p) => setProfile((old) => (old ? { ...old, ...p, isGuest: false } : old))} />}
 
       <section className="card">
         <h2>Choose your career</h2>
@@ -286,4 +294,59 @@ export function roomErrorText(error: string | undefined): string {
         : error === "already_in_session"
           ? "You are already in a session."
           : "Could not join the room.";
+}
+
+/** T15: a guest keeps the same account (titles, history) by adding a username, an email and a password. */
+function SaveAccount({ token, onSaved }: { token: string; onSaved: (p: { username: string; email: string }) => void }) {
+  const [open, setOpen] = useState(false);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      const r = await api<Pick<AuthResult, "user">>("/api/me/upgrade", { token, body: { username, email, password } });
+      onSaved(r.user);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) setError("That username or email is already taken.");
+      else if (err instanceof ApiError && err.status === 400) setError("Username: 3–20 letters, digits or _. Password: at least 8 characters.");
+      else setError("Something went wrong, try again.");
+    }
+  }
+  return (
+    <section className="card guest-save">
+      <p>
+        You are playing as a guest. <span className="muted">Save your account to keep your titles and lives on any device.</span>{" "}
+        {!open && (
+          <button className="ghost" onClick={() => setOpen(true)}>
+            Save my account
+          </button>
+        )}
+      </p>
+      {open && (
+        <form className="form" onSubmit={submit}>
+          <label>
+            Username
+            <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required />
+          </label>
+          <label>
+            Email
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+          </label>
+          <label>
+            Password
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={8} required />
+          </label>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <button className="primary">Save my account</button>
+        </form>
+      )}
+    </section>
+  );
 }

@@ -43,7 +43,7 @@ export function App() {
     if (window.location.pathname !== path && !pendingCode) window.history.replaceState(null, "", path);
   }, [room, game.game, pendingCode]);
 
-  if (!token) return <AuthScreen onAuthenticated={login} />;
+  if (!token) return <AuthScreen onAuthenticated={login} roomCode={pendingCode} />;
   if (game.game?.recap) return <RecapScreen recap={game.game.recap} sessionId={game.game.sessionId} token={token} onBack={game.leaveGame} />;
   if (game.game) return <GameScreen game={game.game} decide={game.decide} playMischief={game.playMischief} previewScheme={game.previewScheme} boostScheme={game.boostScheme} guess={game.guess} ghostAction={game.ghostAction} connected={game.connected} />;
   if (game.room) return <RoomScreen room={game.room} myUserId={game.userId} update={game.updateRoom} leave={game.leaveRoom} start={game.startRoom} />;

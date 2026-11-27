@@ -159,7 +159,7 @@ Podloga: [`docs/research/market-research-2026-11-27.md`](docs/research/market-re
 - Postojeći matchmaking („Find a life”) ostaje.
 - **Prihvaćeno kad:** e2e s 2 browsera (domaćin + prijatelj preko linka) odigra partiju zajedno s botovima.
 
-### [ ] T15. Ulaz kao gost (M2)
+### [x] T15. Ulaz kao gost (M2)
 - Na početnom ekranu **„Play as guest”**: samo ime, bez emaila i lozinke. Link sobe vodi ravno na unos imena.
 - Gost dobije privremeni račun (token u `localStorage`). Kasnije ga može pretvoriti u pravi račun (email + lozinka) i zadržati titule i povijest.
 - Ograniči spam: najviše N gostiju po IP-u na sat (jednostavno, u memoriji).
@@ -192,6 +192,15 @@ Nakon Sprinta 4 (ako cilj „još jedna” ≥ 40 %): Discord Activity, način z
 ## Pitanja za QA/PM
 
 _(developer piše ovdje)_
+
+- **27. 11. 2026. — Developer: prijedlozi za jezgru igre (nakon vlasnikovog testa).** Stao sam sa Sprintom 4 (T15 je bio pri kraju pa sam ga dovršio, provjerio i pushao, vidi dnevnik; ne diram dalje). Moja dijagnoza: igrač **reagira** na evente koje mu igra baci, a nikad ne **bira kamo ide**. Zato je to kviz, a ne život. Prijedlozi, od najvažnijeg:
+  1. **Godina = potez igrača (protiv „nasumičnih pitanja”).** Svaka godina počinje izborom fokusa s 3 karte (npr. „Karijera”, „Ljubav”, „Osveta Marku”, „Brza lova”, „Obitelj”). Event koji slijedi proizlazi iz tog izbora i iz prošlosti. Igrač tako sam bira priču, a ne odgovara na upitnik.
+  2. **Lik s manom i željom (veza s likom).** Na početku: jedna želja („Postati gradonačelnik”), jedna mana („Kukavica”, „Ne zna šutjeti”) i jedna tajna. Tekstovi eventa ih spominju, a izbor „u karakteru” je smješniji i ponekad bolji. Kratka unutarnja misao lika na kartici („*Opet ja plaćam piće.*”).
+  3. **Vidljive posljedice odmah i kasnije.** Nakon odluke kratki ekran „Što se promijenilo”: brojke, tko se naljutio, što se promijenilo na mapi. Kasnije **povratni pozivi**: „Sjećaš se da si u 2. godini ukrao Markov bicikl? Marko je sad sudac.” (log već ima sve što treba za to).
+  4. **Napetost: rizik koji se vidi.** Za rizične izbore pokazati izglede i animirano bacanje („62 % — …uspjelo!”). Plus „otkucavajuća prijetnja” kroz nekoliko godina (tajna samo što ne izađe, dug dospijeva), koju igrač može pokušati spriječiti.
+  5. **Humor.** Prepisati tekstove u apsurdni, suhi ton s konkretnim detaljima (manje „You feel happy”, više „Tvoj šef je tvoj bivši. Opet.”). To je posao sadržaja (M12) i najbolje ga je napraviti na manjem broju jačih eventa.
+  6. **Sporije i manje.** 8–10 odluka po životu umjesto mnogo malih. Bez timera za odluke koje se tiču samo tebe; igrač sam klikne „Sljedeća godina”. Timer samo kad čekaju drugi ljudi.
+  - **Kako provjeriti brzo:** napravio bih vertikalni prototip (5 godina: fokus → event → posljedica → povratni poziv) s 10–15 novih eventa, uz postojeći engine (deterministički replay ostaje) i bez brisanja postojećeg. Vlasnik ga odigra i usporedi sa sadašnjom igrom. Čekam vašu odluku.
 
 ## Odgovori QA/PM
 
@@ -273,3 +282,4 @@ _(developer piše ovdje: datum, zadatak, commit, napomena)_
 - **27. 11. 2026.** — QA Sprinta 3: ✅ prihvaćen, ostaje **T13** (recap kad te uhvate, mrtav lik hoda).
 - **27. 11. 2026.** — Vlasnik je odobrio Sprint 4 (MVP za objavu, prema istraživanju tržišta). Napisani T14–T19. Redoslijed: T13, pa T14 → T19.
 - **27. 11. 2026.** — ⛔ Sprint 4 zaustavljen nakon vlasnikovog testa (3 partije: monotono, nema veze s likom, odluke bez utjecaja, bez humora i napetosti, prebrzo). Slijedi dogovor s vlasnikom o jezgri igre.
+- **27. 11. 2026. — T15 (gost) dovršen prije STOP-a** (commit ispod u gitu, `life-simulation: T15 …`). „Play as guest” na početnom ekranu (samo ime); link sobe vodi ravno na „You are invited to room KX4P. What is your name?” → upis imena + „Join the room” (1 klik) → čekaonica. Gost je privremeni račun (`is_guest`, token u localStorage), može ga u lobbyju spremiti s korisničkim imenom, emailom i lozinkom i zadržava titule i povijest. Limit `GUESTS_PER_IP_PER_HOUR` (20) u memoriji. e2e `room.mjs`: prijatelj ulazi kao gost (izmjereno: 1 klik + ime), igra, pa spremi račun. `npm run check` 156/156, `npm run e2e` sve prolazi. Dalje ne radim ništa iz Sprinta 4 dok ne javite; prijedlozi za jezgru su u „Pitanja za QA/PM”.

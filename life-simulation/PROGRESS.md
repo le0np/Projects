@@ -572,14 +572,21 @@ Prijedlog za sljedeći razgovor: pitati vlasnika što bi igru učinilo zanimljiv
 - **Web:** u lobbyju „Create a room for friends” i „Join” s kodom; čekaonica `RoomScreen`: veliki kod, link i „Copy link”, tko je tu (domaćin, ti), ime i karijera, „Start the life” samo za domaćina, „Leave the room”. Link `/r/KX4P` (adresa u pregledniku se postavi dok si u sobi) nakon prijave odmah ulazi u sobu. „Find a life” ostaje.
 - **Testovi:** server (soba: kodovi, ulazak, „started”, „full”, predaja domaćina, brisanje; preko socketa domaćin + prijatelj s kodom igraju isti život s 2 bota, kasni gost odbijen) i **e2e `packages/web/e2e/room.mjs` s dva preglednika** (domaćin napravi sobu, prijatelj otvori link i registrira se, vide se u čekaonici, domaćin pokrene, oboje igraju isti život do Life Recapa). Dio `npm run e2e`.
 
+### T15: ulaz kao gost (developer) i STOP Sprinta 4
+
+- **Server:** migracija `002_guests.sql` (`users.is_guest`); `POST /api/guest {name}` napravi privremeni račun (`guest_xxxxxxxx`, email na rezerviranoj domeni `guest.invalid`, nasumična lozinka koju nitko ne zna) i vrati token; limit `GUESTS_PER_IP_PER_HOUR` (zadano 20) u memoriji (429). `POST /api/me/upgrade` pretvori gosta u pravi račun (isti `user_id`, pa ostaju titule i povijest). Gost se ne može prijaviti lozinkom; `/api/me` vraća `isGuest`.
+- **Web:** početni ekran počinje karticom „Play as guest” (samo ime lika). Link sobe pokazuje „You are invited to room KX4P. What is your name?” i gumb „Join the room”. U lobbyju gost vidi „You are playing as a guest” i „Save my account”; „Log out” gosta pita za potvrdu, jer se račun inače gubi.
+- **Testovi:** `server/test/guest.test.ts` (gost, prijava odbijena, spremanje računa s istim id-jem, zauzeto ime, limit po IP-u); e2e `room.mjs` sad pušta prijatelja kao gosta (od linka do čekaonice izmjereno 1 klik + ime) i na kraju sprema račun.
+- **STOP:** QA je nakon vlasnikovog testa zaustavio Sprint 4 (igra je monotona, nema veze s likom, odluke bez vidljivog utjecaja, prebrzo). T16–T19 se ne rade. Moji prijedlozi za novu jezgru su u `INSTRUCTIONS_FOR_AGENT.md` → „Pitanja za QA/PM”.
+
 ## Zadnja automatizirana provjera
 
-Provedeno 27. studenog 2026. (nakon Sprinta 3, T10–T12):
+Provedeno 27. studenog 2026. (nakon T15):
 
 | Provjera | Rezultat |
 | --- | --- |
-| `npm run check` | typecheck čist; 75 eventa, 0 grešaka, 0 upozorenja; **151/151 testova** (nakon T13) |
-| `npm run e2e` | ✓ desktop i ✓ iPhone 13 (spletka, kartica lika, cijela sesija, recap s titulom i „Copy my life”, kolekcija titula u lobbyju); ✓ strana žrtve spletke; ✓ duh (oporuka pročitana u recapu); ✓ 133 kartice bez skrolanja na 1280×800 i 390×664; ✓ 0 gramatičkih grešaka |
+| `npm run check` | typecheck čist; 75 eventa, 0 grešaka, 0 upozorenja; **156/156 testova** (nakon T15) |
+| `npm run e2e` | ✓ privatna soba: domaćin + gost preko linka (1 klik + ime), isti život, gost spremi račun; ✓ desktop i ✓ iPhone 13 (spletka, kartica lika, cijela sesija, recap s titulom i „Copy my life”, kolekcija titula u lobbyju); ✓ strana žrtve spletke; ✓ duh (oporuka pročitana u recapu); ✓ 133 kartice bez skrolanja na 1280×800 i 390×664; ✓ 0 gramatičkih grešaka |
 | `npm run sim:batch -- --sessions 200 --seed sprint3` | brojke gore; replay 3/3 identičan |
 | Svjež `git clone` grane `dev` (`38d7ef9`) + `npm install` + `npm run check` + `web:build` + server | 149/149, build čist, `/api/health` i web stranica rade |
 
@@ -590,6 +597,7 @@ Provedeno 27. studenog 2026. (nakon Sprinta 3, T10–T12):
 - Botovi odlučuju u dijelu roka, pa je tempo u simulaciji gušći nego što će biti s ljudima. Tempo (rokovi, odmor između eventa) treba podesiti s pravim igračima.
 - Nakon kraja sesije log otkriva sve tuđe odluke. To je namjerno „otkrivanje“ nakon igre, ali vlasnik možda želi drukčije.
 - Restart servera prekida sesije u tijeku (označe se kao `cancelled`).
+- Limit gostiju po IP-u je u memoriji, pa se poništi restartom servera i ne dijeli se između više instanci. Napušteni gostinjski računi se zasad ne brišu.
 - Nema prijevoda sučelja; tekstovi igre su na engleskom (odluka D5).
 - Engineer, teacher, mechanic, psychologist, journalist i civilian još nemaju poseban izbor ni u jednom eventu (dolazi s M4).
 - Prije finala čovjek čeka da svi ostali završe svoje evente. Botovi tada odgovore odmah, ali ako je drugi čovjek u eventu, čekanje može trajati do njegovog roka (do 35–45 s).
@@ -601,7 +609,7 @@ Provedeno 27. studenog 2026. (nakon Sprinta 3, T10–T12):
 
 ## Sljedeći koraci
 
-1. QA je prihvatio sva tri sprinta; T13 (zadnje sitnice) je gotov. Mogući Sprint 4 ovisi o vlasnikovoj odluci o istraživanju tržišta; QA ga piše u `INSTRUCTIONS_FOR_AGENT.md`.
+1. **Sprint 4 je zaustavljen** (T14 i T15 su gotovi, T16–T19 se ne rade). QA/PM s vlasnikom dogovara promjenu jezgre igre; developer je predložio „godina = potez” (izbor fokusa → event → vidljiva posljedica → povratni poziv), lik s manom i željom, vidljiv rizik i sporiji tempo. Do odluke se kod ne mijenja.
 2. Nakon toga, po planu §9: M12 Sadržaj (humorističan ton, životne faze) i M13 Balans; QA je dodao istraživanje tržišta (`docs/research/market-research-2026-11-27.md`) s prijedlogom MVP-a za izlazak.
 
 ## Handoff za novi chat

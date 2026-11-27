@@ -23,6 +23,8 @@ export interface ServerConfig {
   qaGhost: boolean;
   /** Shortens every real-time duration for humans (deadlines, rests); 1 = normal. Only for tests. */
   paceScale: number;
+  /** T15: how many guest accounts one IP may create per hour. */
+  guestsPerIpPerHour: number;
   /** Directory with the built web client to serve, if any. */
   webDist: string | undefined;
 }
@@ -43,6 +45,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): ServerConfi
     paceScale: num(env.PACE_SCALE, 1),
     qaForceSchemeOnHuman: env.QA_FORCE_SCHEME_ON_HUMAN === "1",
     qaGhost: env.QA_GHOST === "1",
+    guestsPerIpPerHour: num(env.GUESTS_PER_IP_PER_HOUR, 20),
     webDist: env.WEB_DIST || (existsSync(DEFAULT_WEB_DIST) ? DEFAULT_WEB_DIST : undefined),
   };
 }

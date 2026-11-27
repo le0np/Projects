@@ -33,6 +33,8 @@ const RegisterBody = z.object({
   email: z.email(),
   password: z.string().min(8, "at least 8 characters").max(200),
 });
+/** T15: a guest only gives a character name. */
+const GuestBody = z.object({ name: z.string().trim().min(2).max(16).regex(/^[\p{L}][\p{L} '-]*$/u) });
 const LoginBody = z.object({ login: z.string().min(1), password: z.string().min(1) });
 const AvatarBody = z.object({ avatar: z.string().regex(/^[a-z0-9_-]{1,32}$/) });
 /** B4: the character's name is chosen in the lobby (letters, spaces, apostrophes and hyphens). */
@@ -179,6 +181,30 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
     return reply.code(201).send(result);
   });
 
+  // T15: play as guest. In-memory limit per IP per hour so nobody fills the users table.
+  const guestsByIp = new Map<string, number[]>();
+  http.post("/api/guest", async (req, reply) => {
+    const body = GuestBody.safeParse(req.body);
+    if (!body.success) return badRequest(reply, body.error);
+    const now = Date.now();
+    const recent = (guestsByIp.get(req.ip) ?? []).filter((t) => now - t < 3_600_000);
+    if (recent.length >= config.guestsPerIpPerHour) return reply.code(429).send({ error: "too_many_guests" });
+    recent.push(now);
+    guestsByIp.set(req.ip, recent);
+    const result = await repo.createGuest();
+    return reply.code(201).send({ ...result, name: body.data.name });
+  });
+
+  http.post("/api/me/upgrade", async (req, reply) => {
+    const user = await authUser(req, reply);
+    if (!user) return;
+    const body = RegisterBody.safeParse(req.body);
+    if (!body.success) return badRequest(reply, body.error);
+    const result = await repo.upgradeGuest(user.id, body.data.username, body.data.email, body.data.password);
+    if ("error" in result) return reply.code(result.error === "taken" ? 409 : 400).send({ error: result.error === "taken" ? "username_or_email_taken" : "not_a_guest" });
+    return result;
+  });
+
   http.post("/api/login", async (req, reply) => {
     const body = LoginBody.safeParse(req.body);
     if (!body.success) return badRequest(reply, body.error);
@@ -198,7 +224,7 @@ export async function buildApp(opts: { db: Database; content: ContentBundle; con
     if (!user) return;
     const profile = await repo.profile(user.id);
     const s = liveByUser.get(user.id);
-    return { ...profile, email: user.email, activeSessionId: s?.id ?? null, inQueue: matchmaker.has(user.id) };
+    return { ...profile, email: user.email, isGuest: user.isGuest, activeSessionId: s?.id ?? null, inQueue: matchmaker.has(user.id) };
   });
 
   http.put("/api/me/avatar", async (req, reply) => {

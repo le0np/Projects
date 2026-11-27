@@ -57,6 +57,8 @@ export interface Profile {
   /** T11: titles earned so far (with how many lives earned each). */
   titles?: { id: string; label: string; n: number }[];
   email: string;
+  /** T15: a guest account (only a name); can be saved with an email and a password. */
+  isGuest?: boolean;
   avatar: string;
   stats: { gamesPlayed: number; deaths: number; averageLifeScore: number | null; reputation: number };
   recentLives: { sessionId: string; endedAt: string; recap: LifeRecap }[];
@@ -66,5 +68,5 @@ export interface Profile {
 
 export interface AuthResult {
   token: string;
-  user: { id: string; username: string; email: string };
+  user: { id: string; username: string; email: string; isGuest?: boolean };
 }
