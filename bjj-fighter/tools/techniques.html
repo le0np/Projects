@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Technique preview</title>
+<style>
+  html, body { margin: 0; background: #12151d; color: #e9ecf3; font: 14px/1.4 system-ui, sans-serif; }
+  .ui { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; }
+  .ui h1 { margin: 0 8px 0 0; font-size: 16px; }
+  select, button, label { font: inherit; color: inherit; background: #1b2030; border: 1px solid #2e3650; border-radius: 8px; padding: 6px 10px; }
+  .view { position: relative; width: min(100%, 960px); aspect-ratio: 16 / 9; margin: 0 12px; }
+  .view canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 10px; }
+  #strip { display: block; margin: 10px 12px; max-width: calc(100% - 24px); }
+  .note { color: #98a1b8; font-size: 13px; padding: 0 12px; max-width: 900px; }
+</style>
+<script type="importmap">{ "imports": { "three": "../vendor/three/three.module.min.js" } }</script>
+</head>
+<body>
+<div class="ui">
+  <h1>Technique preview</h1>
+  <select id="action" aria-label="Technique"></select>
+  <select id="outcome" aria-label="Outcome"><option value="success">works</option><option value="fail">fails</option></select>
+  <label><input type="checkbox" id="slow"> Slow motion</label>
+  <button id="play">Play</button>
+</div>
+<div class="view"><canvas id="c3"></canvas><canvas id="ui"></canvas></div>
+<canvas id="strip" hidden></canvas>
+<p class="note">Each technique plays through the 3D fight renderer as in a fight: the attacker is the player (blue). The clip comes from src/render/techniques3d.js (its own, or the generic one for its kind).</p>
+<script type="module">
+  import { createRenderer3d } from '../src/render/renderer3d.js';
+  import { ACTIONS, ACTION_BY_ID } from '../src/data/positions.js';
+  import { MOVE_BY_ID } from '../src/data/moves.js';
+  import { CLIPS } from '../src/render/techniques3d.js';
+
+  const params = new URLSearchParams(location.search);
+  const c3 = document.getElementById('c3');
+  const ui = document.getElementById('ui');
+  const r = createRenderer3d(c3, ui);
+  const sel = document.getElementById('action');
+  sel.innerHTML = ACTIONS.map((a) => `<option value="${a.id}">${MOVE_BY_ID[a.move].name} · ${a.from}${CLIPS[a.id] ? '' : ' (generic)'}</option>`).join('');
+  if (params.get('action')) sel.value = params.get('action');
+  if (params.get('outcome')) document.getElementById('outcome').value = params.get('outcome');
+  await r.ready;
+
+  // Start and end views for an action done by the player.
+  function views(a, success) {
+    const top = a.role === 'top' ? true : a.role === 'bottom' ? false : null;
+    const start = { pos: a.from, playerTop: a.from === 'standing' ? null : top, log: [], ended: null, lastAction: null };
+    let end = { ...start };
+    if (success && a.to) end = { ...start, pos: a.to.pos, playerTop: a.to.pos === 'standing' ? null : a.to.actorTop };
+    if (success && a.kind === 'sub') end = { ...start, ended: { winner: 'p', method: 'sub', detail: MOVE_BY_ID[a.move].name } };
+    end.lastAction = { seq: Date.now(), actionId: a.id, who: 'p', success };
+    return { start, end };
+  }
+
+  let run = null;
+  function play() {
+    const a = ACTION_BY_ID[sel.value];
+    const success = document.getElementById('outcome').value === 'success';
+    const { start, end } = views(a, success);
+    r.reset();
+    for (let i = 0; i < 40; i++) r.draw(start, 1 / 60, { mode: 'spar' }); // settle in the start position
+    run = { view: end, t: 0, a };
+  }
+  document.getElementById('play').onclick = play;
+  sel.onchange = play;
+  document.getElementById('outcome').onchange = play;
+
+  addEventListener('resize', () => r.resize());
+  r.resize();
+
+  if (params.has('strip')) {
+    // Film strip for checks: six frames over the clip, side by side.
+    const a = ACTION_BY_ID[sel.value];
+    const success = document.getElementById('outcome').value === 'success';
+    const { start, end } = views(a, success);
+    for (let i = 0; i < 40; i++) r.draw(start, 1 / 60, { mode: 'spar' });
+    const frames = 6, total = Math.round(2.2 * 60);
+    const w = 480, h = 270;
+    const strip = document.getElementById('strip');
+    strip.width = w * 3; strip.height = h * 2; strip.hidden = false;
+    const g = strip.getContext('2d');
+    for (let i = 0; i <= total; i++) {
+      r.draw(end, 1 / 60, { mode: 'spar' });
+      const k = Math.round((i / total) * (frames - 1));
+      if (i === Math.round((k / (frames - 1)) * total)) {
+        g.drawImage(c3, (k % 3) * w, Math.floor(k / 3) * h, w, h);
+        g.fillStyle = '#fff'; g.font = 'bold 16px system-ui'; g.fillText(`${(i / 60).toFixed(2)} s`, (k % 3) * w + 8, Math.floor(k / 3) * h + 20);
+      }
+    }
+    document.querySelector('.view').hidden = true;
+    window.__strip = true;
+  } else {
+    play();
+    let last = performance.now();
+    (function frame(now) {
+      const dt = Math.min(0.1, (now - last) / 1000) * (document.getElementById('slow').checked ? 0.3 : 1);
+      last = now;
+      if (run) r.draw(run.view, dt, { mode: 'spar' });
+      requestAnimationFrame(frame);
+    })(performance.now());
+  }
+</script>
+</body>
+</html>

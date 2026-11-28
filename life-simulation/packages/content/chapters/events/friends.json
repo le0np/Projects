@@ -1,0 +1,406 @@
+[
+  {
+    "id": "move",
+    "kind": "friends",
+    "title": "Moving Day",
+    "text": "{friend} is moving flats. {Friend.he} said “it's only a few boxes”. It's a piano, a canoe and a very angry cat.",
+    "choices": [
+      {
+        "id": "help",
+        "label": "Help all day",
+        "tags": [
+          "effort"
+        ],
+        "base": 80,
+        "ok": {
+          "text": "You carry the piano up five floors. Your back files a complaint. {friend} will never forget it.",
+          "emoji": "🎹",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": 2
+            },
+            {
+              "flag": "carried_piano"
+            },
+            {
+              "remember": "Spent a whole day carrying {friend}'s piano."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You carry the canoe and the cat. {friend} carries the piano with a stranger. It works out.",
+          "emoji": "🛶",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "flag": "carried_piano"
+            }
+          ],
+          "byFlaw": {
+            "lazy": {
+              "text": "You carry one lamp, very slowly, and then supervise from the sofa. The sofa is still in the van.",
+              "emoji": "🛋️",
+              "effects": [
+                {
+                  "rel": "friend",
+                  "n": -1
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "pizza",
+        "label": "Send pizza instead",
+        "ok": {
+          "text": "The pizza arrives. The cat eats it. {friend} appreciates the thought.",
+          "emoji": "🍕",
+          "effects": [
+            {
+              "money": -5
+            },
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "remember": "Sent pizza instead of helping {friend} move."
+            }
+          ]
+        }
+      },
+      {
+        "id": "sick",
+        "label": "Say you're sick",
+        "tags": [
+          "lie"
+        ],
+        "base": 60,
+        "ok": {
+          "text": "{friend} believes you and sends soup. You feel terrible about the soup.",
+          "emoji": "🤒"
+        },
+        "fail": {
+          "text": "{friend} sees your beach photo online. {Friend.he} moves alone. The cat scratches {friend.him}.",
+          "emoji": "🏖️",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": -2
+            },
+            {
+              "remember": "Faked being sick to skip {friend}'s move. Got caught."
+            }
+          ]
+        }
+      },
+      {
+        "id": "pulley",
+        "label": "Rig a pulley and lift the piano through the window",
+        "career": "mechanic",
+        "ok": {
+          "text": "It works. The piano flies. A crowd gathers. Someone films it. You're the hero of Elm Street.",
+          "emoji": "🏗️",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": 2
+            },
+            {
+              "fame": 1
+            },
+            {
+              "flag": "carried_piano"
+            },
+            {
+              "remember": "Flew {friend}'s piano through a window with a pulley."
+            }
+          ]
+        }
+      },
+      {
+        "id": "neighbours",
+        "label": "Ask your regular customers to help",
+        "career": "civilian",
+        "ok": {
+          "text": "Fourteen Kwik Mart regulars turn up. The piano is up in ten minutes. You owe everyone a discount.",
+          "emoji": "🛒",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": 2
+            },
+            {
+              "rep": 5
+            },
+            {
+              "flag": "carried_piano"
+            },
+            {
+              "remember": "Moved {friend}'s piano with fourteen Kwik Mart customers."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "truce",
+    "kind": "friends",
+    "title": "{rival}'s Birthday",
+    "when": {
+      "stats": {
+        "rel.rival": {
+          "max": 0
+        }
+      }
+    },
+    "text": [
+      {
+        "when": {
+          "flags": [
+            "returned_envelope"
+          ]
+        },
+        "text": "{rival} invited you to {rival.his} birthday party. Ever since the envelope, {rival.he} has been almost nice to you. Almost.",
+        "callback": true
+      },
+      {
+        "when": {
+          "flags": [
+            "rival_grudge"
+          ]
+        },
+        "text": "{rival} invited you to {rival.his} birthday party. After the interview stunt, you're not sure if it's a peace offer or a trap.",
+        "callback": true
+      },
+      {
+        "text": "{rival} invited you to {rival.his} birthday party. You're not sure if it's a peace offer or a trap."
+      }
+    ],
+    "choices": [
+      {
+        "id": "gift",
+        "label": "Bring a thoughtful gift",
+        "cast": "rival",
+        "ok": {
+          "text": "{rival} opens your gift: a framed photo of {rival.him} beating you at sports day. {Rival.he} laughs for real. Truce.",
+          "emoji": "🎁",
+          "effects": [
+            {
+              "money": -5
+            },
+            {
+              "rel": "rival",
+              "n": 2
+            },
+            {
+              "remember": "Made peace with {rival} at {rival.his} birthday."
+            }
+          ],
+          "cast": {
+            "who": "rival",
+            "did": "laughed for real"
+          }
+        },
+        "fail": {
+          "text": "{rival} locks you in the escape room “by accident”. For six hours. Still, it's progress.",
+          "emoji": "🔒",
+          "effects": [
+            {
+              "money": -5
+            },
+            {
+              "rel": "rival",
+              "n": 1
+            },
+            {
+              "remember": "Went to {rival}'s birthday. {Rival.he} locked you in the escape room."
+            }
+          ],
+          "cast": {
+            "who": "rival",
+            "did": "locked the door"
+          }
+        }
+      },
+      {
+        "id": "compete",
+        "label": "Go, but stay calm and let {rival.him} win the games",
+        "tags": [
+          "calm"
+        ],
+        "base": 75,
+        "ok": {
+          "text": "{rival} wins everything and is in a wonderful mood. {Rival.he} gives you the last slice of cake.",
+          "emoji": "🍰",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": 2
+            },
+            {
+              "remember": "Let {rival} win at {rival.his} own party. Got cake."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You lose on purpose for an hour. Then {rival} cheats at charades and you lose your temper. And the charades.",
+          "emoji": "🌶️",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": -1
+            },
+            {
+              "rep": -5
+            }
+          ],
+          "byFlaw": {
+            "hothead": {
+              "text": "{rival} cheats at charades. You flip the snack table. The guacamole hits the birthday cake. Nobody forgets it.",
+              "emoji": "🌶️",
+              "effects": [
+                {
+                  "rel": "rival",
+                  "n": -2
+                },
+                {
+                  "rep": -10
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "skip",
+        "label": "Don't go",
+        "tags": [
+          "refuse"
+        ],
+        "failTo": "gift",
+        "ok": {
+          "text": "You stay home. {rival} posts 200 photos. You are in none of them, on purpose.",
+          "emoji": "🏠",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": -1
+            }
+          ]
+        }
+      },
+      {
+        "id": "read_room",
+        "label": "Notice {rival} is nervous nobody will come, and bring everyone you know",
+        "career": "psychologist",
+        "ok": {
+          "text": "Forty people turn up. {rival} doesn't know what to say. {Rival.he} hugs you, quickly, and pretends it was an accident.",
+          "emoji": "🫂",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": 3
+            },
+            {
+              "remember": "Filled {rival}'s birthday with people. {Rival.he} hugged you."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "stag",
+    "kind": "friends",
+    "title": "The Stag Weekend",
+    "when": {
+      "stats": {
+        "rel.friend": {
+          "min": 0
+        }
+      }
+    },
+    "text": "{friend} is getting married and you're in charge of the stag weekend. The budget is 40 €. The expectations are Las Vegas.",
+    "choices": [
+      {
+        "id": "vegas",
+        "label": "Go big: a weekend in Las Vegas (a pub called Las Vegas, in the next town)",
+        "tags": [
+          "effort"
+        ],
+        "base": 70,
+        "ok": {
+          "text": "The pub is amazing. There's karaoke and a man called Elvis who is called Dave. {friend} cries happy tears.",
+          "emoji": "🎰",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": 2
+            },
+            {
+              "remember": "Took {friend} to “Las Vegas” for {friend.his} stag weekend."
+            }
+          ]
+        },
+        "fail": {
+          "text": "“Las Vegas” closed last year. You spend the night in a bus shelter singing Elvis.",
+          "emoji": "🚏",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": -1
+            }
+          ]
+        }
+      },
+      {
+        "id": "camping",
+        "label": "Camping, with a fire and terrible stories",
+        "tags": [
+          "modest"
+        ],
+        "ok": {
+          "text": "You tell stories until 4 a.m. {friend} says it's the best night of {friend.his} life. It rains on the speech at the wedding; nobody cares.",
+          "emoji": "🔥",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": 2
+            },
+            {
+              "remember": "Took {friend} camping for the stag. Best night ever."
+            }
+          ]
+        }
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel. You're too busy",
+        "tags": [
+          "refuse"
+        ],
+        "failTo": "camping",
+        "ok": {
+          "text": "{friend} says “no worries”. There are worries. {Friend.he} picks a new best man.",
+          "emoji": "📵",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": -2
+            },
+            {
+              "remember": "Cancelled {friend}'s stag weekend."
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,770 @@
+[
+  {
+    "id": "interview",
+    "kind": "career",
+    "title": "The Interview",
+    "when": {
+      "hasJob": false
+    },
+    "text": "One opening at {workplace}. {rival} is in the waiting room too, in a better outfit, reading your CV over your shoulder.",
+    "choices": [
+      {
+        "id": "honest",
+        "label": "Be honest: zero experience, lots of enthusiasm",
+        "base": 55,
+        "mods": [
+          {
+            "when": {
+              "stats": {
+                "rep": {
+                  "min": 50
+                }
+              }
+            },
+            "add": 10,
+            "note": "Good reputation"
+          }
+        ],
+        "ok": {
+          "text": "They hire you for your “raw potential”, which means less money.",
+          "emoji": "💼",
+          "effects": [
+            {
+              "job": 1
+            },
+            {
+              "rep": 5
+            },
+            {
+              "flag": "honest_start"
+            },
+            {
+              "remember": "Got your first job by being honest. Nobody believed it either."
+            }
+          ]
+        },
+        "fail": {
+          "text": "They hire {rival}. {Rival.he} waves on the way out. With both hands.",
+          "emoji": "😶",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": -1
+            }
+          ]
+        }
+      },
+      {
+        "id": "mandarin",
+        "label": "Claim you speak fluent Mandarin",
+        "tags": [
+          "lie"
+        ],
+        "base": 80,
+        "ok": {
+          "text": "Hired! Your boss mentions the Shanghai client “calls in a couple of years”.",
+          "emoji": "🀄",
+          "effects": [
+            {
+              "job": 1
+            },
+            {
+              "secret": {
+                "id": "mandarin",
+                "text": "You don't speak Mandarin",
+                "years": 2,
+                "reveal": {
+                  "text": "The Shanghai client finally calls. You say “ni hao” and then nothing, for forty seconds. You're fired by lunch.",
+                  "emoji": "🀄",
+                  "effects": [
+                    {
+                      "job": 0
+                    },
+                    {
+                      "rep": -15
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "flag": "fake_mandarin"
+            },
+            {
+              "remember": "Lied about speaking Mandarin to get your first job."
+            }
+          ],
+          "byFlaw": {
+            "blabber": {
+              "text": "Hired! On the way out you tell the receptionist you don't actually speak Mandarin. She says she won't tell anyone. She tells everyone.",
+              "emoji": "🗣️"
+            }
+          }
+        },
+        "fail": {
+          "text": "The interviewer answers in Mandarin. You nod for eleven minutes. No job.",
+          "emoji": "😬",
+          "effects": [
+            {
+              "rep": -10
+            }
+          ]
+        }
+      },
+      {
+        "id": "towed",
+        "label": "Tell the receptionist {rival}'s car is being towed",
+        "tags": [
+          "lie",
+          "brave"
+        ],
+        "base": 65,
+        "ok": {
+          "text": "{rival} sprints out. You get the job. {Rival.his} car was fine.",
+          "emoji": "🚗",
+          "effects": [
+            {
+              "job": 1
+            },
+            {
+              "rel": "rival",
+              "n": -1
+            },
+            {
+              "secret": {
+                "id": "towed",
+                "text": "You got {rival}'s car “towed”",
+                "years": 3,
+                "reveal": {
+                  "text": "{rival} finds the receipt from the fake tow company. {Rival.he} tells the whole town. With slides.",
+                  "emoji": "🚗",
+                  "effects": [
+                    {
+                      "rel": "rival",
+                      "n": -2
+                    },
+                    {
+                      "rep": -10
+                    }
+                  ]
+                },
+                "about": "rival"
+              }
+            },
+            {
+              "remember": "Sent {rival} to chase a fake tow truck and took {rival.his} job."
+            }
+          ]
+        },
+        "fail": {
+          "text": "{rival} smiles. “Nice try.” {Rival.he} gets the job and memorises your face.",
+          "emoji": "🙃",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": -2
+            },
+            {
+              "flag": "rival_grudge"
+            },
+            {
+              "remember": "Tried to trick {rival} out of an interview. {Rival.he} noticed."
+            }
+          ]
+        }
+      },
+      {
+        "id": "reporter",
+        "label": "Interview the interviewer for the Gazette's “Local Bosses” column",
+        "career": "journalist",
+        "ok": {
+          "text": "They love talking about themselves for forty minutes. They hire you out of gratitude.",
+          "emoji": "🎙️",
+          "effects": [
+            {
+              "job": 1
+            },
+            {
+              "fame": 1
+            },
+            {
+              "remember": "Got hired by interviewing your own interviewer."
+            }
+          ]
+        }
+      },
+      {
+        "id": "tills",
+        "label": "Point out that you already know every price in Kwik Mart by heart",
+        "career": "civilian",
+        "ok": {
+          "text": "They test you. Tuna, 1.79. Toilet roll, 4.20. Your mum's favourite biscuits, 0.99. Hired on the spot.",
+          "emoji": "🧾",
+          "effects": [
+            {
+              "job": 1
+            },
+            {
+              "rep": 5
+            },
+            {
+              "remember": "Got the job by reciting prices like poetry."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "pitch",
+    "kind": "career",
+    "title": "The Big Pitch",
+    "when": {
+      "stats": {
+        "jobLevel": {
+          "max": 1,
+          "min": 1
+        }
+      }
+    },
+    "text": [
+      {
+        "when": {
+          "flags": [
+            "fake_mandarin"
+          ]
+        },
+        "text": "Your boss wants one great idea by Friday, ideally “for the Shanghai market, since you speak the language”. Last night {friend} told you {friend.his} idea: a dating app for dogs.",
+        "callback": true
+      },
+      {
+        "text": "Your boss wants one great idea by Friday. Last night, over beers, {friend} told you {friend.his} idea: a dating app for dogs. {Friend.he} hasn't told anyone else."
+      }
+    ],
+    "choices": [
+      {
+        "id": "steal",
+        "label": "Pitch {friend}'s idea as your own",
+        "tags": [
+          "lie"
+        ],
+        "base": 75,
+        "ok": {
+          "text": "“Sniffr” is a hit. You're promoted. {friend} texts: “we should talk”.",
+          "emoji": "🐶",
+          "effects": [
+            {
+              "job": 2
+            },
+            {
+              "money": 20
+            },
+            {
+              "secret": {
+                "id": "idea",
+                "text": "You stole {friend}'s dog-dating idea",
+                "years": 2,
+                "reveal": {
+                  "text": "{friend} sees “your” dog app on a billboard. {Friend.he} stops answering your calls.",
+                  "emoji": "🐶",
+                  "effects": [
+                    {
+                      "rel": "friend",
+                      "n": -3
+                    },
+                    {
+                      "rep": -10
+                    }
+                  ]
+                },
+                "about": "friend"
+              }
+            },
+            {
+              "remember": "Got promoted with {friend}'s idea. Didn't mention {friend}."
+            }
+          ]
+        },
+        "fail": {
+          "text": "Your boss says it “sounds like something a drunk friend told you”.",
+          "emoji": "🍺",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "pigeon",
+        "label": "Pitch your own idea: a loyalty card for pigeons",
+        "tags": [
+          "brave"
+        ],
+        "base": 35,
+        "ok": {
+          "text": "Your boss loves it. The pigeons love it more. Promoted!",
+          "emoji": "🐦",
+          "effects": [
+            {
+              "job": 2
+            },
+            {
+              "money": 15
+            },
+            {
+              "fame": 1
+            },
+            {
+              "flag": "pigeon_card"
+            },
+            {
+              "remember": "Got promoted for a loyalty card for pigeons. The pigeons are very loyal."
+            }
+          ]
+        },
+        "fail": {
+          "text": "Your boss asks if everything is okay at home.",
+          "emoji": "🫥",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "together",
+        "label": "Ask {friend} to pitch it together with you",
+        "cast": "friend",
+        "ok": {
+          "text": "{friend} agrees. You pitch it as a duo. You both get promoted and hug in front of HR.",
+          "emoji": "🤝",
+          "effects": [
+            {
+              "job": 2
+            },
+            {
+              "money": 10
+            },
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "flag": "pitched_together"
+            },
+            {
+              "remember": "Pitched {friend}'s idea together with {friend.him}. Both promoted."
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "said yes and brought slides"
+          }
+        },
+        "fail": {
+          "text": "{friend} pitches it alone, on Thursday, a day early. {Friend.he} gets your promotion.",
+          "emoji": "🗡️",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": -1
+            },
+            {
+              "rep": -5
+            },
+            {
+              "remember": "Asked {friend} to share {friend.his} idea. {Friend.he} pitched it alone."
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "went behind your back"
+          }
+        }
+      },
+      {
+        "id": "bridge",
+        "label": "Calculate that a bridge for dogs would pay for itself in four years",
+        "career": "engineer",
+        "ok": {
+          "text": "Nobody understands the maths, so everybody trusts it. Promoted. The bridge is for small dogs only.",
+          "emoji": "🌉",
+          "effects": [
+            {
+              "job": 2
+            },
+            {
+              "money": 10
+            },
+            {
+              "remember": "Got promoted for a bridge for dogs. The maths was correct."
+            }
+          ]
+        }
+      },
+      {
+        "id": "startup",
+        "label": "Spin it out as a startup and offer your boss shares",
+        "career": "entrepreneur",
+        "ok": {
+          "text": "Your boss invests. You're the CEO of something now. Nobody is sure what.",
+          "emoji": "📈",
+          "effects": [
+            {
+              "job": 2
+            },
+            {
+              "money": 15
+            },
+            {
+              "flag": "side_hustle"
+            },
+            {
+              "remember": "Turned the big pitch into your own company."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "night_shift",
+    "kind": "career",
+    "title": "The Night Shift",
+    "when": {
+      "hasJob": true,
+      "stats": {
+        "jobLevel": {
+          "max": 1
+        }
+      }
+    },
+    "text": "It's 3 a.m. at {workplace}. You're alone in charge, the coffee machine is broken, and the boss's nephew just walked in covered in glitter and regret.",
+    "choices": [
+      {
+        "id": "cover",
+        "label": "Quietly sort it out and tell nobody",
+        "tags": [
+          "calm"
+        ],
+        "base": 70,
+        "ok": {
+          "text": "You clean him up, call his mum and say nothing. The boss finds out anyway and owes you forever.",
+          "emoji": "🤫",
+          "effects": [
+            {
+              "rep": 5
+            },
+            {
+              "job": 2
+            },
+            {
+              "remember": "Covered for the boss's nephew on the night shift. Got promoted for it."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You sort it out. Nobody notices. Not even the boss. Especially not the boss.",
+          "emoji": "🌙",
+          "effects": [
+            {
+              "money": 5
+            }
+          ]
+        }
+      },
+      {
+        "id": "photo",
+        "label": "Take a photo, just in case",
+        "tags": [
+          "lie"
+        ],
+        "base": 70,
+        "ok": {
+          "text": "The photo turns out to be very useful at your next pay review.",
+          "emoji": "📸",
+          "effects": [
+            {
+              "money": 15
+            },
+            {
+              "rep": -5
+            },
+            {
+              "secret": {
+                "id": "glitter",
+                "text": "You have a photo of the boss's nephew",
+                "years": 3,
+                "reveal": {
+                  "text": "The nephew finds the photo on your phone at the Christmas party. So does everyone else.",
+                  "emoji": "✨",
+                  "effects": [
+                    {
+                      "rep": -10
+                    },
+                    {
+                      "job": 1
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "remember": "Kept a photo of the boss's nephew covered in glitter. For later."
+            }
+          ]
+        },
+        "fail": {
+          "text": "The flash goes off. The nephew cries. The boss hears about the photo before the glitter.",
+          "emoji": "📸",
+          "effects": [
+            {
+              "rep": -10
+            }
+          ]
+        }
+      },
+      {
+        "id": "call_friend",
+        "label": "Call {friend} to help",
+        "cast": "friend",
+        "ok": {
+          "text": "{friend} arrives in pyjamas with a mop and a bag of crisps. Best night shift ever.",
+          "emoji": "🧹",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "rep": 5
+            },
+            {
+              "remember": "{friend} came to help on your worst night shift."
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "turned up at 3 a.m. in pyjamas"
+          }
+        },
+        "fail": {
+          "text": "{friend} doesn't pick up. In the morning {friend.he} posts a photo of the glitter. {Friend.he} was there. Filming.",
+          "emoji": "📵",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": -1
+            },
+            {
+              "rep": -5
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "filmed it instead of helping"
+          }
+        }
+      },
+      {
+        "id": "triage",
+        "label": "Treat the glitter like a medical emergency, by the book",
+        "career": "doctor",
+        "ok": {
+          "text": "Your report is so thorough it's used for training. Promoted to {job2}.",
+          "emoji": "🩺",
+          "effects": [
+            {
+              "job": 2
+            },
+            {
+              "rep": 10
+            },
+            {
+              "remember": "Wrote the town's only medical report about glitter."
+            }
+          ]
+        }
+      },
+      {
+        "id": "arrest",
+        "label": "Arrest him for being drunk and sparkly",
+        "career": "police_officer",
+        "ok": {
+          "text": "The boss is so impressed by your fairness that you're promoted. The nephew is now very sober.",
+          "emoji": "🚔",
+          "effects": [
+            {
+              "job": 2
+            },
+            {
+              "rep": 5
+            },
+            {
+              "remember": "Arrested the boss's nephew. Got promoted for it."
+            }
+          ]
+        }
+      },
+      {
+        "id": "assembly",
+        "label": "Give him the speech you give Year 6 about choices",
+        "career": "teacher",
+        "ok": {
+          "text": "He cries. He apologises. He becomes a teacher. You're promoted.",
+          "emoji": "🍎",
+          "effects": [
+            {
+              "job": 2
+            },
+            {
+              "rep": 10
+            },
+            {
+              "remember": "Gave the boss's nephew the Year 6 speech. It worked."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "office_party",
+    "kind": "career",
+    "title": "The Office Party",
+    "when": {
+      "hasJob": true
+    },
+    "text": [
+      {
+        "when": {
+          "flags": [
+            "pigeon_card"
+          ]
+        },
+        "text": "The office Christmas party. Someone made a cake shaped like your pigeon loyalty card. The boss is holding a microphone and looking at you.",
+        "callback": true
+      },
+      {
+        "text": "The office Christmas party. The boss is holding a microphone and looking for someone to “say a few words”."
+      }
+    ],
+    "choices": [
+      {
+        "id": "speech",
+        "label": "Give a heartfelt speech",
+        "tags": [
+          "brave"
+        ],
+        "base": 55,
+        "ok": {
+          "text": "People cry. The boss cries. You get a pay rise and a hug that lasts too long.",
+          "emoji": "🥂",
+          "effects": [
+            {
+              "money": 10
+            },
+            {
+              "rep": 10
+            },
+            {
+              "remember": "Made the whole office cry with a Christmas speech."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You thank your mum, then your ex, then the boss's ex. The music comes back on.",
+          "emoji": "🎤",
+          "effects": [
+            {
+              "rep": -10
+            }
+          ]
+        }
+      },
+      {
+        "id": "modest",
+        "label": "Say “I'm just happy to be here” and sit down",
+        "tags": [
+          "modest"
+        ],
+        "ok": {
+          "text": "Everyone respects how humble you are. The boss remembers your name for the first time.",
+          "emoji": "🙂",
+          "effects": [
+            {
+              "rep": 5
+            }
+          ]
+        },
+        "fail": {
+          "text": "You start with “I'm just happy to be here” and then tell everyone about your new watch for nine minutes.",
+          "emoji": "⌚",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ],
+          "byFlaw": {
+            "showoff": {
+              "text": "“I'm just happy to be here,” you say, “in my new car, which is outside.” You show them the car. In the rain.",
+              "emoji": "🦚",
+              "effects": [
+                {
+                  "rep": -5
+                },
+                {
+                  "money": -5
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "karaoke",
+        "label": "Drag {rival} to karaoke for a duet",
+        "cast": "rival",
+        "ok": {
+          "text": "You and {rival} sing a power ballad. It's terrible. Everyone loves it. {rival} almost smiles.",
+          "emoji": "🎶",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": 2
+            },
+            {
+              "fame": 1
+            },
+            {
+              "remember": "Sang a power ballad with {rival} at the office party."
+            }
+          ],
+          "cast": {
+            "who": "rival",
+            "did": "sang the high notes"
+          }
+        },
+        "fail": {
+          "text": "{rival} sings it alone and much better. You hold the microphone stand.",
+          "emoji": "🎙️",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": -1
+            },
+            {
+              "rep": -5
+            }
+          ],
+          "cast": {
+            "who": "rival",
+            "did": "took the microphone"
+          }
+        }
+      }
+    ]
+  }
+]

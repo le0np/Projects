@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manga fight prototype</title>
+<style>
+  @font-face { font-family: "Barlow Condensed"; font-style: italic; font-weight: 800; src: url(../assets/fonts/barlow-condensed-800-italic-latin.woff2) format("woff2"); }
+  html, body { margin: 0; min-height: 100%; background: #2b2d33; color: #eee; font: 15px/1.4 system-ui, sans-serif; }
+  .wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; }
+  .book { position: relative; width: min(92vw, 640px); aspect-ratio: 1000 / 1414; perspective: 1800px; }
+  .page { position: absolute; inset: 0; width: 100%; height: 100%; background: #fff; box-shadow: 0 10px 40px rgba(0,0,0,0.5); transform-origin: left center; border-radius: 3px; cursor: pointer; }
+  .page.out { animation: turn-out 0.55s ease-in forwards; z-index: 2; }
+  .page.in { animation: turn-in 0.55s ease-out; }
+  @keyframes turn-out { to { transform: rotateY(-100deg); filter: brightness(0.6); } }
+  @keyframes turn-in { from { transform: translateX(14px); filter: brightness(0.85); } to { transform: none; filter: none; } }
+  .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  button { font: 600 15px system-ui, sans-serif; color: #111; background: #fff; border: 3px solid #111; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+  button.choice { font: italic 800 20px "Barlow Condensed", system-ui, sans-serif; text-transform: uppercase; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .note { color: #a8acb6; font-size: 13px; max-width: 640px; text-align: center; }
+  .loading { position: absolute; inset: 0; display: grid; place-items: center; color: #111; font: italic 800 28px "Barlow Condensed", system-ui; }
+</style>
+<script type="importmap">{ "imports": { "three": "../vendor/three/three.module.min.js" } }</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="book" id="book"><div class="page"><div class="loading">Inking the pages…</div></div></div>
+  <div class="bar" id="bar"></div>
+  <p class="note">Prototype: a fixed fight told as manga pages. Click the page or press → to turn it. The panels are drawn from the 3D fighters with an ink and screentone shader.</p>
+</div>
+<script type="module">
+  import { createMangaRenderer } from '../src/render/manga3d.js';
+
+  const PW = 1000, PH = 1414; // page size in canvas pixels
+  const M = 34, G = 16; // margin, gutter
+  const rect = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+
+  // ---------------------------------------------------------------- the fight, page by page
+  // A panel: poly (page pixels), shot (pose + camera), bg ('plain' | 'speed' | 'focus' | 'tone'), sfx, bubbles, captions.
+  const standing = { pos: 'standing', playerTop: null };
+  const guardTop = { pos: 'closedGuard', playerTop: true };
+  const PAGES = [
+    { panels: [
+      { poly: rect(M, M, PW - 2 * M, 380), bg: 'tone',
+        shot: { pose: standing, cam: { yaw: 0.32, pitch: 0.08, dist: 4.4, shift: [0, 0.35, 0] } },
+        captions: [{ text: 'QUARTERFINAL · WHITE BELT', at: 'tl' }, { text: 'Round 1 · 3:00', at: 'br' }],
+        bubbles: [{ who: 'o', at: 'o.Head', text: "Don't blink.", dx: 0.12, dy: -0.2 }] },
+      { poly: [[M, M + 380 + G], [PW * 0.52, M + 380 + G], [PW * 0.46, M + 380 + G + 430], [M, M + 380 + G + 430]], bg: 'focus',
+        shot: { pose: standing, cam: { at: 'p.Head', yaw: 1.05, pitch: 0.05, dist: 0.85, fov: 30, shift: [0, 0.09, 0] } },
+        bubbles: [{ kind: 'thought', who: 'p', at: 'p.Head', text: 'His weight is on the front leg…', dx: -0.18, dy: -0.28 }] },
+      { poly: [[PW * 0.52 + G, M + 380 + G], [PW - M, M + 380 + G], [PW - M, M + 380 + G + 430], [PW * 0.46 + G, M + 380 + G + 430]], bg: 'speed', angle: 0,
+        shot: { pose: { from: standing, to: guardTop, t: 0.42 }, clip: { action: 'td_single', who: 'p', t: 0.42 }, cam: { yaw: 0.05, pitch: 0.08, dist: 2.7, shift: [0, 0.05, 0] } },
+        sfx: [{ text: 'SHOOT!', x: 0.58, y: 0.2, size: 96, rot: -0.12 }] },
+      { poly: rect(M, M + 2 * (380 + G) + 50 + G, PW - 2 * M, PH - 2 * M - 2 * (380 + G) - 50 - G), bg: 'focus',
+        shot: { pose: { from: standing, to: guardTop, t: 0.86 }, clip: { action: 'td_single', who: 'p', t: 0.86 }, cam: { yaw: 0.5, pitch: 0.35, dist: 2.9 } },
+        sfx: [{ text: 'SLAM!!', x: 0.24, y: 0.3, size: 140, rot: -0.18 }],
+        captions: [{ text: '+2 TAKEDOWN', at: 'br', big: true }] },
+    ] },
+    { panels: [
+      { poly: rect(M, M, PW - 2 * M, 470), bg: 'tone',
+        shot: { pose: guardTop, clip: { action: 'triangle_cg', who: 'o', t: 0.42, outcome: 'pending' }, cam: { yaw: 0.6, pitch: 0.3, dist: 2.7 } },
+        captions: [{ text: 'Ivan Božić goes for a triangle!', at: 'tl' }],
+        bubbles: [{ kind: 'shout', who: 'o', at: 'o.Head', text: 'GOT YOU!', dx: -0.15, dy: -0.25 }] },
+      { poly: [[M, M + 470 + G], [PW - M, M + 470 + G], [PW - M, M + 470 + G + 300], [M, M + 470 + G + 360]], bg: 'speed', angle: 1.2,
+        shot: { pose: guardTop, clip: { action: 'triangle_cg', who: 'o', t: 0.42, outcome: 'pending' }, cam: { at: 'p.Head', yaw: -0.6, pitch: 0.15, dist: 0.95, fov: 32 } },
+        bubbles: [{ kind: 'thought', who: 'p', at: 'p.Head', text: 'His leg is over my neck… posture, or I am done.', dx: 0.2, dy: -0.25 }] },
+      { poly: [[M, M + 470 + G + 360 + G], [PW - M, M + 470 + G + 300 + G], [PW - M, PH - M], [M, PH - M]], bg: 'focus', decision: true,
+        shot: { pose: guardTop, clip: { action: 'triangle_cg', who: 'o', t: 0.42, outcome: 'pending' }, cam: { yaw: -0.2, pitch: 0.85, dist: 2.5 } },
+        sfx: [{ text: 'WHAT WILL YOU DO?', x: 0.5, y: 0.14, size: 70, rot: -0.04 }] },
+    ], choices: [
+      { label: 'Posture up', next: 'posture' },
+      { label: 'Armbar defense', next: 'wrong' },
+      { label: 'Counter: pass the guard', next: 'wrong' },
+    ] },
+    { id: 'posture', panels: [
+      { poly: rect(M, M, PW - 2 * M, 420), bg: 'speed', angle: -1.57,
+        shot: { pose: guardTop, clip: { action: 'triangle_cg', who: 'o', t: 0.82, outcome: 'fail' }, cam: { yaw: 0.45, pitch: 0.2, dist: 2.6 } },
+        sfx: [{ text: 'RIP!', x: 0.8, y: 0.25, size: 110, rot: 0.15 }],
+        captions: [{ text: 'Posture! You break the triangle.', at: 'bl' }],
+        bubbles: [{ who: 'p', at: 'p.Head', text: 'Not today.', dx: -0.12, dy: -0.22 }] },
+    ], rest: 'pass' },
+    { id: 'wrong', panels: [
+      { poly: rect(M, M, PW - 2 * M, 420), bg: 'focus',
+        shot: { pose: guardTop, clip: { action: 'triangle_cg', who: 'o', t: 0.8, outcome: 'success' }, cam: { yaw: 0.55, pitch: 0.25, dist: 2.4 } },
+        sfx: [{ text: 'SQUEEZE', x: 0.75, y: 0.22, size: 90, rot: 0.1 }],
+        captions: [{ text: 'Wrong answer — the triangle is deep!', at: 'tl' }, { text: '…you stack him and get out at the last second.', at: 'br' }] },
+    ], rest: 'pass' },
+  ];
+  // The rest of the fight, shared by both answers: the pass, the mount and the armbar.
+  const REST = {
+    pass: (top) => [
+      { poly: [[M, top], [PW * 0.55, top], [PW * 0.5, top + 430], [M, top + 430]], bg: 'speed', angle: -0.5,
+        shot: { pose: { from: { pos: 'butterfly', playerTop: true }, to: { pos: 'sideControl', playerTop: true }, t: 0.5 }, clip: { action: 'toreando', who: 'p', t: 0.5 }, cam: { yaw: 0.2, pitch: 0.45, dist: 2.9 } },
+        sfx: [{ text: 'WHOOSH', x: 0.5, y: 0.18, size: 80, rot: -0.2 }], captions: [{ text: '+3 PASS', at: 'bl', big: true }] },
+      { poly: [[PW * 0.55 + G, top], [PW - M, top], [PW - M, top + 430], [PW * 0.5 + G, top + 430]], bg: 'tone',
+        shot: { pose: { from: { pos: 'sideControl', playerTop: true }, to: { pos: 'mount', playerTop: true }, t: 0.75 }, clip: { action: 'sideToMount', who: 'p', t: 0.75 }, cam: { yaw: 0.75, pitch: 0.4, dist: 2.6 } },
+        captions: [{ text: '+4 MOUNT', at: 'br', big: true }] },
+      { poly: rect(M, top + 430 + G, PW - 2 * M, PH - M - top - 430 - G), bg: 'focus',
+        shot: { pose: { pos: 'mount', playerTop: true }, cam: { at: 'o.Head', yaw: -0.5, pitch: 1.05, dist: 1.35, fov: 34, shift: [0.15, 0, 0] } },
+        bubbles: [{ kind: 'thought', who: 'o', at: 'o.Head', text: 'No… not the mount…', dx: 0.22, dy: -0.25 }] },
+    ],
+  };
+  const FINAL = { panels: [
+    { poly: [[M, M], [PW - M, M], [PW - M, M + 330], [M, M + 400]], bg: 'speed', angle: 0.9,
+      shot: { pose: { pos: 'mount', playerTop: true }, clip: { action: 'armbar_m', who: 'p', t: 0.5 }, cam: { yaw: 0.35, pitch: 0.35, dist: 2.6 } },
+      sfx: [{ text: 'SWING', x: 0.7, y: 0.25, size: 90, rot: -0.1 }] },
+    { poly: [[M, M + 400 + G], [PW - M, M + 330 + G], [PW - M, M + 330 + G + 560], [M, M + 400 + G + 520]], bg: 'focus',
+      shot: { pose: { pos: 'mount', playerTop: true }, clip: { action: 'armbar_m', who: 'p', t: 0.95 }, cam: { yaw: 0.5, pitch: 0.95, dist: 2.3, shift: [-0.3, 0, 0.1] } },
+      sfx: [{ text: 'CRACK!!', x: 0.28, y: 0.22, size: 150, rot: -0.15 }],
+      captions: [{ text: 'ARMBAR', at: 'tl', big: true }] },
+    { poly: [[M, M + 400 + G + 520 + G], [PW * 0.5, M + 330 + G + 560 + G], [PW * 0.5, PH - M], [M, PH - M]], bg: 'speed', angle: 1.57,
+      shot: { pose: { pos: 'mount', playerTop: true }, clip: { action: 'armbar_m', who: 'p', t: 1 }, cam: { at: 'o.Head', yaw: -0.4, pitch: 0.75, dist: 1.25, fov: 36, shift: [0.1, 0, 0.1] } },
+      sfx: [{ text: 'TAP TAP', x: 0.5, y: 0.3, size: 90, rot: -0.1 }] },
+    { poly: [[PW * 0.5 + G, M + 330 + G + 560 + G], [PW - M, M + 330 + G + 560 + G], [PW - M, PH - M], [PW * 0.5 + G, PH - M]], bg: 'tone',
+      shot: { pose: standing, cam: { at: 'p.Head', yaw: 0.9, pitch: -0.25, dist: 1.6, fov: 38, shift: [0, -0.3, 0] } },
+      captions: [{ text: 'WIN BY SUBMISSION', at: 'bl', big: true }],
+      bubbles: [{ who: 'p', at: 'p.Head', text: 'Semifinal next.', dx: -0.22, dy: -0.2 }] },
+  ] };
+
+  // ---------------------------------------------------------------- drawing
+  const manga = await createMangaRenderer();
+  const rnd = (seed) => { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
+
+  function bbox(poly) {
+    const xs = poly.map((p) => p[0]), ys = poly.map((p) => p[1]);
+    const x = Math.min(...xs), y = Math.min(...ys);
+    return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+  }
+  function path(g, poly) { g.beginPath(); poly.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); }
+
+  function speedLines(g, b, angle, seed) {
+    const r = rnd(seed);
+    g.save();
+    g.translate(b.x + b.w / 2, b.y + b.h / 2);
+    g.rotate(angle);
+    const L = Math.hypot(b.w, b.h);
+    for (let i = 0; i < 70; i++) {
+      const y = (r() - 0.5) * L;
+      const len = L * (0.3 + r() * 0.7);
+      const x = (r() - 0.5) * L - len / 2;
+      g.lineWidth = 1 + r() * 4;
+      g.strokeStyle = '#000';
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + len, y); g.stroke();
+    }
+    g.restore();
+  }
+  function focusLines(g, b, cx, cy, seed) {
+    const r = rnd(seed);
+    const R = Math.hypot(b.w, b.h);
+    g.fillStyle = '#000';
+    for (let i = 0; i < 150; i++) {
+      const a = r() * Math.PI * 2;
+      const inner = R * (0.28 + r() * 0.2);
+      const w = 0.004 + r() * 0.012;
+      g.beginPath();
+      g.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+      g.lineTo(cx + Math.cos(a - w) * R, cy + Math.sin(a - w) * R);
+      g.lineTo(cx + Math.cos(a + w) * R, cy + Math.sin(a + w) * R);
+      g.closePath(); g.fill();
+    }
+  }
+  function toneBg(g, b) {
+    // screentone gradient: denser dots towards the top
+    for (let y = b.y; y < b.y + b.h; y += 9) {
+      const k = 1 - (y - b.y) / b.h;
+      const rad = 1 + k * 2.6;
+      for (let x = b.x + ((y / 9) % 2) * 4.5; x < b.x + b.w; x += 9) {
+        g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fillStyle = '#000'; g.fill();
+      }
+    }
+  }
+  function sfx(g, b, s) {
+    g.save();
+    g.translate(b.x + s.x * b.w, b.y + s.y * b.h);
+    g.rotate(s.rot ?? 0);
+    g.font = `italic 800 ${s.size}px "Barlow Condensed", system-ui, sans-serif`;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineJoin = 'round';
+    g.lineWidth = s.size * 0.2; g.strokeStyle = '#fff'; g.strokeText(s.text, 0, 0);
+    g.lineWidth = s.size * 0.09; g.strokeStyle = '#000'; g.strokeText(s.text, 0, 0);
+    g.fillStyle = '#fff'; g.fillText(s.text, 0, 0);
+    g.restore();
+  }
+  function wrap(g, text, max) {
+    const words = text.split(' '); const lines = []; let line = '';
+    for (const w of words) { const t = line ? `${line} ${w}` : w; if (g.measureText(t).width > max && line) { lines.push(line); line = w; } else line = t; }
+    if (line) lines.push(line);
+    return lines;
+  }
+  function bubble(g, b, bub, anchor) {
+    const kind = bub.kind ?? 'speech';
+    g.save();
+    g.font = kind === 'shout' ? 'italic 800 34px "Barlow Condensed", system-ui' : `${kind === 'thought' ? 'italic ' : ''}600 24px system-ui, sans-serif`;
+    const lines = wrap(g, kind === 'shout' ? bub.text.toUpperCase() : bub.text, 240);
+    const tw = Math.max(...lines.map((l) => g.measureText(l).width));
+    const lh = kind === 'shout' ? 34 : 28;
+    const rw = tw / 2 + 30, rh = (lines.length * lh) / 2 + 20;
+    let cx = b.x + (anchor[0] + bub.dx) * b.w, cy = b.y + (anchor[1] + bub.dy) * b.h;
+    cx = Math.min(Math.max(cx, b.x + rw - 20), b.x + b.w - rw + 20);
+    cy = Math.min(Math.max(cy, b.y + rh - 10), b.y + b.h - rh);
+    const ax = b.x + anchor[0] * b.w, ay = b.y + anchor[1] * b.h;
+    g.lineWidth = 3.5; g.strokeStyle = '#000'; g.fillStyle = '#fff';
+    if (kind === 'thought') {
+      // cloud: a ring of puffs and three small circles towards the thinker
+      const puffs = 14;
+      g.beginPath();
+      for (let i = 0; i < puffs; i++) { const a = (i / puffs) * Math.PI * 2; g.moveTo(cx + Math.cos(a) * rw + 22, cy + Math.sin(a) * rh); g.arc(cx + Math.cos(a) * rw, cy + Math.sin(a) * rh, 22, 0, Math.PI * 2); }
+      g.fill(); g.stroke();
+      g.beginPath(); g.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2); g.fill();
+      for (let i = 1; i <= 3; i++) { const t = 0.25 + i * 0.18; g.beginPath(); g.arc(cx + (ax - cx) * t, cy + rh * 0.6 + (ay - cy - rh * 0.6) * t, 12 - i * 3, 0, Math.PI * 2); g.fill(); g.stroke(); }
+    } else if (kind === 'shout') {
+      // spiky burst
+      const spikes = 18;
+      g.beginPath();
+      for (let i = 0; i <= spikes * 2; i++) { const a = (i / (spikes * 2)) * Math.PI * 2; const k = i % 2 ? 1.0 : 1.35; g.lineTo(cx + Math.cos(a) * rw * k, cy + Math.sin(a) * rh * k); }
+      g.closePath(); g.fill(); g.stroke();
+    } else {
+      // speech: ellipse with a tail to the speaker
+      const ang = Math.atan2(ay - cy, ax - cx);
+      g.beginPath();
+      g.ellipse(cx, cy, rw, rh, 0, ang + 0.25, ang - 0.25 + Math.PI * 2);
+      const tx = cx + (ax - cx) * 0.7, ty = cy + (ay - cy) * 0.7;
+      g.lineTo(tx, ty);
+      g.closePath(); g.fill(); g.stroke();
+    }
+    g.fillStyle = '#000'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    lines.forEach((l, i) => g.fillText(l, cx, cy + (i - (lines.length - 1) / 2) * lh));
+    g.restore();
+  }
+  function caption(g, b, c) {
+    g.save();
+    g.font = c.big ? 'italic 800 40px "Barlow Condensed", system-ui' : '700 20px system-ui, sans-serif';
+    const w = g.measureText(c.text).width + 28, h = c.big ? 54 : 38;
+    const x = c.at.includes('r') ? b.x + b.w - w - 12 : b.x + 12;
+    const y = c.at.includes('b') ? b.y + b.h - h - 12 : b.y + 12;
+    g.fillStyle = c.big ? '#000' : '#fff'; g.strokeStyle = '#000'; g.lineWidth = 3;
+    g.fillRect(x, y, w, h); g.strokeRect(x, y, w, h);
+    g.fillStyle = c.big ? '#fff' : '#000'; g.textBaseline = 'middle';
+    g.fillText(c.text, x + 14, y + h / 2 + 1);
+    g.restore();
+  }
+
+  function drawPage(page, seed) {
+    const cv = document.createElement('canvas');
+    cv.width = PW; cv.height = PH;
+    cv.className = 'page';
+    const g = cv.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, PW, PH);
+    page.panels.forEach((pn, i) => {
+      const b = bbox(pn.poly);
+      const img = manga.render(pn.shot, Math.round(b.w), Math.round(b.h));
+      const anchors = {};
+      for (const key of ['p.Head', 'o.Head', 'p.pelvis', 'o.pelvis', 'o.hand_l']) { const [w, j] = key.split('.'); anchors[key] = manga.screenOf(w, j); }
+      g.save();
+      path(g, pn.poly); g.clip();
+      g.fillStyle = '#fff'; g.fillRect(b.x, b.y, b.w, b.h);
+      const mid = anchors['p.pelvis'];
+      if (pn.bg === 'speed') speedLines(g, b, pn.angle ?? 0, seed + i * 31);
+      if (pn.bg === 'focus') focusLines(g, b, b.x + mid[0] * b.w, b.y + mid[1] * b.h, seed + i * 17);
+      if (pn.bg === 'tone') toneBg(g, b);
+      g.drawImage(img, b.x, b.y);
+      for (const s of pn.sfx ?? []) sfx(g, b, s);
+      for (const c of pn.captions ?? []) caption(g, b, c);
+      g.restore();
+      path(g, pn.poly); g.lineWidth = 7; g.strokeStyle = '#000'; g.lineJoin = 'miter'; g.stroke();
+      for (const bub of pn.bubbles ?? []) bubble(g, b, bub, anchors[bub.at]);
+    });
+    return cv;
+  }
+
+  // ---------------------------------------------------------------- reading
+  const book = document.getElementById('book');
+  const bar = document.getElementById('bar');
+  let order = [PAGES[0], PAGES[1]];
+  let index = 0;
+  const cache = new Map();
+  const pageCanvas = (pg) => { if (!cache.has(pg)) cache.set(pg, drawPage(pg, 7 + cache.size * 101)); return cache.get(pg); };
+
+  function show(i, turn = true) {
+    const old = book.querySelector('.page');
+    const cv = pageCanvas(order[i]);
+    cv.classList.remove('out', 'in');
+    if (old && turn && old !== cv) { old.classList.add('out'); setTimeout(() => old.remove(), 550); cv.classList.add('in'); book.prepend(cv); }
+    else { book.innerHTML = ''; book.append(cv); }
+    index = i;
+    renderBar();
+  }
+  function renderBar() {
+    const page = order[index];
+    bar.innerHTML = '';
+    if (page.choices && index === order.length - 1) {
+      for (const c of page.choices) {
+        const btn = document.createElement('button');
+        btn.className = 'choice'; btn.textContent = c.label;
+        btn.onclick = () => choose(c.next);
+        bar.append(btn);
+      }
+      return;
+    }
+    const prev = document.createElement('button'); prev.textContent = '← Back'; prev.disabled = index === 0; prev.onclick = () => show(index - 1);
+    const next = document.createElement('button'); next.textContent = index < order.length - 1 ? 'Next page →' : 'Read again'; next.onclick = () => (index < order.length - 1 ? show(index + 1) : restart());
+    const info = document.createElement('span'); info.textContent = `Page ${index + 1} / ${order.length}`;
+    bar.append(prev, info, next);
+  }
+  function choose(id) {
+    const branch = PAGES.find((p) => p.id === id);
+    const page = { panels: [...branch.panels, ...REST[branch.rest](M + 420 + G)] };
+    order = [PAGES[0], PAGES[1], page, FINAL];
+    show(2);
+  }
+  function restart() { order = [PAGES[0], PAGES[1]]; show(0); }
+  book.addEventListener('click', () => { if (!order[index].choices || index < order.length - 1) { if (index < order.length - 1) show(index + 1); } });
+  addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' && index < order.length - 1) show(index + 1); if (e.key === 'ArrowLeft' && index > 0) show(index - 1); });
+
+  await document.fonts.load('italic 800 40px "Barlow Condensed"');
+  const params = new URLSearchParams(location.search);
+  if (params.get('choice')) choose(params.get('choice'));
+  if (params.get('page')) show(Number(params.get('page')) - 1, false); else if (!params.get('choice')) show(0, false);
+  window.__ready = true;
+</script>
+</body>
+</html>

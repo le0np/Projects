@@ -1,0 +1,327 @@
+{
+  "schemaVersion": 1,
+  "id": "everyday_missed_bus",
+  "version": 3,
+  "title": "Missed Bus",
+  "category": "everyday",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 8,
+  "cooldown": {
+    "maxPerCharacter": 1,
+    "maxPerSession": 3
+  },
+  "location": {
+    "at": [
+      "street"
+    ]
+  },
+  "roles": {
+    "commuter": {
+      "count": 1,
+      "description": "Just missed the bus",
+      "conditions": {
+        "fact": "employed"
+      }
+    },
+    "driver": {
+      "count": 1,
+      "description": "Drives past in their car"
+    }
+  },
+  "text": {
+    "public": "{commuter} watches the bus pull away. {driver} is driving down the same street.",
+    "private": {
+      "commuter": "Work starts in twenty minutes and your manager already warned you about being late. That is {driver}'s car coming.",
+      "driver": "{commuter} is standing at the bus stop, looking at their watch. You are running a bit late yourself."
+    }
+  },
+  "choices": {
+    "commuter": [
+      {
+        "id": "wave",
+        "label": "Wave at {driver} for a lift",
+        "tags": [
+          "negotiate"
+        ],
+        "perceived": {
+          "career": 1,
+          "relation": {
+            "driver": 1
+          }
+        }
+      },
+      {
+        "id": "taxi",
+        "label": "Take a taxi",
+        "tags": [
+          "sacrifice"
+        ],
+        "perceived": {
+          "money": -1,
+          "career": 1
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -5
+            }
+          }
+        ]
+      },
+      {
+        "id": "run",
+        "label": "Run to work",
+        "tags": [
+          "risk"
+        ],
+        "perceived": {
+          "risk": 1,
+          "career": 1
+        }
+      },
+      {
+        "id": "wait",
+        "label": "Wait for the next bus",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "career": -1
+        }
+      }
+    ],
+    "driver": [
+      {
+        "id": "stop",
+        "label": "Pull over and offer {commuter} a lift",
+        "tags": [
+          "help",
+          "sacrifice"
+        ],
+        "perceived": {
+          "career": -1,
+          "relation": {
+            "commuter": 1
+          }
+        }
+      },
+      {
+        "id": "honk",
+        "label": "Honk cheerfully and drive on",
+        "tags": [
+          "refuse"
+        ],
+        "perceived": {
+          "relation": {
+            "commuter": -1
+          }
+        }
+      },
+      {
+        "id": "look_away",
+        "label": "Pretend you did not see them",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "risk": 1
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "lift",
+      "when": {
+        "all": [
+          {
+            "chose": "stop",
+            "role": "driver"
+          },
+          {
+            "not": {
+              "chose": "taxi",
+              "role": "commuter"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:commuter",
+          "delta": {
+            "career": 1,
+            "mental": 3
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:driver",
+          "delta": {
+            "career": -2,
+            "mental": 3
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:commuter",
+          "to": "role:driver",
+          "affinity": 12,
+          "trust": 8,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "commuter": "{driver} pulls over. You make it on time and talk the whole way.",
+        "driver": "You arrive a few minutes late, but {commuter} will not forget it."
+      }
+    },
+    {
+      "id": "taxi_wasted",
+      "when": {
+        "all": [
+          {
+            "chose": "stop",
+            "role": "driver"
+          },
+          {
+            "chose": "taxi",
+            "role": "commuter"
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "relation",
+          "from": "role:driver",
+          "to": "role:commuter",
+          "affinity": -3
+        }
+      ],
+      "text": {
+        "commuter": "You are already in a taxi when {driver} pulls over. Awkward waves.",
+        "driver": "{commuter} jumps into a taxi just as you stop."
+      }
+    },
+    {
+      "id": "ignored",
+      "when": {
+        "all": [
+          {
+            "chose": "wave",
+            "role": "commuter"
+          },
+          {
+            "not": {
+              "chose": "stop",
+              "role": "driver"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:commuter",
+          "delta": {
+            "career": -4,
+            "mental": -4
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:commuter",
+          "to": "role:driver",
+          "affinity": -15,
+          "trust": -10
+        }
+      ],
+      "text": {
+        "commuter": "{driver} drives straight past you. You arrive late and annoyed.",
+        "driver": "In the mirror you see {commuter} still waving."
+      }
+    },
+    {
+      "id": "slipped",
+      "when": {
+        "chose": "run",
+        "role": "commuter"
+      },
+      "chance": 0.2,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:commuter",
+          "delta": {
+            "health": -10,
+            "career": -3
+          }
+        },
+        {
+          "type": "mark",
+          "target": "role:commuter",
+          "mark": "bandage",
+          "seconds": 45
+        }
+      ],
+      "text": {
+        "commuter": "You slip on the wet pavement and arrive late, limping.",
+        "driver": "You drive on."
+      }
+    },
+    {
+      "id": "made_it_running",
+      "when": {
+        "chose": "run",
+        "role": "commuter"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:commuter",
+          "delta": {
+            "health": 2
+          }
+        }
+      ],
+      "text": {
+        "commuter": "Out of breath, but just in time.",
+        "driver": "You drive on."
+      }
+    },
+    {
+      "id": "late",
+      "when": {
+        "chose": "wait",
+        "role": "commuter"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:commuter",
+          "delta": {
+            "career": -4,
+            "mental": -2
+          }
+        }
+      ],
+      "text": {
+        "commuter": "You arrive half an hour late. Nobody says anything, which is worse.",
+        "driver": "You drive on."
+      }
+    },
+    {
+      "id": "taxi",
+      "text": {
+        "commuter": "Expensive, but you make it on time.",
+        "driver": "You drive on."
+      }
+    }
+  ]
+}

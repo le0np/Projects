@@ -1,0 +1,689 @@
+<title>Small Town Lives</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: one column "life board" on top, one big story card below; cut-paper puppet theatre feel. */
+:root {
+  --paper: #e9eef5;
+  --card: #ffffff;
+  --ink: #1d2230;
+  --muted: #5b6477;
+  --line: #cfd7e3;
+  --tomato: #e0533d;
+  --mustard: #f0ad2e;
+  --teal: #23877b;
+  --sky: #3c6fd8;
+  --good-bg: #dff3ee;
+  --bad-bg: #fbe3df;
+  --warn-bg: #fdf0d3;
+  --shadow: 0 2px 0 #b9c3d3;
+  --display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #151a24; --card: #1f2634; --ink: #eef1f7; --muted: #a3adc0; --line: #33405a;
+    --tomato: #f0705b; --mustard: #f5bd52; --teal: #4fbfb0; --sky: #7aa2f5;
+    --good-bg: #183a35; --bad-bg: #42231f; --warn-bg: #3d3218; --shadow: 0 2px 0 #0b0e14; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #151a24; --card: #1f2634; --ink: #eef1f7; --muted: #a3adc0; --line: #33405a;
+  --tomato: #f0705b; --mustard: #f5bd52; --teal: #4fbfb0; --sky: #7aa2f5;
+  --good-bg: #183a35; --bad-bg: #42231f; --warn-bg: #3d3218; --shadow: 0 2px 0 #0b0e14; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.5; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.15; margin: 0; text-wrap: balance; }
+h1 { font-size: 2rem; }
+h2 { font-size: 1.45rem; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 0.88rem; }
+.proto { font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.card { background: var(--card); border: 2px solid var(--ink); border-radius: 14px; box-shadow: 4px 4px 0 var(--ink); padding: 20px; display: grid; gap: 14px; min-width: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+.btn { background: var(--ink); color: var(--card); border: 2px solid var(--ink); border-radius: 999px; padding: 10px 22px; font-family: var(--display); font-weight: 600; font-size: 1.05rem; justify-self: start; }
+.btn:hover { transform: translateY(-1px); }
+.btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+.choice { text-align: left; background: var(--card); border: 2px solid var(--ink); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; box-shadow: var(--shadow); }
+.choice:hover { background: var(--paper); }
+.choice[aria-pressed="true"] { background: var(--warn-bg); }
+.choice .label { font-weight: 700; }
+.choices { display: grid; gap: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 0.82rem; border-radius: 999px; padding: 2px 10px; border: 1.5px solid var(--line); background: var(--paper); white-space: nowrap; }
+.chip.good { background: var(--good-bg); border-color: var(--teal); }
+.chip.bad { background: var(--bad-bg); border-color: var(--tomato); }
+.chip.warn { background: var(--warn-bg); border-color: var(--mustard); }
+.chip.odds { font-weight: 700; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .grid3 { grid-template-columns: 1fr; } }
+.pick { text-align: left; background: var(--card); border: 2px solid var(--ink); border-radius: 12px; padding: 12px; display: grid; gap: 4px; box-shadow: var(--shadow); }
+.pick[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+.pick[aria-pressed="true"] .muted { color: var(--line); }
+.pick .big { font-size: 1.6rem; }
+input[type=text] { font: inherit; padding: 10px 12px; border: 2px solid var(--ink); border-radius: 10px; background: var(--card); color: var(--ink); width: 100%; max-width: 320px; }
+
+/* life board */
+.board { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
+.who { display: grid; gap: 2px; }
+.stats { display: flex; flex-wrap: wrap; gap: 6px; }
+.timeline { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.dot { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-size: 0.78rem; font-weight: 700; font-variant-numeric: tabular-nums; background: var(--card); }
+.dot.done { border-color: var(--ink); background: var(--paper); }
+.dot.now { border-color: var(--tomato); background: var(--tomato); color: var(--card); }
+.cast { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.person { display: flex; gap: 8px; align-items: center; border: 1.5px solid var(--line); border-radius: 12px; padding: 6px 8px; min-width: 0; }
+.person .name { font-weight: 700; font-size: 0.92rem; }
+.person .rel { font-size: 0.78rem; }
+.rel.pos { color: var(--teal); } .rel.neg { color: var(--tomato); } .rel.neu { color: var(--muted); }
+@media (max-width: 560px) { .cast { grid-template-columns: 1fr; } .board { grid-template-columns: 1fr; justify-items: start; } }
+.secrets { display: grid; gap: 6px; }
+.secret { background: var(--warn-bg); border: 1.5px dashed var(--mustard); border-radius: 10px; padding: 6px 10px; font-size: 0.88rem; }
+
+/* story */
+.eyebrow { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.lead { font-size: 1.12rem; }
+.private { background: var(--paper); border-left: 4px solid var(--sky); border-radius: 6px; padding: 8px 12px; font-style: italic; }
+.reveal { display: grid; gap: 8px; }
+.reveal .row { display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.roll { font-family: var(--display); font-size: 2.6rem; font-weight: 700; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 12px; }
+.roll .need { font-size: 1rem; color: var(--muted); font-family: var(--body); font-weight: 400; }
+.verdict { font-family: var(--display); font-size: 1.4rem; font-weight: 700; }
+.verdict.good { color: var(--teal); } .verdict.bad { color: var(--tomato); }
+.punch { font-size: 1.15rem; }
+.factors { display: grid; gap: 4px; font-size: 0.92rem; }
+.factors div { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dotted var(--line); padding-bottom: 2px; }
+.factors b { font-variant-numeric: tabular-nums; }
+.emoji-line { font-size: 1.8rem; letter-spacing: 0.1em; }
+.title-big { font-family: var(--display); font-size: 2.2rem; font-weight: 700; color: var(--tomato); line-height: 1.1; }
+ul.moments { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.fade { animation: fade .35s ease both; }
+@keyframes fade { from { opacity: .3; transform: translateY(6px);} to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .fade { animation: none; } }
+.bean { flex: none; }
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+// ---------- tiny helpers ----------
+const $ = (h) => { const t = document.createElement("template"); t.innerHTML = h.trim(); return t.content.firstElementChild; };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rnd = (n) => Math.floor(Math.random() * n);
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ---------- the puppet (B3 bean) ----------
+function bean(color, mood = "ok", size = 56, hat = "") {
+  const mouth = mood === "good" ? "M18 34 Q28 44 38 34" : mood === "bad" ? "M19 39 Q28 31 37 39" : "M20 36 L36 36";
+  const brows = mood === "bad" ? '<path d="M15 18 L23 21 M41 18 L33 21" stroke="#1d2230" stroke-width="3" stroke-linecap="round"/>' : '<path d="M15 19 L23 18 M33 18 L41 19" stroke="#1d2230" stroke-width="3" stroke-linecap="round"/>';
+  const eyes = mood === "good" ? '<path d="M17 26 Q20 22 23 26 M33 26 Q36 22 39 26" stroke="#1d2230" stroke-width="2.6" fill="none" stroke-linecap="round"/>' : '<circle cx="20" cy="26" r="2.6" fill="#1d2230"/><circle cx="36" cy="26" r="2.6" fill="#1d2230"/>';
+  return `<svg class="bean" width="${size}" height="${size * 1.15}" viewBox="0 0 56 64" aria-hidden="true">
+    <ellipse cx="28" cy="61" rx="17" ry="3" fill="#000" opacity=".15"/>
+    <path d="M28 3 C45 3 50 18 50 34 C50 50 43 58 28 58 C13 58 6 50 6 34 C6 18 11 3 28 3Z" fill="${color}" stroke="#1d2230" stroke-width="2.5"/>
+    ${brows}${eyes}<path d="${mouth}" stroke="#1d2230" stroke-width="2.8" fill="none" stroke-linecap="round"/>${hat}</svg>`;
+}
+
+// ---------- setup data ----------
+const DREAMS = [
+  { id: "fame", icon: "🎤", label: "Become famous", note: "Win the town talent show final at 33." },
+  { id: "rich", icon: "💰", label: "Get rich", note: "Land the big investor deal at 33." },
+  { id: "love", icon: "💍", label: "Find true love", note: "Be happily married to Ana at 33." },
+];
+const FLAWS = [
+  { id: "blabber", icon: "🗣️", label: "Can't keep a secret", note: "Your secrets come out sooner. Lying is harder." },
+  { id: "coward", icon: "🐔", label: "Coward", note: "Brave choices are 25 % less likely to work." },
+  { id: "pushover", icon: "🫠", label: "Can't say no", note: "When you try to refuse, you often say yes anyway." },
+];
+const CAREERS = [
+  { id: "lawyer", icon: "⚖️", label: "Lawyer", job: "Junior lawyer", up: "Partner at Hartley & Sons", color: "#7aa2f5" },
+  { id: "mechanic", icon: "🔧", label: "Mechanic", job: "Apprentice mechanic", up: "Owner of Fix-It Garage", color: "#f0ad2e" },
+  { id: "journalist", icon: "📰", label: "Journalist", job: "Intern at the Gazette", up: "Editor of the Gazette", color: "#e0533d" },
+];
+const CAST = {
+  marko: { name: "Marko", trait: "Best friend since school. Terrible ideas.", color: "#6cc4a1" },
+  ana: { name: "Ana", trait: "Lives next door. Hopeless romantic.", color: "#f29bb2" },
+  vera: { name: "Vera", trait: "Your school rival. Always one step ahead.", color: "#b48ef0" },
+};
+const AGES = [18, 21, 24, 27, 30, 33];
+
+// ---------- state ----------
+let S;
+function newState(name, dream, flaw, career) {
+  return {
+    name, dream, flaw, career, chapter: 0,
+    money: 20, rep: 40, fame: 0, job: null, jobLevel: 0, home: "Your mum's spare room", partner: null, married: false,
+    rel: { marko: 2, ana: 0, vera: -1 }, flags: {}, secrets: [], moments: [], emojis: [], usedEvents: new Set(), mood: "ok",
+    helped: {}, hurt: {}, changes: [],
+  };
+}
+const career = () => CAREERS.find((c) => c.id === S.career);
+const relLabel = (who) => {
+  const r = S.rel[who];
+  if (who === "ana" && S.married) return ["Your wife", "pos"];
+  if (who === "ana" && S.partner === "ana") return ["Your partner", "pos"];
+  if (who === "ana" && S.flags.anaWithMarko) return ["Dating Marko", "neg"];
+  if (r >= 3) return ["Best friend", "pos"]; if (r >= 1) return ["Friend", "pos"]; if (r === 0) return ["Acquaintance", "neu"];
+  if (r >= -2) return ["Annoyed with you", "neg"]; return ["Enemy", "neg"];
+};
+
+// ---------- effects (each records a visible change) ----------
+const ch = (text, tone) => S.changes.push({ text, tone });
+function money(n) { S.money = clamp(S.money + n, 0, 100); ch(`${n > 0 ? "+" : ""}${n} € money`, n > 0 ? "good" : "bad"); }
+function rep(n) { S.rep = clamp(S.rep + n, 0, 100); ch(`${n > 0 ? "+" : ""}${n} reputation`, n > 0 ? "good" : "bad"); }
+function fame(n) { S.fame = clamp(S.fame + n, 0, 10); ch(`${n > 0 ? "+" : ""}${n} ★ fame`, n > 0 ? "good" : "bad"); }
+function rel(who, n) {
+  const before = relLabel(who)[0];
+  S.rel[who] = clamp(S.rel[who] + n, -4, 4);
+  if (n > 0) S.helped[who] = (S.helped[who] || 0) + 1; else S.hurt[who] = (S.hurt[who] || 0) + 1;
+  const after = relLabel(who)[0];
+  ch(before !== after ? `${CAST[who].name}: ${before} → ${after}` : `${CAST[who].name} ${n > 0 ? "likes you more" : "likes you less"}`, n > 0 ? "good" : "bad");
+}
+function job(level) {
+  const c = career();
+  if (level <= 0) { if (S.job) ch(`Lost your job (${S.job})`, "bad"); S.job = null; S.jobLevel = 0; return; }
+  S.job = level === 1 ? c.job : c.up; S.jobLevel = level; ch(`New job: ${S.job}`, "good");
+}
+function home(h) { S.home = h; ch(`Moved: ${h}`, "good"); }
+function partner(who) { S.partner = who; ch(who ? `Together with ${CAST[who].name}` : "Single again", who ? "good" : "bad"); }
+function secret(id, text, who, years) {
+  const due = S.chapter + Math.max(1, years - (S.flaw === "blabber" ? 1 : 0));
+  S.secrets.push({ id, text, who, due }); ch(`New secret: ${text}`, "warn");
+}
+function remember(text) { S.moments.push({ age: AGES[S.chapter], text }); }
+
+// odds with flaw modifiers; returns {odds, notes[]}
+function odds(base, tags = []) {
+  let o = base; const notes = [];
+  if (tags.includes("brave") && S.flaw === "coward") { o -= 25; notes.push("Coward −25 %"); }
+  if (tags.includes("lie") && S.flaw === "blabber") { o -= 20; notes.push("Can't keep a secret −20 %"); }
+  if (tags.includes("refuse")) { if (S.flaw !== "pushover") return { odds: 100, notes }; o = Math.min(o, 40); notes.push("Can't say no: 40 %"); }
+  return { odds: clamp(o, 5, 95), notes };
+}
+// cast decision: friends help, enemies hurt, the rest is a coin flip
+function castHelps(who) { const r = S.rel[who]; if (r >= 1) return true; if (r <= -1) return false; return Math.random() < 0.5; }
+
+// ---------- events ----------
+// each choice: { label, hint, tags, base (odds, optional), run(ok) -> text, emoji }
+const EVENTS = [
+  // CAREER
+  { id: "interview", focus: "career", when: () => !S.job, title: "The Interview",
+    text: () => `One opening at ${S.career === "mechanic" ? "Fix-It Garage" : S.career === "lawyer" ? "Hartley & Sons" : "the Gazette"}. Vera is in the waiting room too, in a better outfit, reading your CV over your shoulder.`,
+    private: () => `Your CV says "team player". You once lost a three-legged race on your own.`,
+    choices: () => [
+      { label: "Be honest: zero experience, lots of enthusiasm", base: 55 + (S.rep >= 50 ? 10 : 0), run: (ok) => ok
+        ? (job(1), rep(5), remember("Got your first job by being honest. Nobody believed it either."), ["They hire you for your 'raw potential', which means less money.", "💼"])
+        : (rel("vera", -1), ["They hire Vera. She waves on the way out. With both hands.", "😶"]) },
+      { label: "Claim you speak fluent Mandarin", tags: ["lie"], base: 80, run: (ok) => ok
+        ? (job(1), secret("mandarin", "You don't speak Mandarin", null, 2), remember("Lied about speaking Mandarin to get your first job."), ["Hired! Your boss mentions the Shanghai client \"calls in a couple of years\".", "🀄"])
+        : (rep(-10), ["The interviewer answers in Mandarin. You nod for eleven minutes. No job.", "😬"]) },
+      { label: "Tell the receptionist Vera's car is being towed", tags: ["lie", "brave"], base: 65, run: (ok) => ok
+        ? (job(1), rel("vera", -1), secret("towed", "You got Vera's car 'towed'", "vera", 3), remember("Sent Vera to chase a fake tow truck and took her job."), ["Vera sprints out. You get the job. Her car was fine. She is not.", "🚗"])
+        : (rel("vera", -2), S.flags.veraGrudge = true, remember("Tried to trick Vera out of an interview. She noticed."), ["Vera smiles. \"Nice try.\" She gets the job and memorises your face.", "🙃"]) },
+    ] },
+  { id: "pitch", focus: "career", when: () => S.job && S.jobLevel === 1, title: "The Big Pitch",
+    text: () => `Your boss wants one great idea by Friday. Last night, over beers, Marko told you his idea: a dating app for dogs. He hasn't told anyone else.`,
+    private: () => `Your own idea is a loyalty card for pigeons.`,
+    choices: () => [
+      { label: "Pitch Marko's idea as your own", tags: ["lie"], base: 75, run: (ok) => ok
+        ? (job(2), money(20), secret("idea", "You stole Marko's dog-dating idea", "marko", 2), remember("Got promoted with Marko's idea. Didn't mention Marko."), ["\"Sniffr\" is a hit. You are promoted. Marko texts: \"weird, that's my idea lol\".", "🐶"])
+        : (rep(-5), ["Your boss says it \"sounds like something a drunk friend told you\".", "🍺"]) },
+      { label: "Pitch your pigeon loyalty card", tags: ["brave"], base: 35, run: (ok) => ok
+        ? (job(2), money(15), fame(1), remember("Got promoted for a loyalty card for pigeons. The pigeons are very loyal."), ["Your boss loves it. The pigeons love it more. Promoted!", "🐦"])
+        : (rep(-5), ["Your boss asks if everything is okay at home.", "🫥"]) },
+      { label: "Ask Marko to pitch it together with you", cast: "marko", run: () => {
+          if (castHelps("marko")) { job(2); money(10); rel("marko", 1); remember("Pitched Marko's idea together with him. Both promoted."); return ["Marko agrees. You pitch it as a duo. You both get promoted and hug in front of HR.", "🤝", { who: "marko", did: "said yes and pitched it with you" }]; }
+          rel("marko", -1); rep(-5); remember("Asked Marko to share his idea. He pitched it alone."); return ["Marko pitches it alone, on Thursday, a day early. He gets your promotion.", "🗡️", { who: "marko", did: "went to the boss alone, a day early" }];
+        } },
+    ] },
+  // LOVE
+  { id: "date", focus: "love", when: () => !S.partner && !S.flags.anaWithMarko, title: "The First Date",
+    text: () => `Ana from next door finally said yes to dinner. She thinks you're "the one who waters everyone's plants when they're away".`,
+    private: () => `That was Marko. Marko waters the plants.`,
+    choices: () => [
+      { label: "Tell her it was Marko", run: () => { rel("ana", 2); partner("ana"); remember("Told Ana the truth about the plants on your first date."); return ["She laughs so hard wine comes out of her nose. \"Honest AND bad with plants. Cute.\"", "💘"]; } },
+      { label: "Take credit for the plants", tags: ["lie"], base: 85, run: (ok) => ok
+        ? (rel("ana", 2), partner("ana"), secret("plants", "Marko watered the plants, not you", "marko", 2), remember("Won Ana over by taking credit for Marko's plant watering."), ["Ana is charmed. She asks for tips about her fern. You panic quietly.", "🪴"])
+        : (rel("ana", -1), ["You call her fern \"the green one\". Ana gets suspicious.", "🌿"]) },
+      { label: "Bring Marko along as your wingman", cast: "marko", run: () => {
+          if (castHelps("marko")) { rel("ana", 2); partner("ana"); rel("marko", 1); remember("Marko was the best wingman of all time."); return ["Marko tells stories that make you sound like a hero. Ana kisses you at the door.", "💘", { who: "marko", did: "made you look amazing" }]; }
+          S.flags.anaWithMarko = true; rel("marko", -1); rel("ana", -1); remember("Brought Marko as a wingman. Ana left with Marko."); return ["Marko is charming. Too charming. Ana leaves with Marko.", "💔", { who: "marko", did: "flirted with Ana instead" }];
+        } },
+    ] },
+  { id: "ring", focus: "love", when: () => S.partner === "ana" && !S.married, title: "Making It Official",
+    text: () => `Two years with Ana. At Sunday lunch her mother asks, very loudly, when you are "making it official".`,
+    private: () => `You have a ring. It's in your sock drawer. It's been there for eight months.`,
+    choices: () => [
+      { label: "Propose right now, with an onion ring", tags: ["brave"], base: 70, run: (ok) => ok
+        ? (S.married = true, ch("Married to Ana", "good"), home("A small house with a crooked fence"), remember("Proposed to Ana with an onion ring. She said yes."), ["She says yes. The onion ring lasts four days. The marriage, hopefully, longer.", "💍"])
+        : (rel("ana", -1), ["\"Ask me properly,\" says Ana. \"Or don't,\" says her mother.", "🧅"]) },
+      { label: "Plan a huge surprise and let Marko organise it", cast: "marko", run: () => {
+          money(-15); S.married = true; ch("Married to Ana", "good"); home("A small house with a crooked fence");
+          if (castHelps("marko")) { rel("marko", 1); remember("Marko organised a perfect surprise proposal."); return ["Fireworks, a brass band, a goat in a bow tie. Ana cries. The goat eats the ring box.", "🎆", { who: "marko", did: "kept the secret and booked a goat" }]; }
+          remember("Marko spoiled the surprise proposal. Ana said yes anyway."); return ["Marko told Ana on Tuesday. On Saturday she acts surprised. She is a very bad actor.", "🙄", { who: "marko", did: "told Ana everything on Tuesday" }];
+        } },
+      { label: "Change the subject to the weather", tags: ["refuse"], base: 90, failTo: 0, run: (ok) => { rel("ana", -1); remember("Avoided the marriage question by talking about rain."); return ["You talk about rain for nine minutes. Ana's mother writes your name in a little notebook.", "🌧️"]; } },
+    ] },
+  // MONEY
+  { id: "crypto", focus: "money", when: () => !S.flags.crypto, title: "Marko's Business Plan",
+    text: () => `Marko has a business plan: a cryptocurrency, but for actual dogs. He needs "just a little" from you. You have ${S.money} € saved.`,
+    private: () => `Marko's last business was a fidget spinner shop. In 2031.`,
+    choices: () => [
+      { label: "Put in all your savings", tags: ["brave"], base: 35, run: (ok) => { S.flags.crypto = true; return ok
+        ? (money(45), rel("marko", 1), remember("Bet everything on Marko's dog coin. It worked!"), ["Dogs, it turns out, love money. You're rich-ish!", "🚀"])
+        : (money(-S.money), S.flags.markoOwes = true, rel("marko", 1), remember("Lost all your savings on Marko's dog coin. He gave you a dog."), ["It crashes in a week. Marko can't pay you back, so he gives you a dog. The dog is great.", "🐕"]); } },
+      { label: "Give him a little, as a friend", run: () => { S.flags.crypto = true; money(-5); rel("marko", 1); remember("Gave Marko a little money for his dog coin. Never saw it again."); return ["You never see the money again. Marko names a dog after you.", "🐶"]; } },
+      { label: "Say no", tags: ["refuse"], base: 90, failTo: 1, run: () => { S.flags.crypto = true; rel("marko", -1); remember("Said no to Marko's dog coin."); return ["Marko calls you \"a capitalist\" and borrows your car instead.", "🙅"]; } },
+    ] },
+  { id: "envelope", focus: "money", when: () => !S.flags.envelope, title: "The Envelope",
+    text: () => `At the bus stop, an envelope with 2,000 € falls out of Vera's bag. She doesn't notice. Nobody saw. Except a pigeon.`,
+    private: () => `The pigeon is staring at you.`,
+    choices: () => [
+      { label: "Give it back", run: () => { S.flags.envelope = true; rel("vera", 2); rep(5); remember("Gave Vera back her 2,000 €."); return ["Vera stares at you like you're an alien. Then she buys you a coffee. A small one.", "✉️"]; } },
+      { label: "Keep it", tags: ["lie"], run: () => { S.flags.envelope = true; money(25); secret("envelope", "You kept Vera's 2,000 €", "vera", 2); remember("Kept Vera's envelope with 2,000 €."); return ["You keep it. The pigeon keeps looking at you.", "🐦"]; } },
+      { label: "Return half and say that's how you found it", tags: ["lie"], base: 55, run: (ok) => { S.flags.envelope = true; return ok
+        ? (money(12), rel("vera", 1), remember("Returned half of Vera's money and kept the other half."), ["Vera thanks you, confused. \"I could have sworn there was more.\"", "🤏"])
+        : (money(12), rel("vera", -2), rep(-5), remember("Got caught keeping half of Vera's money."), ["Vera counts it. Twice. Then she counts you.", "🧾"]); } },
+    ] },
+  // FAME
+  { id: "openmic", focus: "fame", when: () => !S.flags.openmic, title: "Open Mic Night",
+    text: () => `Open mic night at The Last Call. Ana and Marko are in the front row. Vera is in the back, filming.`,
+    private: () => `Your hands are shaking. Your knees have filed a formal complaint.`,
+    choices: () => [
+      { label: "Do your stand-up set about your family", tags: ["brave"], base: 50, run: (ok) => { S.flags.openmic = true; return ok
+        ? (fame(2), rep(5), remember("Killed it at open mic with jokes about your family."), ["The room explodes. Your mum isn't here. She'll see it online.", "🎤"])
+        : (rep(-5), remember("Bombed at open mic night."), ["Silence so loud the bar turns the music back on.", "🦗"]); } },
+      { label: "Sing the song you wrote about Ana", tags: ["brave"], base: 45, run: (ok) => { S.flags.openmic = true; return ok
+        ? (fame(2), rel("ana", 2), S.partner || (partner("ana")), remember("Sang a love song to Ana in front of the whole bar."), ["Ana cries. The bartender cries. Vera stops filming to cry.", "🎶"])
+        : (rel("ana", -1), remember("Sang a love song to Ana. Badly."), ["Ana leaves \"to get a drink\". From a different bar.", "🎶"]); } },
+      { label: "Roast Vera, who is filming", cast: "vera", base: 75, run: (ok) => { S.flags.openmic = true; rel("vera", -2);
+          if (ok) fame(2); else rep(-5);
+          if (castHelps("vera")) { remember("Roasted Vera on stage. She laughed."); return [ok ? "The bar loves it. Vera laughs and posts it herself." : "Nobody laughs. Except Vera, kindly. That's worse.", "🔥", { who: "vera", did: "posted the clip with \"fair\"" }]; }
+          fame(-1); remember("Roasted Vera on stage. She posted it as 'bullying'."); return [(ok ? "The bar loves it. " : "It flops. ") + "Vera posts the clip with the caption \"bullying 😢\". Half the town agrees with her.", "🔥", { who: "vera", did: "posted the clip as \"bullying\"" }];
+        } },
+    ] },
+  { id: "viral", focus: "fame", when: () => !S.flags.viral, title: "The Video",
+    text: () => `You have a video of Marko falling into the town fountain while proposing to his own phone.`,
+    private: () => `It's the funniest thing you've ever seen. You've watched it 140 times.`,
+    choices: () => [
+      { label: "Post it", run: () => { S.flags.viral = true; fame(3); rel("marko", -2); remember("Posted Marko's fountain video. 4 million views."); return ["4 million views. Marko legally changes his name to \"Mark\".", "📱"]; } },
+      { label: "Post it, but blur his face", base: 50, run: (ok) => { S.flags.viral = true; fame(2); if (!ok) rel("marko", -1); remember("Posted a blurred video of Marko in the fountain."); return [ok ? "Nobody recognises him. Marko shares it himself: \"lol what an idiot\"." : "Marko recognises his own shoes. He is quiet for a long time.", "🫣"]; } },
+      { label: "Delete it", run: () => { S.flags.viral = true; rel("marko", 1); remember("Deleted the video of Marko in the fountain. He'll never know."); return ["Marko never knows. That's friendship. Probably.", "🗑️"]; } },
+    ] },
+  // FRIENDS
+  { id: "move", focus: "friends", when: () => !S.flags.move, title: "Moving Day",
+    text: () => `Marko is moving flats. He said "it's only a few boxes". It's a piano, a canoe, and a very angry cat.`,
+    private: () => `It's your only free day this month.`,
+    choices: () => [
+      { label: "Help all day", run: () => { S.flags.move = true; S.flags.canoe = true; rel("marko", 2); remember("Spent a whole day carrying Marko's piano."); return ["You carry the piano up five floors. Your back files for divorce. Marko says you can borrow the canoe any time.", "🛶"]; } },
+      { label: "Send pizza instead", run: () => { S.flags.move = true; money(-5); rel("marko", 1); remember("Sent pizza instead of helping Marko move."); return ["The pizza arrives. The cat eats it. Marko appreciates the thought.", "🍕"]; } },
+      { label: "Say you're sick", tags: ["lie"], base: 60, run: (ok) => { S.flags.move = true; return ok
+        ? (["Marko believes you and sends soup. You feel terrible about the soup.", "🤒"])
+        : (rel("marko", -2), remember("Faked being sick to skip Marko's move. Got caught."), ["Marko sees your beach photo on Instagram. He moves alone. The cat scratches him.", "🏖️"]); } },
+    ] },
+  { id: "truce", focus: "friends", when: () => S.rel.vera <= 0 && !S.flags.truce, title: "Vera's Birthday",
+    text: () => `Vera invited you to her birthday party. You're not sure if it's a peace offer or a trap.`,
+    private: () => `It's at an escape room. Vera owns the escape room.`,
+    choices: () => [
+      { label: "Bring a thoughtful gift", cast: "vera", run: () => { S.flags.truce = true; money(-5);
+          if (S.rel.vera >= -2) { rel("vera", 2); remember("Made peace with Vera at her birthday."); return ["Vera opens your gift: a framed photo of her winning against you in 2027. She laughs for real. Truce.", "🎁", { who: "vera", did: "let you out of the escape room first" }]; }
+          rel("vera", 1); remember("Went to Vera's birthday. She locked you in the escape room."); return ["Vera locks you in the escape room \"by accident\". For six hours. Still, it's progress.", "🔒", { who: "vera", did: "\"lost\" the key" }];
+        } },
+      { label: "Go, but compete to win every game", tags: ["brave"], base: 45, run: (ok) => { S.flags.truce = true; return ok
+        ? (rel("vera", -1), rep(5), remember("Beat Vera at her own birthday party."), ["You beat Vera at every game at her own party. Everyone claps except Vera.", "🏆"])
+        : (rep(-5), remember("Lost to Vera at every game, at her party."), ["You lose every game. Vera gives you a medal for \"participation\".", "🥉"]); } },
+      { label: "Don't go", run: () => { S.flags.truce = true; rel("vera", -1); return ["You stay home. Vera posts 200 photos. You are in none of them, on purpose.", "🏠"]; } },
+    ] },
+  // HOME
+  { id: "flat", focus: "home", when: () => S.home === "Your mum's spare room", title: "Moving Out",
+    text: () => `You're still in your mum's spare room. She has started calling it "the guest room" when you're in it.`,
+    private: () => `There's a tiny flat above the bakery. It smells amazing and the rent is ${S.money >= 30 ? "almost possible" : "not possible"}.`,
+    choices: () => [
+      { label: "Rent the flat above the bakery", base: S.money >= 30 ? 90 : 40, run: (ok) => ok
+        ? (money(-15), home("Flat above the bakery"), remember("Moved into the flat above the bakery."), ["You move in. Every morning smells like croissants. You gain four kilos.", "🥐"])
+        : (rep(-5), ["The landlord laughs at your bank statement. Then shows it to the baker.", "🏦"]) },
+      { label: "Move in with Marko and the angry cat", cast: "marko", run: () => {
+          if (castHelps("marko")) { home("Marko's spare room (and the cat's)"); rel("marko", 1); remember("Moved in with Marko and his angry cat."); return ["Marko says yes. The cat says no, every night, on your face.", "🐈", { who: "marko", did: "gave you the good room" }]; }
+          rep(-5); remember("Marko said no to living together."); return ["Marko says the cat \"needs her own space\". You stay with your mum.", "🐈", { who: "marko", did: "chose the cat over you" }];
+        } },
+      { label: "Stay and pay mum rent in compliments", run: () => { remember("Paid your mum rent in compliments."); return ["Your mum accepts. She now expects three compliments a day, minimum.", "🏠"]; } },
+    ] },
+];
+
+// revenge and damage-control are generated from state
+function revengeEvent() {
+  const target = ["vera", "marko", "ana"].sort((a, b) => S.rel[a] - S.rel[b])[0];
+  const n = CAST[target].name;
+  return { id: "revenge", focus: "revenge", title: `Payback for ${n}`,
+    text: () => `${n} has been on your list for a while. Tonight their car is parked right under your window.`,
+    private: () => `You have a bike pump. It also works backwards.`,
+    choices: () => [
+      { label: `Let ${n}'s tyres down`, tags: ["brave"], base: 70, run: (ok) => { rel(target, -1);
+          if (ok) { remember(`Let ${n}'s tyres down. Never caught.`); return [`${n} walks to work in the rain. You watch from your window, sipping tea.`, "🛞"]; }
+          rel(target, -2); rep(-10); remember(`Got caught letting ${n}'s tyres down.`); return [`The doorbell camera across the road catches everything. ${n} prints the photo and frames it.`, "📸"]; } },
+      { label: `Send an anonymous complaint to ${n}'s boss`, tags: ["lie"], base: 55, run: (ok) => { if (ok) { rel(target, -1); remember(`Got ${n} in trouble at work with an anonymous letter.`); return [`${n} has a "little chat" with HR. You did not sign the letter. You did use your own stationery.`, "📨"]; }
+          rel(target, -3); remember(`Wrote ${n} an anonymous complaint letter. It wasn't anonymous enough.`); return [`You signed it. Out of habit. ${n} reads it out at the office party.`, "✍️"]; } },
+      { label: `Forgive ${n}`, run: () => { rel(target, 2); remember(`Forgave ${n}.`); return [`You leave a note on ${n}'s car: "We're good." ${n} reads it as a threat, but it's a start.`, "🕊️"]; } },
+    ] };
+}
+function damageEvent() {
+  const sct = S.secrets.slice().sort((a, b) => a.due - b.due)[0];
+  const w = sct.who ? CAST[sct.who].name : "your boss";
+  return { id: "damage", focus: "damage", title: "Damage Control",
+    text: () => `Your secret is getting heavy: “${sct.text}.” ${sct.who ? w + " is starting to ask questions." : "People are starting to ask questions."}`,
+    private: () => `If it comes out by itself, it will be worse. Much worse.`,
+    choices: () => [
+      { label: `Confess to ${w}`, tags: ["brave"], base: 80, run: (ok) => { S.secrets = S.secrets.filter((x) => x !== sct);
+          if (sct.who) rel(sct.who, ok ? 1 : -1); rep(ok ? 0 : -5); remember(`Confessed: ${sct.text}.`);
+          return [ok ? `${w} is quiet for a while, then says "thanks for telling me". It still hurts, but it's over.` : `${w} takes it badly. Very badly. At least it's out.`, "🙇"]; } },
+      { label: "Pay someone to keep quiet", run: () => { money(-20); sct.due += 2; ch("Secret buried for 2 more years", "warn"); remember(`Paid to keep a secret buried: ${sct.text}.`); return ["It costs you. The secret goes back in its box. The box is getting very full.", "🤫"]; } },
+      { label: "Blame it all on Marko", tags: ["lie"], base: 50, run: (ok) => { if (ok) { S.secrets = S.secrets.filter((x) => x !== sct); rel("marko", -2); remember(`Blamed Marko for your secret: ${sct.text}.`); return ["Everyone believes it was Marko. Marko is confused but used to it.", "👉"]; }
+          rel("marko", -3); sct.due = S.chapter; remember(`Tried to blame Marko. It made everything worse.`); return ["Marko has an alibi: he was in a fountain, on camera. Now everyone's looking at you.", "🫵"]; } },
+    ] };
+}
+const REVEALS = {
+  mandarin: () => { if (S.job) job(0); rep(-15); return ["The Shanghai client finally calls. You say \"ni hao\" and then nothing, for forty seconds. You're fired by lunch.", "🀄"]; },
+  towed: () => { rel("vera", -2); rep(-10); return ["Vera finds the receipt from the fake tow company. She tells the whole town. With slides.", "🚗"]; },
+  idea: () => { rel("marko", -3); rep(-10); return ["Marko sees \"your\" dog app on a billboard. He stops answering your calls.", "🐶"]; },
+  plants: () => { rel("ana", -2); rel("marko", -1); return ["Marko, two beers in, tells Ana who really watered the plants. Ana asks what else you've lied about. It's a long list.", "🪴"]; },
+  envelope: () => { money(-30); rel("vera", -2); return ["The pigeon was a doorbell camera. Vera wants her 2,000 € back. Plus interest. Plus an apology in the Gazette.", "🐦"]; },
+};
+function revealEvent(sct) {
+  return { id: "reveal", focus: "secret", title: "Your Secret Is Out", auto: true,
+    text: () => `Some secrets don't stay buried. This one: “${sct.text}.”`,
+    choices: () => [{ label: "Oh no", run: () => { S.secrets = S.secrets.filter((x) => x !== sct); remember(`Secret came out: ${sct.text}.`); const r = REVEALS[sct.id](); S.flags.exposed = (S.flags.exposed || 0) + 1; return r; } }] };
+}
+const flood = { id: "flood", focus: "town", title: "The Great Flood", auto: true,
+  text: () => `The river decides to visit town. Your street is under a metre of water. Ana's cat is on a roof. Vera's jet ski is floating past, unattended.`,
+  private: () => S.flags.canoe ? `Marko still owes you a canoe ride.` : `You can't swim very well. You can mostly splash.`,
+  choices: () => [
+    { label: "Save your own things", run: () => { money(10); return marko(["You save your laptop and three plants. The plants are dead, but they're yours.", "📦"]); } },
+    { label: "Save Ana's cat", tags: ["brave"], base: 60, run: (ok) => ok ? (rel("ana", 2), fame(1), remember("Saved Ana's cat from a roof during the flood."), marko(["You climb the roof and save the cat. The cat scratches your face. Ana kisses the scratches.", "🐈"])) : (rel("ana", -1), marko(["You get stuck on the roof with the cat. The firefighters rescue you both. The cat gets the medal.", "🚒"])) },
+    { label: "Borrow Vera's jet ski and rescue everyone", tags: ["brave"], base: 50, run: (ok) => ok ? (fame(2), rep(10), rel("vera", -1), remember("Rescued half the street on Vera's stolen jet ski."), marko(["You save eleven people and a goat. The Gazette calls you a hero. Vera calls the police.", "🚤"])) : (rep(-10), rel("vera", -2), marko(["The jet ski has a tracker. And a camera. And a horn that plays Vera's voice.", "🚨"])) },
+  ] };
+function marko(res) {
+  if (castHelps("marko") || S.flags.canoe) { money(5); res.push({ who: "marko", did: "paddled over in his canoe and saved your TV" }); }
+  else { res.push({ who: "marko", did: "paddled straight past you, waving" }); }
+  return res;
+}
+
+// ---------- finale: odds built from your whole life ----------
+function finale() {
+  const f = []; let base = 30;
+  const add = (label, v) => { f.push([label, v]); base += v; };
+  if (S.dream === "fame") {
+    add("Your fame ★" + S.fame, S.fame * 7);
+    for (const w of ["marko", "ana", "vera"]) { const r = S.rel[w]; if (r >= 1) add(`${CAST[w].name} votes for you`, 8); else if (r <= -2) add(`${CAST[w].name} tells the judges about you`, -10); }
+    if (S.flags.exposed) add(`Secrets that came out (${S.flags.exposed})`, -8 * S.flags.exposed);
+  } else if (S.dream === "rich") {
+    add(`Your savings (${S.money} €)`, Math.round(S.money / 2.5));
+    add(S.job ? `Your job: ${S.job}` : "No job", S.jobLevel * 8 - 5);
+    const v = S.rel.vera; add(v >= 1 ? "Vera, the investor, likes you" : v <= -2 ? "Vera, the investor, hates you" : "Vera, the investor, doesn't trust you", v >= 1 ? 15 : v <= -2 ? -20 : -5);
+    if (S.rel.marko >= 2) add("Marko is your co-founder", 8);
+  } else {
+    if (S.married) add("You're married to Ana", 30); else if (S.partner === "ana") add("You're with Ana", 15); else if (S.flags.anaWithMarko) add("Ana is with Marko", -20);
+    add(`Ana's feelings for you`, S.rel.ana * 6);
+    if (S.flags.exposed) add(`Lies that came out (${S.flags.exposed})`, -8 * S.flags.exposed);
+    if (S.rel.marko >= 2) add("Marko is your best man", 6);
+  }
+  const titles = { fame: "The Talent Show Final", rich: "The Investor Pitch", love: S.married ? "The Anniversary Dinner" : "Last Chance with Ana" };
+  const texts = {
+    fame: "The town talent show final. The whole town is watching, plus a man from national TV who looks bored.",
+    rich: "Your big business idea, one meeting, one investor. The investor walks in. It's Vera.",
+    love: S.married ? "Your fifth anniversary. Ana booked a table at the fancy place. Her ex is the waiter." : "Ana is moving to another city tomorrow. You have one evening.",
+  };
+  return { id: "finale", focus: "finale", title: titles[S.dream], auto: true, factors: f,
+    text: () => texts[S.dream],
+    choices: () => [{ label: "Go for it", base: clamp(base, 5, 95), run: (ok) => { S.dreamDone = ok; remember(ok ? "Your dream came true." : "Your dream didn't come true."); return ok ? [{ fame: "You win! The bored TV man stands up. He's crying. You're famous.", rich: "Vera signs. \"I hate that this is a good idea,\" she says. You're rich.", love: S.married ? "The ex spills soup on himself. Ana laughs, holds your hand, says \"best five years\". It's true love." : "Ana stays. She unpacks one box, then the rest. True love." }[S.dream], "🏆"] : [{ fame: "Second place. To a dog that plays the recorder. The dog was very good.", rich: "Vera says no. She funds a dog that plays the recorder instead.", love: S.married ? "Ana says she needs \"some time\". The ex brings the bill. He's smug about it." : "Ana's train leaves at 7:04. You get to the station at 7:05." }[S.dream], "🥈"]; } }] };
+}
+
+// ---------- focus cards ----------
+const FOCUS = {
+  career: { icon: "💼", label: "Career", hint: () => (S.job ? "Go for the promotion" : "Get a job") },
+  love: { icon: "❤️", label: "Love", hint: () => (S.partner ? "Make it serious" : "Ask Ana out") },
+  money: { icon: "💶", label: "Money", hint: () => "Fast cash. What could go wrong?" },
+  fame: { icon: "🎤", label: "Fame", hint: () => "Get the town talking about you" },
+  friends: { icon: "🍻", label: "Friends", hint: () => "People you'll need later" },
+  home: { icon: "🏠", label: "Home", hint: () => "Leave your mum's spare room" },
+  revenge: { icon: "🗡️", label: "Revenge", hint: () => { const t = ["vera", "marko", "ana"].sort((a, b) => S.rel[a] - S.rel[b])[0]; return `Get back at ${CAST[t].name}`; } },
+  damage: { icon: "🧯", label: "Damage control", hint: () => "Deal with your secret before it deals with you" },
+};
+function availableFocus() {
+  const list = [];
+  for (const k of ["career", "love", "money", "fame", "friends", "home"]) if (EVENTS.some((e) => e.focus === k && !S.usedEvents.has(e.id) && e.when())) list.push(k);
+  if (Math.min(S.rel.vera, S.rel.marko, S.rel.ana) <= -2 && !S.usedEvents.has("revenge")) list.push("revenge");
+  if (S.secrets.length && (S.flags.damageCount || 0) < 2) list.push("damage");
+  return list;
+}
+function drawFocus() {
+  const all = availableFocus();
+  const must = all.filter((k) => k === "damage" || k === "revenge");
+  const dreamFocus = { fame: "fame", rich: "money", love: "love" }[S.dream];
+  const pref = all.includes(dreamFocus) ? [dreamFocus] : [];
+  const rest = shuffle(all.filter((k) => !must.includes(k) && !pref.includes(k)));
+  return [...new Set([...must, ...pref, ...rest])].slice(0, 3);
+}
+function eventFor(focus) {
+  if (focus === "revenge") return revengeEvent();
+  if (focus === "damage") { S.flags.damageCount = (S.flags.damageCount || 0) + 1; return damageEvent(); }
+  const opts = EVENTS.filter((e) => e.focus === focus && !S.usedEvents.has(e.id) && e.when());
+  return opts[rnd(opts.length)];
+}
+
+// ---------- screens ----------
+const app = document.getElementById("app");
+function render(node) { app.replaceChildren(header(), ...(S ? [board()] : []), node); node.classList.add("fade"); window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" }); }
+function header() {
+  return $(`<div class="proto"><span>Prototype · one life · no timer</span><span>Life Simulation</span></div>`);
+}
+function board() {
+  const c = career();
+  const dream = DREAMS.find((d) => d.id === S.dream), flaw = FLAWS.find((f) => f.id === S.flaw);
+  const el = $(`<section class="card" aria-label="Your life">
+    <div class="board">
+      ${bean(c.color, S.mood, 64)}
+      <div class="who">
+        <h2>${esc(S.name)}, ${AGES[Math.min(S.chapter, 5)]}</h2>
+        <p class="small muted">Dream: <b>${dream.icon} ${dream.label}</b> · Flaw: <b>${flaw.icon} ${flaw.label}</b></p>
+        <div class="stats">
+          <span class="chip">💼 ${esc(S.job || "No job")}</span>
+          <span class="chip">🏠 ${esc(S.home)}</span>
+          <span class="chip">❤️ ${S.married ? "Married to Ana" : S.partner ? "With Ana" : "Single"}</span>
+          <span class="chip">€ ${S.money}</span>
+          <span class="chip">★ ${S.fame} fame</span>
+          <span class="chip">👍 ${S.rep} reputation</span>
+        </div>
+      </div>
+    </div>
+    <div class="timeline" aria-label="Your life so far">${AGES.map((a, i) => `<span class="dot ${i < S.chapter ? "done" : i === S.chapter ? "now" : ""}" title="${S.emojis[i] || ""}">${S.emojis[i] || a}</span>`).join("")}</div>
+    <div class="cast">${Object.entries(CAST).map(([k, p]) => { const [l, t] = relLabel(k); const m = S.rel[k] >= 1 ? "good" : S.rel[k] <= -2 ? "bad" : "ok"; return `<div class="person" title="${esc(p.trait)}">${bean(p.color, m, 34)}<div style="min-width:0"><div class="name">${p.name}</div><div class="rel ${t}">${l}</div></div></div>`; }).join("")}</div>
+    ${S.secrets.length ? `<div class="secrets">${S.secrets.map((x) => { const left = x.due - S.chapter; return `<div class="secret">🤫 <b>Secret:</b> ${esc(x.text)} · <b>${left <= 0 ? "about to come out" : left === 1 ? "comes out next time" : `safe for ${left} more turns`}</b>${S.flaw === "blabber" ? " (and you're a blabbermouth)" : ""}</div>`; }).join("")}</div>` : ""}
+  </section>`);
+  return el;
+}
+
+function startScreen() {
+  S = null;
+  let pick = { dream: null, flaw: null, career: null };
+  const el = $(`<section class="card">
+    <h1>Small Town Lives</h1>
+    <p class="lead">Live a whole life from 18 to 33 in about ten minutes. Each turn you choose what your life is about. Marko, Ana and Vera will help you, or not, depending on how you treat them.</p>
+    <label class="small" for="nm"><b>Your name</b></label>
+    <input id="nm" type="text" maxlength="16" value="Leo" autocomplete="off">
+    <h3>Your dream</h3><div class="grid3" id="dreams"></div>
+    <h3>Your flaw</h3><div class="grid3" id="flaws"></div>
+    <h3>Your job</h3><div class="grid3" id="careers"></div>
+    <button class="btn" id="go" disabled>Start your life</button>
+  </section>`);
+  const group = (id, list, key) => {
+    const box = el.querySelector("#" + id);
+    for (const o of list) {
+      const b = $(`<button class="pick" aria-pressed="false"><span class="big">${o.icon}</span><b>${o.label}</b>${o.note ? `<span class="small muted">${o.note}</span>` : ""}</button>`);
+      b.onclick = () => { pick[key] = o.id; box.querySelectorAll(".pick").forEach((x) => x.setAttribute("aria-pressed", "false")); b.setAttribute("aria-pressed", "true"); el.querySelector("#go").disabled = !(pick.dream && pick.flaw && pick.career); };
+      box.append(b);
+    }
+  };
+  group("dreams", DREAMS, "dream"); group("flaws", FLAWS, "flaw"); group("careers", CAREERS, "career");
+  el.querySelector("#go").onclick = () => {
+    const name = el.querySelector("#nm").value.trim() || "Leo";
+    S = newState(name, pick.dream, pick.flaw, pick.career); castScreen();
+  };
+  app.replaceChildren(header(), el);
+}
+
+function castScreen() {
+  const el = $(`<section class="card">
+    <p class="eyebrow">Age 18 · the people in your life</p>
+    <h2>These three will be there the whole way.</h2>
+    <div class="reveal">${Object.values(CAST).map((p) => `<div class="row">${bean(p.color, "ok", 40)}<div><b>${p.name}</b><p class="small muted">${p.trait}</p></div></div>`).join("")}</div>
+    <p class="small muted">In the real game they are your friends playing on their own phones. Here, they decide on their own: friends help you, people you've hurt get even.</p>
+    <button class="btn">Begin</button>
+  </section>`);
+  el.querySelector("button").onclick = turn;
+  render(el);
+}
+
+function turn() {
+  S.changes = [];
+  if (S.chapter >= 5) return play(finale());
+  const due = S.secrets.find((x) => x.due <= S.chapter);
+  if (due) return play(revealEvent(due), true);
+  if (S.chapter === 3 && !S.flags.flooded) { S.flags.flooded = true; return play(flood, true); }
+  focusScreen();
+}
+
+function focusScreen() {
+  const cards = drawFocus();
+  const el = $(`<section class="card">
+    <p class="eyebrow">Age ${AGES[S.chapter]} · your move</p>
+    <h2>What is this part of your life about?</h2>
+    <div class="grid3"></div>
+  </section>`);
+  const g = el.querySelector(".grid3");
+  for (const k of cards) {
+    const f = FOCUS[k];
+    const b = $(`<button class="pick"><span class="big">${f.icon}</span><b>${f.label}</b><span class="small muted">${esc(f.hint())}</span></button>`);
+    b.onclick = () => play(eventFor(k));
+    g.append(b);
+  }
+  render(el);
+}
+
+function play(ev, chained) {
+  S.usedEvents.add(ev.id);
+  const choices = ev.choices();
+  const el = $(`<section class="card">
+    <p class="eyebrow">Age ${AGES[Math.min(S.chapter, 5)]} · ${ev.focus === "secret" ? "🤫 it was bound to happen" : ev.focus === "town" ? "🌊 the whole town" : ev.focus === "finale" ? "🏁 your dream" : FOCUS[ev.focus]?.label || ""}</p>
+    <h2>${esc(ev.title)}</h2>
+    <p class="lead">${esc(ev.text())}</p>
+    ${ev.private ? `<p class="private">${esc(ev.private())}</p>` : ""}
+    ${ev.factors ? `<div class="factors"><p class="small"><b>Your whole life comes down to this. Your chances:</b></p>${ev.factors.map(([l, v]) => `<div><span>${esc(l)}</span><b style="color:${v >= 0 ? "var(--teal)" : "var(--tomato)"}">${v >= 0 ? "+" : ""}${v} %</b></div>`).join("")}</div>` : ""}
+    <div class="choices"></div>
+  </section>`);
+  const box = el.querySelector(".choices");
+  choices.forEach((c, i) => {
+    const o = c.base !== undefined ? odds(c.base, c.tags || []) : null;
+    const chips = [];
+    if (o && o.odds < 100) chips.push(`<span class="chip odds ${o.odds >= 60 ? "good" : o.odds >= 40 ? "warn" : "bad"}">${o.odds} % it works</span>`);
+    for (const n of o?.notes || []) chips.push(`<span class="chip warn">${esc(n)}</span>`);
+    if (c.cast) chips.push(`<span class="chip">${CAST[c.cast].name} decides too · ${relLabel(c.cast)[0]}</span>`);
+    if ((c.tags || []).includes("lie")) chips.push(`<span class="chip warn">may become a secret</span>`);
+    const b = $(`<button class="choice"><span class="label">${esc(c.label)}</span>${chips.length ? `<span class="chips">${chips.join("")}</span>` : ""}</button>`);
+    b.onclick = () => { box.querySelectorAll("button").forEach((x) => (x.disabled = true)); b.setAttribute("aria-pressed", "true"); resolve(ev, c, o, choices); };
+    box.append(b);
+  });
+  render(el);
+}
+
+function resolve(ev, c, o, all) {
+  if (!o || o.odds >= 100) return outcome(ev, c, c.run(true), null);
+  const roll = 1 + rnd(100); const ok = roll <= o.odds;
+  const el = $(`<section class="card">
+    <p class="eyebrow">${esc(ev.title)} · ${esc(c.label)}</p>
+    <div class="roll"><span id="n">··</span><span class="need">need ${o.odds} or less</span></div>
+    <p class="verdict" id="v" aria-live="polite"></p>
+  </section>`);
+  render(el);
+  const n = el.querySelector("#n"), v = el.querySelector("#v");
+  let t = 0; const steps = reduced ? 1 : 14;
+  const tick = () => {
+    t++;
+    n.textContent = t >= steps ? roll : 1 + rnd(100);
+    if (t < steps) return setTimeout(tick, 45 + t * 6);
+    v.textContent = ok ? "It works!" : "It doesn't work.";
+    v.className = "verdict " + (ok ? "good" : "bad");
+    setTimeout(() => {
+      if (!ok && c.failTo !== undefined) { const alt = all[c.failTo]; ch(`Your flaw kicks in: you said yes anyway`, "warn"); return outcome(ev, alt, alt.run(true), { roll, odds: o.odds, ok }); }
+      outcome(ev, c, c.run(ok), { roll, odds: o.odds, ok });
+    }, reduced ? 300 : 900);
+  };
+  tick();
+}
+
+function outcome(ev, c, res, rollInfo) {
+  const [text, emoji, castMove] = res;
+  const good = S.changes.filter((x) => x.tone === "good").length, bad = S.changes.filter((x) => x.tone === "bad").length;
+  S.mood = good > bad ? "good" : bad > good ? "bad" : "ok";
+  if (!ev.auto || ev.id === "flood" || ev.id === "finale") S.emojis[S.chapter] = emoji;
+  else S.emojis[S.chapter] = S.emojis[S.chapter] || emoji;
+  const isFinale = ev.id === "finale";
+  const el = $(`<section class="card">
+    <p class="eyebrow">${esc(ev.title)} · you chose “${esc(c.label)}”</p>
+    ${castMove ? `<div class="reveal"><div class="row">${bean(CAST[castMove.who].color, S.rel[castMove.who] >= 1 ? "good" : "bad", 36)}<div><b>${CAST[castMove.who].name}</b> ${esc(castMove.did)}.</div></div></div>` : ""}
+    <p class="punch">${emoji} ${esc(text)}</p>
+    ${S.changes.length ? `<div><p class="small"><b>What changed</b></p><div class="chips">${S.changes.map((x) => `<span class="chip ${x.tone}">${esc(x.text)}</span>`).join("")}</div></div>` : ""}
+    <button class="btn">${isFinale ? "See your life" : ev.auto ? "Continue" : S.chapter >= 4 ? "Go to age 33" : `Go to age ${AGES[S.chapter + 1]}`}</button>
+  </section>`);
+  el.querySelector("button").onclick = () => {
+    if (isFinale) return recap();
+    if (!ev.auto) S.chapter++;
+    turn();
+  };
+  render(el);
+}
+
+function lifeTitle() {
+  const lies = S.moments.filter((m) => /Lied|Blamed|Kept|stole|Stole|tricks?|Faked|Took credit|anonymous|taking credit/i.test(m.text)).length;
+  const kind = (S.helped.marko || 0) + (S.helped.ana || 0) + (S.helped.vera || 0);
+  if (S.dreamDone && (S.flags.exposed || 0) === 0 && lies >= 2) return ["The Lucky Liar", "Lied your way to the top. Nobody found out. Yet."];
+  if (S.dreamDone && kind >= 6) return ["Everybody's Favourite", "You helped everyone, and everyone helped you back."];
+  if (S.dreamDone) return ["Dream Achieved", "Against the odds, a dog and Vera, you made it."];
+  if ((S.flags.exposed || 0) >= 2) return ["The Open Book", "Every secret you had came out. Most of them in public."];
+  if (S.rel.vera >= 2 && S.rel.marko >= 2) return ["Poor but Loved", "No dream, but a town full of people who'd carry your piano."];
+  if (Math.min(S.rel.vera, S.rel.marko, S.rel.ana) <= -3) return ["Town Villain", "Somebody in this town has your photo on a dartboard."];
+  return { fame: ["Almost Famous", "Close. So close. A dog beat you."], rich: ["Nearly Loaded", "You were one signature away from rich. It was Vera's signature."], love: ["The One That Got Away", "Ana is happy. Just not with you."] }[S.dream];
+}
+
+function recap() {
+  const [t, sub] = lifeTitle();
+  const dream = DREAMS.find((d) => d.id === S.dream);
+  const line = S.emojis.filter(Boolean).join("");
+  const share = `My Small Town Life: ${line}\n"${t}" · ${dream.label}: ${S.dreamDone ? "✅" : "❌"}`;
+  const el = $(`<section class="card">
+    <p class="eyebrow">${esc(S.name)} · age 18 to 33</p>
+    <div class="title-big">${esc(t)}</div>
+    <p class="lead">${esc(sub)}</p>
+    <div class="emoji-line" aria-label="Your life in emoji">${line}</div>
+    <p><b>${dream.icon} ${dream.label}:</b> ${S.dreamDone ? "it came true." : "it didn't come true."}</p>
+    <h3>Your life</h3>
+    <ul class="moments">${S.moments.map((m) => `<li><b>${m.age}</b> · ${esc(m.text)}</li>`).join("")}</ul>
+    <h3>The people in your life</h3>
+    <div class="reveal">${Object.entries(CAST).map(([k, p]) => `<div class="row">${bean(p.color, S.rel[k] >= 1 ? "good" : S.rel[k] <= -2 ? "bad" : "ok", 34)}<div><b>${p.name}</b> · ${relLabel(k)[0]}<p class="small muted">You helped them ${S.helped[k] || 0}×, hurt them ${S.hurt[k] || 0}×.</p></div></div>`).join("")}</div>
+    ${S.secrets.length ? `<p class="small"><b>Secrets you took to the grave:</b> ${S.secrets.map((x) => esc(x.text)).join("; ")}.</p>` : ""}
+    <div class="chips"><button class="btn" id="copy">Copy my life</button><button class="btn" id="again" style="background:var(--card);color:var(--ink)">Live another life</button></div>
+    <p class="small muted" id="copied" aria-live="polite"></p>
+  </section>`);
+  el.querySelector("#copy").onclick = () => { navigator.clipboard?.writeText(share).then(() => (el.querySelector("#copied").textContent = "Copied. Paste it in your group chat."), () => (el.querySelector("#copied").textContent = share)); };
+  el.querySelector("#again").onclick = startScreen;
+  render(el);
+}
+
+startScreen();
+</script>

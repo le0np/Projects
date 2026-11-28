@@ -1,0 +1,305 @@
+<title>Bean Faces</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&display=swap">
+<style>
+/* Layout: shared control bar, then three face variants of the same bean puppet, each with a big stage and a map-scale inset. */
+:root {
+  --bg: #f1eee6;
+  --surface: #fffdf8;
+  --ink: #22201c;
+  --muted: #6b665c;
+  --line: #ddd6c8;
+  --accent: #c2502f;
+  --accent-ink: #ffffff;
+  --ground: #cfdcbd;
+  --road: #ddd5c6;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171614; --surface: #211f1c; --ink: #ece8df; --muted: #a29c90; --line: #35322c;
+    --accent: #f08a62; --accent-ink: #1c120d; --ground: #2b3a2a; --road: #3a3630; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #171614; --surface: #211f1c; --ink: #ece8df; --muted: #a29c90; --line: #35322c;
+  --accent: #f08a62; --accent-ink: #1c120d; --ground: #2b3a2a; --road: #3a3630; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+h1, h2 { font-family: var(--font-display); margin: 0; line-height: 1.2; text-wrap: balance; }
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.15rem; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.intro { display: grid; gap: 6px; max-width: 72ch; }
+.controls {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px;
+}
+.controls button {
+  font: inherit; font-size: 0.9rem; border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+  border-radius: 999px; padding: 5px 14px; cursor: pointer;
+}
+.controls button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.controls button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.age { display: flex; align-items: center; gap: 8px; margin-left: auto; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.age input { width: 160px; accent-color: var(--accent); }
+.cards { display: grid; gap: 14px; }
+@media (min-width: 980px) { .cards { grid-template-columns: repeat(3, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.card header { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.letter { font-family: var(--font-display); font-weight: 700; color: var(--accent); font-size: 1.3rem; }
+canvas.stage { width: 100%; height: auto; aspect-ratio: 16 / 10; display: block; border-radius: 10px; }
+.mini { display: flex; gap: 10px; align-items: center; font-size: 0.82rem; color: var(--muted); }
+canvas.inset { width: 160px; height: auto; aspect-ratio: 2 / 1; border-radius: 8px; border: 1px solid var(--line); flex: none; }
+.card ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; font-size: 0.9rem; }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>Kartonske lutke: tri lica</h1>
+    <p class="muted">Tijelo je ostalo isto: „grah” koji poskakuje, sa sjenom kao karton na stolu. Promijenio sam ono što je podsjećalo na South Park: nema više velikih bijelih očiju koje se dodiruju ni debelog crnog obruba. Obrub je sada tamnija nijansa boje samog lika, a ispod tijela vire mala stopala. Biraš jedno od tri lica.</p>
+  </header>
+
+  <div class="controls" role="group" aria-label="Radnja">
+    <button data-mode="auto" aria-pressed="true">Sve redom</button>
+    <button data-mode="walk" aria-pressed="false">Hod</button>
+    <button data-mode="talk" aria-pressed="false">Razgovor</button>
+    <button data-mode="react" aria-pressed="false">Reakcija</button>
+    <label class="age" for="age">Dob <input id="age" type="range" min="18" max="80" value="18"> <span id="age-label">18</span></label>
+  </div>
+
+  <div class="cards">
+    <article class="card">
+      <header><span class="letter">B1</span><h2>Točkice i rumeni obrazi</h2></header>
+      <canvas class="stage" id="stage-1" width="480" height="300"></canvas>
+      <div class="mini"><canvas class="inset" id="inset-1" width="320" height="160"></canvas><span>Na mapi</span></div>
+      <ul>
+        <li>Male tamne oči daleko razmaknute, s odsjajem.</li>
+        <li>Rumeni obrazi i nosić; topao, simpatičan izgled.</li>
+        <li>Reakcija: oči se skupe u točkice, usta „O”, kapljica znoja.</li>
+      </ul>
+    </article>
+    <article class="card">
+      <header><span class="letter">B2</span><h2>Teški kapci</h2></header>
+      <canvas class="stage" id="stage-2" width="480" height="300"></canvas>
+      <div class="mini"><canvas class="inset" id="inset-2" width="320" height="160"></canvas><span>Na mapi</span></div>
+      <ul>
+        <li>Poluzatvorene oči: likovi izgledaju umorno i ravnodušno.</li>
+        <li>Suhi humor: što je situacija luđa, to je izraz mirniji.</li>
+        <li>Reakcija: kapci naglo skoče gore, vide se zubi.</li>
+      </ul>
+    </article>
+    <article class="card">
+      <header><span class="letter">B3</span><h2>Crtice i velika usta</h2></header>
+      <canvas class="stage" id="stage-3" width="480" height="300"></canvas>
+      <div class="mini"><canvas class="inset" id="inset-3" width="320" height="160"></canvas><span>Na mapi</span></div>
+      <ul>
+        <li>Oči su samo crtice ili lukovi, a obrve debele i pokretne.</li>
+        <li>Velika usta nose emociju; najviše „crtićevski” izraz.</li>
+        <li>Reakcija: oči „&gt; &lt;”, usta raširena od uha do uha.</li>
+      </ul>
+    </article>
+  </div>
+</div>
+
+<script>
+(() => {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const FPS = 8;
+  const CAST = [
+    { skin: "#f2c9a5", hair: "#5a3a22", cloth: "#ffffff", extra: "coat", hairStyle: "bob" },
+    { skin: "#d9a07a", hair: "#2a2a2a", cloth: "#3c5aa6", extra: "cap", hairStyle: "short" },
+    { skin: "#e8b48f", hair: "#b5522b", cloth: "#e07b39", extra: "overalls", hairStyle: "spiky" },
+    { skin: "#8d5a3b", hair: "#1c1410", cloth: "#f4f1ea", extra: "tie", hairStyle: "short" },
+  ];
+  let mode = "auto", age = 18;
+  const ageF = () => (age - 18) / 62;
+
+  function shade(hex, f) {
+    const n = parseInt(hex.slice(1), 16);
+    const ch = (v) => Math.max(0, Math.min(255, Math.round(v * f)));
+    return `rgb(${ch(n >> 16)}, ${ch((n >> 8) & 255)}, ${ch(n & 255)})`;
+  }
+  const hairCol = (c) => (ageF() < 0.45 ? c.hair : ageF() < 0.75 ? "#8e8a84" : "#d9d6d0");
+  function oval(ctx, x, y, rx, ry, fill, stroke, w = 2) {
+    ctx.beginPath(); ctx.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), 0, 0, Math.PI * 2);
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = w; ctx.stroke(); }
+  }
+  function line(ctx, pts, col, w) {
+    ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke();
+  }
+  const INK = "#3a2a22";
+
+  // ---------- three faces ----------
+  function face1(ctx, x, y, s, st, c) { // dots + cheeks
+    const gap = s * 0.3, look = st.dir * s * 0.04;
+    if (st.react) {
+      oval(ctx, x - gap, y, s * 0.04, s * 0.04, INK); oval(ctx, x + gap, y, s * 0.04, s * 0.04, INK);
+      oval(ctx, x, y + s * 0.32, s * 0.09, s * 0.12, "#6b2a1f");
+      ctx.beginPath(); ctx.moveTo(x + s * 0.48, y - s * 0.3); ctx.quadraticCurveTo(x + s * 0.56, y - s * 0.12, x + s * 0.48, y - s * 0.08); ctx.quadraticCurveTo(x + s * 0.4, y - s * 0.12, x + s * 0.48, y - s * 0.3); ctx.fillStyle = "#8fd0f0"; ctx.fill();
+    } else {
+      const h = st.blink ? s * 0.015 : s * 0.1;
+      for (const ex of [x - gap, x + gap]) { oval(ctx, ex + look, y, s * 0.06, h, INK); if (!st.blink) oval(ctx, ex + look + s * 0.02, y - s * 0.04, s * 0.02, s * 0.02, "#ffffff"); }
+      if (st.mouthOpen) { ctx.beginPath(); ctx.moveTo(x - s * 0.12, y + s * 0.26); ctx.lineTo(x + s * 0.12, y + s * 0.26); ctx.quadraticCurveTo(x, y + s * 0.48, x - s * 0.12, y + s * 0.26); ctx.fillStyle = "#6b2a1f"; ctx.fill(); }
+      else line(ctx, [[x - s * 0.1, y + s * 0.28], [x, y + s * 0.33], [x + s * 0.1, y + s * 0.28]], INK, 2);
+    }
+    oval(ctx, x - gap - s * 0.06, y + s * 0.18, s * 0.11, s * 0.06, "rgba(232,110,110,.45)");
+    oval(ctx, x + gap + s * 0.06, y + s * 0.18, s * 0.11, s * 0.06, "rgba(232,110,110,.45)");
+    line(ctx, [[x + st.dir * s * 0.02, y + s * 0.08], [x + st.dir * s * 0.06, y + s * 0.15]], shade(c.skin, 0.7), 2);
+    if (ageF() > 0.55) { line(ctx, [[x - gap - s * 0.06, y + s * 0.09], [x - gap + s * 0.06, y + s * 0.09]], shade(c.skin, 0.75), 1.5); line(ctx, [[x + gap - s * 0.06, y + s * 0.09], [x + gap + s * 0.06, y + s * 0.09]], shade(c.skin, 0.75), 1.5); }
+  }
+
+  function face2(ctx, x, y, s, st, c) { // heavy lids, deadpan
+    const gap = s * 0.24, r = s * 0.13, look = st.dir * s * 0.035;
+    for (const ex of [x - gap, x + gap]) {
+      oval(ctx, ex, y, r, r * 0.95, "#ffffff", shade(c.skin, 0.6), 1.5);
+      oval(ctx, ex + look, y + r * 0.15, r * 0.45, r * 0.45, "#4a6b8a");
+      oval(ctx, ex + look, y + r * 0.15, r * 0.2, r * 0.2, INK);
+      // lid
+      const lid = st.react ? 0.15 : st.blink ? 1 : 0.55 + ageF() * 0.15;
+      ctx.save(); ctx.beginPath(); ctx.ellipse(ex, y, r + 1, r * 0.95 + 1, 0, 0, Math.PI * 2); ctx.clip();
+      ctx.fillStyle = shade(c.skin, 0.88); ctx.fillRect(ex - r - 2, y - r - 2, r * 2 + 4, (r * 2 + 4) * lid);
+      ctx.restore();
+      line(ctx, [[ex - r, y - r + r * 2 * lid], [ex + r, y - r + r * 2 * lid]], shade(c.skin, 0.55), 1.8);
+    }
+    if (st.react) { ctx.beginPath(); ctx.roundRect(x - s * 0.16, y + s * 0.24, s * 0.32, s * 0.16, 4); ctx.fillStyle = "#ffffff"; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke(); line(ctx, [[x - s * 0.16, y + s * 0.32], [x + s * 0.16, y + s * 0.32]], INK, 1); }
+    else if (st.mouthOpen) oval(ctx, x + st.dir * 2, y + s * 0.3, s * 0.1, s * 0.05, "#6b2a1f");
+    else line(ctx, [[x - s * 0.1, y + s * 0.3], [x + s * 0.1, y + s * 0.29]], INK, 2);
+    if (ageF() > 0.55) { line(ctx, [[x - gap - r, y + r * 1.4], [x - gap + r * 0.6, y + r * 1.6]], shade(c.skin, 0.75), 1.4); line(ctx, [[x + gap + r, y + r * 1.4], [x + gap - r * 0.6, y + r * 1.6]], shade(c.skin, 0.75), 1.4); }
+  }
+
+  function face3(ctx, x, y, s, st, c) { // dashes + big mouth + brows
+    const gap = s * 0.26, hair = hairCol(c);
+    const browY = st.react ? y - s * 0.3 : st.mouthOpen && st.frame % 2 ? y - s * 0.24 : y - s * 0.18;
+    line(ctx, [[x - gap - s * 0.12, browY + s * 0.03], [x - gap + s * 0.1, browY]], hair === "#d9d6d0" ? "#9a958d" : hair, s * 0.07);
+    line(ctx, [[x + gap - s * 0.1, browY], [x + gap + s * 0.12, browY + s * 0.03]], hair === "#d9d6d0" ? "#9a958d" : hair, s * 0.07);
+    if (st.react) {
+      line(ctx, [[x - gap - s * 0.07, y - s * 0.05], [x - gap + s * 0.05, y], [x - gap - s * 0.07, y + s * 0.05]], INK, 2.5);
+      line(ctx, [[x + gap + s * 0.07, y - s * 0.05], [x + gap - s * 0.05, y], [x + gap + s * 0.07, y + s * 0.05]], INK, 2.5);
+      ctx.beginPath(); ctx.moveTo(x - s * 0.3, y + s * 0.18); ctx.quadraticCurveTo(x, y + s * 0.6, x + s * 0.3, y + s * 0.18); ctx.closePath(); ctx.fillStyle = "#6b2a1f"; ctx.fill();
+      oval(ctx, x, y + s * 0.36, s * 0.1, s * 0.05, "#e06a6a");
+    } else {
+      const smile = st.blink ? 0 : s * 0.04;
+      line(ctx, [[x - gap - s * 0.07, y + smile], [x - gap, y - smile], [x - gap + s * 0.07, y + smile]], INK, 2.5);
+      line(ctx, [[x + gap - s * 0.07, y + smile], [x + gap, y - smile], [x + gap + s * 0.07, y + smile]], INK, 2.5);
+      if (st.mouthOpen) { ctx.beginPath(); ctx.moveTo(x - s * 0.22, y + s * 0.2); ctx.quadraticCurveTo(x, y + s * 0.48, x + s * 0.22, y + s * 0.2); ctx.closePath(); ctx.fillStyle = "#6b2a1f"; ctx.fill(); }
+      else line(ctx, [[x - s * 0.22, y + s * 0.22], [x, y + s * 0.3], [x + s * 0.22, y + s * 0.22]], INK, 2.5);
+    }
+    if (ageF() > 0.55) line(ctx, [[x - s * 0.3, y + s * 0.16], [x - s * 0.26, y + s * 0.26]], shade(c.skin, 0.75), 1.5);
+  }
+
+  // ---------- bean body (shared) ----------
+  function bean(ctx, c, x, ground, s, st, face) {
+    const hop = st.walking ? (st.frame % 2 ? -s * 0.22 : 0) : 0;
+    const jump = st.react ? -s * 0.55 : 0;
+    const squash = st.walking && st.frame % 2 === 0 ? 1.05 : 1;
+    const w = s * 0.62, h = s * 1.7;
+    const outline = shade(c.extra === "coat" ? c.skin : c.cloth, 0.55);
+    ctx.save();
+    oval(ctx, x + 4, ground + 2, s * 0.6 * (hop ? 0.8 : 1), s * 0.13, "rgba(0,0,0,.2)");
+    ctx.translate(x, ground + hop + jump);
+    ctx.scale(squash, 1 / squash);
+    ctx.rotate(st.dir * ageF() * 0.1);
+    // feet peeking out
+    const step = st.walking ? (st.frame % 2 ? 3 : -3) : 0;
+    oval(ctx, -s * 0.25 + step, -1, s * 0.16, s * 0.08, "#4a3b33");
+    oval(ctx, s * 0.25 - step, -1, s * 0.16, s * 0.08, "#4a3b33");
+    const shapePath = () => { ctx.beginPath(); ctx.roundRect(-w, -h, w * 2, h - s * 0.05, [w, w, w * 0.5, w * 0.5]); };
+    ctx.save(); ctx.translate(4, 4); shapePath(); ctx.fillStyle = "rgba(0,0,0,.14)"; ctx.fill(); ctx.restore();
+    shapePath(); ctx.fillStyle = c.skin; ctx.fill();
+    ctx.save(); shapePath(); ctx.clip();
+    ctx.fillStyle = c.extra === "overalls" ? "#3d6e9e" : c.cloth;
+    ctx.fillRect(-w, -h * 0.45, w * 2, h * 0.45);
+    if (c.extra === "coat") { ctx.fillStyle = "#9ec6d6"; ctx.fillRect(-s * 0.04, -h * 0.45, s * 0.08, h * 0.45); }
+    if (c.extra === "tie") { ctx.beginPath(); ctx.moveTo(-s * 0.06, -h * 0.45); ctx.lineTo(s * 0.06, -h * 0.45); ctx.lineTo(s * 0.09, -h * 0.15); ctx.lineTo(0, -h * 0.08); ctx.lineTo(-s * 0.09, -h * 0.15); ctx.closePath(); ctx.fillStyle = "#b0302a"; ctx.fill(); }
+    ctx.fillStyle = hairCol(c);
+    if (c.hairStyle === "spiky") { ctx.beginPath(); ctx.moveTo(-w, -h * 0.76); ctx.lineTo(-w * 0.6, -h - 6); ctx.lineTo(-w * 0.2, -h * 0.82); ctx.lineTo(w * 0.2, -h - 8); ctx.lineTo(w * 0.6, -h * 0.82); ctx.lineTo(w, -h * 0.76); ctx.lineTo(w, -h); ctx.lineTo(-w, -h); ctx.fill(); }
+    else if (c.extra !== "cap") ctx.fillRect(-w, -h, w * 2, h * (c.hairStyle === "bob" ? 0.28 : 0.18));
+    if (c.extra === "cap") { ctx.fillStyle = "#24366b"; ctx.fillRect(-w, -h, w * 2, h * 0.22); ctx.fillStyle = "#e5c25a"; ctx.beginPath(); ctx.arc(0, -h * 0.88, s * 0.07, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+    shapePath(); ctx.lineWidth = 2.5; ctx.strokeStyle = outline; ctx.stroke();
+    if (c.extra === "cap") { ctx.beginPath(); ctx.roundRect(st.dir > 0 ? 0 : -w - s * 0.25, -h * 0.79, w + s * 0.25, s * 0.1, 4); ctx.fillStyle = "#1a2850"; ctx.fill(); }
+    // arms
+    const armUp = st.react ? -s * 0.7 : st.mouthOpen && st.frame % 2 ? -s * 0.35 : st.walking ? (st.frame % 2 ? -s * 0.1 : s * 0.1) : 0;
+    for (const side of [-1, 1]) line(ctx, [[side * w, -h * 0.35], [side * (w + s * 0.32), -h * 0.2 + armUp * (side === st.dir ? 1 : 0.6)]], outline, 3);
+    face(ctx, 0, -h * 0.58, s * 0.62, st, c);
+    ctx.restore();
+  }
+
+  // ---------- scene logic ----------
+  function sceneMode(t) { return mode !== "auto" ? mode : ["walk", "talk", "react"][Math.floor(t / 4) % 3]; }
+  function states(t, m, frame) {
+    return CAST.map((_, i) => {
+      const st = { frame: frame + i, dir: 1, walking: false, mouthOpen: false, react: false, blink: (frame + i * 5) % 19 === 0 };
+      let x = 0.14 + i * 0.24;
+      if (m === "walk") {
+        const p = ((t * (0.06 + i * 0.012 - ageF() * 0.03) + i * 0.27) % 1.2) - 0.1;
+        x = i % 2 ? 1 - p : p; st.dir = i % 2 ? -1 : 1; st.walking = true;
+      } else if (m === "talk") {
+        x = [0.2, 0.36, 0.64, 0.8][i]; st.dir = i % 2 ? -1 : 1;
+        st.mouthOpen = i % 2 === Math.floor(t / 1.2) % 2 && frame % 2 === 0;
+      } else {
+        const who = Math.floor(t / 1.6) % CAST.length;
+        st.react = i === who && t % 1.6 < 0.9; st.dir = i < who ? 1 : -1;
+      }
+      return { x, st, i };
+    });
+  }
+
+  const FACES = [face1, face2, face3];
+  const surfaces = FACES.map((face, k) => {
+    const stage = document.getElementById(`stage-${k + 1}`), inset = document.getElementById(`inset-${k + 1}`);
+    return { face, stage, inset, sctx: stage.getContext("2d"), ictx: inset.getContext("2d") };
+  });
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  for (const s of surfaces) for (const [cv, ctx, w, h] of [[s.stage, s.sctx, 480, 300], [s.inset, s.ictx, 320, 160]]) { cv.width = w * dpr; cv.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+
+  let colors;
+  const readColors = () => { const cs = getComputedStyle(document.documentElement); colors = ["--ground", "--road", "--ink", "--surface"].reduce((o, k) => ((o[k] = cs.getPropertyValue(k).trim()), o), {}); };
+  readColors(); setInterval(readColors, 1000);
+
+  function render(now) {
+    const t = reduce ? 2 : now / 1000, frame = reduce ? 0 : Math.floor(t * FPS), m = sceneMode(t);
+    const list = states(t, m, frame);
+    for (const s of surfaces) {
+      const ctx = s.sctx, ground = 262;
+      ctx.fillStyle = colors["--ground"]; ctx.fillRect(0, 0, 480, 300);
+      ctx.fillStyle = colors["--road"]; ctx.fillRect(0, ground - 34, 480, 60);
+      ctx.fillStyle = "#c97b5a"; ctx.beginPath(); ctx.moveTo(30, 150); ctx.lineTo(30, 80); ctx.lineTo(80, 45); ctx.lineTo(130, 80); ctx.lineTo(130, 150); ctx.fill();
+      ctx.fillStyle = "#ffe08a"; ctx.fillRect(48, 95, 22, 20); ctx.fillRect(92, 95, 22, 20);
+      ctx.fillStyle = "#5b7896"; ctx.fillRect(330, 70, 120, 80);
+      ctx.fillStyle = "#cfe3f2"; for (let i = 0; i < 3; i++) ctx.fillRect(345 + i * 35, 88, 22, 18);
+      for (const { x, st, i } of [...list].sort((a, b) => a.x - b.x)) bean(ctx, CAST[i], 45 + x * 390, ground, 64, st, s.face);
+      ctx.fillStyle = colors["--ink"]; ctx.font = "600 12px Inter, sans-serif";
+      ctx.fillText({ walk: "Hod", talk: "Razgovor", react: "Reakcija" }[m] + ` · ${age} god.`, 12, 20);
+      const ic = s.ictx;
+      ic.fillStyle = colors["--ground"]; ic.fillRect(0, 0, 320, 160);
+      ic.fillStyle = colors["--road"]; ic.fillRect(0, 80, 320, 30); ic.fillRect(160, 0, 26, 160);
+      ic.fillStyle = "#5b7896"; ic.fillRect(10, 10, 120, 60); ic.fillStyle = "#b98a4a"; ic.fillRect(200, 10, 110, 60);
+      for (const { x, st, i } of list) bean(ic, CAST[i], 15 + x * 290, 100 + (i % 2) * 6, 13, st, s.face);
+    }
+  }
+  let last = -1;
+  function loop(now) { const f = Math.floor((now / 1000) * FPS); if (f !== last) { last = f; render(now); } if (!reduce) requestAnimationFrame(loop); }
+  render(performance.now()); requestAnimationFrame(loop);
+
+  document.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => {
+    mode = b.dataset.mode;
+    document.querySelectorAll("[data-mode]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    render(performance.now());
+  }));
+  const ageInput = document.getElementById("age");
+  ageInput.addEventListener("input", () => { age = Number(ageInput.value); document.getElementById("age-label").textContent = String(age); render(performance.now()); });
+})();
+</script>

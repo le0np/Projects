@@ -1,0 +1,8 @@
+# Local-only project files (see CLAUDE.md): never committed
+CLAUDE.md
+STATUS.md
+INSTRUCTIONS.md
+.claude/
+
+# Downloaded model kits (only the files we use go to assets/models/)
+*.zip

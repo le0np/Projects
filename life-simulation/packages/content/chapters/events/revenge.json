@@ -1,0 +1,300 @@
+[
+  {
+    "id": "payback",
+    "kind": "revenge",
+    "title": "Payback for {target}",
+    "text": [
+      {
+        "when": {
+          "flags": [
+            "crush_with_friend"
+          ]
+        },
+        "text": "{target} has been on your list for a while. You still remember that first date. Tonight {target.his} car is parked right under your window.",
+        "callback": true
+      },
+      {
+        "when": {
+          "flags": [
+            "posted_video"
+          ]
+        },
+        "text": "{target} has been on your list for a while, ever since the fountain business. Tonight {target.his} car is parked right under your window.",
+        "callback": true
+      },
+      {
+        "text": "{target} has been on your list for a while. Tonight {target.his} car is parked right under your window."
+      }
+    ],
+    "choices": [
+      {
+        "id": "tyres",
+        "label": "Let {target}'s tyres down",
+        "tags": [
+          "brave"
+        ],
+        "base": 70,
+        "ok": {
+          "text": "{target} walks to work in the rain. You watch from your window, sipping tea.",
+          "emoji": "🛞",
+          "effects": [
+            {
+              "rel": "target",
+              "n": -1
+            },
+            {
+              "remember": "Let {target}'s tyres down. Never caught."
+            }
+          ]
+        },
+        "fail": {
+          "text": "The doorbell camera across the road catches everything. {target} prints the photo and frames it.",
+          "emoji": "📸",
+          "effects": [
+            {
+              "rel": "target",
+              "n": -3
+            },
+            {
+              "rep": -10
+            },
+            {
+              "remember": "Got caught letting {target}'s tyres down."
+            }
+          ]
+        }
+      },
+      {
+        "id": "letter",
+        "label": "Send an anonymous complaint to {target}'s boss",
+        "tags": [
+          "lie"
+        ],
+        "base": 55,
+        "ok": {
+          "text": "{target} has a “little chat” with HR. You have a big, quiet smile.",
+          "emoji": "✉️",
+          "effects": [
+            {
+              "rel": "target",
+              "n": -1
+            },
+            {
+              "secret": {
+                "id": "letter",
+                "text": "You wrote the anonymous letter about {target}",
+                "years": 2,
+                "reveal": {
+                  "text": "HR shows {target} the letter. The handwriting is yours. So is the coffee stain.",
+                  "emoji": "✍️",
+                  "effects": [
+                    {
+                      "rel": "target",
+                      "n": -2
+                    },
+                    {
+                      "rep": -10
+                    }
+                  ]
+                },
+                "about": "target"
+              }
+            },
+            {
+              "remember": "Got {target} in trouble at work with an anonymous letter."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You signed it. Out of habit. {target} reads it out at the office party.",
+          "emoji": "✍️",
+          "effects": [
+            {
+              "rel": "target",
+              "n": -3
+            },
+            {
+              "rep": -5
+            },
+            {
+              "remember": "Wrote {target} an anonymous letter. It wasn't anonymous enough."
+            }
+          ]
+        }
+      },
+      {
+        "id": "forgive",
+        "label": "Forgive {target}",
+        "tags": [
+          "calm"
+        ],
+        "ok": {
+          "text": "You leave a note on {target}'s car: “We're good.” {target} reads it as a threat, but it's a start.",
+          "emoji": "🕊️",
+          "effects": [
+            {
+              "rel": "target",
+              "n": 2
+            },
+            {
+              "remember": "Forgave {target}."
+            }
+          ]
+        }
+      },
+      {
+        "id": "sabotage",
+        "label": "Loosen {target}'s windscreen wipers, just a bit",
+        "career": "mechanic",
+        "ok": {
+          "text": "It rains. The wipers wave goodbye at the first junction. {target} never knows how.",
+          "emoji": "🌧️",
+          "effects": [
+            {
+              "rel": "target",
+              "n": -1
+            },
+            {
+              "remember": "Gave {target}'s wipers a little freedom."
+            }
+          ]
+        }
+      },
+      {
+        "id": "ticket",
+        "label": "Give {target} a parking ticket. Legally",
+        "career": "police_officer",
+        "ok": {
+          "text": "{target} is parked on a yellow line. You write the ticket slowly, so {target.he} can watch.",
+          "emoji": "🎫",
+          "effects": [
+            {
+              "rel": "target",
+              "n": -1
+            },
+            {
+              "rep": 5
+            },
+            {
+              "remember": "Gave {target} a perfectly legal parking ticket."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "group_chat",
+    "kind": "revenge",
+    "title": "The Group Chat",
+    "text": "You've been added to a group chat by mistake. It's {target}'s friends. They're planning a surprise party for {target}.",
+    "choices": [
+      {
+        "id": "spoil",
+        "label": "Tell {target} about the surprise",
+        "base": 70,
+        "ok": {
+          "text": "{target} has to act surprised. {Target.he} is a terrible actor. Everyone is disappointed in {target.him}.",
+          "emoji": "🎉",
+          "effects": [
+            {
+              "rel": "target",
+              "n": -1
+            },
+            {
+              "remember": "Ruined {target}'s surprise party by spoiling it."
+            }
+          ]
+        },
+        "fail": {
+          "text": "{target} doesn't believe you and thinks you're inviting {target.him} to a trap. Fair.",
+          "emoji": "🙄",
+          "effects": [
+            {
+              "rel": "target",
+              "n": -1
+            }
+          ]
+        }
+      },
+      {
+        "id": "hijack",
+        "label": "Change the party theme to “1980s aerobics”, anonymously",
+        "tags": [
+          "lie",
+          "brave"
+        ],
+        "base": 55,
+        "ok": {
+          "text": "{target} arrives in a suit. Everyone else is in leotards. The photos live forever.",
+          "emoji": "🩱",
+          "effects": [
+            {
+              "rel": "target",
+              "n": -2
+            },
+            {
+              "fame": 1
+            },
+            {
+              "secret": {
+                "id": "leotards",
+                "text": "You changed {target}'s party theme to aerobics",
+                "years": 2,
+                "reveal": {
+                  "text": "Someone checks the chat history. The leotards lead back to you.",
+                  "emoji": "🩱",
+                  "effects": [
+                    {
+                      "rel": "target",
+                      "n": -2
+                    },
+                    {
+                      "rep": -5
+                    }
+                  ]
+                },
+                "about": "target"
+              }
+            },
+            {
+              "remember": "Turned {target}'s party into 1980s aerobics."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You change it, but your name shows up as “changed the group theme”. Every single person sees it.",
+          "emoji": "🫣",
+          "effects": [
+            {
+              "rel": "target",
+              "n": -3
+            },
+            {
+              "rep": -10
+            },
+            {
+              "remember": "Got caught changing {target}'s party theme."
+            }
+          ]
+        }
+      },
+      {
+        "id": "leave",
+        "label": "Leave the chat quietly",
+        "tags": [
+          "calm"
+        ],
+        "ok": {
+          "text": "You leave. Twelve people see “You left”. Twelve people wonder why you were there.",
+          "emoji": "🚪",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

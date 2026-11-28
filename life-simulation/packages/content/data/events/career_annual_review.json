@@ -1,0 +1,400 @@
+{
+  "schemaVersion": 1,
+  "id": "career_annual_review",
+  "version": 3,
+  "title": "The Annual Review",
+  "category": "career",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 7,
+  "cooldown": {
+    "maxPerCharacter": 1,
+    "maxPerSession": 3
+  },
+  "location": {
+    "at": [
+      "work"
+    ]
+  },
+  "roles": {
+    "employee": {
+      "count": 1,
+      "description": "Has their annual review",
+      "conditions": {
+        "fact": "employed"
+      }
+    },
+    "reviewer": {
+      "count": 1,
+      "description": "Asked for feedback",
+      "conditions": {
+        "fact": "employed"
+      }
+    }
+  },
+  "text": {
+    "public": "{employee} has their annual review. {reviewer} has been asked for feedback.",
+    "private": {
+      "employee": "You know a colleague in the same role earns noticeably more than you.",
+      "reviewer": "The manager wants your honest opinion of {employee}. If they get a big raise, there is less left for yours."
+    }
+  },
+  "choices": {
+    "employee": [
+      {
+        "id": "ask_raise",
+        "label": "Ask for a raise and mention the colleague's salary",
+        "tags": [
+          "negotiate",
+          "truth"
+        ],
+        "perceived": {
+          "money": 1,
+          "risk": 1
+        }
+      },
+      {
+        "id": "competing_offer",
+        "label": "Claim you have a competing offer",
+        "tags": [
+          "lie",
+          "risk"
+        ],
+        "perceived": {
+          "money": 2,
+          "risk": 2
+        }
+      },
+      {
+        "id": "accept",
+        "label": "Thank them and accept what is offered",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "money": 0
+        }
+      }
+    ],
+    "reviewer": [
+      {
+        "id": "praise",
+        "label": "Praise {employee} generously",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "relation": {
+            "employee": 1
+          }
+        }
+      },
+      {
+        "id": "undermine",
+        "label": "Hint that {employee} is not pulling their weight",
+        "tags": [
+          "lie"
+        ],
+        "perceived": {
+          "money": 1,
+          "risk": 1,
+          "relation": {
+            "employee": -1
+          }
+        }
+      },
+      {
+        "id": "neutral",
+        "label": "Keep it short and neutral",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      },
+      {
+        "id": "leverage",
+        "label": "Remind {employee} what you know about them",
+        "tags": [
+          "threaten"
+        ],
+        "condition": {
+          "fact": "knows_secret",
+          "about": "role:employee"
+        },
+        "perceived": {
+          "career": 1,
+          "relation": {
+            "employee": -2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "role:employee",
+            "delta": {
+              "reputation": -4,
+              "mental": -6
+            }
+          },
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "career": 3
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:employee",
+            "affinity": -10
+          }
+        ]
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "bluff_called",
+      "when": {
+        "chose": "competing_offer",
+        "role": "employee"
+      },
+      "chance": 0.35,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "career": -8,
+            "mental": -5
+          }
+        }
+      ],
+      "text": {
+        "employee": "\"Then you should take it.\" Your manager calls the bluff. Very awkward.",
+        "reviewer": "Word gets round that {employee} bluffed about another offer."
+      }
+    },
+    {
+      "id": "undermined",
+      "when": {
+        "chose": "undermine",
+        "role": "reviewer"
+      },
+      "chance": 0.75,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "career": -5,
+            "mental": -4
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:reviewer",
+          "delta": {
+            "money": 4,
+            "career": 2
+          }
+        }
+      ],
+      "text": {
+        "employee": "Your manager says \"some colleagues\" have doubts about you. A tiny adjustment and a lot of questions.",
+        "reviewer": "{employee} gets almost nothing. Your own raise is a little bigger."
+      }
+    },
+    {
+      "id": "undermine_backfired",
+      "when": {
+        "chose": "undermine",
+        "role": "reviewer"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:reviewer",
+          "delta": {
+            "reputation": -8
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "money": 4
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:employee",
+          "to": "role:reviewer",
+          "affinity": -25,
+          "trust": -30
+        }
+      ],
+      "text": {
+        "employee": "Your manager lets slip that {reviewer} tried to talk you down. You get the raise anyway.",
+        "reviewer": "The manager mentions your \"feedback\" to {employee}. Oops."
+      }
+    },
+    {
+      "id": "championed",
+      "when": {
+        "all": [
+          {
+            "chose": "praise",
+            "role": "reviewer"
+          },
+          {
+            "not": {
+              "chose": "accept",
+              "role": "employee"
+            }
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "money": 12,
+            "career": 3
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:employee",
+          "to": "role:reviewer",
+          "affinity": 12,
+          "trust": 10,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "employee": "\"{reviewer} spoke very highly of you.\" A big raise.",
+        "reviewer": "{employee} gets a big raise, partly thanks to you."
+      }
+    },
+    {
+      "id": "big_raise",
+      "when": {
+        "chose": "competing_offer",
+        "role": "employee"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "money": 15,
+            "career": 3
+          }
+        }
+      ],
+      "text": {
+        "employee": "They match the imaginary offer. A big raise.",
+        "reviewer": "{employee} seems very pleased after the review."
+      }
+    },
+    {
+      "id": "raise",
+      "when": {
+        "all": [
+          {
+            "chose": "ask_raise",
+            "role": "employee"
+          },
+          {
+            "attr": "career",
+            "of": "role:employee",
+            "gte": 45
+          }
+        ]
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "money": 10,
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "employee": "Your manager agrees it is overdue. A solid raise.",
+        "reviewer": "{employee} gets a solid raise."
+      }
+    },
+    {
+      "id": "not_now",
+      "when": {
+        "chose": "ask_raise",
+        "role": "employee"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "money": 3,
+            "mental": -2
+          }
+        }
+      ],
+      "text": {
+        "employee": "\"Let's revisit after you improve your results.\" A small adjustment.",
+        "reviewer": "{employee} comes out of the review looking deflated."
+      }
+    },
+    {
+      "id": "praised_anyway",
+      "when": {
+        "chose": "praise",
+        "role": "reviewer"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "money": 6
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:employee",
+          "to": "role:reviewer",
+          "affinity": 8,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "employee": "Better than the standard adjustment: someone put in a good word.",
+        "reviewer": "Your kind words help {employee} a little."
+      }
+    },
+    {
+      "id": "standard",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:employee",
+          "delta": {
+            "money": 4
+          }
+        }
+      ],
+      "text": {
+        "employee": "The standard inflation adjustment.",
+        "reviewer": "Nothing special. The review is over in ten minutes."
+      }
+    }
+  ]
+}

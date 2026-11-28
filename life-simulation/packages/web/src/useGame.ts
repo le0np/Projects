@@ -1,0 +1,425 @@
+/**
+ * Socket.IO connection and all realtime game state. The client only displays what the
+ * server sends and submits choices; it never computes outcomes (server-authoritative).
+ */
+import { useCallback, useEffect, useRef, useState } from "react";
+import { io, type Socket } from "socket.io-client";
+import type { LifeView, Attribute, GhostState, GoalView, LifeRecap, Mark, MischiefState, Mood, Notice, OfferView, OtherCharacterView, ParticipantInfo, Reaction, SchemeBoost } from "@lifesim/core";
+
+export type ComingEvent = Extract<Notice, { kind: "coming" }> & { receivedAt: number };
+
+export type PublicEntry =
+  | { kind: "event"; t: number; instanceId: string; title: string; text: string; participants: ParticipantInfo[]; tile?: [number, number] }
+  | { kind: "ended"; t: number; characterId: string; name: string; status: string; cause: string }
+  | { kind: "season"; t: number; year: number; season: string }
+  | { kind: "upheaval"; t: number; id: string; title: string; text: string; active: boolean }
+  | { kind: "phase"; t: number; phase: "intro" | "growth" | "climax" | "respite" | "finale" }
+  | { kind: "mood"; t: number; characterId: string; mood: Mood }
+  | { kind: "mark"; t: number; mark: Mark }
+  | { kind: "unmark"; t: number; id: string }
+  | { kind: "move"; t: number; characterId: string; from: [number, number]; path: [number, number][]; departAt: number; msPerTile: number; to: string | null };
+
+export interface Walk {
+  pos: [number, number];
+  /** Where they are heading (a place id), if anywhere in particular. */
+  to?: string | null;
+  trip: { from: [number, number]; path: [number, number][]; departAt: number; msPerTile: number } | null;
+}
+
+export interface Snapshot {
+  sessionId: string;
+  characterId?: string;
+  state: string;
+  sessionTime: number;
+  durationSeconds: number;
+  timeScale: number;
+  roster: { characterId: string; name: string; career: string; isBot: boolean; trait?: string }[];
+  moods?: { characterId: string; mood: Mood }[];
+  marks?: Mark[];
+  goals?: GoalView[];
+  ghost?: GhostState | null;
+  me?: Pick<Extract<Notice, { kind: "event" }>["view"], "self" | "others" | "calendar">;
+  pending: OfferView | null;
+  history: Notice[];
+  feed: PublicEntry[];
+  positions?: { characterId: string; pos: [number, number]; trip: Walk["trip"]; status: string }[];
+  mischief?: MischiefState | null;
+}
+
+export interface LifeState {
+  lifeId: string;
+  view: LifeView;
+}
+type LifeAck = { ok: boolean; error?: string; lifeId?: string; view?: LifeView };
+
+export interface MatchStatus {
+  position: number;
+  queueSize: number;
+  waitedMs: number;
+  fillInMs: number;
+}
+
+export interface GameState {
+  sessionId: string;
+  characterId?: string;
+  timeScale: number;
+  durationSeconds: number;
+  roster: Snapshot["roster"];
+  /** Session time and wall-clock time at the last sync, to run local clocks. */
+  sync: { sessionTime: number; wall: number };
+  pending: OfferView | null;
+  /** Wall-clock time the current offer was received. */
+  pendingReceivedAt: number;
+  submitted: string | null;
+  history: Notice[];
+  /** T5: your next event, announced while everyone walks there. */
+  coming: ComingEvent | null;
+  /** T5: wall-clock time each of your events was resolved (the reveal plays first, then the outcome). */
+  resolvedWall: Record<string, number>;
+  /** T9: events you may guess about (newest last), what you guessed, and how you are doing. */
+  guessables: Extract<Notice, { kind: "guessable" }>[];
+  guessed: Record<string, string>;
+  oracle: { guesses: number; correct: number };
+  /** T6: everyone's mood (emoji above their head). */
+  moods: Record<string, Mood>;
+  /** T7: lasting traces on the map. */
+  marks: Mark[];
+  /** T10: your two personal goals. */
+  goals: GoalView[];
+  /** T12: what you can still do once your story has ended. */
+  ghost: GhostState | null;
+  /** T5: faces on the map right after an event, until `until` (wall clock). */
+  reactions: Record<string, { reaction: Reaction; until: number }>;
+  feed: PublicEntry[];
+  attrs?: Record<Attribute, number>;
+  /** Life calendar; age is derived from the last view's age plus the years since. */
+  calendar?: { year: number; season: string };
+  ageBase?: { age: number; year: number };
+  others: OtherCharacterView[];
+  ended?: { status: string; cause: string };
+  recap?: LifeRecap;
+  /** Upheaval currently hitting the town, if any. */
+  upheaval?: { title: string; text: string } | null;
+  /** Where everyone is walking (server-computed routes; the client only animates them). */
+  walks: Record<string, Walk>;
+  mischief?: Snapshot["mischief"];
+}
+
+/** T14: a private room's waiting room. */
+export interface RoomView {
+  code: string;
+  hostId: string;
+  members: { userId: string; name: string; career: string; isHost: boolean }[];
+  state: "waiting" | "playing";
+  maxPlayers: number;
+}
+
+export interface Lobby {
+  online: number;
+  inQueue: number;
+  activeSessions: number;
+}
+
+function stateFromSnapshot(s: Snapshot): GameState {
+  const lastView = [...s.history].reverse().find((n): n is Extract<Notice, { kind: "event" }> => n.kind === "event")?.view;
+  const ended = s.history.find((n): n is Extract<Notice, { kind: "ended" }> => n.kind === "ended");
+  return {
+    sessionId: s.sessionId,
+    characterId: s.characterId,
+    timeScale: s.timeScale,
+    durationSeconds: s.durationSeconds,
+    roster: s.roster,
+    sync: { sessionTime: s.sessionTime, wall: Date.now() },
+    pending: s.pending,
+    pendingReceivedAt: Date.now() - (s.pending ? (s.sessionTime - s.pending.offeredAt) / s.timeScale : 0),
+    submitted: null,
+    history: s.history,
+    coming: null,
+    guessables: [],
+    guessed: {},
+    oracle: {
+      guesses: s.history.filter((n) => n.kind === "guess_result").length,
+      correct: s.history.filter((n) => n.kind === "guess_result" && n.correct).length,
+    },
+    moods: Object.fromEntries((s.moods ?? []).map((m) => [m.characterId, m.mood])),
+    marks: s.marks ?? [],
+    goals: s.goals ?? [],
+    ghost: s.ghost ?? null,
+    resolvedWall: {},
+    reactions: {},
+    feed: s.feed,
+    // T5b R3: the snapshot carries the current state, so nothing is empty before the first event.
+    attrs: s.me?.self.attrs ?? lastView?.self.attrs,
+    calendar: s.me?.calendar ?? [...s.feed].reverse().find((f): f is Extract<PublicEntry, { kind: "season" }> => f.kind === "season") ?? lastView?.calendar,
+    ageBase: s.me ? { age: s.me.self.age, year: s.me.calendar.year } : lastView ? { age: lastView.self.age, year: lastView.calendar.year } : undefined,
+    others:
+      s.me?.others ??
+      [...s.history].reverse().map((n) => (n.kind === "event" ? n.view.others : n.kind === "resolved" ? n.others : undefined)).find((o) => o !== undefined) ?? [],
+    ...(ended ? { ended: { status: ended.status, cause: ended.cause } } : {}),
+    upheaval: (() => {
+      const last = [...s.feed].reverse().find((f): f is Extract<PublicEntry, { kind: "upheaval" }> => f.kind === "upheaval");
+      return last?.active ? { title: last.title, text: last.text } : null;
+    })(),
+    mischief: s.mischief,
+    walks: Object.fromEntries((s.positions ?? []).map((p) => [p.characterId, { pos: p.pos, trip: p.trip }])),
+  };
+}
+
+export function useGame(token: string | null, onUnauthorized: () => void) {
+  const socketRef = useRef<Socket | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [lobby, setLobby] = useState<Lobby>({ online: 0, inQueue: 0, activeSessions: 0 });
+  const [match, setMatch] = useState<MatchStatus | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [game, setGame] = useState<GameState | null>(null);
+  const [room, setRoom] = useState<RoomView | null>(null);
+  /** Sprint 5: your life in chapters (the server keeps it; we show it). */
+  const [life, setLife] = useState<LifeState | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    const socket = io({ auth: { token }, transports: ["websocket", "polling"] });
+    socketRef.current = socket;
+    socket.on("connect", () => setConnected(true));
+    socket.on("disconnect", () => setConnected(false));
+    socket.on("connect_error", (err) => {
+      if (err.message === "unauthorized") onUnauthorized();
+    });
+    socket.on("lobby:state", setLobby);
+    socket.on("room:state", (r: RoomView) => setRoom(r));
+    socket.on("life:state", (l: LifeState | null) => setLife(l));
+    socket.on("me", (m: { userId: string }) => setUserId(m.userId));
+    socket.on("match:status", (s: MatchStatus) => setMatch(s));
+
+    const start = (s: Snapshot) => {
+      setSearching(false);
+      setMatch(null);
+      setGame(stateFromSnapshot(s));
+    };
+    socket.on("game:started", start);
+    socket.on("game:state", start);
+
+    socket.on("game:feed", (entry: PublicEntry) =>
+      setGame((g) =>
+        !g
+          ? g
+          : entry.kind === "mark" || entry.kind === "unmark" // traces feed the map, not the news list
+            ? { ...g, marks: entry.kind === "mark" ? [...g.marks.filter((m) => m.id !== entry.mark.id), entry.mark] : g.marks.filter((m) => m.id !== entry.id) }
+            : entry.kind === "mood" // moods feed the map, not the news list
+            ? { ...g, moods: { ...g.moods, [entry.characterId]: entry.mood } }
+            : entry.kind === "move" // positions feed the map, not the news list
+            ? {
+                ...g,
+                walks: {
+                  ...g.walks,
+                  [entry.characterId]: {
+                    pos: entry.path[entry.path.length - 1] ?? entry.from,
+                    to: entry.to,
+                    trip: { from: entry.from, path: entry.path, departAt: entry.departAt, msPerTile: entry.msPerTile },
+                  },
+                },
+              }
+            : {
+              ...g,
+              feed: [...g.feed, entry].slice(-50),
+              ...(entry.kind === "season" ? { calendar: { year: entry.year, season: entry.season } } : {}),
+              ...(entry.kind === "upheaval" ? { upheaval: entry.active ? { title: entry.title, text: entry.text } : null } : {}),
+            },
+      ),
+    );
+
+    socket.on("game:notice", (n: Notice) =>
+      setGame((g) => {
+        if (!g) return g;
+        const history = [...g.history, n].slice(-30);
+        if (n.kind === "goals") return { ...g, history, goals: n.goals };
+        if (n.kind === "ghost") return { ...g, history, ghost: n.state };
+        if (n.kind === "coming") return { ...g, history, coming: { ...n, receivedAt: Date.now() } };
+        if (n.kind === "guessable") return { ...g, guessables: [...g.guessables.filter((x) => x.deadlineAt > n.t), n].slice(-6) };
+        if (n.kind === "guess_result")
+          return {
+            ...g,
+            history,
+            guessables: g.guessables.filter((x) => x.instanceId !== n.instanceId),
+            oracle: { guesses: g.oracle.guesses + 1, correct: g.oracle.correct + (n.correct ? 1 : 0) },
+          };
+        if (n.kind === "event") {
+          return {
+            ...g,
+            history,
+            coming: g.coming?.instanceId === n.view.offer.instanceId ? null : g.coming,
+            attrs: n.view.self.attrs,
+            calendar: n.view.calendar,
+            ageBase: { age: n.view.self.age, year: n.view.calendar.year },
+            others: n.view.others,
+            sync: { sessionTime: n.view.now, wall: Date.now() },
+            pending: n.view.offer.choices.length > 0 ? n.view.offer : g.pending,
+            pendingReceivedAt: n.view.offer.choices.length > 0 ? Date.now() : g.pendingReceivedAt,
+            submitted: n.view.offer.choices.length > 0 ? null : g.submitted,
+          };
+        }
+        if (n.kind === "resolved") {
+          const attrs = g.attrs ? { ...g.attrs } : undefined;
+          if (attrs) for (const [a, d] of Object.entries(n.selfChanges) as [Attribute, number][]) attrs[a] = Math.max(0, Math.min(100, attrs[a] + d));
+          const clears = g.pending?.instanceId === n.instanceId;
+          const wall = Date.now();
+          const reactions = { ...g.reactions };
+          for (const r of n.reactions ?? []) if (r.reaction !== "neutral") reactions[r.characterId] = { reaction: r.reaction, until: wall + 2600 };
+          return {
+            ...g,
+            history,
+            attrs,
+            coming: g.coming?.instanceId === n.instanceId ? null : g.coming,
+            resolvedWall: { ...Object.fromEntries(Object.entries(g.resolvedWall).slice(-10)), [n.instanceId]: wall },
+            reactions,
+            // B2: relationships change during the event; show them at once, not at the next offer.
+            others: n.others ?? g.others,
+            sync: { sessionTime: n.t, wall: Date.now() },
+            pending: clears ? null : g.pending,
+            submitted: clears ? null : g.submitted,
+          };
+        }
+        if (n.kind === "ended") return { ...g, history, ended: { status: n.status, cause: n.cause }, pending: null };
+        if (n.kind === "upheaval") {
+          const attrs = g.attrs ? { ...g.attrs } : undefined;
+          if (attrs) for (const [a, d] of Object.entries(n.selfChanges) as [Attribute, number][]) attrs[a] = Math.max(0, Math.min(100, attrs[a] + d));
+          return { ...g, history, attrs };
+        }
+        return { ...g, history };
+      }),
+    );
+    socket.on("game:mischief_state", (m: GameState["mischief"]) => setGame((g) => (g ? { ...g, mischief: m } : g)));
+    socket.on("game:ended", (n: Notice) => {
+      if (n.kind === "session_completed") setGame((g) => (g ? { ...g, pending: null, recap: n.recap } : g));
+    });
+
+    return () => {
+      socket.removeAllListeners();
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [token, onUnauthorized]);
+
+  const findMatch = useCallback(async (career: string, name?: string) => {
+    const res = (await socketRef.current?.emitWithAck("match:find", { career, ...(name ? { name } : {}) })) as { ok: boolean; error?: string } | undefined;
+    if (res?.ok) setSearching(true);
+    return res;
+  }, []);
+
+  const cancelMatch = useCallback(async () => {
+    await socketRef.current?.emitWithAck("match:cancel", {});
+    setSearching(false);
+    setMatch(null);
+  }, []);
+
+  const decide = useCallback(
+    async (choiceId: string) => {
+      if (!game?.pending) return;
+      setGame((g) => (g ? { ...g, submitted: choiceId } : g));
+      const res = (await socketRef.current?.emitWithAck("game:decide", {
+        sessionId: game.sessionId,
+        instanceId: game.pending.instanceId,
+        choiceId,
+      })) as { ok: boolean; reason?: string } | undefined;
+      if (!res?.ok) setGame((g) => (g ? { ...g, submitted: null } : g));
+      return res;
+    },
+    [game?.pending, game?.sessionId],
+  );
+
+  const playMischief = useCallback(
+    async (mischiefId: string, targetId: string) => {
+      if (!game) return;
+      const res = (await socketRef.current?.emitWithAck("game:mischief", { sessionId: game.sessionId, mischiefId, targetId })) as
+        | { ok: boolean; reason?: string; state?: GameState["mischief"] }
+        | undefined;
+      if (res?.state) setGame((g) => (g ? { ...g, mischief: res.state } : g));
+      return res;
+    },
+    [game],
+  );
+
+  /** T12: ghost actions: push fate in an event, vote for the gossip of the year, leave a will. */
+  const ghostAction = useCallback(
+    async (action: "nudge" | "vote" | "will", target: string) => {
+      if (!game) return;
+      return (await socketRef.current?.emitWithAck("game:ghost", { sessionId: game.sessionId, action, target })) as { ok: boolean; reason?: string } | undefined;
+    },
+    [game?.sessionId],
+  );
+
+  /** T9: guess what someone else will choose. */
+  const guess = useCallback(
+    async (instanceId: string, deciderId: string, choiceId: string) => {
+      if (!game) return;
+      setGame((g) => (g ? { ...g, guessed: { ...g.guessed, [instanceId]: choiceId } } : g));
+      const res = (await socketRef.current?.emitWithAck("game:guess", { sessionId: game.sessionId, instanceId, deciderId, choiceId })) as { ok: boolean; reason?: string } | undefined;
+      if (!res?.ok) setGame((g) => (g ? { ...g, guessed: Object.fromEntries(Object.entries(g.guessed).filter(([k]) => k !== instanceId)) } : g));
+      return res;
+    },
+    [game?.sessionId],
+  );
+
+  /** T8: the odds of a scheme before you commit to it. */
+  const previewScheme = useCallback(
+    async (mischiefId: string, targetId: string) => {
+      if (!game) return undefined;
+      return (await socketRef.current?.emitWithAck("game:scheme_preview", { sessionId: game.sessionId, mischiefId, targetId })) as
+        | { ok: true; success: number; risk: number; free: boolean }
+        | { ok: false; reason: string }
+        | undefined;
+    },
+    [game?.sessionId],
+  );
+
+  /** T8: one boost for a scheme in preparation. */
+  const boostScheme = useCallback(
+    async (schemeId: string, boost: SchemeBoost, accompliceId?: string) => {
+      if (!game) return;
+      const res = (await socketRef.current?.emitWithAck("game:scheme_boost", { sessionId: game.sessionId, schemeId, boost, ...(accompliceId ? { accompliceId } : {}) })) as
+        | { ok: boolean; reason?: string; state?: GameState["mischief"] }
+        | undefined;
+      if (res?.state) setGame((g) => (g ? { ...g, mischief: res.state } : g));
+      return res;
+    },
+    [game?.sessionId],
+  );
+
+  // T14: private rooms.
+  type RoomAck = { ok: boolean; error?: string; room?: RoomView } | undefined;
+  const createRoom = useCallback(async (name: string, career: string) => {
+    const res = (await socketRef.current?.emitWithAck("room:create", { name, career })) as RoomAck;
+    if (res?.room) setRoom(res.room);
+    return res;
+  }, []);
+  const joinRoom = useCallback(async (code: string, name: string, career: string) => {
+    const res = (await socketRef.current?.emitWithAck("room:join", { code, name, career })) as RoomAck;
+    if (res?.room) setRoom(res.room);
+    return res;
+  }, []);
+  const updateRoom = useCallback(async (change: { name?: string; career?: string }) => (await socketRef.current?.emitWithAck("room:update", change)) as RoomAck, []);
+  const leaveRoom = useCallback(async () => {
+    await socketRef.current?.emitWithAck("room:leave", {});
+    setRoom(null);
+  }, []);
+  const startLife = useCallback(async (setup: { name: string; dream: string; flaw: string; career: string }) => {
+    const res = (await socketRef.current?.emitWithAck("life:start", setup)) as LifeAck | undefined;
+    if (res?.ok && res.view) setLife({ lifeId: res.lifeId!, view: res.view });
+    return res;
+  }, []);
+  const lifeAct = useCallback(async (action: { t: "next" } | { t: "focus" | "choose"; id: string }) => {
+    const res = (await socketRef.current?.emitWithAck("life:act", action)) as LifeAck | undefined;
+    if (res?.view) setLife({ lifeId: res.lifeId!, view: res.view });
+    return res;
+  }, []);
+  const leaveLife = useCallback(async () => {
+    await socketRef.current?.emitWithAck("life:leave", {});
+    setLife(null);
+  }, []);
+  const startRoom = useCallback(async () => (await socketRef.current?.emitWithAck("room:start", {})) as RoomAck, []);
+
+  const leaveGame = useCallback(() => setGame(null), []);
+
+  return { connected, lobby, match, searching, game, findMatch, cancelMatch, decide, playMischief, previewScheme, boostScheme, guess, ghostAction, leaveGame, room, userId, life, startLife, lifeAct, leaveLife, createRoom, joinRoom, updateRoom, leaveRoom, startRoom };
+}

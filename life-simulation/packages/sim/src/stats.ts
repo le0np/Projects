@@ -1,0 +1,365 @@
+/** Aggregated statistics over many simulated sessions (TESTING_SIMULATION §2). */
+import type { ChoiceTag, OutcomeTag } from "@lifesim/core";
+import type { ContentBundle } from "@lifesim/content";
+import type { LogEntryOf } from "@lifesim/engine";
+import type { BotSessionRun } from "./setup";
+
+interface Counter {
+  [key: string]: number;
+}
+
+const inc = (c: Counter, k: string, by = 1) => (c[k] = (c[k] ?? 0) + by);
+
+export interface BatchStats {
+  sessions: number;
+  characters: number;
+  endReasons: Counter;
+  durationSeconds: { mean: number; min: number; max: number };
+  eventsPerSession: { mean: number; min: number; max: number };
+  eventsPerCharacter: number;
+  /** Share of a character's lifetime spent inside events (pacing). */
+  engagedShare: number;
+  /** Mean seconds from session start to a character's last event ending. */
+  lastActivitySeconds: number;
+  deathRate: number;
+  sessionsWithDeath: number;
+  statusCounts: Counter;
+  outcomeTags: Counter;
+  /** eventId → occurrences. */
+  eventCounts: Counter;
+  /** eventId → choiceId → picks. */
+  choiceCounts: Record<string, Counter>;
+  /** eventId → outcomeId → occurrences. */
+  outcomeCounts: Record<string, Counter>;
+  neverSelected: string[];
+  /** Share of a character's events that repeat a template they already had. */
+  repetitionRate: number;
+  /** T2: share of a character's events (that they know about) in which someone else decides too. */
+  sharedShare: number;
+  /** T2: of the shared events, the share with someone the character has a real relationship with (not stranger/acquaintance). */
+  knownShare: number;
+  /** T2: share of event instances with at least two characters deciding. */
+  multiDeciderShare: number;
+  /** T8: schemes — planned, worked, found out, boosts, accomplice answers, revenge planned by victims. */
+  schemes: { planned: number; worked: number; discovered: number; boosts: Counter; accomplice: Counter; revenge: number; caughtOutcomes: Counter };
+  /** T11: how often each life title is given. */
+  titles: Counter;
+  /** T10: per goal, how many lives had it and reached it. */
+  goals: Record<string, { n: number; done: number }>;
+  /** T7b: share of characters with at least one real tie (partner, friend, family, rival, enemy, a debt) before the finale. */
+  tiedShare: number;
+  /** T7b: share of sessions in which these events happen. */
+  sessionsWith: Counter;
+  /** T6b: share of living time characters spend in each mood (what the town looks like). */
+  moodShare: Counter;
+  /** T2: solo events (nobody else decides) per character, and how often one repeats for the same character. */
+  soloPerCharacter: number;
+  soloRepeats: Counter;
+  followUps: { scheduled: number; activated: number; dropped: Counter };
+  decisions: { submitted: number; defaulted: number; rejected: number };
+  directorIdlePerSession: number;
+  career: Record<string, { n: number; lifeScore: number; deaths: number; outcomes: Counter }>;
+  archetype: Record<string, { n: number; lifeScore: number; deaths: number; tags: Counter; decisions: number }>;
+}
+
+export function aggregate(runs: readonly BotSessionRun[], content: ContentBundle): BatchStats {
+  const s: BatchStats = {
+    sessions: runs.length,
+    characters: 0,
+    endReasons: {},
+    durationSeconds: { mean: 0, min: Infinity, max: 0 },
+    eventsPerSession: { mean: 0, min: Infinity, max: 0 },
+    eventsPerCharacter: 0,
+    engagedShare: 0,
+    lastActivitySeconds: 0,
+    deathRate: 0,
+    sessionsWithDeath: 0,
+    statusCounts: {},
+    outcomeTags: {},
+    eventCounts: {},
+    choiceCounts: {},
+    outcomeCounts: {},
+    neverSelected: [],
+    repetitionRate: 0,
+    sharedShare: 0,
+    multiDeciderShare: 0,
+    knownShare: 0,
+    soloPerCharacter: 0,
+    moodShare: {},
+    tiedShare: 0,
+    goals: {},
+    titles: {},
+    schemes: { planned: 0, worked: 0, discovered: 0, boosts: {}, accomplice: {}, revenge: 0, caughtOutcomes: {} },
+    sessionsWith: {},
+    soloRepeats: {},
+    followUps: { scheduled: 0, activated: 0, dropped: {} },
+    decisions: { submitted: 0, defaulted: 0, rejected: 0 },
+    directorIdlePerSession: 0,
+    career: {},
+    archetype: {},
+  };
+  let engagedSum = 0;
+  let lastActivitySum = 0;
+  let repeats = 0;
+  let charEvents = 0;
+  let deaths = 0;
+  let awareEvents = 0;
+  let sharedEvents = 0;
+  let soloEvents = 0;
+  let instances = 0;
+  let knownEvents = 0;
+  let multiInstances = 0;
+  const decides = (eventId: string, role: string) => (content.events.get(eventId)?.choices[role]?.length ?? 0) > 0;
+  const aware = (eventId: string, role: string) => content.events.get(eventId)?.roles[role]?.aware !== false;
+
+  let moodTime = 0;
+  let tied = 0;
+  const REAL = new Set(["partner", "friend", "family", "rival", "enemy"]);
+  for (const { result, bots, moods } of runs) {
+    // Mood timelines: each character is "content" until their first change, up to the end of their life.
+    const endOf = new Map(result.recaps.map((r) => [r.characterId, r.lifeDurationMs]));
+    const current = new Map<string, { mood: string; since: number }>();
+    const close = (id: string, until: number) => {
+      const m = current.get(id) ?? { mood: "content", since: 0 };
+      const span = Math.max(0, Math.min(until, endOf.get(id) ?? until) - m.since);
+      inc(s.moodShare, m.mood, span);
+      moodTime += span;
+    };
+    for (const m of moods ?? []) {
+      close(m.characterId, m.t);
+      current.set(m.characterId, { mood: m.mood, since: m.t });
+    }
+    for (const id of endOf.keys()) close(id, result.durationMs);
+
+    // T7b: real ties before the finale (relationship types from the log, debts from facts).
+    const ties = new Map<string, Set<string>>();
+    const tie = (a: string, b: string, on: boolean, kind: string) => {
+      for (const [x, y] of [[a, b], [b, a]] as const) {
+        const set = ties.get(x) ?? new Set<string>();
+        if (on) set.add(`${kind}:${y}`);
+        else set.delete(`${kind}:${y}`);
+        ties.set(x, set);
+      }
+    };
+    for (const e of result.log) {
+      if (e.type === "event_started" && e.eventId.startsWith("finale_")) break;
+      if (e.type === "session_started") for (const r of e.relations) tie(r.a, r.b, REAL.has(r.type), "rel");
+      if (e.type === "event_resolved") {
+        for (const c of e.changes) {
+          if (c.kind === "relation") tie(c.from, c.to, REAL.has(c.type), "rel");
+          if (c.kind === "fact" && c.key === "owes_money" && c.about) tie(c.target, c.about, !c.removed, "debt");
+        }
+      }
+    }
+    for (const id of endOf.keys()) if ((ties.get(id)?.size ?? 0) > 0) tied++;
+    for (const e of result.log) {
+      if (e.type === "mischief") s.schemes.planned++;
+      else if (e.type === "scheme_boost") inc(s.schemes.boosts, e.boost);
+      else if (e.type === "scheme_result") {
+        if (e.result === "worked") s.schemes.worked++;
+        if (e.discovered) s.schemes.discovered++;
+      } else if (e.type === "event_resolved" && e.eventId === "scheme_accomplice") inc(s.schemes.accomplice, e.outcomeId);
+      else if (e.type === "event_resolved" && (e.eventId.startsWith("mischief_") || e.eventId === "scheme_caught") && ["confronted", "reported", "revenge_planned"].includes(e.outcomeId)) {
+        inc(s.schemes.caughtOutcomes, e.outcomeId);
+        if (e.outcomeId === "revenge_planned") s.schemes.revenge++;
+      }
+    }
+    const seenEvents = new Set(result.log.flatMap((e) => (e.type === "event_started" ? [e.eventId] : [])));
+    for (const id of seenEvents) inc(s.sessionsWith, id);
+    const archetypeOf = new Map(bots.map((b) => [b.characterId, b.controller.profile.archetype]));
+    inc(s.endReasons, result.endReason ?? "unknown");
+    const dur = result.durationMs / 1000;
+    s.durationSeconds.mean += dur;
+    s.durationSeconds.min = Math.min(s.durationSeconds.min, dur);
+    s.durationSeconds.max = Math.max(s.durationSeconds.max, dur);
+    const ev = result.stats.eventsResolved;
+    s.eventsPerSession.mean += ev;
+    s.eventsPerSession.min = Math.min(s.eventsPerSession.min, ev);
+    s.eventsPerSession.max = Math.max(s.eventsPerSession.max, ev);
+    s.followUps.scheduled += result.stats.followUpsScheduled;
+    s.followUps.activated += result.stats.followUpsActivated;
+    for (const [k, v] of Object.entries(result.stats.followUpsDropped)) inc(s.followUps.dropped, k, v);
+    s.decisions.submitted += result.stats.decisionsSubmitted;
+    s.decisions.defaulted += result.stats.decisionsDefaulted;
+    s.decisions.rejected += result.stats.decisionsRejected;
+    s.directorIdlePerSession += result.stats.directorIdle;
+
+    const started = new Map<string, LogEntryOf<"event_started">>();
+    const busyMs = new Map<string, number>();
+    const lastEnd = new Map<string, number>();
+    const seenByChar = new Map<string, Set<string>>();
+    const soloByChar = new Map<string, Set<string>>();
+    const known = new Map<string, string>(); // pair → relationship type
+    const pair = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+    for (const e of result.log) {
+      if (e.type === "session_started") {
+        for (const r of e.relations) known.set(pair(r.a, r.b), r.type);
+      } else if (e.type === "event_started") {
+        started.set(e.instanceId, e);
+        inc(s.eventCounts, e.eventId);
+        for (const id of Object.values(e.bindings).flat()) {
+          const seen = seenByChar.get(id) ?? new Set();
+          if (seen.has(e.eventId)) repeats++;
+          seen.add(e.eventId);
+          seenByChar.set(id, seen);
+          charEvents++;
+        }
+        const deciders = Object.entries(e.bindings).flatMap(([role, ids]) => (decides(e.eventId, role) ? ids : []));
+        instances++;
+        if (deciders.length >= 2) multiInstances++;
+        for (const [role, ids] of Object.entries(e.bindings)) {
+          if (!aware(e.eventId, role)) continue;
+          for (const id of ids) {
+            awareEvents++;
+            if (deciders.some((d) => d !== id)) {
+              sharedEvents++;
+              const close = (o: string) => !["stranger", "acquaintance", undefined].includes(known.get(pair(id, o)));
+              if (Object.values(e.bindings).flat().some((o) => o !== id && close(o))) knownEvents++;
+            } else {
+              soloEvents++;
+              const solo = soloByChar.get(id) ?? new Set();
+              if (solo.has(e.eventId)) inc(s.soloRepeats, e.eventId);
+              solo.add(e.eventId);
+              soloByChar.set(id, solo);
+            }
+          }
+        }
+      } else if (e.type === "event_resolved") {
+        const st = started.get(e.instanceId)!;
+        for (const c of e.changes) if (c.kind === "relation") known.set(pair(c.from, c.to), c.type);
+        (s.outcomeCounts[e.eventId] ??= {}) && inc(s.outcomeCounts[e.eventId]!, e.outcomeId);
+        for (const id of Object.values(st.bindings).flat()) {
+          busyMs.set(id, (busyMs.get(id) ?? 0) + (e.t - st.t));
+          lastEnd.set(id, e.t);
+        }
+      } else if (e.type === "decision") {
+        const st = started.get(e.instanceId)!;
+        inc((s.choiceCounts[st.eventId] ??= {}), e.choiceId);
+        const role = Object.entries(st.bindings).find(([, ids]) => ids.includes(e.characterId))?.[0];
+        const tags: ChoiceTag[] = content.events.get(st.eventId)?.choices[role ?? ""]?.find((c) => c.id === e.choiceId)?.tags ?? [];
+        const arch = archetypeOf.get(e.characterId);
+        if (arch) {
+          const a = (s.archetype[arch] ??= { n: 0, lifeScore: 0, deaths: 0, tags: {}, decisions: 0 });
+          a.decisions++;
+          for (const t of tags) inc(a.tags, t);
+        }
+      }
+    }
+
+    let sessionDeaths = 0;
+    for (const r of result.recaps) {
+      s.characters++;
+      inc(s.statusCounts, r.finalStatus);
+      for (const t of r.outcomes) inc(s.outcomeTags, t);
+      if (r.finalStatus === "dead") sessionDeaths++;
+      if (r.title) inc(s.titles, r.title.label);
+      for (const g of r.goals ?? []) {
+        const x = (s.goals[g.id] ??= { n: 0, done: 0 });
+        x.n++;
+        if (g.done) x.done++;
+      }
+      engagedSum += (busyMs.get(r.characterId) ?? 0) / Math.max(1, r.lifeDurationMs);
+      lastActivitySum += (lastEnd.get(r.characterId) ?? 0) / 1000;
+      const c = (s.career[r.career] ??= { n: 0, lifeScore: 0, deaths: 0, outcomes: {} });
+      c.n++;
+      c.lifeScore += r.lifeScore;
+      if (r.finalStatus === "dead") c.deaths++;
+      for (const t of r.outcomes) inc(c.outcomes, t);
+      const arch = archetypeOf.get(r.characterId);
+      if (arch) {
+        const a = (s.archetype[arch] ??= { n: 0, lifeScore: 0, deaths: 0, tags: {}, decisions: 0 });
+        a.n++;
+        a.lifeScore += r.lifeScore;
+        if (r.finalStatus === "dead") a.deaths++;
+      }
+    }
+    deaths += sessionDeaths;
+    if (sessionDeaths > 0) s.sessionsWithDeath++;
+  }
+
+  const n = Math.max(1, runs.length);
+  s.durationSeconds.mean /= n;
+  s.eventsPerSession.mean /= n;
+  s.directorIdlePerSession /= n;
+  s.eventsPerCharacter = charEvents / Math.max(1, s.characters);
+  s.engagedShare = engagedSum / Math.max(1, s.characters);
+  s.lastActivitySeconds = lastActivitySum / Math.max(1, s.characters);
+  s.deathRate = deaths / Math.max(1, s.characters);
+  s.repetitionRate = repeats / Math.max(1, charEvents);
+  s.sharedShare = sharedEvents / Math.max(1, awareEvents);
+  s.multiDeciderShare = multiInstances / Math.max(1, instances);
+  s.knownShare = knownEvents / Math.max(1, sharedEvents);
+  s.soloPerCharacter = soloEvents / Math.max(1, s.characters);
+  s.tiedShare = tied / Math.max(1, s.characters);
+  for (const k of Object.keys(s.sessionsWith)) s.sessionsWith[k] = (s.sessionsWith[k] ?? 0) / n;
+  for (const k of Object.keys(s.moodShare)) s.moodShare[k] = (s.moodShare[k] ?? 0) / Math.max(1, moodTime);
+  for (const c of Object.values(s.career)) c.lifeScore /= c.n;
+  for (const a of Object.values(s.archetype)) a.lifeScore /= Math.max(1, a.n);
+  s.neverSelected = [...content.events.keys()].filter((id) => !s.eventCounts[id]).sort();
+  return s;
+}
+
+const pct = (x: number) => `${(x * 100).toFixed(1)} %`;
+const top = (c: Counter, k = 5) =>
+  Object.entries(c)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, k);
+
+/** Markdown balance report. */
+export function formatReport(s: BatchStats, title = "Simulation report"): string {
+  const lines: string[] = [`# ${title}`, ""];
+  lines.push(
+    `| Metric | Value |`,
+    `| --- | --- |`,
+    `| Sessions / characters | ${s.sessions} / ${s.characters} |`,
+    `| End reasons | ${top(s.endReasons).map(([k, v]) => `${k} ${v}`).join(", ")} |`,
+    `| Session duration (s) | mean ${s.durationSeconds.mean.toFixed(0)}, min ${s.durationSeconds.min.toFixed(0)}, max ${s.durationSeconds.max.toFixed(0)} |`,
+    `| Events per session | mean ${s.eventsPerSession.mean.toFixed(1)}, min ${s.eventsPerSession.min}, max ${s.eventsPerSession.max} |`,
+    `| Events per character | ${s.eventsPerCharacter.toFixed(1)} |`,
+    `| Time spent in events | ${pct(s.engagedShare)} of lifetime |`,
+    `| Last activity (mean) | ${s.lastActivitySeconds.toFixed(0)} s after start |`,
+    `| Death rate | ${pct(s.deathRate)} of characters, ${pct(s.sessionsWithDeath / Math.max(1, s.sessions))} of sessions |`,
+    `| Event repetition | ${pct(s.repetitionRate)} of a character's events repeat a template |`,
+    `| Shared events | ${pct(s.sharedShare)} of a character's events have someone else deciding too; ${pct(s.multiDeciderShare)} of events have ≥ 2 deciders; ${pct(s.knownShare)} of shared events are with someone they have a relationship with |`,
+    `| Schemes | ${(s.schemes.planned / Math.max(1, s.sessions)).toFixed(1)} per session; ${pct(s.schemes.worked / Math.max(1, s.schemes.planned))} worked, ${pct(s.schemes.discovered / Math.max(1, s.schemes.planned))} found out; boosts: ${top(s.schemes.boosts).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}; accomplices: ${top(s.schemes.accomplice).map(([k, v]) => `${k} ${v}`).join(", ") || "none"}; caught culprits: ${top(s.schemes.caughtOutcomes).map(([k, v]) => `${k} ${v}`).join(", ") || "none"} |`,
+    `| Life titles | ${Object.keys(s.titles).length} different; ${top(s.titles, 25).map(([k, v]) => `${k} ${pct(v / Math.max(1, s.characters))}`).join(", ")} |`,
+    `| Real ties before the finale | ${pct(s.tiedShare)} of characters have a partner, friend, family, rival, enemy or debt |`,
+    `| Relationship events | ${["relationships_first_date", "relationships_jealousy", "relationships_crisis_talk", "financial_loan_due"].map((id) => `${id.replace(/^[a-z]+_/, "")} in ${pct(s.sessionsWith[id] ?? 0)} of sessions`).join(", ")} |`,
+    `| Moods (share of time) | ${top(s.moodShare, 10).map(([k, v]) => `${k} ${pct(v)}`).join(", ")} |`,
+    `| Solo events | ${s.soloPerCharacter.toFixed(1)} per character; ${Object.values(s.soloRepeats).reduce((a, b) => a + b, 0)} times a character got the same solo event again${Object.keys(s.soloRepeats).length ? ` (${top(s.soloRepeats).map(([k, v]) => `${k} ${v}`).join(", ")})` : ""} |`,
+    `| Follow-ups | ${s.followUps.activated}/${s.followUps.scheduled} activated; dropped: ${top(s.followUps.dropped).map(([k, v]) => `${k} ${v}`).join(", ") || "none"} |`,
+    `| Decisions | ${s.decisions.submitted} submitted, ${s.decisions.defaulted} defaulted, ${s.decisions.rejected} rejected |`,
+    `| Director found nothing | ${s.directorIdlePerSession.toFixed(0)} times per session |`,
+    "",
+  );
+  const goalRows = Object.entries(s.goals).sort((a, b) => b[1].done / b[1].n - a[1].done / a[1].n);
+  if (goalRows.length) {
+    lines.push("## Personal goals (T10)", "", "| Goal | Lives | Reached |", "| --- | --- | --- |");
+    for (const [id, g] of goalRows) lines.push(`| ${id} | ${g.n} | ${pct(g.done / g.n)} |`);
+    lines.push("");
+  }
+  lines.push("## Final status and outcomes", "");
+  lines.push(`Status: ${top(s.statusCounts, 10).map(([k, v]) => `${k} ${pct(v / s.characters)}`).join(", ")}`, "");
+  lines.push(`Outcomes: ${top(s.outcomeTags, 20).map(([k, v]) => `${k} ${pct(v / s.characters)}`).join(", ")}`, "");
+
+  lines.push("## Careers", "", "| Career | n | Life score | Death rate | Top outcomes |", "| --- | --- | --- | --- | --- |");
+  for (const [id, c] of Object.entries(s.career).sort((a, b) => b[1].lifeScore - a[1].lifeScore)) {
+    const outs = top(c.outcomes, 4).filter(([k]) => k !== "survived").map(([k, v]) => `${k} ${pct(v / c.n)}`).join(", ");
+    lines.push(`| ${id} | ${c.n} | ${c.lifeScore.toFixed(1)} | ${pct(c.deaths / c.n)} | ${outs} |`);
+  }
+  lines.push("", "## Bot personalities", "", "| Archetype | n | Life score | Death rate | Most frequent attitudes |", "| --- | --- | --- | --- | --- |");
+  for (const [id, a] of Object.entries(s.archetype).sort((x, y) => x[0].localeCompare(y[0]))) {
+    const tags = top(a.tags, 4).map(([k, v]) => `${k} ${pct(v / Math.max(1, a.decisions))}`).join(", ");
+    lines.push(`| ${id} | ${a.n} | ${a.lifeScore.toFixed(1)} | ${pct(a.deaths / Math.max(1, a.n))} | ${tags} |`);
+  }
+  lines.push("", "## Events", "", "| Event | Occurrences | Choices | Outcomes |", "| --- | --- | --- | --- |");
+  for (const [id, count] of top(s.eventCounts, 1000)) {
+    const choices = top(s.choiceCounts[id] ?? {}, 6).map(([k, v]) => `${k} ${v}`).join(", ");
+    const outcomes = top(s.outcomeCounts[id] ?? {}, 6).map(([k, v]) => `${k} ${v}`).join(", ");
+    lines.push(`| ${id} | ${count} | ${choices} | ${outcomes} |`);
+  }
+  if (s.neverSelected.length) lines.push("", `**Never selected:** ${s.neverSelected.join(", ")}`);
+  return lines.join("\n") + "\n";
+}
+
+export type { OutcomeTag };

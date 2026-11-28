@@ -1,0 +1,1253 @@
+{
+  "startHome": "Your mum's spare room",
+  "start": {
+    "money": 20,
+    "rep": 40,
+    "fame": 0
+  },
+  "dreams": [
+    {
+      "id": "fame",
+      "icon": "🎤",
+      "label": "Become famous",
+      "note": "Win the town talent show final at 33.",
+      "focus": [
+        "fame"
+      ],
+      "finale": {
+        "title": "The Talent Show Final",
+        "text": "The town talent show final. The whole town is watching, plus a man from national TV who looks bored.",
+        "base": 21,
+        "factors": [
+          {
+            "label": "Your fame ★{fame}",
+            "per": {
+              "stat": "fame",
+              "mul": 7
+            }
+          },
+          {
+            "label": "You've been on stage before",
+            "when": {
+              "flags": [
+                "openmic_hit"
+              ]
+            },
+            "add": 8
+          },
+          {
+            "label": "{friend} votes for you",
+            "when": {
+              "stats": {
+                "rel.friend": {
+                  "min": 1
+                }
+              }
+            },
+            "add": 8
+          },
+          {
+            "label": "{friend} tells the judges about you",
+            "when": {
+              "stats": {
+                "rel.friend": {
+                  "max": -2
+                }
+              }
+            },
+            "add": -10
+          },
+          {
+            "label": "{crush} votes for you",
+            "when": {
+              "stats": {
+                "rel.crush": {
+                  "min": 1
+                }
+              }
+            },
+            "add": 8
+          },
+          {
+            "label": "{crush} tells the judges about you",
+            "when": {
+              "stats": {
+                "rel.crush": {
+                  "max": -2
+                }
+              }
+            },
+            "add": -10
+          },
+          {
+            "label": "{rival} votes for you",
+            "when": {
+              "stats": {
+                "rel.rival": {
+                  "min": 1
+                }
+              }
+            },
+            "add": 8
+          },
+          {
+            "label": "{rival} tells the judges about you",
+            "when": {
+              "stats": {
+                "rel.rival": {
+                  "max": -2
+                }
+              }
+            },
+            "add": -10
+          },
+          {
+            "label": "Secrets that came out",
+            "when": {
+              "stats": {
+                "exposed": {
+                  "min": 1
+                }
+              }
+            },
+            "per": {
+              "stat": "exposed",
+              "mul": -8
+            }
+          }
+        ],
+        "success": {
+          "text": "You win! The bored TV man stands up. He's crying. You're famous.",
+          "emoji": "🏆"
+        },
+        "failure": {
+          "text": "Second place. To a dog that plays the recorder. The dog was very good.",
+          "emoji": "🥈"
+        }
+      }
+    },
+    {
+      "id": "rich",
+      "icon": "💰",
+      "label": "Get rich",
+      "note": "Land the big investor deal at 33.",
+      "focus": [
+        "money",
+        "career"
+      ],
+      "finale": {
+        "title": "The Investor Pitch",
+        "text": "Your big idea, one meeting, one investor. The investor walks in. It's {rival}.",
+        "base": 26,
+        "factors": [
+          {
+            "label": "Your savings ({money} €)",
+            "per": {
+              "stat": "money",
+              "mul": 0.4
+            },
+            "cap": 35
+          },
+          {
+            "label": "Your job: {job}",
+            "per": {
+              "stat": "jobLevel",
+              "mul": 9
+            }
+          },
+          {
+            "label": "No job, no track record",
+            "when": {
+              "hasJob": false
+            },
+            "add": -10
+          },
+          {
+            "label": "{rival}, the investor, likes you",
+            "when": {
+              "stats": {
+                "rel.rival": {
+                  "min": 1
+                }
+              }
+            },
+            "add": 15
+          },
+          {
+            "label": "{rival}, the investor, hates you",
+            "when": {
+              "stats": {
+                "rel.rival": {
+                  "max": -2
+                }
+              }
+            },
+            "add": -15
+          },
+          {
+            "label": "{friend} is your co-founder",
+            "when": {
+              "stats": {
+                "rel.friend": {
+                  "min": 2
+                }
+              }
+            },
+            "add": 8
+          },
+          {
+            "label": "You once got rich on a dog coin",
+            "when": {
+              "flags": [
+                "dog_coin_rich"
+              ]
+            },
+            "add": 6
+          },
+          {
+            "label": "Your lies are on the internet",
+            "when": {
+              "stats": {
+                "exposed": {
+                  "min": 1
+                }
+              }
+            },
+            "per": {
+              "stat": "exposed",
+              "mul": -6
+            }
+          }
+        ],
+        "success": {
+          "text": "{rival} signs. “I hate that this is a good idea,” {rival.he} says. You're rich.",
+          "emoji": "🤑"
+        },
+        "failure": {
+          "text": "{rival} says no. {Rival.he} funds a dog that plays the recorder instead.",
+          "emoji": "📉"
+        }
+      }
+    },
+    {
+      "id": "love",
+      "icon": "💍",
+      "label": "Find true love",
+      "note": "Be happily together with the one you love at 33.",
+      "focus": [
+        "love"
+      ],
+      "finale": {
+        "title": [
+          {
+            "when": {
+              "married": true
+            },
+            "text": "The Anniversary Dinner"
+          },
+          {
+            "text": "Last Chance with {crush}"
+          }
+        ],
+        "text": [
+          {
+            "when": {
+              "married": true
+            },
+            "text": "Your anniversary. {crush} booked a table at the fancy place. {Crush.his} ex is the waiter."
+          },
+          {
+            "when": {
+              "partner": "crush"
+            },
+            "text": "{crush} has a job offer in another city. You have one dinner to make staying worth it."
+          },
+          {
+            "text": "{crush} is moving to another city tomorrow. You have one evening."
+          }
+        ],
+        "base": 21,
+        "factors": [
+          {
+            "label": "You're married to {crush}",
+            "when": {
+              "married": true
+            },
+            "add": 25
+          },
+          {
+            "label": "You're with {crush}",
+            "when": {
+              "partner": "crush",
+              "married": false
+            },
+            "add": 12
+          },
+          {
+            "label": "{crush} is with {friend} now",
+            "when": {
+              "flags": [
+                "crush_with_friend"
+              ]
+            },
+            "add": -15
+          },
+          {
+            "label": "{crush}'s feelings for you",
+            "per": {
+              "stat": "rel.crush",
+              "mul": 5
+            }
+          },
+          {
+            "label": "You told the truth about the plants",
+            "when": {
+              "flags": [
+                "plants_truth"
+              ]
+            },
+            "add": 5
+          },
+          {
+            "label": "Lies that came out",
+            "when": {
+              "stats": {
+                "exposed": {
+                  "min": 1
+                }
+              }
+            },
+            "per": {
+              "stat": "exposed",
+              "mul": -8
+            }
+          },
+          {
+            "label": "{friend} gives a speech about you",
+            "when": {
+              "stats": {
+                "rel.friend": {
+                  "min": 2
+                }
+              }
+            },
+            "add": 6
+          }
+        ],
+        "success": {
+          "text": [
+            {
+              "when": {
+                "married": true
+              },
+              "text": "The ex spills soup on himself. {crush} laughs, holds your hand and says “best years of my life”. True love."
+            },
+            {
+              "text": "{crush} stays. {Crush.he} unpacks one box, then the rest. True love."
+            }
+          ],
+          "emoji": "💞"
+        },
+        "failure": {
+          "text": [
+            {
+              "when": {
+                "married": true
+              },
+              "text": "{crush} says {crush.he} needs “some time”. The ex brings the bill. He's smug about it."
+            },
+            {
+              "text": "{crush}'s train leaves at 7:04. You get to the station at 7:05."
+            }
+          ],
+          "emoji": "💔"
+        }
+      }
+    },
+    {
+      "id": "mayor",
+      "icon": "🏛️",
+      "label": "Become mayor",
+      "note": "Win the town election at 33.",
+      "focus": [
+        "town"
+      ],
+      "finale": {
+        "title": "Election Night",
+        "text": "Election night at the town hall. You against {rival}, who has a brass band. You have a pigeon on your shoulder that refuses to leave.",
+        "base": 10,
+        "factors": [
+          {
+            "label": "Your reputation ({rep})",
+            "per": {
+              "stat": "rep",
+              "mul": 0.5
+            },
+            "floor": -15
+          },
+          {
+            "label": "Your fame ★{fame}",
+            "per": {
+              "stat": "fame",
+              "mul": 3
+            }
+          },
+          {
+            "label": "You fixed the pothole on Elm Street",
+            "when": {
+              "flags": [
+                "council_hero"
+              ]
+            },
+            "add": 10
+          },
+          {
+            "label": "You ran a real campaign",
+            "when": {
+              "flags": [
+                "campaign_launched"
+              ]
+            },
+            "add": 10
+          },
+          {
+            "label": "{friend} campaigns for you",
+            "when": {
+              "stats": {
+                "rel.friend": {
+                  "min": 1
+                }
+              }
+            },
+            "add": 7
+          },
+          {
+            "label": "{friend} campaigns against you",
+            "when": {
+              "stats": {
+                "rel.friend": {
+                  "max": -2
+                }
+              }
+            },
+            "add": -8
+          },
+          {
+            "label": "{crush} campaigns for you",
+            "when": {
+              "stats": {
+                "rel.crush": {
+                  "min": 1
+                }
+              }
+            },
+            "add": 7
+          },
+          {
+            "label": "{crush} campaigns against you",
+            "when": {
+              "stats": {
+                "rel.crush": {
+                  "max": -2
+                }
+              }
+            },
+            "add": -8
+          },
+          {
+            "label": "{rival} campaigns for you",
+            "when": {
+              "stats": {
+                "rel.rival": {
+                  "min": 1
+                }
+              }
+            },
+            "add": 7
+          },
+          {
+            "label": "{rival} campaigns against you",
+            "when": {
+              "stats": {
+                "rel.rival": {
+                  "max": -2
+                }
+              }
+            },
+            "add": -8
+          },
+          {
+            "label": "Scandals that came out",
+            "when": {
+              "stats": {
+                "exposed": {
+                  "min": 1
+                }
+              }
+            },
+            "per": {
+              "stat": "exposed",
+              "mul": -10
+            }
+          }
+        ],
+        "success": {
+          "text": "You win by 211 votes. Your first act as mayor: the pigeon is deputy mayor. Nobody objects.",
+          "emoji": "🎖️"
+        },
+        "failure": {
+          "text": "{rival} wins by eleven votes. You know exactly which eleven.",
+          "emoji": "🗳️"
+        }
+      }
+    },
+    {
+      "id": "business",
+      "icon": "🏪",
+      "label": "Run your own business",
+      "note": "Open your own place at 33.",
+      "focus": [
+        "business",
+        "money"
+      ],
+      "finale": {
+        "title": "Opening Day",
+        "text": "Opening day of your own place. The sign is up, the paint is almost dry, and the health inspector is early.",
+        "base": 18,
+        "factors": [
+          {
+            "label": "Your savings ({money} €)",
+            "per": {
+              "stat": "money",
+              "mul": 0.3
+            },
+            "cap": 30
+          },
+          {
+            "label": "What you learned as {job}",
+            "per": {
+              "stat": "jobLevel",
+              "mul": 6
+            }
+          },
+          {
+            "label": "Your weekend side hustle",
+            "when": {
+              "flags": [
+                "side_hustle"
+              ]
+            },
+            "add": 10
+          },
+          {
+            "label": "The bank loan",
+            "when": {
+              "flags": [
+                "business_loan"
+              ]
+            },
+            "add": 10
+          },
+          {
+            "label": "{friend} runs the till for you",
+            "when": {
+              "stats": {
+                "rel.friend": {
+                  "min": 2
+                }
+              }
+            },
+            "add": 10
+          },
+          {
+            "label": "{rival} opened a shop across the road",
+            "when": {
+              "stats": {
+                "rel.rival": {
+                  "max": -2
+                }
+              }
+            },
+            "add": -12
+          },
+          {
+            "label": "Your reputation is a bit… known",
+            "when": {
+              "stats": {
+                "exposed": {
+                  "min": 1
+                }
+              }
+            },
+            "per": {
+              "stat": "exposed",
+              "mul": -6
+            }
+          }
+        ],
+        "success": {
+          "text": "There's a queue round the block. The inspector buys three. You're in business.",
+          "emoji": "🏪"
+        },
+        "failure": {
+          "text": "The inspector finds a pigeon in the storeroom. You're closed by Tuesday. The pigeon is fine.",
+          "emoji": "🚫"
+        }
+      }
+    },
+    {
+      "id": "family",
+      "icon": "👨‍👩‍👧",
+      "label": "Start a family",
+      "note": "Host the big family lunch at 33.",
+      "focus": [
+        "family",
+        "love"
+      ],
+      "finale": {
+        "title": "The Big Family Lunch",
+        "text": "Sunday lunch at yours: everyone you love, around one table that is too small. The gravy is already a problem.",
+        "base": 10,
+        "factors": [
+          {
+            "label": "You're married to {crush}",
+            "when": {
+              "married": true
+            },
+            "add": 20
+          },
+          {
+            "label": "You're with {crush}",
+            "when": {
+              "partner": "crush",
+              "married": false
+            },
+            "add": 10
+          },
+          {
+            "label": "Your kids ({kids})",
+            "per": {
+              "stat": "kids",
+              "mul": 15
+            },
+            "cap": 30
+          },
+          {
+            "label": "You're great with kids",
+            "when": {
+              "flags": [
+                "good_with_kids"
+              ]
+            },
+            "add": 8
+          },
+          {
+            "label": "A proper home",
+            "when": {
+              "homeStart": false
+            },
+            "add": 8
+          },
+          {
+            "label": "Still in your mum's spare room",
+            "when": {
+              "homeStart": true
+            },
+            "add": -8
+          },
+          {
+            "label": "{friend} brings dessert",
+            "when": {
+              "stats": {
+                "rel.friend": {
+                  "min": 1
+                }
+              }
+            },
+            "add": 5
+          },
+          {
+            "label": "{rival} lives next door, unfortunately",
+            "when": {
+              "stats": {
+                "rel.rival": {
+                  "max": -2
+                }
+              }
+            },
+            "add": -6
+          }
+        ],
+        "success": {
+          "text": "Nobody cries, except at the speeches. Your kid says grace and thanks the pigeon. Best lunch ever.",
+          "emoji": "🍗"
+        },
+        "failure": {
+          "text": "The gravy boat capsizes, two in-laws stop speaking and the dog eats the turkey. Next year, maybe.",
+          "emoji": "🦃"
+        }
+      }
+    }
+  ],
+  "flaws": [
+    {
+      "id": "coward",
+      "icon": "🐔",
+      "label": "Coward",
+      "note": "Brave choices are 25 % less likely to work.",
+      "tag": "brave",
+      "add": -25,
+      "certain": 75,
+      "failText": "You get as far as opening your mouth. Then you chicken out and go home.",
+      "failEmoji": "🐔"
+    },
+    {
+      "id": "blabber",
+      "icon": "🗣️",
+      "label": "Can't keep a secret",
+      "note": "Lying is harder and your secrets come out sooner.",
+      "tag": "lie",
+      "add": -20,
+      "certain": 80,
+      "secretsSooner": 1,
+      "failText": "You start the lie and then, without meaning to, explain the whole truth. In detail.",
+      "failEmoji": "🗣️"
+    },
+    {
+      "id": "pushover",
+      "icon": "🫠",
+      "label": "Can't say no",
+      "note": "When you try to refuse, you often say yes anyway.",
+      "tag": "refuse",
+      "add": -50,
+      "certain": 40,
+      "failText": "You meant to say no. Your mouth said yes. Your mouth always says yes.",
+      "failEmoji": "🫠"
+    },
+    {
+      "id": "hothead",
+      "icon": "🌶️",
+      "label": "Hot-headed",
+      "note": "Calm choices are 20 % less likely to work. Sometimes you shout instead.",
+      "tag": "calm",
+      "add": -20,
+      "certain": 80,
+      "failText": "You meant to stay calm. You didn't. Somebody's chair is now in the pond.",
+      "failEmoji": "🌶️"
+    },
+    {
+      "id": "lazy",
+      "icon": "🛋️",
+      "label": "Lazy",
+      "note": "Choices that take effort are 20 % less likely to work.",
+      "tag": "effort",
+      "add": -20,
+      "certain": 80,
+      "failText": "You meant to do it. Then you sat down for a minute. The minute lasted a week.",
+      "failEmoji": "🛋️"
+    },
+    {
+      "id": "showoff",
+      "icon": "🦚",
+      "label": "Show-off",
+      "note": "Modest choices are harder, and impressing people costs money.",
+      "tag": "modest",
+      "add": -20,
+      "certain": 80,
+      "failText": "You meant to keep it small. Then you hired a trumpeter.",
+      "failEmoji": "🦚",
+      "sometimes": {
+        "chance": 0.45,
+        "max": 2,
+        "effects": [
+          {
+            "money": -5
+          }
+        ],
+        "notes": [
+          "Show-off: you bought a round for a bar full of strangers (−5 €).",
+          "Show-off: you hired a man to carry your shopping. Two bags. (−5 €)"
+        ]
+      }
+    }
+  ],
+  "careers": [
+    {
+      "id": "doctor",
+      "icon": "🩺",
+      "label": "Doctor",
+      "color": "#7fc8f8",
+      "workplace": "St. Agnes Hospital",
+      "jobs": [
+        "Junior doctor",
+        "Head of A&E"
+      ]
+    },
+    {
+      "id": "police_officer",
+      "icon": "🚓",
+      "label": "Police officer",
+      "color": "#5b7fd6",
+      "workplace": "the police station",
+      "jobs": [
+        "Police constable",
+        "Detective sergeant"
+      ]
+    },
+    {
+      "id": "engineer",
+      "icon": "🛠️",
+      "label": "Engineer",
+      "color": "#9bc27a",
+      "workplace": "the waterworks",
+      "jobs": [
+        "Junior engineer",
+        "Chief engineer"
+      ]
+    },
+    {
+      "id": "teacher",
+      "icon": "🍎",
+      "label": "Teacher",
+      "color": "#f3a35c",
+      "workplace": "Oakfield Primary",
+      "jobs": [
+        "Supply teacher",
+        "Head teacher"
+      ]
+    },
+    {
+      "id": "mechanic",
+      "icon": "🔧",
+      "label": "Mechanic",
+      "color": "#f0ad2e",
+      "workplace": "Fix-It Garage",
+      "jobs": [
+        "Apprentice mechanic",
+        "Owner of Fix-It Garage"
+      ]
+    },
+    {
+      "id": "lawyer",
+      "icon": "⚖️",
+      "label": "Lawyer",
+      "color": "#7aa2f5",
+      "workplace": "Hartley & Sons",
+      "jobs": [
+        "Junior lawyer",
+        "Partner at Hartley & Sons"
+      ]
+    },
+    {
+      "id": "psychologist",
+      "icon": "🛋️",
+      "label": "Psychologist",
+      "color": "#c49bd8",
+      "workplace": "the Calm Minds clinic",
+      "jobs": [
+        "Trainee therapist",
+        "The town's most-booked therapist"
+      ]
+    },
+    {
+      "id": "journalist",
+      "icon": "📰",
+      "label": "Journalist",
+      "color": "#e0533d",
+      "workplace": "the Gazette",
+      "jobs": [
+        "Intern at the Gazette",
+        "Editor of the Gazette"
+      ]
+    },
+    {
+      "id": "entrepreneur",
+      "icon": "🚀",
+      "label": "Entrepreneur",
+      "color": "#3fb8a9",
+      "workplace": "a startup (one desk in a café)",
+      "jobs": [
+        "Founder with one customer",
+        "CEO with actual customers"
+      ]
+    },
+    {
+      "id": "civilian",
+      "icon": "🛒",
+      "label": "Shop assistant",
+      "color": "#b0a18f",
+      "workplace": "Kwik Mart",
+      "jobs": [
+        "Shop assistant at Kwik Mart",
+        "Manager of Kwik Mart"
+      ]
+    }
+  ],
+  "cast": [
+    {
+      "id": "marko",
+      "role": "friend",
+      "name": "Marko",
+      "trait": "Best friend since school. Terrible ideas.",
+      "color": "#6cc4a1",
+      "pronouns": "he",
+      "helpsAtZero": 0.5,
+      "start": 2
+    },
+    {
+      "id": "dora",
+      "role": "friend",
+      "name": "Dora",
+      "trait": "Your oldest friend. Says yes to everything, regrets most of it.",
+      "color": "#f6c85f",
+      "pronouns": "she",
+      "helpsAtZero": 0.7,
+      "start": 2
+    },
+    {
+      "id": "ana",
+      "role": "crush",
+      "name": "Ana",
+      "trait": "Lives next door. Hopeless romantic.",
+      "color": "#f29bb2",
+      "pronouns": "she",
+      "helpsAtZero": 0.5,
+      "start": 0
+    },
+    {
+      "id": "luka",
+      "role": "crush",
+      "name": "Luka",
+      "trait": "Runs the bakery downstairs. Flirts like a broken toaster.",
+      "color": "#e8a87c",
+      "pronouns": "he",
+      "helpsAtZero": 0.6,
+      "start": 0
+    },
+    {
+      "id": "vera",
+      "role": "rival",
+      "name": "Vera",
+      "trait": "Your school rival. Always one step ahead.",
+      "color": "#b48ef0",
+      "pronouns": "she",
+      "helpsAtZero": 0.3,
+      "start": -1
+    },
+    {
+      "id": "bruno",
+      "role": "rival",
+      "name": "Bruno",
+      "trait": "Your rival since kindergarten. Has a better car and mentions it.",
+      "color": "#8aa0b8",
+      "pronouns": "he",
+      "helpsAtZero": 0.4,
+      "start": -1
+    }
+  ],
+  "focuses": [
+    {
+      "id": "career",
+      "icon": "💼",
+      "label": "Career",
+      "hint": [
+        {
+          "when": {
+            "hasJob": true
+          },
+          "text": "Go for the promotion"
+        },
+        {
+          "text": "Get a job"
+        }
+      ]
+    },
+    {
+      "id": "love",
+      "icon": "❤️",
+      "label": "Love",
+      "hint": [
+        {
+          "when": {
+            "married": true
+          },
+          "text": "Keep the spark alive"
+        },
+        {
+          "when": {
+            "partner": "crush"
+          },
+          "text": "Make it serious"
+        },
+        {
+          "text": "Ask {crush} out"
+        }
+      ]
+    },
+    {
+      "id": "family",
+      "icon": "👶",
+      "label": "Family",
+      "hint": "Babies, in-laws, chaos"
+    },
+    {
+      "id": "money",
+      "icon": "💶",
+      "label": "Money",
+      "hint": "Fast cash. What could go wrong?"
+    },
+    {
+      "id": "business",
+      "icon": "🏪",
+      "label": "Business",
+      "hint": "Your own thing, your own rules"
+    },
+    {
+      "id": "fame",
+      "icon": "🎤",
+      "label": "Fame",
+      "hint": "Get the town talking about you"
+    },
+    {
+      "id": "town",
+      "icon": "🏛️",
+      "label": "Town hall",
+      "hint": "Get into local politics"
+    },
+    {
+      "id": "friends",
+      "icon": "🍻",
+      "label": "Friends",
+      "hint": "People you'll need later"
+    },
+    {
+      "id": "home",
+      "icon": "🏠",
+      "label": "Home",
+      "hint": [
+        {
+          "when": {
+            "homeStart": true
+          },
+          "text": "Leave your mum's spare room"
+        },
+        {
+          "text": "Make your place a home"
+        }
+      ]
+    },
+    {
+      "id": "revenge",
+      "icon": "🗡️",
+      "label": "Revenge",
+      "hint": "Get back at {target}"
+    },
+    {
+      "id": "damage",
+      "icon": "🧯",
+      "label": "Damage control",
+      "hint": "Deal with your secret before it deals with you"
+    }
+  ],
+  "titles": [
+    {
+      "id": "lucky_liar",
+      "label": "The Lucky Liar",
+      "why": "Lied your way to the top. Nobody found out. Yet.",
+      "when": {
+        "dreamDone": true,
+        "stats": {
+          "exposed": {
+            "max": 0
+          },
+          "lies": {
+            "min": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "everybodys_favourite",
+      "label": "Everybody's Favourite",
+      "why": "You helped everyone, and everyone helped you back.",
+      "when": {
+        "dreamDone": true,
+        "stats": {
+          "helped": {
+            "min": 6
+          }
+        }
+      }
+    },
+    {
+      "id": "the_peoples_mayor",
+      "label": "The People's Mayor",
+      "why": "You won the election. Now you have to fix the potholes.",
+      "when": {
+        "dreamDone": true,
+        "dream": [
+          "mayor"
+        ]
+      }
+    },
+    {
+      "id": "local_legend",
+      "label": "Local Legend",
+      "why": "The town talent show champion. The dog sends its regards.",
+      "when": {
+        "dreamDone": true,
+        "dream": [
+          "fame"
+        ]
+      }
+    },
+    {
+      "id": "rich_ish",
+      "label": "Rich-ish",
+      "why": "You got the deal. You also got a boat you don't know how to drive.",
+      "when": {
+        "dreamDone": true,
+        "dream": [
+          "rich"
+        ]
+      }
+    },
+    {
+      "id": "the_boss",
+      "label": "The Boss",
+      "why": "Your own place, your own rules, your own pigeon problem.",
+      "when": {
+        "dreamDone": true,
+        "dream": [
+          "business"
+        ]
+      }
+    },
+    {
+      "id": "parent_of_the_year",
+      "label": "Parent of the Year",
+      "why": "The lunch was perfect. Nobody mentions the gravy.",
+      "when": {
+        "dreamDone": true,
+        "dream": [
+          "family"
+        ]
+      }
+    },
+    {
+      "id": "happily_ever_after",
+      "label": "Happily Ever After",
+      "why": "Against the odds, the plants and your friends, true love.",
+      "when": {
+        "dreamDone": true,
+        "dream": [
+          "love"
+        ]
+      }
+    },
+    {
+      "id": "the_open_book",
+      "label": "The Open Book",
+      "why": "Every secret you had came out. Most of them in public.",
+      "when": {
+        "stats": {
+          "exposed": {
+            "min": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "town_villain",
+      "label": "Town Villain",
+      "why": "Somebody in this town has your photo on a dartboard.",
+      "when": {
+        "stats": {
+          "relMin": {
+            "max": -4
+          }
+        }
+      }
+    },
+    {
+      "id": "poor_but_loved",
+      "label": "Poor but Loved",
+      "why": "No dream, but a town full of people who'd carry your piano.",
+      "when": {
+        "stats": {
+          "rel.friend": {
+            "min": 2
+          },
+          "rel.rival": {
+            "min": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "almost_famous",
+      "label": "Almost Famous",
+      "why": "Close. So close. A dog beat you.",
+      "when": {
+        "dream": [
+          "fame"
+        ]
+      }
+    },
+    {
+      "id": "nearly_loaded",
+      "label": "Nearly Loaded",
+      "why": "You were one signature away from rich.",
+      "when": {
+        "dream": [
+          "rich"
+        ]
+      }
+    },
+    {
+      "id": "the_one_that_got_away",
+      "label": "The One That Got Away",
+      "why": "{crush} is happy. Just not with you.",
+      "when": {
+        "dream": [
+          "love"
+        ]
+      }
+    },
+    {
+      "id": "runner_up_for_mayor",
+      "label": "Runner-Up for Mayor",
+      "why": "You lost by eleven votes. You know exactly which eleven.",
+      "when": {
+        "dream": [
+          "mayor"
+        ]
+      }
+    },
+    {
+      "id": "closed_by_christmas",
+      "label": "Closed by Christmas",
+      "why": "Your business lasted one season. The sign is still up.",
+      "when": {
+        "dream": [
+          "business"
+        ]
+      }
+    },
+    {
+      "id": "everybodys_babysitter",
+      "label": "Everybody's Babysitter",
+      "why": "No big family lunch, but every kid in town knows your name.",
+      "when": {
+        "dream": [
+          "family"
+        ]
+      }
+    },
+    {
+      "id": "still_figuring_it_out",
+      "label": "Still Figuring It Out",
+      "why": "Thirty-three and still surprised by everything."
+    }
+  ]
+}

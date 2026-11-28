@@ -1,0 +1,346 @@
+[
+  {
+    "id": "baby_question",
+    "kind": "family",
+    "title": "The Baby Question",
+    "when": {
+      "partner": "crush",
+      "stats": {
+        "kids": {
+          "max": 0
+        }
+      }
+    },
+    "text": "{crush} looks at a pram in the park for a bit too long. Then at you. Then at the pram.",
+    "choices": [
+      {
+        "id": "yes",
+        "label": "Say “let's do it”",
+        "tags": [
+          "brave"
+        ],
+        "ok": {
+          "text": "Nine months later you hold a small, furious person. You love it immediately. It throws up on you immediately.",
+          "emoji": "👶",
+          "effects": [
+            {
+              "kid": 1
+            },
+            {
+              "rel": "crush",
+              "n": 1
+            },
+            {
+              "remember": "Became a parent. The baby looks like {crush}'s grandad."
+            }
+          ]
+        }
+      },
+      {
+        "id": "later",
+        "label": "Say “maybe later, once we're settled”",
+        "tags": [
+          "calm"
+        ],
+        "ok": {
+          "text": "{crush} agrees, then buys a book called “Settled by Thirty”. It has a bookmark in the last chapter.",
+          "emoji": "📚",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": -1
+            }
+          ]
+        }
+      },
+      {
+        "id": "dog_first",
+        "label": "Suggest getting a dog first, as practice",
+        "base": 60,
+        "ok": {
+          "text": "The dog is a disaster. {crush} says if you can survive the dog, you can survive anything. A baby arrives a year later.",
+          "emoji": "🐶",
+          "effects": [
+            {
+              "kid": 1
+            },
+            {
+              "flag": "good_with_kids"
+            },
+            {
+              "remember": "Practised parenting on a dog. Then had a baby. The dog is jealous."
+            }
+          ]
+        },
+        "fail": {
+          "text": "The dog eats your passport, both shoes and the pregnancy test. You're having a baby, though.",
+          "emoji": "🐕",
+          "effects": [
+            {
+              "kid": 1
+            },
+            {
+              "money": -10
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "babysit",
+    "kind": "family",
+    "title": "The Babysitting Disaster",
+    "text": "Your cousin asks you to babysit her three kids “for one hour”. It's been four. One of them is on the roof. One of them is the dog now.",
+    "choices": [
+      {
+        "id": "game",
+        "label": "Turn it into a game: whoever is quietest gets a prize",
+        "tags": [
+          "calm"
+        ],
+        "base": 60,
+        "ok": {
+          "text": "Total silence for forty minutes. When your cousin arrives, the kids are asleep and you're a legend.",
+          "emoji": "🤫",
+          "effects": [
+            {
+              "flag": "good_with_kids"
+            },
+            {
+              "rep": 5
+            },
+            {
+              "remember": "Survived babysitting three kids with one clever game."
+            }
+          ]
+        },
+        "fail": {
+          "text": "They're quiet because they're painting the cat. Your cousin arrives. The cat is blue.",
+          "emoji": "🐈",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "bribe",
+        "label": "Bribe them with sweets",
+        "ok": {
+          "text": "It works for exactly eleven minutes. Then the sugar arrives. You learn the word “bedlam”.",
+          "emoji": "🍬",
+          "effects": [
+            {
+              "money": -5
+            },
+            {
+              "flag": "good_with_kids"
+            },
+            {
+              "remember": "Bribed three kids with sweets. Lost the war."
+            }
+          ]
+        }
+      },
+      {
+        "id": "call_crush",
+        "label": "Call {crush} for help",
+        "cast": "crush",
+        "ok": {
+          "text": "{crush} arrives with a bag of tricks and a whistle. The kids adore {crush.him}. So, suddenly, do you.",
+          "emoji": "🎈",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 2
+            },
+            {
+              "flag": "good_with_kids"
+            },
+            {
+              "remember": "{crush} rescued you from the babysitting disaster."
+            }
+          ],
+          "cast": {
+            "who": "crush",
+            "did": "turned up with a whistle and a plan"
+          }
+        },
+        "fail": {
+          "text": "{crush} comes, takes one look and leaves “to get supplies”. {Crush.he} never comes back.",
+          "emoji": "🏃",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": -1
+            }
+          ],
+          "cast": {
+            "who": "crush",
+            "did": "ran away"
+          }
+        }
+      },
+      {
+        "id": "register",
+        "label": "Do the register like it's a real class",
+        "career": "teacher",
+        "ok": {
+          "text": "They stand in a line. They answer “here”. One of them asks if there will be a test. You're a natural.",
+          "emoji": "📋",
+          "effects": [
+            {
+              "flag": "good_with_kids"
+            },
+            {
+              "rep": 10
+            },
+            {
+              "remember": "Ran a babysitting shift like a school day."
+            }
+          ]
+        }
+      },
+      {
+        "id": "lego",
+        "label": "Notice the quiet one swallowed a Lego and handle it",
+        "career": "doctor",
+        "ok": {
+          "text": "You stay calm, check everything, and the Lego reappears in a couple of days, as promised. The cousin calls you a hero.",
+          "emoji": "🧱",
+          "effects": [
+            {
+              "flag": "good_with_kids"
+            },
+            {
+              "rep": 10
+            },
+            {
+              "remember": "Saved a kid from a Lego. Medically."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "holiday",
+    "kind": "family",
+    "title": "The Family Holiday",
+    "when": {
+      "stats": {
+        "kids": {
+          "min": 1
+        }
+      }
+    },
+    "text": "Your first family holiday: one tent, {kids} kid(s), {crush}, and a forecast that just says “no”.",
+    "choices": [
+      {
+        "id": "camp",
+        "label": "Stick it out and make it fun",
+        "tags": [
+          "effort"
+        ],
+        "base": 60,
+        "ok": {
+          "text": "It rains for six days. You build a raft from the tent. The kids say it's the best holiday ever.",
+          "emoji": "⛺",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 1
+            },
+            {
+              "flag": "good_with_kids"
+            },
+            {
+              "remember": "Turned a flooded camping trip into the best holiday ever."
+            }
+          ]
+        },
+        "fail": {
+          "text": "It rains for six days. On the seventh day the tent leaves without you.",
+          "emoji": "🌧️",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": -1
+            }
+          ]
+        }
+      },
+      {
+        "id": "hotel",
+        "label": "Give up and book a hotel",
+        "base": 70,
+        "ok": {
+          "text": "The hotel has a pool, a buffet and a clown. The kids are thrilled. Your bank isn't.",
+          "emoji": "🏨",
+          "effects": [
+            {
+              "money": -15
+            },
+            {
+              "rel": "crush",
+              "n": 1
+            },
+            {
+              "remember": "Gave up camping and booked a hotel with a clown."
+            }
+          ]
+        },
+        "fail": {
+          "text": "The only free room is above a karaoke bar. You learn every song from 1987.",
+          "emoji": "🎤",
+          "effects": [
+            {
+              "money": -15
+            }
+          ]
+        }
+      },
+      {
+        "id": "invite_friend",
+        "label": "Invite {friend} to help",
+        "cast": "friend",
+        "ok": {
+          "text": "{friend} brings a gazebo, a guitar and a terrible sense of direction. Best trip of your life.",
+          "emoji": "🎸",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "flag": "good_with_kids"
+            },
+            {
+              "remember": "Went on holiday with {friend} and the kids."
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "brought a gazebo and a guitar"
+          }
+        },
+        "fail": {
+          "text": "{friend} brings {friend.his} new partner, who is a mime. It's a long week.",
+          "emoji": "🤐",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": -1
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "brought a mime"
+          }
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,492 @@
+{
+  "schemaVersion": 1,
+  "id": "finale_wedding",
+  "version": 2,
+  "title": "A Wedding in the Park",
+  "category": "relationships",
+  "trigger": "finale",
+  "importance": "important",
+  "weight": 12,
+  "location": {
+    "at": [
+      "park"
+    ]
+  },
+  "roles": {
+    "bride": {
+      "count": 1,
+      "description": "Getting married"
+    },
+    "groom": {
+      "count": 1,
+      "description": "Getting married",
+      "conditions": {
+        "relation": {
+          "from": "self",
+          "to": "role:bride",
+          "typeIn": [
+            "partner",
+            "friend"
+          ]
+        }
+      }
+    },
+    "guests": {
+      "count": [
+        1,
+        6
+      ],
+      "description": "The rest of the town"
+    }
+  },
+  "text": {
+    "public": "The whole town is in the park: {bride} and {groom} are getting married. Guests: {guests}.",
+    "private": {
+      "bride": "This is it. {groom} is waiting under the old oak tree.",
+      "groom": "This is it. {bride} is walking towards you, and the whole town is watching.",
+      "guests": "The registrar asks whether anyone knows a reason why {bride} and {groom} should not marry."
+    }
+  },
+  "choices": {
+    "bride": [
+      {
+        "id": "yes",
+        "label": "Say \"I do\"",
+        "tags": [
+          "truth"
+        ],
+        "default": true,
+        "perceived": {
+          "mental": 2,
+          "relation": {
+            "groom": 2
+          }
+        }
+      },
+      {
+        "id": "run",
+        "label": "Run away from the altar",
+        "tags": [
+          "avoid_responsibility",
+          "risk"
+        ],
+        "perceived": {
+          "reputation": -2,
+          "relation": {
+            "groom": -2
+          }
+        }
+      }
+    ],
+    "groom": [
+      {
+        "id": "yes",
+        "label": "Say \"I do\"",
+        "tags": [
+          "truth"
+        ],
+        "default": true,
+        "perceived": {
+          "mental": 2,
+          "relation": {
+            "bride": 2
+          }
+        }
+      },
+      {
+        "id": "run",
+        "label": "Run away from the altar",
+        "tags": [
+          "avoid_responsibility",
+          "risk"
+        ],
+        "perceived": {
+          "reputation": -2,
+          "relation": {
+            "bride": -2
+          }
+        }
+      }
+    ],
+    "guests": [
+      {
+        "id": "toast",
+        "label": "Give a heartfelt toast",
+        "tags": [
+          "help"
+        ],
+        "condition": {
+          "any": [
+            {
+              "relation": {
+                "from": "self",
+                "to": "role:bride",
+                "typeIn": [
+                  "friend",
+                  "partner",
+                  "family"
+                ]
+              }
+            },
+            {
+              "relation": {
+                "from": "self",
+                "to": "role:groom",
+                "typeIn": [
+                  "friend",
+                  "partner",
+                  "family"
+                ]
+              }
+            }
+          ]
+        },
+        "perceived": {
+          "reputation": 1,
+          "relation": {
+            "bride": 1,
+            "groom": 1
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "reputation": 4,
+              "mental": 3
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:bride",
+            "affinity": 8,
+            "mutual": true
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:groom",
+            "affinity": 8,
+            "mutual": true
+          }
+        ]
+      },
+      {
+        "id": "object",
+        "label": "Stand up: \"I object!\"",
+        "tags": [
+          "threaten",
+          "truth"
+        ],
+        "condition": {
+          "any": [
+            {
+              "relation": {
+                "from": "self",
+                "to": "role:bride",
+                "typeIn": [
+                  "rival",
+                  "enemy"
+                ]
+              }
+            },
+            {
+              "relation": {
+                "from": "self",
+                "to": "role:groom",
+                "typeIn": [
+                  "rival",
+                  "enemy"
+                ]
+              }
+            },
+            {
+              "fact": "knows_secret",
+              "about": "role:bride"
+            },
+            {
+              "fact": "knows_secret",
+              "about": "role:groom"
+            }
+          ]
+        },
+        "perceived": {
+          "reputation": -1,
+          "risk": 2,
+          "relation": {
+            "bride": -2,
+            "groom": -2
+          }
+        },
+        "effects": [
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:bride",
+            "affinity": -15,
+            "mutual": true
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:groom",
+            "affinity": -15,
+            "mutual": true
+          }
+        ]
+      },
+      {
+        "id": "pay_back",
+        "label": "Pay for the party: you still owe them",
+        "tags": [
+          "sacrifice",
+          "take_responsibility"
+        ],
+        "condition": {
+          "any": [
+            {
+              "fact": "owes_money",
+              "about": "role:bride"
+            },
+            {
+              "fact": "owes_money",
+              "about": "role:groom"
+            }
+          ]
+        },
+        "perceived": {
+          "money": -2,
+          "relation": {
+            "bride": 2,
+            "groom": 2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "money": -12,
+              "reputation": 6
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:bride",
+            "affinity": 12,
+            "trust": 15,
+            "mutual": true
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:groom",
+            "affinity": 12,
+            "trust": 15,
+            "mutual": true
+          }
+        ]
+      },
+      {
+        "id": "cry",
+        "label": "Cry loudly in the back row",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "both_ran",
+      "when": {
+        "all": [
+          {
+            "chose": "run",
+            "role": "bride"
+          },
+          {
+            "chose": "run",
+            "role": "groom"
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:bride",
+          "delta": {
+            "reputation": -5,
+            "mental": 5
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:groom",
+          "delta": {
+            "reputation": -5,
+            "mental": 5
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:bride",
+          "to": "role:groom",
+          "affinity": 10,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "bride": "You both bolt in opposite directions, then meet at the ice-cream van. You laugh until you cry.",
+        "groom": "You both bolt in opposite directions, then meet at the ice-cream van. You laugh until you cry.",
+        "guests": "{bride} and {groom} both run away. Somebody eats the cake anyway."
+      }
+    },
+    {
+      "id": "jilted",
+      "when": {
+        "any": [
+          {
+            "chose": "run",
+            "role": "bride"
+          },
+          {
+            "chose": "run",
+            "role": "groom"
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:bride",
+          "delta": {
+            "mental": -10
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:groom",
+          "delta": {
+            "mental": -10
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:bride",
+          "to": "role:groom",
+          "affinity": -40,
+          "trust": -40,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "bride": "One of you is left standing alone under the oak tree. The town will talk about this forever.",
+        "groom": "One of you is left standing alone under the oak tree. The town will talk about this forever.",
+        "guests": "Somebody runs from the altar. The silence afterwards is the loudest thing you have ever heard."
+      }
+    },
+    {
+      "id": "scandal",
+      "when": {
+        "chose": "object",
+        "role": "guests"
+      },
+      "chance": 0.5,
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:bride",
+          "delta": {
+            "reputation": -6,
+            "mental": -6
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:groom",
+          "delta": {
+            "reputation": -6,
+            "mental": -6
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:bride",
+          "to": "role:groom",
+          "trust": -15,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "bride": "An objection, out loud, in front of everyone. You marry anyway, but nobody will remember the vows.",
+        "groom": "An objection, out loud, in front of everyone. You marry anyway, but nobody will remember the vows.",
+        "guests": "The objection echoes across the park. The ceremony goes on, very quietly."
+      }
+    },
+    {
+      "id": "married",
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:bride",
+          "delta": {
+            "mental": 15,
+            "reputation": 4
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:groom",
+          "delta": {
+            "mental": 15,
+            "reputation": 4
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:guests",
+          "delta": {
+            "mental": 4
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:bride",
+          "to": "role:groom",
+          "affinity": 25,
+          "trust": 20,
+          "mutual": true,
+          "setType": "partner"
+        },
+        {
+          "type": "mark",
+          "target": "role:bride",
+          "mark": "just_married"
+        },
+        {
+          "type": "mark",
+          "target": "role:groom",
+          "mark": "just_married"
+        }
+      ],
+      "text": {
+        "bride": "\"I do.\" The whole town throws rice, and for once everybody seems to get along.",
+        "groom": "\"I do.\" The whole town throws rice, and for once everybody seems to get along.",
+        "guests": "{bride} and {groom} are married. The party goes on until the park lights go out."
+      }
+    }
+  ]
+}

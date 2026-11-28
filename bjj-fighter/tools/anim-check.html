@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>3D animation check</title>
+<script type="importmap">{ "imports": { "three": "../vendor/three/three.module.min.js" } }</script>
+<style>body { margin: 0; background: #111; color: #ddd; font: 13px monospace; } canvas { width: 800px; height: 450px; display: block; }</style>
+</head>
+<body>
+<!-- Plays a fixed sequence of positions and techniques through the 3D fight renderer at exactly 60 frames
+     per second of animation time (however slow the machine renders), then reports in window.result:
+     the biggest per-frame joint move, the deepest sink into the mat and the deepest overlap. -->
+<div style="position:relative;width:800px;height:450px"><canvas id="c3"></canvas><canvas id="ui" style="position:absolute;inset:0"></canvas></div>
+<pre id="out">running…</pre>
+<script type="module">
+  import { createRenderer3d } from '../src/render/renderer3d.js';
+  const r = createRenderer3d(document.getElementById('c3'), document.getElementById('ui'));
+  await r.ready;
+  r.measure(true);
+  const q = new URLSearchParams(location.search);
+  r.tune({ ground: !q.has('noground') });
+  // [position after the action, playerTop after it, action id, who did it, success] — real actions from each position.
+  const STEPS = [
+    ['standing', null, null], ['closedGuard', true, 'td_single', 'p', true], ['butterfly', true, 'openGuard', 'p', true],
+    ['sideControl', true, 'toreando', 'p', true], ['mount', true, 'sideToMount', 'p', true], ['mount', true, 'armbar_m', 'p', false],
+    ['back', true, 'mountToBack', 'p', true], ['back', true, 'rnc_b', 'p', false], ['closedGuard', false, 'backEscape_e', 'o', true],
+    ['closedGuard', false, 'armbar_cg', 'p', false], ['mount', true, 'hipBump', 'p', true], ['closedGuard', false, 'mountUpa_e', 'o', true],
+    ['halfGuard', false, 'recoverHalf', 'p', false], ['mount', true, 'scissor', 'p', true], ['northSouth', true, 'sideToMount', 'p', false],
+    ['standing', null, 'standUp_t', 'o', true], ['halfGuard', true, 'td_double', 'p', true],
+  ];
+  const view = { pos: 'standing', playerTop: null, log: [], ended: null, lastAction: null };
+  let seq = 0;
+  for (const [pos, top, action, who, success] of STEPS) {
+    if (action) view.lastAction = { seq: ++seq, actionId: action, who, success };
+    Object.assign(view, { pos, playerTop: top });
+    for (let i = 0; i < 150; i++) r.draw(view, 1 / 60, { mode: 'spar' }); // 2.5 s per step
+  }
+  window.result = r.stats();
+  document.getElementById('out').textContent = JSON.stringify(window.result, null, 1);
+</script>
+</body>
+</html>

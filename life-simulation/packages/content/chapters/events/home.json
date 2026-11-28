@@ -1,0 +1,426 @@
+[
+  {
+    "id": "flat",
+    "kind": "home",
+    "title": "Moving Out",
+    "when": {
+      "homeStart": true
+    },
+    "text": "You're still in your mum's spare room. She has started calling it “the guest room” when you're in it.",
+    "choices": [
+      {
+        "id": "rent",
+        "label": "Rent the flat above the bakery",
+        "base": 40,
+        "mods": [
+          {
+            "when": {
+              "stats": {
+                "money": {
+                  "min": 30
+                }
+              }
+            },
+            "add": 50,
+            "note": "You can afford it"
+          }
+        ],
+        "ok": {
+          "text": "You move in. Every morning smells of croissants. You gain four kilos.",
+          "emoji": "🥐",
+          "effects": [
+            {
+              "money": -15
+            },
+            {
+              "home": "Flat above the bakery"
+            },
+            {
+              "remember": "Moved into the flat above the bakery."
+            }
+          ]
+        },
+        "fail": {
+          "text": "The landlord laughs at your bank statement. Then shows it to the baker.",
+          "emoji": "🏦",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "friend_flat",
+        "label": "Move in with {friend} and the angry cat",
+        "cast": "friend",
+        "ok": {
+          "text": "{friend} says yes. The cat says no, every night, on your face.",
+          "emoji": "🐈",
+          "effects": [
+            {
+              "home": "{friend}'s spare room (and the cat's)"
+            },
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "remember": "Moved in with {friend} and {friend.his} angry cat."
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "gave you the spare key"
+          }
+        },
+        "fail": {
+          "text": "{friend} says the cat “needs her own space”. You stay with your mum.",
+          "emoji": "🐈",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "chose the cat over you"
+          }
+        }
+      },
+      {
+        "id": "compliments",
+        "label": "Stay and pay your mum rent in compliments",
+        "tags": [
+          "modest"
+        ],
+        "ok": {
+          "text": "Your mum accepts. She now expects three compliments a day, minimum.",
+          "emoji": "🏠",
+          "effects": [
+            {
+              "remember": "Paid your mum rent in compliments."
+            }
+          ]
+        }
+      },
+      {
+        "id": "boiler",
+        "label": "Fix the landlord's boiler in exchange for cheap rent",
+        "career": "mechanic",
+        "ok": {
+          "text": "The boiler has never been happier. Neither has the landlord. You get the flat for half price.",
+          "emoji": "🔧",
+          "effects": [
+            {
+              "money": -5
+            },
+            {
+              "home": "Flat above the bakery"
+            },
+            {
+              "remember": "Fixed a boiler and got a flat for half price."
+            }
+          ]
+        }
+      },
+      {
+        "id": "damp",
+        "label": "Survey the flat and find the damp the landlord hid",
+        "career": "engineer",
+        "ok": {
+          "text": "You show him the damp. He shows you a discount. Everyone wins except the damp.",
+          "emoji": "🛠️",
+          "effects": [
+            {
+              "money": -5
+            },
+            {
+              "home": "Flat above the bakery"
+            },
+            {
+              "remember": "Spotted the hidden damp and got a cheap flat."
+            }
+          ]
+        }
+      },
+      {
+        "id": "penthouse",
+        "label": "Rent the penthouse you can't afford",
+        "when": {
+          "flaw": [
+            "showoff"
+          ]
+        },
+        "ok": {
+          "text": "It has a jacuzzi on the balcony and a view of the pothole. You eat noodles for a year.",
+          "emoji": "🛁",
+          "effects": [
+            {
+              "money": -30
+            },
+            {
+              "home": "A penthouse with a view of the pothole"
+            },
+            {
+              "rep": 5
+            },
+            {
+              "remember": "Rented a penthouse you couldn't afford."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "neighbour",
+    "kind": "home",
+    "title": "The Neighbour From Hell",
+    "when": {
+      "homeStart": false
+    },
+    "text": "Your new neighbour practises the drums at 6 a.m. He also has a parrot that has learned your name and uses it rudely.",
+    "choices": [
+      {
+        "id": "talk",
+        "label": "Knock and calmly talk it out",
+        "tags": [
+          "calm"
+        ],
+        "base": 70,
+        "ok": {
+          "text": "He's lovely. He didn't know. He gives you earplugs and the parrot learns to say “sorry”.",
+          "emoji": "🦜",
+          "effects": [
+            {
+              "rep": 5
+            },
+            {
+              "remember": "Made peace with the drummer next door."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You calmly knock. He opens the door mid-solo. You calmly scream.",
+          "emoji": "🥁",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ],
+          "byFlaw": {
+            "hothead": {
+              "text": "You knock calmly. He says “what”. You take his drumsticks and throw them into the pothole. The parrot now says “psycho”.",
+              "emoji": "🌶️",
+              "effects": [
+                {
+                  "rep": -10
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "band",
+        "label": "Join his band",
+        "tags": [
+          "brave"
+        ],
+        "base": 60,
+        "ok": {
+          "text": "You play the tambourine. The band is called “Six A.M.” They play the town fair. You're a little bit famous.",
+          "emoji": "🪇",
+          "effects": [
+            {
+              "fame": 1
+            },
+            {
+              "remember": "Joined your neighbour's band on tambourine."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You have no rhythm. They kick you out after one song. The parrot laughs.",
+          "emoji": "🦜",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "crush_help",
+        "label": "Ask {crush} what to do",
+        "cast": "crush",
+        "ok": {
+          "text": "{crush} brings the drummer a cake and asks about his feelings. He moves out a week later, crying, happy.",
+          "emoji": "🧁",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 1
+            },
+            {
+              "remember": "{crush} solved your neighbour problem with cake."
+            }
+          ],
+          "cast": {
+            "who": "crush",
+            "did": "brought a cake and a plan"
+          }
+        },
+        "fail": {
+          "text": "{crush} sides with the drummer. {Crush.he} says you need “a better attitude to music”.",
+          "emoji": "🥁",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": -1
+            }
+          ],
+          "cast": {
+            "who": "crush",
+            "did": "took the drummer's side"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "house",
+    "kind": "home",
+    "title": "The House on Linden Road",
+    "when": {
+      "stats": {
+        "money": {
+          "min": 25
+        }
+      }
+    },
+    "text": "A little house on Linden Road is for sale. It has a garden, a crooked chimney and a ghost, according to the estate agent, “but a friendly one”.",
+    "choices": [
+      {
+        "id": "buy",
+        "label": "Buy it",
+        "base": 50,
+        "mods": [
+          {
+            "when": {
+              "stats": {
+                "money": {
+                  "min": 50
+                }
+              }
+            },
+            "add": 35,
+            "note": "Good savings"
+          },
+          {
+            "when": {
+              "stats": {
+                "jobLevel": {
+                  "min": 2
+                }
+              }
+            },
+            "add": 10,
+            "note": "Good job"
+          }
+        ],
+        "ok": {
+          "text": "You get the keys. The ghost turns out to be a very old cat. You keep both.",
+          "emoji": "🏡",
+          "effects": [
+            {
+              "money": -30
+            },
+            {
+              "home": "The house on Linden Road"
+            },
+            {
+              "remember": "Bought the house on Linden Road, with its cat."
+            }
+          ]
+        },
+        "fail": {
+          "text": "The bank says no. The estate agent says the ghost is “sad about it too”.",
+          "emoji": "🏚️",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "fixer",
+        "label": "Offer to buy it cheap and fix it up yourself",
+        "tags": [
+          "effort"
+        ],
+        "base": 60,
+        "ok": {
+          "text": "You fix the chimney, the floors and the ghost's favourite chair. It's a palace now. A crooked palace.",
+          "emoji": "🔨",
+          "effects": [
+            {
+              "money": -15
+            },
+            {
+              "home": "The house on Linden Road"
+            },
+            {
+              "remember": "Bought a wreck on Linden Road and fixed it yourself."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You start fixing it. You fall through the floor. The ghost watches.",
+          "emoji": "🩹",
+          "effects": [
+            {
+              "money": -10
+            },
+            {
+              "rep": -5
+            }
+          ],
+          "byFlaw": {
+            "lazy": {
+              "text": "You buy it, fix one cupboard door and live in the kitchen for two years. The ghost has the rest.",
+              "emoji": "🛋️",
+              "effects": [
+                {
+                  "money": -15
+                },
+                {
+                  "home": "The kitchen of the house on Linden Road"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "pass",
+        "label": "It's too much. Stay where you are",
+        "tags": [
+          "refuse"
+        ],
+        "ok": {
+          "text": "{rival} buys it the next day. {Rival.he} sends you a photo of the garden. The ghost waves.",
+          "emoji": "👻",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": -1
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

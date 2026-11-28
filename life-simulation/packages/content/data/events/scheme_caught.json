@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "id": "scheme_caught",
+  "version": 3,
+  "title": "Caught in the Act",
+  "category": "everyday",
+  "trigger": "followup_only",
+  "hidden": true,
+  "importance": "simple",
+  "cooldown": {},
+  "location": {
+    "at": [
+      "home"
+    ],
+    "of": "role:victim"
+  },
+  "roles": {
+    "victim": {
+      "count": 1
+    },
+    "culprit": {
+      "count": 1,
+      "aware": false
+    }
+  },
+  "text": {
+    "public": "{victim} catches someone sneaking around their things.",
+    "private": {
+      "victim": "Whatever they were up to, it did not work. And you saw exactly who it was."
+    }
+  },
+  "choices": {
+    "victim": [
+      {
+        "id": "let_go",
+        "label": "Pretend you did not see anything",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      },
+      {
+        "id": "confront",
+        "label": "Confront {culprit}",
+        "tags": [
+          "threaten",
+          "truth"
+        ],
+        "condition": {
+          "fact": "spotted",
+          "about": "role:culprit"
+        },
+        "perceived": {
+          "reputation": 1,
+          "relation": {
+            "culprit": -2
+          }
+        }
+      },
+      {
+        "id": "report",
+        "label": "Report {culprit}",
+        "tags": [
+          "truth",
+          "take_responsibility"
+        ],
+        "condition": {
+          "fact": "spotted",
+          "about": "role:culprit"
+        },
+        "perceived": {
+          "relation": {
+            "culprit": -2
+          }
+        }
+      },
+      {
+        "id": "revenge",
+        "label": "Plan revenge on {culprit}",
+        "tags": [
+          "risk"
+        ],
+        "condition": {
+          "fact": "spotted",
+          "about": "role:culprit"
+        },
+        "perceived": {
+          "risk": 1,
+          "relation": {
+            "culprit": -1
+          }
+        },
+        "effects": [
+          {
+            "type": "fact",
+            "target": "self",
+            "key": "revenge_on",
+            "about": "role:culprit"
+          }
+        ]
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "confronted",
+      "when": {
+        "chose": "confront",
+        "role": "victim"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:victim",
+          "key": "knows_secret",
+          "about": "role:culprit"
+        },
+        {
+          "type": "relation",
+          "from": "role:victim",
+          "to": "role:culprit",
+          "affinity": -30,
+          "trust": -30
+        },
+        {
+          "type": "attr",
+          "target": "role:culprit",
+          "delta": {
+            "reputation": -6
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "mental": 3
+          }
+        }
+      ],
+      "text": {
+        "victim": "You tell {culprit} exactly what you saw. Half the street hears it.",
+        "culprit": "{victim} confronts you in front of everyone. They know it was you."
+      }
+    },
+    {
+      "id": "reported",
+      "when": {
+        "chose": "report",
+        "role": "victim"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:victim",
+          "key": "knows_secret",
+          "about": "role:culprit"
+        },
+        {
+          "type": "relation",
+          "from": "role:victim",
+          "to": "role:culprit",
+          "affinity": -25,
+          "trust": -30
+        },
+        {
+          "type": "attr",
+          "target": "role:culprit",
+          "delta": {
+            "reputation": -10,
+            "career": -5
+          }
+        }
+      ],
+      "text": {
+        "victim": "You report {culprit}. It goes on their record.",
+        "culprit": "An official letter: {victim} reported you. Your boss has questions."
+      }
+    },
+    {
+      "id": "revenge_planned",
+      "when": {
+        "chose": "revenge",
+        "role": "victim"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:victim",
+          "key": "knows_secret",
+          "about": "role:culprit"
+        },
+        {
+          "type": "relation",
+          "from": "role:victim",
+          "to": "role:culprit",
+          "affinity": -20,
+          "trust": -30
+        },
+        {
+          "type": "attr",
+          "target": "role:victim",
+          "delta": {
+            "mental": 2
+          }
+        }
+      ],
+      "text": {
+        "victim": "You say nothing. {culprit} has no idea what is coming. (You have a free scheme against them.)",
+        "culprit": "{victim} smiles at you a little too long."
+      }
+    },
+    {
+      "id": "let_go",
+      "effects": [
+        {
+          "type": "fact",
+          "target": "role:victim",
+          "key": "knows_secret",
+          "about": "role:culprit"
+        },
+        {
+          "type": "relation",
+          "from": "role:victim",
+          "to": "role:culprit",
+          "affinity": -15,
+          "trust": -20
+        }
+      ],
+      "text": {
+        "victim": "You say nothing. But you will remember {culprit}'s face.",
+        "culprit": "{victim} looked right at you. Did they see?"
+      }
+    }
+  ]
+}

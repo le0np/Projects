@@ -1,0 +1,446 @@
+[
+  {
+    "id": "council",
+    "kind": "town",
+    "title": "The Pothole Meeting",
+    "text": [
+      {
+        "when": {
+          "flags": [
+            "posted_video"
+          ]
+        },
+        "text": "The town council meets about the pothole on Elm Street. It's been there eleven years and has its own fan page. Half the room recognises you from the fountain video.",
+        "callback": true
+      },
+      {
+        "text": "The town council meets about the pothole on Elm Street. It's been there eleven years. It has its own fan page and a small fish."
+      }
+    ],
+    "choices": [
+      {
+        "id": "speech",
+        "label": "Stand up and give a fiery speech",
+        "tags": [
+          "brave"
+        ],
+        "base": 50,
+        "ok": {
+          "text": "“Fill. The. Hole.” The room chants it. The pothole is filled by Friday. They name the tarmac after you.",
+          "emoji": "🏛️",
+          "effects": [
+            {
+              "rep": 10
+            },
+            {
+              "flag": "council_hero"
+            },
+            {
+              "remember": "Got the Elm Street pothole fixed with one fiery speech."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You shout so hard you knock over the council's water jug. The pothole is now a listed monument.",
+          "emoji": "💧",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "calm",
+        "label": "Calmly present a petition with 400 signatures",
+        "tags": [
+          "calm",
+          "effort"
+        ],
+        "base": 65,
+        "ok": {
+          "text": "The council has never seen a petition before. They're scared. The hole is filled.",
+          "emoji": "📋",
+          "effects": [
+            {
+              "rep": 10
+            },
+            {
+              "flag": "council_hero"
+            },
+            {
+              "remember": "Got the pothole fixed with a 400-name petition."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You start calm. Then the councillor calls the pothole “character”. You call him things.",
+          "emoji": "🌶️",
+          "effects": [
+            {
+              "rep": -10
+            }
+          ],
+          "byFlaw": {
+            "hothead": {
+              "text": "You get to signature number three before you flip the table. The pothole fish watches you get escorted out.",
+              "emoji": "🌶️",
+              "effects": [
+                {
+                  "rep": -10
+                },
+                {
+                  "flag": "council_scene"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "rival_side",
+        "label": "Find out what {rival} thinks and take the opposite side",
+        "base": 50,
+        "ok": {
+          "text": "{rival} wants to keep the pothole “as heritage”. You win the room by promising tarmac. {rival} sulks.",
+          "emoji": "🕳️",
+          "effects": [
+            {
+              "rep": 5
+            },
+            {
+              "rel": "rival",
+              "n": -1
+            },
+            {
+              "flag": "council_hero"
+            },
+            {
+              "remember": "Beat {rival} at the pothole meeting."
+            }
+          ]
+        },
+        "fail": {
+          "text": "{rival} wanted the hole filled. You argued for keeping it. You are now the pothole person.",
+          "emoji": "🐟",
+          "effects": [
+            {
+              "rep": -10
+            },
+            {
+              "rel": "rival",
+              "n": -1
+            },
+            {
+              "remember": "Accidentally defended the pothole against {rival}."
+            }
+          ]
+        }
+      },
+      {
+        "id": "small_print",
+        "label": "Point out the council has been paying a company to fill it every year since 2015",
+        "career": "lawyer",
+        "ok": {
+          "text": "There is a scandal, an investigation and a new pothole contract. Guess who's on the committee.",
+          "emoji": "⚖️",
+          "effects": [
+            {
+              "rep": 15
+            },
+            {
+              "flag": "council_hero"
+            },
+            {
+              "remember": "Found eleven years of pothole fraud in the small print."
+            }
+          ]
+        }
+      },
+      {
+        "id": "lesson",
+        "label": "Bring your class to present a project about the pothole",
+        "career": "teacher",
+        "ok": {
+          "text": "Thirty eight-year-olds in hi-vis jackets. The council never stood a chance.",
+          "emoji": "🦺",
+          "effects": [
+            {
+              "rep": 15
+            },
+            {
+              "flag": "council_hero"
+            },
+            {
+              "remember": "Sent thirty kids to defeat the town council."
+            }
+          ]
+        }
+      },
+      {
+        "id": "expose",
+        "label": "Live-blog the meeting for the Gazette",
+        "career": "journalist",
+        "ok": {
+          "text": "Your live blog gets more readers than the Gazette's horoscope. The hole is filled out of shame.",
+          "emoji": "📰",
+          "effects": [
+            {
+              "fame": 1
+            },
+            {
+              "rep": 5
+            },
+            {
+              "flag": "council_hero"
+            },
+            {
+              "remember": "Live-blogged the pothole meeting into history."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "campaign",
+    "kind": "town",
+    "title": "The Campaign",
+    "when": {
+      "notFlags": [
+        "campaign_launched"
+      ]
+    },
+    "text": [
+      {
+        "when": {
+          "flags": [
+            "council_hero"
+          ]
+        },
+        "text": "People keep stopping you in the street to thank you for the pothole. A man in a suit says you should run for council. Then for mayor.",
+        "callback": true
+      },
+      {
+        "text": "A man in a suit says the town needs “a fresh face” at the next election. He looks at your face. He shrugs. “Fresh enough.”"
+      }
+    ],
+    "choices": [
+      {
+        "id": "launch",
+        "label": "Launch your campaign in the town square",
+        "tags": [
+          "brave",
+          "effort"
+        ],
+        "base": 55,
+        "ok": {
+          "text": "Forty people come. Twelve stay. One brings a banner with your name spelled right. It's a movement.",
+          "emoji": "📣",
+          "effects": [
+            {
+              "rep": 10
+            },
+            {
+              "fame": 1
+            },
+            {
+              "flag": "campaign_launched"
+            },
+            {
+              "remember": "Launched your campaign for mayor in the town square."
+            }
+          ]
+        },
+        "fail": {
+          "text": "It rains. Four people come. Two are your mum. The other two were waiting for a bus.",
+          "emoji": "☔",
+          "effects": [
+            {
+              "rep": -5
+            },
+            {
+              "flag": "campaign_launched"
+            },
+            {
+              "remember": "Launched your campaign to four people in the rain."
+            }
+          ]
+        }
+      },
+      {
+        "id": "friend_manager",
+        "label": "Make {friend} your campaign manager",
+        "cast": "friend",
+        "ok": {
+          "text": "{friend} prints 5,000 leaflets with your face on them. Your face is everywhere. It's working.",
+          "emoji": "🗳️",
+          "effects": [
+            {
+              "rep": 10
+            },
+            {
+              "flag": "campaign_launched"
+            },
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "remember": "{friend} ran your campaign. Your face was on every lamppost."
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "covered the town in your face"
+          }
+        },
+        "fail": {
+          "text": "{friend} prints 5,000 leaflets. The slogan is “Vote for me, I guess”. {Friend.he} thought it was funny.",
+          "emoji": "🙃",
+          "effects": [
+            {
+              "rep": -5
+            },
+            {
+              "flag": "campaign_launched"
+            },
+            {
+              "rel": "friend",
+              "n": -1
+            }
+          ],
+          "cast": {
+            "who": "friend",
+            "did": "wrote the slogan"
+          }
+        }
+      },
+      {
+        "id": "door",
+        "label": "Knock on every door in town",
+        "tags": [
+          "effort"
+        ],
+        "base": 70,
+        "ok": {
+          "text": "You knock on 3,000 doors. You drink 3,000 cups of tea. People remember you. Your bladder remembers you.",
+          "emoji": "🚪",
+          "effects": [
+            {
+              "rep": 15
+            },
+            {
+              "flag": "campaign_launched"
+            },
+            {
+              "remember": "Knocked on every door in town for your campaign."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You knock on four doors and go home for a nap. The nap is great. The campaign isn't.",
+          "emoji": "🛋️",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ],
+          "byFlaw": {
+            "lazy": {
+              "text": "You knock on one door. It's your own. You let yourself in and lie down. The campaign is “paused”.",
+              "emoji": "🛋️",
+              "effects": [
+                {
+                  "rep": -5
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "fair",
+    "kind": "town",
+    "title": "The Town Fair",
+    "text": "You've been asked to judge the pie contest at the town fair. There are nine pies. One is {rival}'s mum's. One is {crush}'s. One is clearly from a shop.",
+    "choices": [
+      {
+        "id": "fair",
+        "label": "Judge fairly",
+        "tags": [
+          "calm"
+        ],
+        "ok": {
+          "text": "The shop pie wins. It was the best. The town respects your honesty and nobody speaks to you for a month.",
+          "emoji": "🥧",
+          "effects": [
+            {
+              "rep": 10
+            },
+            {
+              "rel": "crush",
+              "n": -1
+            },
+            {
+              "remember": "Judged the pie contest fairly. The shop pie won."
+            }
+          ]
+        }
+      },
+      {
+        "id": "crush_pie",
+        "label": "Give it to {crush}'s pie",
+        "base": 70,
+        "ok": {
+          "text": "{crush} is thrilled. The town notices. There are whispers. Lovely whispers.",
+          "emoji": "💘",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": 2
+            },
+            {
+              "rep": -5
+            },
+            {
+              "remember": "Gave {crush}'s pie first prize. Everyone noticed."
+            }
+          ]
+        },
+        "fail": {
+          "text": "{crush} is mortified. {Crush.he} bought the pie in a shop. It was the shop pie.",
+          "emoji": "🫣",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": -1
+            },
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "rival_pie",
+        "label": "Give it to {rival}'s mum's pie, to make peace",
+        "ok": {
+          "text": "{rival}'s mum hugs you. {rival} looks at you like you're a stranger, then nods once. It's a start.",
+          "emoji": "🤝",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": 2
+            },
+            {
+              "remember": "Gave {rival}'s mum the pie prize."
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

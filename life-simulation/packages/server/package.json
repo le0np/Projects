@@ -1,0 +1,25 @@
+{
+  "name": "@lifesim/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.16",
+    "@lifesim/bots": "0.1.0",
+    "@lifesim/content": "0.1.0",
+    "@lifesim/core": "0.1.0",
+    "@lifesim/engine": "0.1.0",
+    "fastify": "^5.12.8",
+    "pg": "^8.23.1",
+    "socket.io": "^4.8.4",
+    "zod": "^4.6.7",
+    "@fastify/static": "^10.1.11"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "socket.io-client": "^4.8.4"
+  }
+}

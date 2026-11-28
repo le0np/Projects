@@ -1,0 +1,467 @@
+[
+  {
+    "id": "openmic",
+    "kind": "fame",
+    "title": "Open Mic Night",
+    "when": {
+      "notFlags": [
+        "openmic_hit",
+        "openmic_bombed"
+      ]
+    },
+    "text": "Open mic night at The Last Call. {crush} and {friend} are in the front row. {rival} is in the back, filming.",
+    "choices": [
+      {
+        "id": "standup",
+        "label": "Do your stand-up set about your family",
+        "tags": [
+          "brave"
+        ],
+        "base": 50,
+        "ok": {
+          "text": "The room explodes. Your mum isn't here. She'll see it online.",
+          "emoji": "🎤",
+          "effects": [
+            {
+              "fame": 2
+            },
+            {
+              "rep": 5
+            },
+            {
+              "flag": "openmic_hit"
+            },
+            {
+              "remember": "Killed it at open mic with jokes about your family."
+            }
+          ]
+        },
+        "fail": {
+          "text": "Silence so loud the bar turns the music back on.",
+          "emoji": "🦗",
+          "effects": [
+            {
+              "rep": -5
+            },
+            {
+              "flag": "openmic_bombed"
+            },
+            {
+              "remember": "Bombed at open mic night."
+            }
+          ],
+          "byFlaw": {
+            "coward": {
+              "text": "You walk on, see the crowd, say “sorry, wrong room” and walk off. {rival} posts it. It's your most famous moment.",
+              "emoji": "🐔",
+              "effects": [
+                {
+                  "fame": 1
+                },
+                {
+                  "flag": "openmic_bombed"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "song",
+        "label": "Sing the song you wrote about {crush}",
+        "tags": [
+          "brave"
+        ],
+        "base": 45,
+        "ok": {
+          "text": "{crush} cries. The bartender cries. {rival} stops filming to cry.",
+          "emoji": "🎶",
+          "effects": [
+            {
+              "fame": 2
+            },
+            {
+              "rel": "crush",
+              "n": 2
+            },
+            {
+              "flag": "openmic_hit"
+            },
+            {
+              "remember": "Sang a love song to {crush} in front of the whole bar."
+            }
+          ]
+        },
+        "fail": {
+          "text": "{crush} leaves “to get a drink”. From a different bar.",
+          "emoji": "🎶",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": -1
+            },
+            {
+              "flag": "openmic_bombed"
+            },
+            {
+              "remember": "Sang a love song to {crush}. Badly."
+            }
+          ]
+        }
+      },
+      {
+        "id": "roast",
+        "label": "Roast {rival}, who is filming",
+        "cast": "rival",
+        "ok": {
+          "text": "The bar loves it. {rival} laughs and posts the clip {rival.him}self.",
+          "emoji": "🔥",
+          "effects": [
+            {
+              "fame": 2
+            },
+            {
+              "rel": "rival",
+              "n": -1
+            },
+            {
+              "flag": "openmic_hit"
+            },
+            {
+              "remember": "Roasted {rival} on stage. {Rival.he} laughed."
+            }
+          ],
+          "cast": {
+            "who": "rival",
+            "did": "laughed, and posted it"
+          }
+        },
+        "fail": {
+          "text": "The bar loves it. {rival} posts the clip with the caption “bullying 😢”. Half the town agrees with {rival.him}.",
+          "emoji": "🔥",
+          "effects": [
+            {
+              "fame": 1
+            },
+            {
+              "rel": "rival",
+              "n": -2
+            },
+            {
+              "rep": -5
+            },
+            {
+              "remember": "Roasted {rival} on stage. {Rival.he} posted it as “bullying”."
+            }
+          ],
+          "cast": {
+            "who": "rival",
+            "did": "made you the villain online"
+          }
+        }
+      },
+      {
+        "id": "real_life",
+        "label": "Tell stories from behind the till at Kwik Mart",
+        "career": "civilian",
+        "ok": {
+          "text": "The woman who buys forty tins of peaches every Tuesday is in the audience. She loves it most of all.",
+          "emoji": "🛒",
+          "effects": [
+            {
+              "fame": 2
+            },
+            {
+              "rep": 5
+            },
+            {
+              "flag": "openmic_hit"
+            },
+            {
+              "remember": "Turned Kwik Mart customers into a comedy set."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "viral",
+    "kind": "fame",
+    "title": "The Video",
+    "text": "You have a video of {friend} falling into the town fountain while proposing to {friend.his} own phone.",
+    "choices": [
+      {
+        "id": "post",
+        "label": "Post it",
+        "ok": {
+          "text": "4 million views. {friend} legally changes {friend.his} name to “Fountain”.",
+          "emoji": "⛲",
+          "effects": [
+            {
+              "fame": 3
+            },
+            {
+              "rel": "friend",
+              "n": -2
+            },
+            {
+              "flag": "posted_video"
+            },
+            {
+              "remember": "Posted {friend}'s fountain video. 4 million views."
+            }
+          ]
+        }
+      },
+      {
+        "id": "blur",
+        "label": "Post it, but blur {friend.his} face",
+        "base": 50,
+        "ok": {
+          "text": "Nobody recognises {friend}. Except {friend.his} mum. And {friend.his} boss. It's fine.",
+          "emoji": "🌫️",
+          "effects": [
+            {
+              "fame": 2
+            },
+            {
+              "flag": "posted_video"
+            },
+            {
+              "remember": "Posted a blurred video of {friend} in the fountain."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You blur the wrong person. {friend} is clearly visible. The fountain is blurred.",
+          "emoji": "🌫️",
+          "effects": [
+            {
+              "fame": 2
+            },
+            {
+              "rel": "friend",
+              "n": -1
+            },
+            {
+              "flag": "posted_video"
+            },
+            {
+              "remember": "Blurred the fountain instead of {friend}."
+            }
+          ]
+        }
+      },
+      {
+        "id": "delete",
+        "label": "Delete it",
+        "tags": [
+          "modest"
+        ],
+        "ok": {
+          "text": "{friend} never knows. That's friendship. Probably.",
+          "emoji": "🗑️",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "remember": "Deleted the video of {friend} in the fountain. {Friend.he}'ll never know."
+            }
+          ],
+          "byFlaw": {
+            "blabber": {
+              "text": "You delete it. Then you describe it, in detail, to everyone at the bar. Including {friend}.",
+              "emoji": "🗣️",
+              "effects": [
+                {
+                  "rel": "friend",
+                  "n": -1
+                },
+                {
+                  "fame": 1
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "story",
+        "label": "Write it up as a heart-warming story for the Gazette",
+        "career": "journalist",
+        "ok": {
+          "text": "“LOCAL MAN SAVES PHONE FROM FOUNTAIN”. {friend} becomes a hero. You get the front page.",
+          "emoji": "📰",
+          "effects": [
+            {
+              "fame": 2
+            },
+            {
+              "rel": "friend",
+              "n": 2
+            },
+            {
+              "remember": "Turned {friend}'s fountain disaster into a front-page hero story."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "reality_tv",
+    "kind": "fame",
+    "title": "The Casting Call",
+    "text": [
+      {
+        "when": {
+          "flags": [
+            "openmic_bombed"
+          ]
+        },
+        "text": "A reality TV show is casting in town. The producer recognises you from the open mic video. “The one who froze! Perfect.”",
+        "callback": true
+      },
+      {
+        "when": {
+          "flags": [
+            "openmic_hit"
+          ]
+        },
+        "text": "A reality TV show is casting in town. The producer saw your open mic set. “You're funny. Can you also cry on command?”",
+        "callback": true
+      },
+      {
+        "text": "A reality TV show called “Small Town, Big Mouth” is casting. The producer says they're looking for “a character”."
+      }
+    ],
+    "choices": [
+      {
+        "id": "drama",
+        "label": "Promise them drama",
+        "tags": [
+          "brave"
+        ],
+        "base": 55,
+        "ok": {
+          "text": "You bring drama. Nobody asked how. Episode 3 is just you arguing with a goose. Huge ratings.",
+          "emoji": "📺",
+          "effects": [
+            {
+              "fame": 3
+            },
+            {
+              "rep": -5
+            },
+            {
+              "remember": "Became famous on reality TV for arguing with a goose."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You have no drama. The producer films you eating soup for an hour. They cut you.",
+          "emoji": "🥣",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "bring_rival",
+        "label": "Bring {rival} along, for the rivalry",
+        "cast": "rival",
+        "ok": {
+          "text": "You and {rival} on screen together are electric. The show is renamed after you both. {rival} pretends to hate it.",
+          "emoji": "⚡",
+          "effects": [
+            {
+              "fame": 3
+            },
+            {
+              "rel": "rival",
+              "n": 1
+            },
+            {
+              "remember": "Starred on reality TV with {rival}."
+            }
+          ],
+          "cast": {
+            "who": "rival",
+            "did": "played along beautifully"
+          }
+        },
+        "fail": {
+          "text": "{rival} gets the part. You're in the background of episode 2, holding a goose.",
+          "emoji": "🪿",
+          "effects": [
+            {
+              "fame": 1
+            },
+            {
+              "rel": "rival",
+              "n": -1
+            }
+          ],
+          "cast": {
+            "who": "rival",
+            "did": "stole the show"
+          }
+        }
+      },
+      {
+        "id": "modest",
+        "label": "Just be yourself",
+        "tags": [
+          "modest"
+        ],
+        "base": 70,
+        "ok": {
+          "text": "You're so normal that you become the fan favourite. “Finally, a real person.”",
+          "emoji": "🙂",
+          "effects": [
+            {
+              "fame": 2
+            },
+            {
+              "rep": 5
+            },
+            {
+              "remember": "Became a reality TV fan favourite by being boring."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You try to be yourself, but on camera you start doing an accent. Nobody knows where from.",
+          "emoji": "🦚",
+          "effects": [
+            {
+              "fame": 1
+            },
+            {
+              "rep": -5
+            }
+          ],
+          "byFlaw": {
+            "showoff": {
+              "text": "You “be yourself” in a borrowed fur coat, sunglasses and a rented sports car. You're cut for being “too much”. You keep the coat.",
+              "emoji": "🦚",
+              "effects": [
+                {
+                  "money": -10
+                },
+                {
+                  "fame": 1
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+]

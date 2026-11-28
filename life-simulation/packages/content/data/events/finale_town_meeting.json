@@ -1,0 +1,410 @@
+{
+  "schemaVersion": 1,
+  "id": "finale_town_meeting",
+  "version": 1,
+  "title": "The Last Town Meeting",
+  "category": "social",
+  "trigger": "finale",
+  "importance": "important",
+  "weight": 10,
+  "location": {
+    "at": [
+      "cafe"
+    ]
+  },
+  "roles": {
+    "chair": {
+      "count": 1,
+      "description": "Chairs the meeting"
+    },
+    "townsfolk": {
+      "count": [
+        1,
+        7
+      ],
+      "description": "Everyone else in town"
+    }
+  },
+  "text": {
+    "public": "The town has money for only one thing: saving the park or saving the market. {chair} chairs the meeting. Everyone is there: {townsfolk}.",
+    "private": {
+      "chair": "You count the votes. Nobody would notice if a few of them went missing.",
+      "townsfolk": "A show of hands. {chair} is counting."
+    }
+  },
+  "choices": {
+    "chair": [
+      {
+        "id": "fair",
+        "label": "Count fairly",
+        "tags": [
+          "truth"
+        ],
+        "default": true,
+        "perceived": {
+          "reputation": 1
+        }
+      },
+      {
+        "id": "rig",
+        "label": "Quietly rig the count",
+        "tags": [
+          "lie",
+          "risk"
+        ],
+        "perceived": {
+          "reputation": -2,
+          "risk": 2
+        }
+      }
+    ],
+    "townsfolk": [
+      {
+        "id": "back_chair",
+        "label": "Stand up for your friend {chair}",
+        "tags": [
+          "help"
+        ],
+        "condition": {
+          "relation": {
+            "from": "self",
+            "to": "role:chair",
+            "typeIn": [
+              "friend",
+              "partner",
+              "family"
+            ]
+          }
+        },
+        "perceived": {
+          "relation": {
+            "chair": 2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "self",
+            "delta": {
+              "reputation": 2
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:chair",
+            "affinity": 10,
+            "trust": 10,
+            "mutual": true
+          }
+        ]
+      },
+      {
+        "id": "heckle",
+        "label": "Heckle {chair} about everything they ever did",
+        "tags": [
+          "threaten"
+        ],
+        "condition": {
+          "relation": {
+            "from": "self",
+            "to": "role:chair",
+            "typeIn": [
+              "rival",
+              "enemy"
+            ]
+          }
+        },
+        "perceived": {
+          "reputation": -1,
+          "relation": {
+            "chair": -2
+          }
+        },
+        "effects": [
+          {
+            "type": "attr",
+            "target": "role:chair",
+            "delta": {
+              "mental": -6
+            }
+          },
+          {
+            "type": "relation",
+            "from": "self",
+            "to": "role:chair",
+            "affinity": -12,
+            "mutual": true
+          }
+        ]
+      },
+      {
+        "id": "park",
+        "label": "Vote to save the park",
+        "tags": [
+          "help"
+        ],
+        "perceived": {
+          "mental": 1
+        }
+      },
+      {
+        "id": "market",
+        "label": "Vote to save the market",
+        "tags": [
+          "negotiate"
+        ],
+        "perceived": {
+          "money": 1
+        }
+      },
+      {
+        "id": "abstain",
+        "label": "Keep your hand down",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "caught_rigging",
+      "when": {
+        "chose": "rig",
+        "role": "chair"
+      },
+      "chance": 0.5,
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:chair",
+          "delta": {
+            "reputation": -20,
+            "mental": -8
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:townsfolk",
+          "to": "role:chair",
+          "affinity": -20,
+          "trust": -30
+        }
+      ],
+      "text": {
+        "chair": "Someone recounts the hands. Everyone sees what you did.",
+        "townsfolk": "A recount: {chair} rigged the vote. The meeting ends in uproar."
+      }
+    },
+    {
+      "id": "rigged",
+      "when": {
+        "chose": "rig",
+        "role": "chair"
+      },
+      "important": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:chair",
+          "delta": {
+            "money": 10
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:townsfolk",
+          "delta": {
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "chair": "Your favourite option wins by a suspicious margin. Nobody checks.",
+        "townsfolk": "The result feels wrong, but nobody can prove anything."
+      }
+    },
+    {
+      "id": "park_wins",
+      "when": {
+        "all": [
+          {
+            "chose": "park",
+            "role": "townsfolk"
+          },
+          {
+            "not": {
+              "chose": "market",
+              "role": "townsfolk"
+            }
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:townsfolk",
+          "delta": {
+            "mental": 5
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:chair",
+          "delta": {
+            "reputation": 3
+          }
+        }
+      ],
+      "text": {
+        "chair": "The park is saved. Children are already climbing the old oak tree.",
+        "townsfolk": "The park is saved. You see the town differently: who voted with you, and who did not."
+      }
+    },
+    {
+      "id": "market_wins",
+      "when": {
+        "all": [
+          {
+            "chose": "market",
+            "role": "townsfolk"
+          },
+          {
+            "not": {
+              "chose": "park",
+              "role": "townsfolk"
+            }
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:townsfolk",
+          "delta": {
+            "money": 5
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:chair",
+          "delta": {
+            "reputation": 3
+          }
+        }
+      ],
+      "text": {
+        "chair": "The market is saved. The stallholders buy everyone a drink.",
+        "townsfolk": "The market is saved. You see the town differently: who voted with you, and who did not."
+      }
+    },
+    {
+      "id": "park_by_one_vote",
+      "when": {
+        "all": [
+          {
+            "chose": "park",
+            "role": "townsfolk"
+          },
+          {
+            "chose": "market",
+            "role": "townsfolk"
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:townsfolk",
+          "delta": {
+            "mental": 5
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:chair",
+          "delta": {
+            "reputation": 3
+          }
+        }
+      ],
+      "text": {
+        "chair": "The park wins by a single hand. Half the room cheers, half the room glares.",
+        "townsfolk": "The park wins by a single hand. You will remember exactly who voted against you."
+      },
+      "chance": 0.5
+    },
+    {
+      "id": "market_by_one_vote",
+      "when": {
+        "all": [
+          {
+            "chose": "park",
+            "role": "townsfolk"
+          },
+          {
+            "chose": "market",
+            "role": "townsfolk"
+          }
+        ]
+      },
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:townsfolk",
+          "delta": {
+            "money": 5
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:chair",
+          "delta": {
+            "reputation": 3
+          }
+        }
+      ],
+      "text": {
+        "chair": "The market wins by a single hand. Half the room cheers, half the room glares.",
+        "townsfolk": "The market wins by a single hand. You will remember exactly who voted against you."
+      }
+    },
+    {
+      "id": "nothing_decided",
+      "important": true,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:townsfolk",
+          "delta": {
+            "mental": -4
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:chair",
+          "delta": {
+            "reputation": -3
+          }
+        }
+      ],
+      "text": {
+        "chair": "Nobody raises a hand for anything. The money goes back to the region.",
+        "townsfolk": "The meeting ends without a decision. Typical."
+      }
+    }
+  ]
+}

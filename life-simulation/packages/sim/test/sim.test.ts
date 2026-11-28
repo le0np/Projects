@@ -1,0 +1,103 @@
+import { describe, expect, it } from "vitest";
+import { loadContent } from "@lifesim/content";
+import { aggregate, formatReport, replaySession, runBatch, runBotSession } from "../src";
+
+const content = loadContent();
+
+describe("bot-only sessions", () => {
+  const runs = Array.from({ length: 20 }, (_, i) => runBotSession({ content, seed: `bots-${i}`, players: 2 + (i % 7) }));
+
+  it("complete without supervision and every bot decides before its deadline", () => {
+    for (const { result } of runs) {
+      expect(result.state).toBe("completed");
+      expect(result.stats.decisionsRejected).toBe(0);
+      expect(result.stats.decisionsDefaulted).toBe(0);
+      expect(result.stats.eventsResolved).toBeGreaterThan(0);
+    }
+  });
+
+  it("are reproducible from the seed", () => {
+    const a = runBotSession({ content, seed: "repro", players: 6 });
+    const b = runBotSession({ content, seed: "repro", players: 6 });
+    expect(JSON.stringify(b.result.log)).toBe(JSON.stringify(a.result.log));
+  });
+
+  it("honour requested careers and archetypes", () => {
+    const { bots } = runBotSession({ content, seed: "pick", players: 3, careers: ["doctor", "lawyer"], archetypes: ["naive"] });
+    expect(bots.map((b) => b.career).slice(0, 2)).toEqual(["doctor", "lawyer"]);
+    expect(bots[0]!.controller.profile.archetype).toBe("naive");
+    expect(() => runBotSession({ content, seed: "x", players: 1 })).toThrow();
+  });
+});
+
+describe("batch, statistics and replay", () => {
+  const runs = runBatch({ content, seed: "batch-test", sessions: 15, players: [2, 8] });
+
+  it("aggregates the statistics required by the spec", () => {
+    const s = aggregate(runs, content);
+    expect(s.sessions).toBe(15);
+    expect(s.characters).toBe(runs.reduce((n, r) => n + r.result.recaps.length, 0));
+    expect(s.eventsPerSession.mean).toBeGreaterThan(0);
+    expect(Object.keys(s.career).length).toBeGreaterThan(3);
+    expect(Object.keys(s.archetype).length).toBeGreaterThan(3);
+    const report = formatReport(s);
+    for (const section of ["Death rate", "Event repetition", "Follow-ups", "## Careers", "## Bot personalities", "## Events"]) {
+      expect(report).toContain(section);
+    }
+  });
+
+  it("replays sessions identically from the recorded log", () => {
+    for (const run of runs.slice(0, 5)) expect(replaySession(content, run.result.log).identical).toBe(true);
+  });
+
+  it("detects a tampered log", () => {
+    const log = structuredClone(runs[0]!.result.log);
+    const decision = log.find((e) => e.type === "decision" && e.source === "player");
+    if (decision?.type !== "decision") throw new Error("no decision");
+    decision.t += 1; // the same decision, one millisecond later
+    expect(replaySession(content, log).identical).toBe(false);
+  });
+});
+
+describe("T2: variety and shared events", () => {
+  const runs = runBatch({ content, seed: "t2-test", sessions: 40, players: [4, 8] });
+  const stats = aggregate(runs, content);
+
+  it("most events involve someone else who decides", () => {
+    expect(stats.sharedShare).toBeGreaterThanOrEqual(0.55);
+    expect(stats.multiDeciderShare).toBeGreaterThanOrEqual(0.55);
+    expect(stats.repetitionRate).toBeLessThanOrEqual(0.05);
+  });
+
+  it("no solo event twice for a character, and at most 3 of the old daily seven stay solo", () => {
+    expect(stats.soloRepeats).toEqual({});
+    // Missed Bus, Scratch in the Car Park, Too Much Change and Annual Review now have two people deciding.
+    const stillSolo = ["career_overtime", "everyday_side_gig", "financial_tax_error"];
+    for (const { result } of runs) {
+      const perChar = new Map<string, number>();
+      for (const e of result.log) {
+        if (e.type !== "event_started" || !stillSolo.includes(e.eventId)) continue;
+        for (const id of Object.values(e.bindings).flat()) perChar.set(id, (perChar.get(id) ?? 0) + 1);
+      }
+      for (const n of perChar.values()) expect(n).toBeLessThanOrEqual(3);
+    }
+  });
+});
+
+describe("T6b M1: the town does not look depressed", () => {
+  it("nobody is sad more than ~30 % of the time, and calm is the most common mood", () => {
+    const stats = aggregate(runBatch({ content, seed: "moods-test", sessions: 30, players: [4, 8] }), content);
+    expect(stats.moodShare.sad ?? 0).toBeLessThanOrEqual(0.3);
+    const top = Object.entries(stats.moodShare).sort((a, b) => b[1] - a[1])[0]![0];
+    expect(top).toBe("content");
+  });
+});
+
+describe("T7b: relationships to work with", () => {
+  it("most characters have a real tie before the finale; jealousy and crisis talks happen in ≥ 10 % of sessions", () => {
+    const stats = aggregate(runBatch({ content, seed: "t7b-test", sessions: 100, players: [4, 8] }), content);
+    expect(stats.tiedShare).toBeGreaterThanOrEqual(0.5);
+    expect(stats.sessionsWith.relationships_jealousy ?? 0).toBeGreaterThanOrEqual(0.1);
+    expect(stats.sessionsWith.relationships_crisis_talk ?? 0).toBeGreaterThanOrEqual(0.1);
+  }, 60_000);
+});

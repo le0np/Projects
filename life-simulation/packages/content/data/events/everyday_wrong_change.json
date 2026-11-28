@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "id": "everyday_wrong_change",
+  "version": 2,
+  "title": "Too Much Change",
+  "category": "everyday",
+  "trigger": "director",
+  "importance": "simple",
+  "weight": 6,
+  "cooldown": {
+    "maxPerCharacter": 1,
+    "maxPerSession": 3
+  },
+  "location": {
+    "at": [
+      "shop"
+    ]
+  },
+  "roles": {
+    "shopper": {
+      "count": 1,
+      "description": "Paying at the till"
+    },
+    "cashier": {
+      "count": 1,
+      "description": "Covering a shift at the till"
+    }
+  },
+  "text": {
+    "public": "{shopper} is paying at a busy supermarket. {cashier} is covering a shift at the till.",
+    "private": {
+      "shopper": "{cashier} gives you far too much change. They look exhausted.",
+      "cashier": "End of a long shift. Something about that last payment from {shopper} felt wrong."
+    }
+  },
+  "choices": {
+    "shopper": [
+      {
+        "id": "point_out",
+        "label": "Point out the mistake",
+        "tags": [
+          "truth",
+          "help"
+        ],
+        "perceived": {
+          "mental": 1,
+          "relation": {
+            "cashier": 1
+          }
+        }
+      },
+      {
+        "id": "pocket",
+        "label": "Pocket it quickly",
+        "tags": [
+          "lie"
+        ],
+        "perceived": {
+          "money": 1,
+          "risk": 1
+        }
+      },
+      {
+        "id": "not_count",
+        "label": "Leave without counting",
+        "tags": [
+          "ignore"
+        ],
+        "default": true
+      }
+    ],
+    "cashier": [
+      {
+        "id": "call_back",
+        "label": "Count the till and call {shopper} back",
+        "tags": [
+          "truth"
+        ],
+        "perceived": {
+          "money": 1,
+          "relation": {
+            "shopper": -1
+          }
+        }
+      },
+      {
+        "id": "cover",
+        "label": "Quietly cover the gap from your own pocket",
+        "tags": [
+          "sacrifice"
+        ],
+        "perceived": {
+          "money": -1,
+          "career": 1
+        }
+      },
+      {
+        "id": "shrug",
+        "label": "Shrug it off",
+        "tags": [
+          "ignore"
+        ],
+        "default": true,
+        "perceived": {
+          "career": -1
+        }
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "id": "thanked",
+      "when": {
+        "chose": "point_out",
+        "role": "shopper"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:shopper",
+          "delta": {
+            "mental": 3,
+            "reputation": 1
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:cashier",
+          "delta": {
+            "mental": 2
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:cashier",
+          "to": "role:shopper",
+          "affinity": 12,
+          "trust": 10,
+          "mutual": true
+        }
+      ],
+      "text": {
+        "shopper": "{cashier} would have had to pay it out of their own wages. They thank you twice.",
+        "cashier": "{shopper} hands back the extra change. You could hug them."
+      }
+    },
+    {
+      "id": "caught",
+      "when": {
+        "all": [
+          {
+            "chose": "pocket",
+            "role": "shopper"
+          },
+          {
+            "chose": "call_back",
+            "role": "cashier"
+          }
+        ]
+      },
+      "chance": 0.7,
+      "revealChoices": true,
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:shopper",
+          "delta": {
+            "reputation": -5,
+            "mental": -3
+          }
+        },
+        {
+          "type": "relation",
+          "from": "role:cashier",
+          "to": "role:shopper",
+          "affinity": -15,
+          "trust": -25
+        }
+      ],
+      "text": {
+        "shopper": "\"Excuse me!\" {cashier} catches you at the door. Everybody in the queue turns round.",
+        "cashier": "You catch {shopper} at the door. They \"must have miscounted\"."
+      }
+    },
+    {
+      "id": "honest_return",
+      "when": {
+        "chose": "call_back",
+        "role": "cashier"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:cashier",
+          "delta": {
+            "career": 1
+          }
+        }
+      ],
+      "text": {
+        "shopper": "{cashier} calls you back: too much change. You hand it over, a little embarrassed.",
+        "cashier": "You call {shopper} back and the till balances."
+      }
+    },
+    {
+      "id": "covered",
+      "when": {
+        "chose": "cover",
+        "role": "cashier"
+      },
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:shopper",
+          "delta": {
+            "money": 4
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:cashier",
+          "delta": {
+            "money": -4,
+            "mental": -2
+          }
+        }
+      ],
+      "text": {
+        "shopper": "Later you notice your wallet is fuller than it should be.",
+        "cashier": "You put the missing money in yourself. Nobody will ever know."
+      }
+    },
+    {
+      "id": "cashier_blamed",
+      "effects": [
+        {
+          "type": "attr",
+          "target": "role:shopper",
+          "delta": {
+            "money": 4
+          }
+        },
+        {
+          "type": "attr",
+          "target": "role:cashier",
+          "delta": {
+            "career": -3,
+            "mental": -3
+          }
+        }
+      ],
+      "text": {
+        "shopper": "On your way out you hear the manager shouting at {cashier} about a missing amount.",
+        "cashier": "The till is short at closing. The manager is not amused."
+      }
+    }
+  ]
+}

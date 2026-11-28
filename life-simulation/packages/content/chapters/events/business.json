@@ -1,0 +1,438 @@
+[
+  {
+    "id": "side_hustle",
+    "kind": "business",
+    "title": "The Side Hustle",
+    "text": "Everyone in town has a side hustle. Your mum sells candles that smell of “Tuesday”. Time you had one too.",
+    "choices": [
+      {
+        "id": "cakes",
+        "label": "Sell cakes from your window",
+        "tags": [
+          "effort"
+        ],
+        "base": 65,
+        "ok": {
+          "text": "Your lemon drizzle becomes a town legend. People queue in the rain. Your mum is jealous.",
+          "emoji": "🍋",
+          "effects": [
+            {
+              "money": 15
+            },
+            {
+              "flag": "side_hustle"
+            },
+            {
+              "rep": 5
+            },
+            {
+              "remember": "Started a cake business from your window."
+            }
+          ]
+        },
+        "fail": {
+          "text": "The cakes are fine. The kitchen fire is less fine.",
+          "emoji": "🔥",
+          "effects": [
+            {
+              "money": -5
+            },
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "crush_partner",
+        "label": "Go into business with {crush}",
+        "cast": "crush",
+        "ok": {
+          "text": "You sell {crush}'s bread and your nonsense. It works. You both pretend it's only business.",
+          "emoji": "🥖",
+          "effects": [
+            {
+              "money": 15
+            },
+            {
+              "rel": "crush",
+              "n": 2
+            },
+            {
+              "flag": "side_hustle"
+            },
+            {
+              "remember": "Started a side business with {crush}."
+            }
+          ],
+          "cast": {
+            "who": "crush",
+            "did": "said yes and brought an apron"
+          }
+        },
+        "fail": {
+          "text": "{crush} says yes, then sells the business idea to {rival} for 50 €.",
+          "emoji": "😑",
+          "effects": [
+            {
+              "rel": "crush",
+              "n": -1
+            }
+          ],
+          "cast": {
+            "who": "crush",
+            "did": "sold your idea to {rival}"
+          }
+        }
+      },
+      {
+        "id": "weekend_cars",
+        "label": "Fix cars in your mum's driveway at weekends",
+        "career": "mechanic",
+        "ok": {
+          "text": "By spring the whole street brings their cars to you. Your mum charges them for parking.",
+          "emoji": "🔧",
+          "effects": [
+            {
+              "money": 20
+            },
+            {
+              "flag": "side_hustle"
+            },
+            {
+              "remember": "Ran a weekend garage in your mum's driveway."
+            }
+          ]
+        }
+      },
+      {
+        "id": "app",
+        "label": "Launch an app that tells you when the bakery has fresh bread",
+        "career": "entrepreneur",
+        "ok": {
+          "text": "4,000 downloads in a week. The bakery hates it. You're in business.",
+          "emoji": "📱",
+          "effects": [
+            {
+              "money": 20
+            },
+            {
+              "flag": "side_hustle"
+            },
+            {
+              "fame": 1
+            },
+            {
+              "remember": "Launched the town's most useful app."
+            }
+          ]
+        }
+      },
+      {
+        "id": "dropship",
+        "label": "Sell fake designer sunglasses online",
+        "tags": [
+          "lie"
+        ],
+        "ok": {
+          "text": "They sell like crazy. They also melt in the sun, which is a problem for sunglasses.",
+          "emoji": "🕶️",
+          "effects": [
+            {
+              "money": 25
+            },
+            {
+              "secret": {
+                "id": "sunglasses",
+                "text": "Your designer sunglasses are fake",
+                "years": 2,
+                "reveal": {
+                  "text": "A customer's sunglasses melt on live TV at the beach. The reporter finds your website. And your address.",
+                  "emoji": "🫠",
+                  "effects": [
+                    {
+                      "money": -20
+                    },
+                    {
+                      "rep": -15
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "remember": "Sold fake sunglasses. They melted later."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "loan",
+    "kind": "business",
+    "title": "The Bank Loan",
+    "text": "You need money for your business idea. The bank manager is {rival}'s uncle. He has a photo of {rival} on his desk. Several.",
+    "choices": [
+      {
+        "id": "pitch",
+        "label": "Pitch it seriously, with charts",
+        "tags": [
+          "effort"
+        ],
+        "base": 55,
+        "mods": [
+          {
+            "when": {
+              "stats": {
+                "rel.rival": {
+                  "min": 1
+                }
+              }
+            },
+            "add": 20,
+            "note": "{rival} put in a good word"
+          }
+        ],
+        "ok": {
+          "text": "The charts go up and to the right. So does his eyebrow. You get the loan.",
+          "emoji": "📈",
+          "effects": [
+            {
+              "flag": "business_loan"
+            },
+            {
+              "money": 15
+            },
+            {
+              "remember": "Got a business loan from {rival}'s uncle."
+            }
+          ]
+        },
+        "fail": {
+          "text": "He says your charts are “a bit optimistic” and shows you {rival}'s charts. They're better.",
+          "emoji": "📉",
+          "effects": [
+            {
+              "rep": -5
+            }
+          ]
+        }
+      },
+      {
+        "id": "ask_rival",
+        "label": "Ask {rival} to vouch for you",
+        "cast": "rival",
+        "ok": {
+          "text": "{rival} calls {rival.his} uncle: “Give it to them. I want to watch.” You get the loan.",
+          "emoji": "🏦",
+          "effects": [
+            {
+              "flag": "business_loan"
+            },
+            {
+              "money": 15
+            },
+            {
+              "rel": "rival",
+              "n": 1
+            },
+            {
+              "remember": "{rival} vouched for you at the bank."
+            }
+          ],
+          "cast": {
+            "who": "rival",
+            "did": "vouched for you, out of curiosity"
+          }
+        },
+        "fail": {
+          "text": "{rival} calls {rival.his} uncle too. You hear the laughter through the wall.",
+          "emoji": "😂",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": -1
+            },
+            {
+              "rep": -5
+            }
+          ],
+          "cast": {
+            "who": "rival",
+            "did": "laughed you out of the bank"
+          }
+        }
+      },
+      {
+        "id": "small_print",
+        "label": "Read the contract and fix three illegal clauses",
+        "career": "lawyer",
+        "ok": {
+          "text": "The uncle is so impressed he gives you a better rate and asks for your number. For his own divorce.",
+          "emoji": "⚖️",
+          "effects": [
+            {
+              "flag": "business_loan"
+            },
+            {
+              "money": 20
+            },
+            {
+              "remember": "Fixed the bank's own contract and got a cheaper loan."
+            }
+          ]
+        }
+      },
+      {
+        "id": "piggy",
+        "label": "Skip the bank and use the money under your mattress",
+        "tags": [
+          "modest"
+        ],
+        "ok": {
+          "text": "You count it. It's 31 €. You buy one very good chair. It's a start.",
+          "emoji": "🪑",
+          "effects": [
+            {
+              "money": -10
+            },
+            {
+              "flag": "side_hustle"
+            },
+            {
+              "remember": "Funded your business from under the mattress. Bought a chair."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "food_truck",
+    "kind": "business",
+    "title": "The Food Truck",
+    "text": [
+      {
+        "when": {
+          "flags": [
+            "side_hustle"
+          ]
+        },
+        "text": "Your side hustle is doing well enough that a man offers you his old food truck. It has a giant fibreglass sausage on the roof. The sausage is negotiable.",
+        "callback": true
+      },
+      {
+        "text": "A man offers you his old food truck. It has a giant fibreglass sausage on the roof. The sausage is negotiable."
+      }
+    ],
+    "choices": [
+      {
+        "id": "buy",
+        "label": "Buy it, sausage and all",
+        "when": {
+          "stats": {
+            "money": {
+              "min": 15
+            }
+          }
+        },
+        "base": 55,
+        "ok": {
+          "text": "The sausage becomes a landmark. People give directions by it. Business booms.",
+          "emoji": "🌭",
+          "effects": [
+            {
+              "money": 10
+            },
+            {
+              "fame": 1
+            },
+            {
+              "flag": "side_hustle"
+            },
+            {
+              "remember": "Bought a food truck with a giant sausage on the roof."
+            }
+          ]
+        },
+        "fail": {
+          "text": "The engine dies on the first day, in the middle of the roundabout. The sausage stays there for a week.",
+          "emoji": "🛞",
+          "effects": [
+            {
+              "money": -15
+            },
+            {
+              "rep": -5
+            },
+            {
+              "remember": "Bought a food truck. It died on the roundabout."
+            }
+          ]
+        }
+      },
+      {
+        "id": "haggle",
+        "label": "Haggle him down hard",
+        "tags": [
+          "calm"
+        ],
+        "base": 60,
+        "ok": {
+          "text": "You get it for half. He throws in the sausage and a lifetime supply of mustard.",
+          "emoji": "🤝",
+          "effects": [
+            {
+              "money": 5
+            },
+            {
+              "flag": "side_hustle"
+            },
+            {
+              "remember": "Haggled a food truck down to half price."
+            }
+          ]
+        },
+        "fail": {
+          "text": "You haggle so aggressively that he sells it to {rival} instead, out of spite.",
+          "emoji": "😤",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": -1
+            }
+          ],
+          "byFlaw": {
+            "hothead": {
+              "text": "You call his sausage “an insult to sausages”. He calls the police. You call his mum. Nobody sells anything.",
+              "emoji": "🌶️",
+              "effects": [
+                {
+                  "rep": -10
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "pass",
+        "label": "Politely pass",
+        "tags": [
+          "refuse"
+        ],
+        "ok": {
+          "text": "He sells it to {rival}. You hear the sausage horn every morning at 7.",
+          "emoji": "📯",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": -1
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

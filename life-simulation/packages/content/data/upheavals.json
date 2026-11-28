@@ -1,0 +1,110 @@
+{
+  "upheavals": [
+    {
+      "id": "storm",
+      "title": "The Great Storm",
+      "text": "A storm rips through town. Trees down, roofs gone, everyone's hair ruined.",
+      "sessionFact": "storm",
+      "durationSeconds": 25,
+      "weight": 10,
+      "effects": [
+        {
+          "chance": 0.3,
+          "delta": {
+            "health": -6
+          },
+          "text": "A flying wheelie bin hits you."
+        },
+        {
+          "chance": 0.4,
+          "delta": {
+            "money": -5
+          },
+          "text": "Your roof now has a skylight. You did not order one."
+        }
+      ]
+    },
+    {
+      "id": "flu",
+      "title": "Flu Season From Hell",
+      "text": "A flu sweeps through town. The pharmacy runs out of tissues by noon.",
+      "sessionFact": "flu",
+      "durationSeconds": 30,
+      "weight": 10,
+      "effects": [
+        {
+          "chance": 0.4,
+          "delta": {
+            "health": -8
+          },
+          "text": "You catch the flu. Everything hurts, especially your dignity."
+        }
+      ]
+    },
+    {
+      "id": "market_crash",
+      "title": "The Market Crashes",
+      "text": "The stock market crashes. Grown adults are seen crying at the cash machine.",
+      "sessionFact": "market_crash",
+      "durationSeconds": 25,
+      "weight": 8,
+      "effects": [
+        {
+          "chance": 0.6,
+          "delta": {
+            "money": -8
+          },
+          "text": "Your savings shrink. Your pension fund sends a sad emoji."
+        },
+        {
+          "chance": 0.3,
+          "delta": {
+            "mental": -5
+          },
+          "text": "You check your bank app eleven times an hour."
+        }
+      ]
+    },
+    {
+      "id": "festival",
+      "title": "Town Festival!",
+      "text": "The town festival begins: free sausages, terrible music and a pie contest nobody takes lightly.",
+      "sessionFact": "festival",
+      "durationSeconds": 20,
+      "weight": 10,
+      "effects": [
+        {
+          "chance": 0.8,
+          "delta": {
+            "mental": 6
+          },
+          "text": "Free sausages and terrible music. You love it."
+        },
+        {
+          "chance": 0.2,
+          "delta": {
+            "health": -3
+          },
+          "text": "Too many free sausages."
+        }
+      ]
+    },
+    {
+      "id": "blackout",
+      "title": "Blackout",
+      "text": "The power goes out across town. No lights, no Wi-Fi, no meaning.",
+      "sessionFact": "blackout",
+      "durationSeconds": 20,
+      "weight": 8,
+      "effects": [
+        {
+          "chance": 0.5,
+          "delta": {
+            "mental": -4
+          },
+          "text": "No Wi-Fi. You have to talk to your own thoughts."
+        }
+      ]
+    }
+  ]
+}

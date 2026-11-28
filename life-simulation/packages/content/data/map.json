@@ -1,0 +1,273 @@
+{
+ "width": 24,
+ "height": 16,
+ "roads": {
+  "rows": [
+   4,
+   11
+  ],
+  "cols": [
+   5,
+   12,
+   19
+  ]
+ },
+ "blocked": [
+  [
+   6,
+   5
+  ],
+  [
+   11,
+   5
+  ],
+  [
+   6,
+   10
+  ],
+  [
+   11,
+   10
+  ],
+  [
+   7,
+   7
+  ],
+  [
+   10,
+   9
+  ],
+  [
+   8,
+   6
+  ],
+  [
+   10,
+   6
+  ]
+ ],
+ "places": [
+  {
+   "id": "home_1",
+   "kind": "home",
+   "name": "Blue House",
+   "x": 1,
+   "y": 2,
+   "w": 3,
+   "h": 2,
+   "door": [
+    2,
+    4
+   ]
+  },
+  {
+   "id": "home_2",
+   "kind": "home",
+   "name": "Green House",
+   "x": 7,
+   "y": 2,
+   "w": 3,
+   "h": 2,
+   "door": [
+    8,
+    4
+   ]
+  },
+  {
+   "id": "office",
+   "kind": "office",
+   "name": "Office Tower",
+   "x": 13,
+   "y": 0,
+   "w": 5,
+   "h": 4,
+   "door": [
+    15,
+    4
+   ]
+  },
+  {
+   "id": "home_3",
+   "kind": "home",
+   "name": "Corner House",
+   "x": 20,
+   "y": 2,
+   "w": 3,
+   "h": 2,
+   "door": [
+    21,
+    4
+   ]
+  },
+  {
+   "id": "hospital",
+   "kind": "hospital",
+   "name": "St. Mercy Hospital",
+   "x": 0,
+   "y": 5,
+   "w": 5,
+   "h": 3,
+   "door": [
+    5,
+    6
+   ]
+  },
+  {
+   "id": "home_4",
+   "kind": "home",
+   "name": "Old Cottage",
+   "x": 1,
+   "y": 9,
+   "w": 3,
+   "h": 2,
+   "door": [
+    2,
+    11
+   ]
+  },
+  {
+   "id": "park",
+   "kind": "park",
+   "name": "Town Park",
+   "x": 6,
+   "y": 5,
+   "w": 6,
+   "h": 6,
+   "door": [
+    9,
+    8
+   ],
+   "walkable": true
+  },
+  {
+   "id": "cafe",
+   "kind": "cafe",
+   "name": "Bean There Caf\u00e9",
+   "x": 13,
+   "y": 5,
+   "w": 4,
+   "h": 3,
+   "door": [
+    12,
+    6
+   ]
+  },
+  {
+   "id": "bar",
+   "kind": "bar",
+   "name": "The Last Call",
+   "x": 13,
+   "y": 9,
+   "w": 4,
+   "h": 2,
+   "door": [
+    14,
+    11
+   ]
+  },
+  {
+   "id": "police",
+   "kind": "police",
+   "name": "Police Station",
+   "x": 20,
+   "y": 5,
+   "w": 4,
+   "h": 3,
+   "door": [
+    19,
+    6
+   ]
+  },
+  {
+   "id": "shop",
+   "kind": "shop",
+   "name": "MegaMart",
+   "x": 20,
+   "y": 8,
+   "w": 4,
+   "h": 3,
+   "door": [
+    19,
+    9
+   ]
+  },
+  {
+   "id": "garage",
+   "kind": "garage",
+   "name": "Fix-It Garage",
+   "x": 0,
+   "y": 12,
+   "w": 4,
+   "h": 3,
+   "door": [
+    3,
+    11
+   ]
+  },
+  {
+   "id": "home_5",
+   "kind": "home",
+   "name": "Row House",
+   "x": 7,
+   "y": 12,
+   "w": 3,
+   "h": 2,
+   "door": [
+    8,
+    11
+   ]
+  },
+  {
+   "id": "home_6",
+   "kind": "home",
+   "name": "Yellow House",
+   "x": 14,
+   "y": 12,
+   "w": 3,
+   "h": 2,
+   "door": [
+    15,
+    11
+   ]
+  },
+  {
+   "id": "school",
+   "kind": "school",
+   "name": "Town School",
+   "x": 20,
+   "y": 12,
+   "w": 4,
+   "h": 3,
+   "door": [
+    21,
+    11
+   ]
+  },
+  {
+   "id": "home_7",
+   "kind": "home",
+   "name": "Tiny Flat",
+   "x": 13,
+   "y": 14,
+   "w": 3,
+   "h": 2,
+   "door": [
+    12,
+    15
+   ]
+  },
+  {
+   "id": "home_8",
+   "kind": "home",
+   "name": "Garden House",
+   "x": 6,
+   "y": 14,
+   "w": 4,
+   "h": 2,
+   "door": [
+    5,
+    15
+   ]
+  }
+ ]
+}

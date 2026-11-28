@@ -1,0 +1,340 @@
+/**
+ * Runs one engine `Session` in real time for connected players.
+ *
+ * - Session time = (wall time since start) × timeScale. timeScale 1 is normal play; tests and
+ *   demos speed it up. The engine itself is unchanged: it only ever sees the `Clock`.
+ * - Humans and bots use the same `submitDecision` entry point (TECHNICAL_ARCHITECTURE §6).
+ * - A disconnected player simply does not answer: the deadline's default choice applies.
+ *   On reconnect the player receives the current offer and recent history (`snapshot`).
+ */
+import { randomUUID } from "node:crypto";
+import { BotController, careerTrait, createBotProfile, traitLabel, type BotProfile } from "@lifesim/bots";
+import { Rng, type Clock, type Notice, type OfferView, type SchemeBoost } from "@lifesim/core";
+import type { ContentBundle } from "@lifesim/content";
+import { Session, humanPacing, resolveConfig, type LogEntry, type PublicEntry, type SessionConfig, type SessionResult, type SubmitResult } from "@lifesim/engine";
+
+export type Seat = { kind: "human"; userId: string; name: string; career: string } | { kind: "bot"; career: string };
+
+export interface LiveSessionEvents {
+  /** Deliver a message to one human player. */
+  toUser(userId: string, event: string, payload: unknown): void;
+  onDecision(sessionId: string, entry: Extract<LogEntry, { type: "decision" }>): void;
+  onFinished(live: LiveSession, result: SessionResult): void;
+}
+
+interface HumanSeat {
+  userId: string;
+  characterId: string;
+  pending?: OfferView;
+  history: Notice[];
+}
+
+const HISTORY_LIMIT = 30;
+const FEED_LIMIT = 50;
+
+export class LiveSession {
+  readonly id = randomUUID();
+  readonly session: Session;
+  readonly humans = new Map<string, HumanSeat>(); // userId → seat
+  readonly bots = new Map<string, BotController>(); // characterId → bot
+  readonly roster: { characterId: string; name: string; career: string; isBot: boolean; userId: string | null; trait: string }[] = [];
+  readonly feed: PublicEntry[] = [];
+  private readonly startedAtWall: number;
+  private readonly timeScale: number;
+  private timer: NodeJS.Timeout | undefined;
+  private readonly botTimers = new Set<NodeJS.Timeout>();
+  /** Bot decisions waiting for their think time, per event: sent at once when every human has decided. */
+  private readonly botPending = new Map<string, Map<string, { handle: NodeJS.Timeout; choiceId: string }>>();
+  private logCursor = 0;
+  private readonly qaSchemeOnHuman: boolean;
+  private finished = false;
+
+  constructor(
+    content: ContentBundle,
+    config: Partial<SessionConfig>,
+    seats: Seat[],
+    private readonly events: LiveSessionEvents,
+    options: { timeScale?: number; seed?: string; paceScale?: number; qaSchemeOnHuman?: boolean } = {},
+  ) {
+    this.timeScale = options.timeScale ?? 1;
+    this.qaSchemeOnHuman = options.qaSchemeOnHuman === true;
+    this.startedAtWall = performance.now();
+    const seed = options.seed ?? this.id;
+    const clock: Clock = { now: () => (performance.now() - this.startedAtWall) * this.timeScale };
+    const rng = new Rng(seed).fork("live-bots");
+    const participants = seats.map((seat, i) => ({
+      id: `c${i + 1}`,
+      career: seat.career,
+      isBot: seat.kind === "bot",
+      ...(seat.kind === "human" ? { name: seat.name } : {}),
+    }));
+    // T1: human deadlines and rests are in real seconds, whatever the time scale.
+    const pacing = config.humanPacing ?? humanPacing(this.timeScale, options.paceScale ?? 1);
+    this.session = new Session(content, resolveConfig({ ...config, humanPacing: pacing, seed }), participants, clock);
+
+    seats.forEach((seat, i) => {
+      const characterId = `c${i + 1}`;
+      if (seat.kind === "human") this.humans.set(seat.userId, { userId: seat.userId, characterId, history: [] });
+      else this.bots.set(characterId, new BotController(createBotProfile(rng.fork(characterId)), rng.fork(`${characterId}/decide`)));
+    });
+
+    this.session.onNotice = (characterId, notice) => this.route(characterId, notice);
+    this.session.chooseLeisure = (characterId, options) => this.bots.get(characterId)?.chooseLeisure(options) as never;
+    this.session.onPublic = (entry) => {
+      // T3: the finale waits for everyone, so bots still "thinking" answer at once.
+      if (entry.kind === "phase" && entry.phase === "finale") queueMicrotask(() => this.flushAllBots());
+      if (entry.kind !== "move") {
+        this.feed.push(entry);
+        if (this.feed.length > FEED_LIMIT) this.feed.shift();
+      }
+      for (const h of this.humans.values()) this.events.toUser(h.userId, "game:feed", entry);
+    };
+  }
+
+  /** Bot profiles, for persistence. */
+  botProfile(characterId: string): BotProfile | undefined {
+    return this.bots.get(characterId)?.profile;
+  }
+
+  start(): void {
+    this.session.start();
+    const started = this.session.log[0];
+    if (started?.type === "session_started") {
+      for (const c of started.characters) {
+        const human = [...this.humans.values()].find((h) => h.characterId === c.id);
+        // T6: a visible trait next to the name (bots: personality; humans: career).
+        const bot = this.bots.get(c.id);
+        const trait = bot ? traitLabel(bot.profile.personality) : careerTrait(c.career);
+        this.roster.push({ characterId: c.id, name: c.name, career: c.career, isBot: c.isBot, userId: human?.userId ?? null, trait });
+      }
+    }
+    for (const h of this.humans.values()) this.events.toUser(h.userId, "game:started", this.snapshot(h.userId));
+    this.afterChange();
+    // T8b (QA only): a bot plots against the first human right away, so the victim's side can be seen.
+    const human = [...this.humans.values()][0];
+    const bot = [...this.bots.keys()][0];
+    if (this.qaSchemeOnHuman && human && bot) {
+      const handle = setTimeout(() => {
+        this.botTimers.delete(handle);
+        if (this.finished) return;
+        this.session.mischief(bot, "flat_tyres", human.characterId);
+        this.afterChange();
+      }, 2000);
+      this.botTimers.add(handle);
+    }
+  }
+
+  submit(userId: string, instanceId: string, choiceId: string): SubmitResult {
+    const seat = this.humans.get(userId);
+    if (!seat) return { ok: false, reason: "not a player in this session" };
+    const result = this.session.submitDecision(seat.characterId, instanceId, choiceId);
+    if (result.ok && seat.pending?.instanceId === instanceId) seat.pending = undefined;
+    if (result.ok) this.flushBotsIfHumansDone(instanceId);
+    this.afterChange();
+    return result;
+  }
+
+  /** A human plays a prank. */
+  mischief(userId: string, mischiefId: string, targetId: string): SubmitResult {
+    const seat = this.humans.get(userId);
+    if (!seat) return { ok: false, reason: "not a player in this session" };
+    const result = this.session.mischief(seat.characterId, mischiefId, targetId);
+    this.afterChange();
+    return result;
+  }
+
+  /** T12: ghost actions. */
+  ghost(userId: string, action: "nudge" | "vote" | "will", target: string): SubmitResult {
+    const seat = this.humans.get(userId);
+    if (!seat) return { ok: false, reason: "not a player in this session" };
+    const id = seat.characterId;
+    const result = action === "nudge" ? this.session.ghostNudge(id, target) : action === "vote" ? this.session.ghostVote(id, target) : this.session.ghostWill(id, target);
+    this.afterChange();
+    return result;
+  }
+
+  /** T9: guess what someone else will choose. */
+  guess(userId: string, instanceId: string, deciderId: string, choiceId: string): SubmitResult {
+    const seat = this.humans.get(userId);
+    if (!seat) return { ok: false, reason: "not a player in this session" };
+    const result = this.session.guess(seat.characterId, instanceId, deciderId, choiceId);
+    this.afterChange();
+    return result;
+  }
+
+  /** T8: what a scheme would look like before you commit to it. */
+  schemePreview(userId: string, mischiefId: string, targetId: string) {
+    const seat = this.humans.get(userId);
+    if (!seat) return { ok: false as const, reason: "not a player in this session" };
+    return this.session.schemePreview(seat.characterId, mischiefId, targetId);
+  }
+
+  /** T8: one boost for a scheme in preparation. */
+  boostScheme(userId: string, schemeId: string, boost: SchemeBoost, accompliceId?: string): SubmitResult {
+    const seat = this.humans.get(userId);
+    if (!seat) return { ok: false, reason: "not a player in this session" };
+    const result = this.session.boostScheme(seat.characterId, schemeId, boost, accompliceId);
+    this.afterChange();
+    return result;
+  }
+
+  /** Everything a (re)connecting player needs to render the game. */
+  snapshot(userId: string) {
+    const seat = this.humans.get(userId);
+    return {
+      sessionId: this.id,
+      characterId: seat?.characterId,
+      state: this.session.state,
+      sessionTime: this.session.result().durationMs,
+      durationSeconds: this.session.config.durationSeconds,
+      timeScale: this.timeScale,
+      roster: this.roster.map(({ userId: _u, ...r }) => r),
+      positions: this.session.positions(),
+      moods: this.session.moods(),
+      marks: this.session.currentMarks(),
+      goals: seat ? this.session.goalsOf(seat.characterId) : [],
+      ghost: seat ? this.session.ghostState(seat.characterId) : null,
+      // T5b R3: attributes, calendar and relationships (including starting ones) from the very first second.
+      me: seat ? this.session.selfView(seat.characterId) : undefined,
+      mischief: seat ? this.session.mischiefState(seat.characterId) : null,
+      homes: this.roster.map((r) => ({ characterId: r.characterId, home: this.homeOf(r.characterId) })),
+      pending: seat?.pending ?? null,
+      history: seat?.history ?? [],
+      feed: this.feed,
+    };
+  }
+
+  private homeOf(characterId: string): string | undefined {
+    const start = this.session.log[0];
+    return start?.type === "session_started" ? start.characters.find((c) => c.id === characterId)?.home : undefined;
+  }
+
+  cancel(): void {
+    this.session.cancel();
+    this.afterChange();
+  }
+
+  // ------------------------------------------------------------------ internals
+
+  private route(characterId: string, notice: Notice): void {
+    const bot = this.bots.get(characterId);
+    if (bot) {
+      bot.observe(notice);
+      if (notice.kind === "event" && notice.view.offer.choices.length > 0) {
+        const decision = bot.decide(notice.view);
+        if (decision) {
+          const instanceId = notice.view.offer.instanceId;
+          const handle = setTimeout(() => {
+            this.botTimers.delete(handle);
+            this.botPending.get(instanceId)?.delete(characterId);
+            if (this.finished) return;
+            this.session.submitDecision(characterId, instanceId, decision.choiceId);
+            this.afterChange();
+          }, decision.thinkMs / this.timeScale);
+          this.botTimers.add(handle);
+          const waiting = this.botPending.get(instanceId) ?? new Map();
+          waiting.set(characterId, { handle, choiceId: decision.choiceId });
+          this.botPending.set(instanceId, waiting);
+        }
+      }
+      if (notice.kind === "scheme") {
+        const plan = bot.planBoost(notice);
+        if (plan) {
+          const handle = setTimeout(() => {
+            this.botTimers.delete(handle);
+            if (this.finished) return;
+            this.session.boostScheme(characterId, plan.schemeId, plan.boost, plan.accompliceId);
+            this.afterChange();
+          }, 800 / this.timeScale);
+          this.botTimers.add(handle);
+        }
+      }
+      if (notice.kind === "resolved") {
+        const plan = bot.planMischief();
+        if (plan) {
+          const handle = setTimeout(() => {
+            this.botTimers.delete(handle);
+            if (this.finished) return;
+            this.session.mischief(characterId, plan.mischiefId, plan.targetId);
+            this.afterChange();
+          }, 1200 / this.timeScale);
+          this.botTimers.add(handle);
+        }
+      }
+      return;
+    }
+    const seat = [...this.humans.values()].find((h) => h.characterId === characterId);
+    if (!seat) return;
+    if (notice.kind === "event") seat.pending = notice.view.offer.choices.length > 0 ? notice.view.offer : undefined;
+    if (notice.kind === "resolved" && seat.pending?.instanceId === notice.instanceId) seat.pending = undefined;
+    // T9: guessing offers are frequent and short-lived; they would push the story out of the history.
+    if (notice.kind !== "guessable") {
+      seat.history.push(notice);
+      if (seat.history.length > HISTORY_LIMIT) seat.history.shift();
+    }
+    this.events.toUser(seat.userId, notice.kind === "session_completed" ? "game:ended" : "game:notice", notice);
+    if (notice.kind === "resolved" || notice.kind === "scheme") this.events.toUser(seat.userId, "game:mischief_state", this.session.mischiefState(characterId));
+  }
+
+  /** T1: once every human in an event has decided, the bots still "thinking" answer at once. */
+  private flushBotsIfHumansDone(instanceId: string): void {
+    const waiting = this.botPending.get(instanceId);
+    if (!waiting) return;
+    const undecided = this.session.undecided(instanceId);
+    if (undecided.length === 0 || !undecided.every((id) => waiting.has(id))) {
+      if (undecided.length === 0) this.botPending.delete(instanceId);
+      return;
+    }
+    this.botPending.delete(instanceId);
+    for (const [characterId, { handle, choiceId }] of [...waiting].sort(([a], [b]) => a.localeCompare(b))) {
+      clearTimeout(handle);
+      this.botTimers.delete(handle);
+      this.session.submitDecision(characterId, instanceId, choiceId);
+    }
+  }
+
+  private flushAllBots(): void {
+    if (this.finished) return;
+    for (const instanceId of [...this.botPending.keys()].sort()) {
+      const waiting = this.botPending.get(instanceId)!;
+      this.botPending.delete(instanceId);
+      for (const [characterId, { handle, choiceId }] of [...waiting].sort(([a], [b]) => a.localeCompare(b))) {
+        clearTimeout(handle);
+        this.botTimers.delete(handle);
+        this.session.submitDecision(characterId, instanceId, choiceId);
+      }
+    }
+    this.afterChange();
+  }
+
+  /** Persist new decisions, re-arm the engine timer, detect the end. */
+  private afterChange(): void {
+    const log = this.session.log;
+    for (; this.logCursor < log.length; this.logCursor++) {
+      const e = log[this.logCursor] as LogEntry;
+      if (e.type === "decision") this.events.onDecision(this.id, e);
+    }
+    if (this.session.state !== "active") {
+      this.finish();
+      return;
+    }
+    if (this.timer) clearTimeout(this.timer);
+    const next = this.session.nextWakeAt();
+    if (next === undefined) return;
+    const now = (performance.now() - this.startedAtWall) * this.timeScale;
+    this.timer = setTimeout(() => {
+      this.timer = undefined;
+      this.session.processTimers();
+      this.afterChange();
+    }, Math.max(0, (next - now) / this.timeScale));
+  }
+
+  private finish(): void {
+    if (this.finished) return;
+    this.finished = true;
+    if (this.timer) clearTimeout(this.timer);
+    for (const t of this.botTimers) clearTimeout(t);
+    this.botTimers.clear();
+    this.events.onFinished(this, this.session.result());
+  }
+}

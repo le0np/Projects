@@ -1,0 +1,370 @@
+import { useEffect, useState, type CSSProperties } from "react";
+import type { Attribute, Notice, OfferView } from "@lifesim/core";
+import { ATTR_LABELS, RELATION_LABELS, careerName, clock, hints, isNewsworthy, quoted } from "../format";
+import { Town, useMapPlaces, useMapSize } from "../town/Town";
+import { Schemes } from "./Schemes";
+import { GuessCard, PersonCard } from "./Meanwhile";
+import { GhostCard } from "./Ghost";
+import type { GameState } from "../useGame";
+
+const SEASON_LABELS: Record<string, string> = { spring: "🌱 Spring", summer: "☀ Summer", autumn: "🍂 Autumn", winter: "❄ Winter" };
+
+function useNow(intervalMs = 250): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(t);
+  }, [intervalMs]);
+  return now;
+}
+
+interface Props {
+  game: GameState;
+  connected: boolean;
+  decide: (choiceId: string) => Promise<{ ok: boolean; reason?: string } | undefined>;
+  playMischief: (mischiefId: string, targetId: string) => Promise<{ ok: boolean; reason?: string } | undefined>;
+  previewScheme: Parameters<typeof Schemes>[0]["preview"];
+  boostScheme: Parameters<typeof Schemes>[0]["boost"];
+  guess: (instanceId: string, deciderId: string, choiceId: string) => void;
+  ghostAction: Parameters<typeof GhostCard>[0]["act"];
+}
+
+export function GameScreen({ game, connected, decide, playMischief, previewScheme, boostScheme, guess, ghostAction }: Props) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const places = useMapPlaces();
+  const now = useNow();
+  const me = game.roster.find((r) => r.characterId === game.characterId);
+  const sessionTime = game.sync.sessionTime + (now - game.sync.wall) * game.timeScale;
+  const progress = Math.min(1, sessionTime / (game.durationSeconds * 1000));
+  const lastResolved = [...game.history].reverse().find((n): n is Extract<Notice, { kind: "resolved" }> => n.kind === "resolved");
+  const news = [...game.feed].reverse().filter(isNewsworthy);
+  const mapSize = useMapSize();
+  // T5 (and N2): the card opens right next to where the event happens, on the side away from it.
+  const cardStyle = cardBeside(game.pending?.tile, mapSize);
+  const reveal = lastResolved && now - (game.resolvedWall[lastResolved.instanceId] ?? 0) < REVEAL_MS ? lastResolved : null;
+  const showOutcome = lastResolved && !reveal && now - (game.resolvedWall[lastResolved.instanceId] ?? 0) < REVEAL_MS + 6000;
+  // Phones: bring the map into view when your event begins (it zooms to the spot).
+  const focusId = game.coming?.instanceId ?? game.pending?.instanceId;
+  useEffect(() => {
+    if (!focusId || window.innerWidth >= 760) return;
+    document.querySelector(".town")?.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [focusId]);
+  // N3: during the finale the clock would run past the end; show the finale instead.
+  const finale = game.feed.some((f) => f.kind === "phase" && f.phase === "finale");
+  const recentOutcomes = game.history.filter((n): n is Extract<Notice, { kind: "resolved" }> => n.kind === "resolved").slice(-6).reverse();
+
+  return (
+    <main className="game">
+      <header className="game-header card">
+        <div className="who">
+          <strong>{me?.name ?? "You"}</strong>
+          <span className="muted">{me ? careerName(me.career) : ""}</span>
+          {game.calendar && (
+            <span className="chip">
+              {SEASON_LABELS[game.calendar.season] ?? game.calendar.season} · year {game.calendar.year + 1}
+              {game.ageBase && ` · age ${game.ageBase.age + game.calendar.year - game.ageBase.year}`}
+            </span>
+          )}
+          {!connected && <span className="chip bad">Reconnecting…</span>}
+        </div>
+        <div className="session-clock" aria-label="Session time">
+          <div className="bar">
+            <div className="bar-fill" style={{ width: `${progress * 100}%` }} />
+          </div>
+          <span className="muted">{finale ? "Finale" : `${clock(sessionTime)} / ${clock(game.durationSeconds * 1000)}`}</span>
+        </div>
+        {game.attrs && <Attributes attrs={game.attrs} />}
+        {game.goals.length > 0 && (
+          <ul className="goals" aria-label="Your goals for this life">
+            {game.goals.map((g) => (
+              <li key={g.id} className={`goal ${g.state}`} title={g.mode === "end" ? "Counts at the end" : g.mode === "never" ? "Reached unless you break it" : "Reached once you do it"}>
+                <span aria-hidden="true">{g.state === "done" ? "✓" : g.state === "broken" ? "✗" : "○"}</span> {g.label}
+              </li>
+            ))}
+          </ul>
+        )}
+      </header>
+
+      {game.upheaval && (
+        <div className="banner upheaval" role="status">
+          <strong>{game.upheaval.title}</strong> — {game.upheaval.text}
+        </div>
+      )}
+
+      {game.ended && (
+        <div className="banner" role="status">
+          Your story has ended — <strong>{game.ended.status}</strong>: {game.ended.cause}. You can watch the rest of the session.
+        </div>
+      )}
+
+      <div className="game-grid">
+        <section className="stage">
+          <div className="town-wrap">
+            <Town game={game} onSelect={setSelected} />
+            {selected && !game.pending && <PersonCard game={game} id={selected} sessionTime={sessionTime} places={places} close={() => setSelected(null)} />}
+            {game.pending ? (
+              <div className="overlay beside" style={cardStyle}>
+                <EventCard offer={game.pending} game={game} now={now} decide={decide} />
+              </div>
+            ) : reveal ? (
+              <div className="overlay toast">
+                <RevealCard notice={reveal} game={game} />
+              </div>
+            ) : showOutcome && lastResolved ? (
+              <div className="overlay toast">
+                <OutcomeCard notice={lastResolved} waiting={false} />
+              </div>
+            ) : game.coming ? (
+              <div className="coming" role="status">
+                <span className="coming-dot" aria-hidden="true" />
+                <span>
+                  <strong>{game.coming.title}</strong>
+                  {game.coming.placeName ? ` at ${game.coming.placeName}` : " nearby"} — everyone is on the way…
+                </span>
+              </div>
+            ) : null}
+          </div>
+
+          <GuessCard game={game} sessionTime={sessionTime} now={now} guess={guess} />
+
+          {recentOutcomes.length > 1 && (
+            <div className="card">
+              <h2>Your story so far</h2>
+              <ul className="story">
+                {recentOutcomes.slice(1).map((n) => (
+                  <li key={n.instanceId}>
+                    <strong>{n.title}.</strong> {n.outcomeText ?? ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+
+        <aside className="side">
+          <div className="card">
+            <h2>People</h2>
+            <ul className="people">
+              {game.roster
+                .filter((r) => r.characterId !== game.characterId)
+                .map((r) => {
+                  const o = game.others.find((x) => x.id === r.characterId);
+                  return (
+                    <li key={r.characterId} className={o && o.status !== "active" ? "gone" : ""}>
+                      <span>
+                        {r.name} <span className="muted">· {careerName(r.career)}</span>
+                        {r.trait && <span className="trait">{r.trait}</span>}
+                      </span>
+                      <span className={`chip rel-${o?.relation.type ?? "stranger"}`}>
+                        {o && o.status !== "active" ? o.status : RELATION_LABELS[o?.relation.type ?? "stranger"]}
+                      </span>
+                    </li>
+                  );
+                })}
+            </ul>
+            <p className="legend small muted" aria-label="Line colours on the map">
+              Hover or tap someone on the map:
+              <span className="tie" style={{ background: "#2c7a4b" }} /> friend
+              <span className="tie" style={{ background: "#b23b3b" }} /> rival
+              <span className="tie" style={{ background: "#d9a400" }} /> money
+              <span className="tie" style={{ background: "#e05a9b" }} /> partner
+            </p>
+          </div>
+          {game.ended && game.ghost?.isGhost && <GhostCard game={game} sessionTime={sessionTime} act={ghostAction} />}
+          {game.mischief && !game.ended && <Schemes game={game} sessionTime={sessionTime} plan={playMischief} preview={previewScheme} boost={boostScheme} />}
+          <div className="card">
+            <h2>Around town</h2>
+            <ul className="feed" aria-live="polite">
+              {news.slice(0, 12).map((f, i) =>
+                f.kind === "event" ? (
+                  <li key={`${f.instanceId}-${i}`}>
+                    <strong>{f.title}</strong> — {f.text}
+                  </li>
+                ) : f.kind === "ended" ? (
+                  <li key={`${f.characterId}-${i}`} className="ended">
+                    {f.name}: {f.status}. {f.cause}
+                  </li>
+                ) : f.kind === "upheaval" ? (
+                  <li key={`${f.id}-${i}`} className="upheaval">
+                    <strong>{f.title}</strong> — {f.text}
+                  </li>
+                ) : (
+                  <li key={`phase-${i}`} className="finale">
+                    <strong>The finale</strong> — the whole town gathers for one last event.
+                  </li>
+                ),
+              )}
+              {news.length === 0 && <li className="muted">Quiet so far.</li>}
+            </ul>
+          </div>
+        </aside>
+      </div>
+    </main>
+  );
+}
+
+function Attributes({ attrs }: { attrs: Record<Attribute, number> }) {
+  return (
+    <ul className="attrs">
+      {(Object.keys(ATTR_LABELS) as Attribute[]).map((a) => (
+        <li key={a} title={`${ATTR_LABELS[a].label}: ${attrs[a]}`}>
+          <span className="attr-label">
+            {ATTR_LABELS[a].icon} {ATTR_LABELS[a].label}
+          </span>
+          <span className="meter" role="meter" aria-valuenow={attrs[a]} aria-valuemin={0} aria-valuemax={100} aria-label={ATTR_LABELS[a].label}>
+            <span className={`meter-fill ${attrs[a] < 30 ? "low" : ""}`} style={{ width: `${attrs[a]}%` }} />
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function EventCard({ offer, game, now, decide }: { offer: OfferView; game: GameState; now: number; decide: Props["decide"] }) {
+  const totalMs = (offer.deadlineAt - offer.offeredAt) / game.timeScale;
+  const leftMs = Math.max(0, totalMs - (now - game.pendingReceivedAt));
+  const nameOfRole = (role: string) =>
+    offer.participants
+      .filter((p) => p.role === role)
+      .map((p) => p.name)
+      .join(" & ") || role;
+  const others = offer.participants.filter((p) => p.characterId !== game.characterId);
+
+  return (
+    <article className="card event" aria-labelledby="event-title">
+      <div className="event-meta">
+        <span className={`chip cat-${offer.category}`}>{offer.category}</span>
+        {offer.importance === "important" && <span className="chip risk">Important</span>}
+        <span className="countdown" aria-label="Time left">
+          {Math.ceil(leftMs / 1000)}s
+        </span>
+      </div>
+      <div className="bar thin">
+        <div className="bar-fill urgent" style={{ width: `${(leftMs / totalMs) * 100}%` }} />
+      </div>
+      <h1 id="event-title">{offer.title}</h1>
+      {/* B1/N1: only the public text may scroll if it is very long; what only you know and the choices always stay whole. */}
+      <div className="event-story">
+        <p className="lead">{offer.publicText}</p>
+      </div>
+      {(offer.privateText || offer.clue) && (
+        // T8c V1: what you noticed goes in the same box as what only you know (one box, less height).
+        <p className="private">
+          <span className="private-label">Only you know</span>
+          {offer.privateText}
+          {offer.clue && <span className="clue-line">🔎 {offer.clue}</span>}
+        </p>
+      )}
+      {others.length > 0 && <p className="muted small with">With: {others.map((o) => o.name).join(", ")}</p>}
+
+      {game.submitted ? (
+        <p className="waiting" aria-live="polite">
+          You chose {quoted(offer.choices.find((c) => c.id === game.submitted)?.label)}. Waiting for the others…
+        </p>
+      ) : (
+        <ul className="choices">
+          {offer.choices.map((c) => (
+            <li key={c.id}>
+              <button className={c.special ? "choice special" : "choice"} onClick={() => decide(c.id)}>
+                <span className="choice-label">
+                  {c.special && <span className="special-tag">Your expertise</span>}
+                  {c.label}
+                </span>
+                {c.note && <span className="insight">{c.note}</span>}
+                <span className="hints">
+                  {hints(c.perceived, nameOfRole).map((h) => (
+                    <span key={h.text} className={`hint ${h.tone}`}>
+                      {h.text}
+                    </span>
+                  ))}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="muted small default-note" title={`If you do not choose in time: ${quoted(offer.choices.find((c) => c.isDefault)?.label)}`}>
+        If time runs out: {quoted(offer.choices.find((c) => c.isDefault)?.label)}
+      </p>
+    </article>
+  );
+}
+
+const REVEAL_MS = 2200;
+
+/** T5: the card sits next to the event's tile, on the side of the map with more room. */
+function cardBeside(tile: [number, number] | undefined, map: { width: number; height: number } | null): CSSProperties | undefined {
+  if (!tile || !map) return undefined;
+  const fx = (tile[0] + 0.5) / map.width;
+  const fy = (tile[1] + 0.5) / map.height;
+  const gap = 2.2; // tiles between the event spot and the card: the people gathered there stay visible
+  // CSS variables: only the desktop layout uses them (on phones the card is a sheet at the bottom).
+  const justify = fy < 0.34 ? "flex-start" : fy < 0.66 ? "center" : "flex-end";
+  const fromEdge = fx <= 0.5 ? tile[0] + 0.5 + gap : map.width - (tile[0] + 0.5) + gap;
+  const edge = `min(${((fromEdge / map.width) * 100).toFixed(2)}%, calc(100% - 352px))`;
+  return {
+    "--card-justify": justify,
+    "--card-left": fx <= 0.5 ? edge : "auto",
+    "--card-right": fx <= 0.5 ? "auto" : edge,
+  } as CSSProperties;
+}
+
+/** T5: everyone's cards are turned over at the same moment, while the faces on the map react. */
+function RevealCard({ notice, game }: { notice: Extract<Notice, { kind: "resolved" }>; game: GameState }) {
+  const deciders = notice.deciders ?? (notice.myChoice ? [game.characterId ?? ""] : []);
+  const nameOf = (id: string) => (id === game.characterId ? "You" : (notice.participants.find((p) => p.characterId === id)?.name ?? id));
+  const labelOf = (id: string) =>
+    id === game.characterId ? notice.myChoice?.label : notice.revealed.find((r) => r.characterId === id)?.label;
+  return (
+    <article className="card reveal" aria-live="polite">
+      <span className="muted small">{notice.title}</span>
+      <ul className="reveal-cards">
+        {deciders.map((id) => {
+          const label = labelOf(id);
+          return (
+            <li key={id} className={`flip ${label ? "" : "secret"}`}>
+              <span className="flip-who">{nameOf(id)}</span>
+              <span className="flip-what">{label ? quoted(label) : "🤐 kept it to themselves"}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </article>
+  );
+}
+
+function OutcomeCard({ notice, waiting }: { notice: Extract<Notice, { kind: "resolved" }>; waiting: boolean }) {
+  const changes = Object.entries(notice.selfChanges) as [Attribute, number][];
+  return (
+    <article className="card outcome" aria-live="polite">
+      <span className="muted small">What happened</span>
+      <h1>{notice.title}</h1>
+      {notice.myChoice && (
+        <p className="muted">
+          {notice.myChoice.defaulted ? "You did not decide in time: " : "You chose: "}{quoted(notice.myChoice.label)}
+        </p>
+      )}
+      {notice.outcomeText && <p className="lead">{notice.outcomeText}</p>}
+      {notice.revealed.length > 0 && (
+        <ul className="revealed">
+          {notice.revealed.map((r) => (
+            <li key={r.characterId}>
+              {notice.participants.find((p) => p.characterId === r.characterId)?.name ?? r.characterId} chose {quoted(r.label)}
+            </li>
+          ))}
+        </ul>
+      )}
+      {changes.length > 0 && (
+        <p className="hints">
+          {changes.map(([a, d]) => (
+            <span key={a} className={`hint ${d > 0 ? "good" : "bad"}`}>
+              {ATTR_LABELS[a].icon} {ATTR_LABELS[a].label} {d > 0 ? "+" : ""}
+              {d}
+            </span>
+          ))}
+        </p>
+      )}
+      {waiting && <p className="muted small">Life goes on…</p>}
+    </article>
+  );
+}

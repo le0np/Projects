@@ -1,0 +1,35 @@
+import { describe, expect, it } from "vitest";
+import { isNewsworthy } from "../src/format";
+
+describe("B3: Around town shows news, not other people's errands", () => {
+  const person = { characterId: "c1", name: "Kim", role: "taxpayer" };
+  it("keeps events with more than one person, upheavals, endings and the finale", () => {
+    expect(isNewsworthy({ kind: "event", participants: [person] })).toBe(false); // "Kim receives a tax refund."
+    expect(isNewsworthy({ kind: "event", participants: [person, { ...person, characterId: "c2" }] })).toBe(true);
+    expect(isNewsworthy({ kind: "upheaval", active: true })).toBe(true);
+    expect(isNewsworthy({ kind: "upheaval", active: false })).toBe(false);
+    expect(isNewsworthy({ kind: "ended" })).toBe(true); // deaths, hospital, prison
+    expect(isNewsworthy({ kind: "phase", phase: "finale" })).toBe(true);
+    expect(isNewsworthy({ kind: "phase", phase: "climax" })).toBe(false);
+    expect(isNewsworthy({ kind: "season" })).toBe(false);
+    expect(isNewsworthy({ kind: "move" })).toBe(false);
+  });
+});
+
+describe("T5b R1: quotes around choice labels", async () => {
+  const { quoted } = await import("../src/format");
+  it("adds quotes once, never doubles them", () => {
+    expect(quoted("Count fairly")).toBe("“Count fairly”");
+    expect(quoted('"Go to the bathroom" and never come back')).toBe('"Go to the bathroom" and never come back');
+    expect(quoted("„Ja”")).toBe("„Ja”");
+    expect(quoted(undefined)).toBe("");
+  });
+});
+
+describe("T11: Copy my life", async () => {
+  const { lifeShareText } = await import("../src/format");
+  it("shares the emoji years, the title, career and ages — and no names", () => {
+    const text = lifeShareText({ years: ["🙂", "💼", "💍", "🤕"], ageAtEnd: 21, title: { id: "x", label: "The Town Snitch", why: "" }, career: "lawyer" });
+    expect(text.split("\n")).toEqual(["🏘️ My life in Life Simulation", "🙂💼💍🤕", "“The Town Snitch” · Lawyer · age 18–21"]);
+  });
+});

@@ -1,0 +1,427 @@
+[
+  {
+    "id": "crypto",
+    "kind": "money",
+    "title": "{friend}'s Business Plan",
+    "text": [
+      {
+        "when": {
+          "flags": [
+            "posted_video"
+          ]
+        },
+        "text": "{friend} has a business plan: a cryptocurrency, but for actual dogs. {Friend.he} says you “owe {friend.him} one” after that fountain video. You have {money} € saved.",
+        "callback": true
+      },
+      {
+        "text": "{friend} has a business plan: a cryptocurrency, but for actual dogs. {Friend.he} needs “just a little” from you. You have {money} € saved."
+      }
+    ],
+    "choices": [
+      {
+        "id": "all_in",
+        "label": "Put in all your savings",
+        "tags": [
+          "brave"
+        ],
+        "base": 40,
+        "ok": {
+          "text": "Dogs, it turns out, love money. You're rich-ish!",
+          "emoji": "🚀",
+          "effects": [
+            {
+              "money": 45
+            },
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "flag": "dog_coin_rich"
+            },
+            {
+              "remember": "Bet everything on {friend}'s dog coin. It worked!"
+            }
+          ]
+        },
+        "fail": {
+          "text": "It crashes in a week. {friend} can't pay you back, so {friend.he} gives you a dog. The dog is lovely.",
+          "emoji": "🐕",
+          "effects": [
+            {
+              "money": -40
+            },
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "flag": "got_dog"
+            },
+            {
+              "remember": "Lost all your savings on {friend}'s dog coin. Got a dog out of it."
+            }
+          ]
+        }
+      },
+      {
+        "id": "little",
+        "label": "Give {friend.him} a little, as a friend",
+        "ok": {
+          "text": "You never see the money again. You do see {friend} a lot more. {Friend.he} owes you one.",
+          "emoji": "🤝",
+          "effects": [
+            {
+              "money": -5
+            },
+            {
+              "rel": "friend",
+              "n": 1
+            },
+            {
+              "remember": "Gave {friend} a little money for {friend.his} dog coin. Never saw it again."
+            }
+          ]
+        }
+      },
+      {
+        "id": "no",
+        "label": "Say no",
+        "tags": [
+          "refuse"
+        ],
+        "failTo": "all_in",
+        "ok": {
+          "text": "{friend} calls you “a capitalist” and borrows your charger. Forever.",
+          "emoji": "🔌",
+          "effects": [
+            {
+              "rel": "friend",
+              "n": -1
+            },
+            {
+              "remember": "Said no to {friend}'s dog coin."
+            }
+          ],
+          "byFlaw": {
+            "pushover": {
+              "text": "You say no so firmly that you surprise yourself. {friend} is so shocked {friend.he} doesn't even borrow your charger.",
+              "emoji": "😤",
+              "effects": [
+                {
+                  "rel": "friend",
+                  "n": -1
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "plan",
+        "label": "Rewrite the business plan properly, then invest",
+        "career": "entrepreneur",
+        "ok": {
+          "text": "With a real plan the dog coin becomes a dog-walking app. It makes money. Slowly. Legally.",
+          "emoji": "📊",
+          "effects": [
+            {
+              "money": 25
+            },
+            {
+              "rel": "friend",
+              "n": 2
+            },
+            {
+              "flag": "side_hustle"
+            },
+            {
+              "remember": "Turned {friend}'s dog coin into an actual business."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "envelope",
+    "kind": "money",
+    "title": "The Envelope",
+    "text": "At the bus stop an envelope with 2,000 € falls out of {rival}'s bag. {Rival.he} doesn't notice. Nobody saw. Except a pigeon.",
+    "choices": [
+      {
+        "id": "return",
+        "label": "Give it back",
+        "ok": {
+          "text": "{rival} stares at you like you're an alien. Then buys you a coffee. A small one, but still.",
+          "emoji": "☕",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": 2
+            },
+            {
+              "rep": 5
+            },
+            {
+              "flag": "returned_envelope"
+            },
+            {
+              "remember": "Gave {rival} back {rival.his} 2,000 €."
+            }
+          ]
+        }
+      },
+      {
+        "id": "keep",
+        "label": "Keep it",
+        "tags": [
+          "lie"
+        ],
+        "ok": {
+          "text": "You keep it. Every pigeon you see from now on looks at you differently.",
+          "emoji": "💸",
+          "effects": [
+            {
+              "money": 25
+            },
+            {
+              "secret": {
+                "id": "envelope",
+                "text": "You kept {rival}'s 2,000 €",
+                "years": 2,
+                "reveal": {
+                  "text": "The pigeon was a doorbell camera. {rival} wants {rival.his} money back. Plus interest. Plus an apology in the Gazette.",
+                  "emoji": "🐦",
+                  "effects": [
+                    {
+                      "money": -30
+                    },
+                    {
+                      "rel": "rival",
+                      "n": -2
+                    }
+                  ]
+                },
+                "about": "rival"
+              }
+            },
+            {
+              "remember": "Kept {rival}'s envelope with 2,000 €."
+            }
+          ]
+        }
+      },
+      {
+        "id": "half",
+        "label": "Return half and say that's how you found it",
+        "tags": [
+          "lie"
+        ],
+        "base": 55,
+        "ok": {
+          "text": "{rival} thanks you, confused. “I could have sworn there was more.”",
+          "emoji": "🤏",
+          "effects": [
+            {
+              "money": 12
+            },
+            {
+              "rel": "rival",
+              "n": 1
+            },
+            {
+              "remember": "Returned half of {rival}'s money and kept the other half."
+            }
+          ]
+        },
+        "fail": {
+          "text": "{rival} counts it. Twice. Then {rival.he} counts you.",
+          "emoji": "🧾",
+          "effects": [
+            {
+              "money": 12
+            },
+            {
+              "rel": "rival",
+              "n": -2
+            },
+            {
+              "rep": -5
+            },
+            {
+              "remember": "Got caught keeping half of {rival}'s money."
+            }
+          ]
+        }
+      },
+      {
+        "id": "procedure",
+        "label": "Take it to lost property and fill in form 27B",
+        "career": "police_officer",
+        "ok": {
+          "text": "{rival} gets it back with an official letter thanking “Officer You”. {Rival.he} frames it. Grudgingly.",
+          "emoji": "📝",
+          "effects": [
+            {
+              "rel": "rival",
+              "n": 2
+            },
+            {
+              "rep": 10
+            },
+            {
+              "remember": "Returned {rival}'s money with full paperwork."
+            }
+          ]
+        }
+      },
+      {
+        "id": "finders",
+        "label": "Explain the law on lost property, then claim the reward",
+        "career": "lawyer",
+        "ok": {
+          "text": "Legally you get 10 %. {rival} pays it, through gritted teeth, and asks for your card.",
+          "emoji": "⚖️",
+          "effects": [
+            {
+              "money": 10
+            },
+            {
+              "rel": "rival",
+              "n": 1
+            },
+            {
+              "rep": 5
+            },
+            {
+              "remember": "Got a legal reward for returning {rival}'s money."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "id": "syndicate",
+    "kind": "money",
+    "title": "The Lottery Syndicate",
+    "text": "The whole street plays the lottery together every week. {crush} runs it. This week it's your turn to buy the ticket, and the numbers are… familiar.",
+    "choices": [
+      {
+        "id": "buy",
+        "label": "Buy the ticket like always",
+        "base": 50,
+        "ok": {
+          "text": "Three numbers! The street wins 600 €. Your share buys a nice dinner and a lot of goodwill.",
+          "emoji": "🎟️",
+          "effects": [
+            {
+              "money": 10
+            },
+            {
+              "rep": 5
+            },
+            {
+              "rel": "crush",
+              "n": 1
+            },
+            {
+              "remember": "Bought the winning street lottery ticket. Small win, big party."
+            }
+          ]
+        },
+        "fail": {
+          "text": "Nothing. As always. {crush} makes you buy the biscuits as punishment.",
+          "emoji": "🍪",
+          "effects": [
+            {
+              "money": -3
+            }
+          ]
+        }
+      },
+      {
+        "id": "own_numbers",
+        "label": "Secretly use your own lucky numbers",
+        "tags": [
+          "lie"
+        ],
+        "base": 40,
+        "ok": {
+          "text": "Your numbers win 4,000 €! Now you have to explain why the numbers are different. You don't.",
+          "emoji": "🍀",
+          "effects": [
+            {
+              "money": 40
+            },
+            {
+              "secret": {
+                "id": "lottery",
+                "text": "You changed the street's lottery numbers",
+                "years": 2,
+                "reveal": {
+                  "text": "{crush} checks the ticket against the list. The whole street knows by lunch. Mrs. Kovač spits on your car.",
+                  "emoji": "🍀",
+                  "effects": [
+                    {
+                      "rep": -15
+                    },
+                    {
+                      "rel": "crush",
+                      "n": -2
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "remember": "Won the street lottery with secret numbers."
+            }
+          ]
+        },
+        "fail": {
+          "text": "Your numbers lose. The street's usual numbers win. Everyone checks. Everyone knows.",
+          "emoji": "😱",
+          "effects": [
+            {
+              "rep": -15
+            },
+            {
+              "rel": "crush",
+              "n": -2
+            },
+            {
+              "remember": "Changed the street's lottery numbers. The usual ones won."
+            }
+          ]
+        }
+      },
+      {
+        "id": "skip",
+        "label": "Forget to buy it",
+        "base": 50,
+        "ok": {
+          "text": "You forget. Nothing would have won anyway. You never tell anyone, and nobody asks.",
+          "emoji": "😌"
+        },
+        "fail": {
+          "text": "Of course this is the week. The street's numbers come up. You move your car to a different street.",
+          "emoji": "🙈",
+          "effects": [
+            {
+              "rep": -10
+            },
+            {
+              "rel": "crush",
+              "n": -1
+            },
+            {
+              "remember": "Forgot to buy the lottery ticket the week the street won."
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,531 @@
+/**
+ * HTTP API (Fastify) + realtime channel (Socket.IO) — the modular monolith's outer layer.
+ *
+ * HTTP:   register, login, logout, profile, careers, lobby info, session logs.
+ * Socket: lobby presence, matchmaking, game notices, decisions, reconnect/resume.
+ */
+import fastifyStatic from "@fastify/static";
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
+import { Server as SocketServer, type Socket } from "socket.io";
+import { z } from "zod";
+import { Rng, type ChapterContent } from "@lifesim/core";
+import { loadChapters, type ContentBundle } from "@lifesim/content";
+import { ChapterLife, DEFAULT_CONFIG, formatLifeLog, formatLog, type LifeLogEntry } from "@lifesim/engine";
+import { randomUUID } from "node:crypto";
+import type { ServerConfig } from "./config";
+import type { Database } from "./db/database";
+import { LiveSession, type Seat } from "./live-session";
+import { Matchmaker, type Ticket } from "./matchmaking";
+import { Repo, type UserRow } from "./repo";
+import { Rooms } from "./rooms";
+
+export interface App {
+  http: FastifyInstance;
+  io: SocketServer;
+  repo: Repo;
+  matchmaker: Matchmaker;
+  rooms: Rooms;
+  live: ReadonlyMap<string, LiveSession>;
+  close(): Promise<void>;
+}
+
+const RegisterBody = z.object({
+  username: z.string().regex(/^[A-Za-z0-9_]{3,20}$/, "3–20 letters, digits or underscores"),
+  email: z.email(),
+  password: z.string().min(8, "at least 8 characters").max(200),
+});
+/** T15: a guest only gives a character name. */
+const GuestBody = z.object({ name: z.string().trim().min(2).max(16).regex(/^[\p{L}][\p{L} '-]*$/u) });
+const LoginBody = z.object({ login: z.string().min(1), password: z.string().min(1) });
+const AvatarBody = z.object({ avatar: z.string().regex(/^[a-z0-9_-]{1,32}$/) });
+/** B4: the character's name is chosen in the lobby (letters, spaces, apostrophes and hyphens). */
+const CharacterName = z
+  .string()
+  .trim()
+  .min(2)
+  .max(16)
+  .regex(/^[\p{L}][\p{L} '-]*$/u);
+const FindMatch = z.object({ career: z.string(), name: CharacterName.optional() });
+const RoomCode = z.string().trim().regex(/^[A-Za-z0-9]{4}$/).transform((c) => c.toUpperCase());
+const RoomCreate = z.object({ career: z.string(), name: CharacterName });
+const RoomJoin = z.object({ code: RoomCode, career: z.string(), name: CharacterName });
+const RoomUpdate = z.object({ career: z.string().optional(), name: CharacterName.optional() });
+/** Sprint 5: a life in chapters. */
+const LifeStart = z.object({ name: CharacterName, dream: z.string(), flaw: z.string(), career: z.string() });
+const LifeAct = z.union([z.object({ t: z.literal("next") }), z.object({ t: z.enum(["focus", "choose"]), id: z.string().max(64) })]);
+const Decide = z.object({ sessionId: z.string(), instanceId: z.string(), choiceId: z.string() });
+const Prank = z.object({ sessionId: z.string(), mischiefId: z.string(), targetId: z.string() });
+const Ghost = z.object({ sessionId: z.string(), action: z.enum(["nudge", "vote", "will"]), target: z.string().max(300) });
+const Guess = z.object({ sessionId: z.string(), instanceId: z.string(), deciderId: z.string(), choiceId: z.string() });
+const Boost = z.object({ sessionId: z.string(), schemeId: z.string(), boost: z.enum(["cover", "wait", "accomplice"]), accompliceId: z.string().optional() });
+
+type Ack = (response: unknown) => void;
+
+export async function buildApp(opts: { db: Database; content: ContentBundle; chapters?: ChapterContent; config: ServerConfig; logger?: boolean }): Promise<App> {
+  const { content, config } = opts;
+  const chapters = opts.chapters ?? loadChapters();
+  /** Sprint 5: each player's current life in chapters (solo, in memory until they go back to the lobby). */
+  const lives = new Map<string, { id: string; life: ChapterLife; saved: boolean }>();
+  const repo = new Repo(opts.db);
+  const http = Fastify({ logger: opts.logger ?? false });
+  const io = new SocketServer(http.server, { cors: { origin: true } });
+
+  const live = new Map<string, LiveSession>(); // sessionId → session
+  const rooms = new Rooms(config.sessionSize);
+  const roomOfSession = new Map<string, string>(); // sessionId → room code (T14)
+  const liveByUser = new Map<string, LiveSession>();
+  const sockets = new Map<string, Set<string>>(); // userId → socket ids
+  const careerIds = [...content.careers.keys()];
+  const seatRng = new Rng(`seats-${Date.now()}`);
+
+  // ------------------------------------------------------------------ helpers
+
+  const lobbyState = () => ({ online: sockets.size, inQueue: matchmaker.size, activeSessions: live.size });
+  const broadcastLobby = () => io.emit("lobby:state", lobbyState());
+  const toUser = (userId: string, event: string, payload: unknown) => io.to(`user:${userId}`).emit(event, payload);
+
+  async function authUser(req: FastifyRequest, reply: FastifyReply): Promise<UserRow | null> {
+    const header = req.headers.authorization ?? "";
+    const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+    const user = token ? await repo.userByToken(token) : null;
+    if (!user) void reply.code(401).send({ error: "unauthorized" });
+    return user;
+  }
+
+  function badRequest(reply: FastifyReply, error: z.ZodError) {
+    return reply.code(400).send({ error: "invalid_request", details: error.issues.map((i) => ({ path: i.path.join("."), message: i.message })) });
+  }
+
+  // ------------------------------------------------------------------ matchmaking → sessions
+
+  const matchmaker = new Matchmaker({
+    sessionSize: config.sessionSize,
+    maxHumans: config.maxHumans,
+    fillAfterMs: config.fillAfterSeconds * 1000,
+    onMatch: (tickets) => void startSession(tickets),
+  });
+
+  /** T14: everyone in a room sees the same waiting room. */
+  const broadcastRoom = (code: string) => {
+    const room = rooms.get(code);
+    if (room) io.to(`room:${code}`).emit("room:state", rooms.view(room));
+  };
+
+  async function startSession(tickets: Ticket[], roomCode?: string): Promise<void> {
+    const seats: Seat[] = tickets.map((t) => ({ kind: "human", userId: t.userId, name: t.name, career: t.career }));
+    while (seats.length < config.sessionSize) seats.push({ kind: "bot", career: seatRng.pick(careerIds) });
+    const session = new LiveSession(
+      content,
+      {
+        durationSeconds: config.sessionDurationSeconds,
+        ...(config.qaForceSchemeOnHuman ? { chaos: { ...DEFAULT_CONFIG.chaos, qaForceSchemes: true } } : {}),
+        ...(config.qaGhost ? { qaEndFirstHumanAtSeconds: 20 } : {}),
+      },
+      seats,
+      {
+        toUser,
+        onDecision: (sessionId, entry) => void repo.decisionMade(sessionId, entry).catch((err) => http.log.error(err)),
+        onFinished: (s, result) => {
+          live.delete(s.id);
+          // T14/T17: a room's life is over; whoever is still in it is back in its waiting room.
+          const code = roomOfSession.get(s.id);
+          roomOfSession.delete(s.id);
+          if (code && rooms.finished(code)) broadcastRoom(code);
+          for (const userId of s.humans.keys()) if (liveByUser.get(userId) === s) liveByUser.delete(userId);
+          const userOf = (key: string) => s.roster.find((r) => r.characterId === key)?.userId ?? null;
+          void repo
+            .sessionFinished(s.id, result, userOf)
+            .catch((err) => http.log.error(err))
+            .finally(broadcastLobby);
+        },
+      },
+      { timeScale: config.timeScale, paceScale: config.paceScale, qaSchemeOnHuman: config.qaForceSchemeOnHuman },
+    );
+    live.set(session.id, session);
+    if (roomCode) roomOfSession.set(session.id, roomCode);
+    for (const t of tickets) liveByUser.set(t.userId, session);
+    try {
+      session.start();
+      await repo.sessionStarted({
+        id: session.id,
+        engineId: session.session.id,
+        seed: session.session.config.seed,
+        config: session.session.config,
+        content,
+        participants: session.roster.map((r) => ({
+          characterKey: r.characterId,
+          userId: r.userId,
+          name: r.name,
+          career: r.career,
+          isBot: r.isBot,
+          botProfile: session.botProfile(r.characterId),
+        })),
+      });
+    } catch (err) {
+      http.log.error(err);
+      session.cancel();
+    }
+    broadcastLobby();
+  }
+
+  const matchTimer = setInterval(() => {
+    matchmaker.tick();
+    for (const userId of sockets.keys()) {
+      const status = matchmaker.status(userId);
+      if (status) toUser(userId, "match:status", { state: "searching", ...status });
+    }
+  }, 1000);
+
+  // ------------------------------------------------------------------ HTTP
+
+  http.get("/api/health", async () => ({ ok: true, db: opts.db.driver, content: content.hash, ...lobbyState() }));
+
+  http.post("/api/register", async (req, reply) => {
+    const body = RegisterBody.safeParse(req.body);
+    if (!body.success) return badRequest(reply, body.error);
+    const result = await repo.register(body.data.username, body.data.email, body.data.password);
+    if ("error" in result) return reply.code(409).send({ error: "username_or_email_taken" });
+    return reply.code(201).send(result);
+  });
+
+  // T15: play as guest. In-memory limit per IP per hour so nobody fills the users table.
+  const guestsByIp = new Map<string, number[]>();
+  http.post("/api/guest", async (req, reply) => {
+    const body = GuestBody.safeParse(req.body);
+    if (!body.success) return badRequest(reply, body.error);
+    const now = Date.now();
+    const recent = (guestsByIp.get(req.ip) ?? []).filter((t) => now - t < 3_600_000);
+    if (recent.length >= config.guestsPerIpPerHour) return reply.code(429).send({ error: "too_many_guests" });
+    recent.push(now);
+    guestsByIp.set(req.ip, recent);
+    const result = await repo.createGuest();
+    return reply.code(201).send({ ...result, name: body.data.name });
+  });
+
+  http.post("/api/me/upgrade", async (req, reply) => {
+    const user = await authUser(req, reply);
+    if (!user) return;
+    const body = RegisterBody.safeParse(req.body);
+    if (!body.success) return badRequest(reply, body.error);
+    const result = await repo.upgradeGuest(user.id, body.data.username, body.data.email, body.data.password);
+    if ("error" in result) return reply.code(result.error === "taken" ? 409 : 400).send({ error: result.error === "taken" ? "username_or_email_taken" : "not_a_guest" });
+    return result;
+  });
+
+  http.post("/api/login", async (req, reply) => {
+    const body = LoginBody.safeParse(req.body);
+    if (!body.success) return badRequest(reply, body.error);
+    const result = await repo.login(body.data.login, body.data.password);
+    if (!result) return reply.code(401).send({ error: "invalid_credentials" });
+    return result;
+  });
+
+  http.post("/api/logout", async (req, reply) => {
+    const header = req.headers.authorization ?? "";
+    if (header.startsWith("Bearer ")) await repo.revokeToken(header.slice(7));
+    return reply.code(204).send();
+  });
+
+  http.get("/api/me", async (req, reply) => {
+    const user = await authUser(req, reply);
+    if (!user) return;
+    const profile = await repo.profile(user.id);
+    const s = liveByUser.get(user.id);
+    return { ...profile, email: user.email, isGuest: user.isGuest, activeSessionId: s?.id ?? null, inQueue: matchmaker.has(user.id) };
+  });
+
+  http.put("/api/me/avatar", async (req, reply) => {
+    const user = await authUser(req, reply);
+    if (!user) return;
+    const body = AvatarBody.safeParse(req.body);
+    if (!body.success) return badRequest(reply, body.error);
+    await repo.setAvatar(user.id, body.data.avatar);
+    return reply.code(204).send();
+  });
+
+  http.get("/api/careers", async () =>
+    [...content.careers.values()].map((c) => ({
+      id: c.id,
+      name: c.name,
+      description: c.description,
+      abilities: c.abilities.map((a) => ({ name: a.name, description: a.description })),
+      strengths: c.strengths,
+      weaknesses: c.weaknesses,
+    })),
+  );
+
+  http.get("/api/lobby", async () => lobbyState());
+
+  /** Sprint 5: what you can choose when you create your character, and whether the old town mode is on. */
+  http.get("/api/life/options", async () => ({
+    legacyTown: config.legacyTown,
+    dreams: chapters.dreams.map(({ id, icon, label, note }) => ({ id, icon, label, note })),
+    flaws: chapters.flaws.map(({ id, icon, label, note }) => ({ id, icon, label, note })),
+    careers: chapters.careers.map(({ id, icon, label, jobs }) => ({ id, icon, label, note: `${jobs[0]} → ${jobs[1]}` })),
+  }));
+
+  /** The town (concept v2): tiles, roads and places, for the client's map. */
+  http.get("/api/map", async () => content.map.data);
+
+  /** Complete session log, for participants (acceptance criterion "complete session logs can be inspected"). */
+  http.get<{ Params: { id: string } }>("/api/sessions/:id/log", async (req, reply) => {
+    const user = await authUser(req, reply);
+    if (!user) return;
+    if (!(await repo.isParticipant(req.params.id, user.id))) return reply.code(404).send({ error: "not_found" });
+    const log = await repo.sessionLog(req.params.id);
+    if (!log) return reply.code(409).send({ error: "session_still_running" });
+    const first = log[0] as unknown as LifeLogEntry | undefined;
+    if (first && "t" in first && first.t === "start") return { log, text: formatLifeLog(chapters, log as unknown as LifeLogEntry[]) };
+    return { log, text: formatLog(log) };
+  });
+
+  // ------------------------------------------------------------------ web client (single-page app)
+
+  if (config.webDist) {
+    await http.register(fastifyStatic, { root: config.webDist });
+    http.setNotFoundHandler((req, reply) =>
+      req.url.startsWith("/api/") || req.url.startsWith("/socket.io/") ? reply.code(404).send({ error: "not_found" }) : reply.sendFile("index.html"),
+    );
+  }
+
+  // ------------------------------------------------------------------ Socket.IO
+
+  io.use(async (socket, next) => {
+    const token = typeof socket.handshake.auth?.token === "string" ? socket.handshake.auth.token : "";
+    const user = token ? await repo.userByToken(token) : null;
+    if (!user) return next(new Error("unauthorized"));
+    socket.data.user = user;
+    next();
+  });
+
+  io.on("connection", (socket: Socket) => {
+    const user = socket.data.user as UserRow;
+    void socket.join(`user:${user.id}`);
+    const set = sockets.get(user.id) ?? new Set();
+    set.add(socket.id);
+    sockets.set(user.id, set);
+    broadcastLobby();
+
+    // Reconnection: put the player straight back into their running session.
+    const running = liveByUser.get(user.id);
+    if (running) socket.emit("game:state", running.snapshot(user.id));
+    socket.emit("lobby:state", lobbyState());
+    // T14: who you are (the client needs it to know whether it hosts its room), and your room, if any.
+    socket.emit("me", { userId: user.id });
+    const myRoom = rooms.roomOf(user.id);
+    if (myRoom) {
+      void socket.join(`room:${myRoom.code}`);
+      socket.emit("room:state", rooms.view(myRoom));
+    }
+
+    // ---------------------------------------------------------------- Sprint 5: life in chapters
+
+    const mine = lives.get(user.id);
+    if (mine) socket.emit("life:state", { lifeId: mine.id, view: mine.life.view() });
+    const lifeState = (entry: { id: string; life: ChapterLife }) => ({ lifeId: entry.id, view: entry.life.view() });
+
+    socket.on("life:start", (raw: unknown, ack: Ack = () => {}) => {
+      const body = LifeStart.safeParse(raw);
+      if (!body.success) return ack({ ok: false, error: body.error.issues.some((i) => i.path[0] === "name") ? "invalid_name" : "invalid" });
+      const { name, dream, flaw, career } = body.data;
+      if (!chapters.dreams.some((d) => d.id === dream) || !chapters.flaws.some((f) => f.id === flaw) || !chapters.careers.some((c) => c.id === career))
+        return ack({ ok: false, error: "unknown_choice" });
+      const id = randomUUID();
+      const entry = { id, life: new ChapterLife(chapters, { name: name.trim(), dream, flaw, career }, id), saved: false };
+      lives.set(user.id, entry);
+      ack({ ok: true, ...lifeState(entry) });
+      socket.to(`user:${user.id}`).emit("life:state", lifeState(entry));
+    });
+
+    socket.on("life:act", (raw: unknown, ack: Ack = () => {}) => {
+      const entry = lives.get(user.id);
+      if (!entry) return ack({ ok: false, error: "no_life" });
+      const body = LifeAct.safeParse(raw);
+      if (!body.success) return ack({ ok: false, error: "invalid" });
+      const error = entry.life.act(body.data);
+      if (error) return ack({ ok: false, error, ...lifeState(entry) });
+      if (entry.life.finished && !entry.saved) {
+        entry.saved = true;
+        const step = entry.life.view().step;
+        if (step.kind === "done")
+          void repo
+            .chapterLifeFinished({ id: entry.id, userId: user.id, seed: entry.life.seed, content: chapters, log: entry.life.log, recap: step.recap, career: entry.life.state.setup.career })
+            .catch((err) => http.log.error(err));
+      }
+      ack({ ok: true, ...lifeState(entry) });
+      socket.to(`user:${user.id}`).emit("life:state", lifeState(entry));
+    });
+
+    /** Back to the lobby: the life is over (or abandoned). */
+    socket.on("life:leave", (_raw: unknown, ack: Ack = () => {}) => {
+      lives.delete(user.id);
+      ack({ ok: true });
+      socket.to(`user:${user.id}`).emit("life:state", null);
+    });
+
+    socket.on("match:find", (raw: unknown, ack: Ack = () => {}) => {
+      const body = FindMatch.safeParse(raw);
+      if (!body.success && body.error.issues.some((i) => i.path[0] === "name")) return ack({ ok: false, error: "invalid_name" });
+      if (!body.success || !content.careers.has(body.data.career)) return ack({ ok: false, error: "unknown_career" });
+      if (liveByUser.has(user.id)) return ack({ ok: false, error: "already_in_session" });
+      matchmaker.enqueue(user.id, body.data.name ?? user.username, body.data.career);
+      ack({ ok: true, status: matchmaker.status(user.id) ?? { state: "matched" } });
+      broadcastLobby();
+    });
+
+    // ---------------------------------------------------------------- T14: private rooms
+
+    const enterRoom = (code: string) => io.in(`user:${user.id}`).socketsJoin(`room:${code}`);
+    const leaveRoom = () => {
+      const before = rooms.roomOf(user.id);
+      if (!before) return;
+      io.in(`user:${user.id}`).socketsLeave(`room:${before.code}`);
+      const after = rooms.leave(user.id);
+      if (after) broadcastRoom(after.code);
+    };
+
+    socket.on("room:create", (raw: unknown, ack: Ack = () => {}) => {
+      const body = RoomCreate.safeParse(raw);
+      if (!body.success) return ack({ ok: false, error: "invalid" });
+      if (!content.careers.has(body.data.career)) return ack({ ok: false, error: "unknown_career" });
+      if (liveByUser.has(user.id)) return ack({ ok: false, error: "already_in_session" });
+      leaveRoom();
+      matchmaker.cancel(user.id);
+      const room = rooms.create({ userId: user.id, name: body.data.name, career: body.data.career });
+      enterRoom(room.code);
+      ack({ ok: true, room: rooms.view(room) });
+      broadcastRoom(room.code);
+    });
+
+    socket.on("room:join", (raw: unknown, ack: Ack = () => {}) => {
+      const body = RoomJoin.safeParse(raw);
+      if (!body.success) return ack({ ok: false, error: "invalid" });
+      if (!content.careers.has(body.data.career)) return ack({ ok: false, error: "unknown_career" });
+      if (liveByUser.has(user.id)) return ack({ ok: false, error: "already_in_session" });
+      if (rooms.roomOf(user.id)?.code !== body.data.code) leaveRoom();
+      matchmaker.cancel(user.id);
+      const res = rooms.join(body.data.code, { userId: user.id, name: body.data.name, career: body.data.career });
+      if (!res.ok) return ack(res);
+      enterRoom(res.room.code);
+      ack({ ok: true, room: rooms.view(res.room) });
+      broadcastRoom(res.room.code);
+    });
+
+    socket.on("room:update", (raw: unknown, ack: Ack = () => {}) => {
+      const body = RoomUpdate.safeParse(raw);
+      if (!body.success || (body.data.career && !content.careers.has(body.data.career))) return ack({ ok: false, error: "invalid" });
+      const room = rooms.update(user.id, body.data);
+      if (!room) return ack({ ok: false, error: "not_in_room" });
+      ack({ ok: true });
+      broadcastRoom(room.code);
+    });
+
+    socket.on("room:leave", (_raw: unknown, ack: Ack = () => {}) => {
+      leaveRoom();
+      ack({ ok: true });
+    });
+
+    socket.on("room:start", (_raw: unknown, ack: Ack = () => {}) => {
+      const res = rooms.start(user.id);
+      if (!res.ok) return ack(res);
+      const tickets: Ticket[] = res.room.members
+        .filter((m) => !liveByUser.has(m.userId))
+        .map((m) => ({ userId: m.userId, name: m.name, career: m.career, enqueuedAt: Date.now() }));
+      for (const t of tickets) matchmaker.cancel(t.userId);
+      ack({ ok: true });
+      broadcastRoom(res.room.code);
+      void startSession(tickets, res.room.code);
+    });
+
+    socket.on("match:cancel", (_raw: unknown, ack: Ack = () => {}) => {
+      ack({ ok: matchmaker.cancel(user.id) });
+      broadcastLobby();
+    });
+
+    socket.on("game:decide", (raw: unknown, ack: Ack = () => {}) => {
+      const body = Decide.safeParse(raw);
+      if (!body.success) return ack({ ok: false, reason: "invalid request" });
+      const s = liveByUser.get(user.id);
+      if (!s || s.id !== body.data.sessionId) return ack({ ok: false, reason: "not in this session" });
+      ack(s.submit(user.id, body.data.instanceId, body.data.choiceId));
+    });
+
+    socket.on("game:mischief", (raw: unknown, ack: Ack = () => {}) => {
+      const body = Prank.safeParse(raw);
+      if (!body.success) return ack({ ok: false, reason: "invalid request" });
+      const s = liveByUser.get(user.id);
+      if (!s || s.id !== body.data.sessionId) return ack({ ok: false, reason: "not in this session" });
+      const result = s.mischief(user.id, body.data.mischiefId, body.data.targetId);
+      ack({ ...result, state: s.session.mischiefState(s.humans.get(user.id)!.characterId) });
+    });
+
+    // T12: ghosts push fate, vote for the gossip of the year, leave a will.
+    socket.on("game:ghost", (raw: unknown, ack: Ack = () => {}) => {
+      const body = Ghost.safeParse(raw);
+      if (!body.success) return ack({ ok: false, reason: "invalid request" });
+      const s = liveByUser.get(user.id);
+      if (!s || s.id !== body.data.sessionId) return ack({ ok: false, reason: "not in this session" });
+      ack(s.ghost(user.id, body.data.action, body.data.target));
+    });
+
+    // T9: guessing what someone else will do while you wait.
+    socket.on("game:guess", (raw: unknown, ack: Ack = () => {}) => {
+      const body = Guess.safeParse(raw);
+      if (!body.success) return ack({ ok: false, reason: "invalid request" });
+      const s = liveByUser.get(user.id);
+      if (!s || s.id !== body.data.sessionId) return ack({ ok: false, reason: "not in this session" });
+      ack(s.guess(user.id, body.data.instanceId, body.data.deciderId, body.data.choiceId));
+    });
+
+    // T8: what a scheme would look like (chance and risk), and boosting one while it is prepared.
+    socket.on("game:scheme_preview", (raw: unknown, ack: Ack = () => {}) => {
+      const body = Prank.safeParse(raw);
+      if (!body.success) return ack({ ok: false, reason: "invalid request" });
+      const s = liveByUser.get(user.id);
+      if (!s || s.id !== body.data.sessionId) return ack({ ok: false, reason: "not in this session" });
+      ack(s.schemePreview(user.id, body.data.mischiefId, body.data.targetId));
+    });
+
+    socket.on("game:scheme_boost", (raw: unknown, ack: Ack = () => {}) => {
+      const body = Boost.safeParse(raw);
+      if (!body.success) return ack({ ok: false, reason: "invalid request" });
+      const s = liveByUser.get(user.id);
+      if (!s || s.id !== body.data.sessionId) return ack({ ok: false, reason: "not in this session" });
+      const result = s.boostScheme(user.id, body.data.schemeId, body.data.boost, body.data.accompliceId);
+      ack({ ...result, state: s.session.mischiefState(s.humans.get(user.id)!.characterId) });
+    });
+
+    socket.on("game:resume", (_raw: unknown, ack: Ack = () => {}) => {
+      const s = liveByUser.get(user.id);
+      ack(s ? s.snapshot(user.id) : null);
+    });
+
+    socket.on("disconnect", () => {
+      const set = sockets.get(user.id);
+      set?.delete(socket.id);
+      if (set && set.size === 0) {
+        sockets.delete(user.id);
+        // An absent player should not be matched; a running session keeps their seat (defaults apply).
+        matchmaker.cancel(user.id);
+        // T14: someone who left the waiting room for good is out of it (a refresh joins again via the link).
+        if (rooms.roomOf(user.id)?.state === "waiting") leaveRoom();
+      }
+      broadcastLobby();
+    });
+  });
+
+  return {
+    http,
+    io,
+    repo,
+    matchmaker,
+    rooms,
+    live,
+    async close() {
+      clearInterval(matchTimer);
+      for (const s of [...live.values()]) s.cancel();
+      await new Promise<void>((resolve) => io.close(() => resolve()));
+      await http.close().catch(() => {});
+    },
+  };
+}
